@@ -1,0 +1,45 @@
+# Dependencies and builds
+node_modules/
+.pnpm-store/
+dist/
+build/
+coverage/
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local settings, never committed
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+.impeccable/config.local.json
+.impeccable/cache/
+.impeccable/live/
+
+# Secrets and keys, never committed
+*.pem
+*.key
+*_accessKeys.csv
+secrets*.yaml
+
+# Large model files: published on Hugging Face, not in git
+*.onnx
+*.safetensors
+*.bin
+
+# impeccable engine binaries: downloaded and checksum-verified by its launcher
+.claude/skills/impeccable/scripts/bin/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

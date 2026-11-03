@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# Refuses a commit message with an em dash, an emoji or a Claude attribution.
+root="$(git rev-parse --show-toplevel)"
+exec sh "$root/tools/hygiene/py.sh" "$root/tools/hygiene/hygiene.py" message "$1"

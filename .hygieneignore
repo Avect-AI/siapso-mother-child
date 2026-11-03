@@ -1,0 +1,4 @@
+# Paths excluded from the text hygiene check (glob patterns, one per line).
+# Only third-party files we do not author belong here. Our own code, UI text,
+# docs and data must stay free of em dashes and emoji.
+.claude/agents/impeccable-*.md

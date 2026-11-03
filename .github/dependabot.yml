@@ -1,0 +1,13 @@
+# Dependabot version updates. Security alerts and security updates are enabled
+# in the repository settings (see tools/github/setup-repo.sh).
+# The npm ecosystem is added by the monorepo ticket, once package.json exists.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "deps"
