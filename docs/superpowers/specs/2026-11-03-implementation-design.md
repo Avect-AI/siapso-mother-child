@@ -161,13 +161,13 @@ Level order: `danger` > `before-next-dose` > `next-contact` > `unknown`.
 
 | Check | Behaviour |
 | --- | --- |
-| C1 pregnancy | Rule windows intersect the windows covered by the context range. |
-| C2 breastfeeding | Rule applies when breastfeeding, within its age bound and prematurity requirement. |
-| C3 interaction | Subject and `with` both present among distinct items. |
-| C4 herb-drug | Same as C3 with a plant subject. |
+| C1 pregnancy | Applies only to a pregnancy context; rule windows (all windows when none are listed) intersect the windows covered by the context range. |
+| C2 breastfeeding | Applies only to a breastfeeding context, within its age bound and prematurity requirement. |
+| C3 interaction | Subject and `with` both present among distinct items; a rule without a `with` partner is rejected. |
+| C4 herb-drug | Same as C3 with a plant subject and a medicine partner. |
 | C5 toxicity | Subject present, context conditions met; not capped by evidence. |
 | C6 duplicate | Two or more distinct items share a substance (or a class) that has a duplicate rule. |
-| C7 maximum dose | Sum over items of strength-mg x units-per-day for the substance exceeds the rule threshold; skipped when a unit count is missing. |
+| C7 maximum dose | The known sum over items of strength-mg x units-per-day for the substance is greater than the rule threshold, even if some items lack a unit count or a strength (a known partial sum above the threshold is a certain excess); skipped only when the known sum is at or below the threshold. |
 | C8 condition | Subject present and one of the conditions (or the `with` item) present. |
 | C9 contraception | Produces a note, never a level. |
 | C10 calendar | Produces a reminder, never a level. |
@@ -182,6 +182,7 @@ A product or plant with no finding gives an `unknown` finding: plants use their 
 - No input yields a level outside the four levels; there is no "safe" output.
 - Same inputs, same output (pure, deterministic order).
 - Unknown term triggers every pregnancy rule for the substance.
+- Invalid numbers in the context (non-finite or negative baby age, non-positive units per day) raise an error instead of silently lowering a level; the app validates input before calling the engine.
 - Evidence D, E, 0 never exceeds `next-contact` except `toxicity`.
 - Coverage of `engine/` at least 90 percent (lines, branches, functions, statements).
 
