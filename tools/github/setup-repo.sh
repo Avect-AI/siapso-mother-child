@@ -24,11 +24,14 @@ gh api -X PATCH "repos/$FULL" \
   -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=COMMIT_MESSAGES >/dev/null
 echo "Merge policy: squash only."
 
-# Auto-merge: only on plans that support it for private repositories.
-if gh api -X PATCH "repos/$FULL" -F allow_auto_merge=true >/dev/null 2>&1; then
+# Auto-merge: GitHub accepts the request on every plan but only stores it where
+# the feature exists (not for private repositories on the Free plan), so read
+# the value back instead of trusting the response.
+gh api -X PATCH "repos/$FULL" -F allow_auto_merge=true >/dev/null 2>&1 || true
+if [ "$(gh api "repos/$FULL" --jq .allow_auto_merge)" = "true" ]; then
   echo "GitHub auto-merge: enabled."
 else
-  echo "GitHub auto-merge not available on this plan: merge with gh once CI is green."
+  echo "GitHub auto-merge not available on this plan: use tools/github/merge-pr.sh."
 fi
 
 # Dependabot: vulnerability alerts and security updates.

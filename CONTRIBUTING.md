@@ -16,7 +16,7 @@ Thank you for helping. This project handles health information for pregnant and 
 4. **Sign off every commit** (`git commit -s`). By signing off you certify the [Developer Certificate of Origin](https://developercertificate.org/): you wrote the change or have the right to submit it under the project licences.
 5. **Reference the ticket** with a `Refs: SCRUM-<n>` footer (internal contributors).
 6. **Open a pull request** whose title is a Conventional Commits subject, and fill in the template. One pull request delivers one feature or fix.
-7. **Merge**: maintainers squash-merge once every check is green.
+7. **Merge**: maintainers squash-merge once every check is green, with `sh tools/github/merge-pr.sh <number>`. Never push directly to `main`.
 
 Example:
 

@@ -13,3 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Developer Certificate of Origin check on pull requests.
 - Dependabot version updates for GitHub Actions; Dependabot alerts and security updates enabled.
 - impeccable design plugin for interface work.
+- `tools/github/merge-pr.sh`: squash-merges a pull request only once every check is green.
+
+### Fixed
+
+- `setup-repo.sh` now reads the auto-merge setting back instead of trusting the API response.
