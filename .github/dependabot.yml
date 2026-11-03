@@ -26,6 +26,13 @@ updates:
     commit-message:
       prefix: 'chore'
       include: 'scope'
+    # Stay on the majors the toolchain supports: typescript-eslint supports
+    # TypeScript below 6.1, and CI runs Node 24 (see .nvmrc).
+    ignore:
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       dev-dependencies:
         dependency-type: 'development'
