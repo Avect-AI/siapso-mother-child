@@ -41,7 +41,7 @@ gh api -X PUT "repos/$FULL/automated-security-fixes" >/dev/null && echo "Dependa
 # Branch protection on main: requires GitHub Team for private repositories.
 cat > "${TMPDIR:-/tmp}/protection.json" <<'JSON'
 {
-  "required_status_checks": { "strict": true, "contexts": ["Text hygiene", "Developer Certificate of Origin"] },
+  "required_status_checks": { "strict": true, "contexts": ["Text hygiene", "Developer Certificate of Origin", "Build and test", "End-to-end"] },
   "enforce_admins": false,
   "required_pull_request_reviews": null,
   "restrictions": null,

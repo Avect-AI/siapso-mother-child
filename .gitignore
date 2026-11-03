@@ -43,3 +43,7 @@ secrets*.yaml
 .idea/
 .DS_Store
 Thumbs.db
+
+# Test and build output
+playwright-report/
+test-results/

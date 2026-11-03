@@ -29,6 +29,20 @@ Installable offline web app that flags risky medicines and traditional remedies 
 6. Merge with squash as soon as the whole CI is green (team decision of 2026-11-03), using `sh tools/github/merge-pr.sh <number>`, then move the Jira ticket to Done. The GitHub Free plan offers neither auto-merge nor branch protection on a private repository: the script waits for CI and refuses to merge if any check is not green. Never push directly to `main`, and never rewrite pushed history.
 7. The repository stays **private** during development and is made public at the end, after an audit.
 
+## Commands
+
+Run from the repository root (Node 24, pnpm 12):
+
+- `pnpm install`: install the workspace.
+- `pnpm lint`: ESLint (strict, type-aware).
+- `pnpm format:check` / `pnpm format`: Prettier check / write.
+- `pnpm typecheck`: `tsc --noEmit` in every package.
+- `pnpm test` / `pnpm test:coverage`: Vitest (coverage floor of 90 percent on `engine/src`).
+- `pnpm build`: build every package that has a build script.
+- `pnpm e2e`: Playwright smoke tests with axe (build the app first).
+
+Dependencies are pinned to exact versions, each published at least 14 days before use.
+
 ## Interface and design
 
 - Every interface goes through the impeccable plugin (`.claude/skills/impeccable`).

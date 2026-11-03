@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: MIT
+packages:
+  - engine
+  - resolver
+  - speech
+  - app
+  - tools/*
+minimumReleaseAge: 20160
+# No dependency needs an install script (checked with pnpm install on 2026-11-03),
+# so none is allowed. Add an allowBuilds entry only with a recorded reason.

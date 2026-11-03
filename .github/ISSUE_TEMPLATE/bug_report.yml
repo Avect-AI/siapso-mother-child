@@ -1,6 +1,6 @@
 name: Bug report
 description: Something does not work as expected
-labels: ["bug"]
+labels: ['bug']
 body:
   - type: markdown
     attributes:
@@ -32,4 +32,4 @@ body:
     id: device
     attributes:
       label: Phone and browser
-      placeholder: "Android 13, Chrome 140"
+      placeholder: 'Android 13, Chrome 140'

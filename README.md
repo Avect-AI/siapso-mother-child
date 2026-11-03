@@ -13,18 +13,28 @@ Offline safety information on medicines and traditional remedies during pregnanc
 
 ## Repository layout
 
-| Path | Content | Licence (at publication) |
-| --- | --- | --- |
-| `engine/` | Portable rules engine and reference tests | MIT |
-| `app/` | Installable offline web app | MIT |
-| `speech/` | Open French and Wolof speech model: card, scripts, browser conversion | MIT |
-| `resolver/` | Local name resolver (French, Wolof) | MIT |
-| `knowledge/` | Rules, one file per rule, with its source; `sources.yaml` | CC BY 4.0 |
-| `registry/` | Products and plants with evidence levels | CC BY 4.0 |
-| `eval/` | Synthetic cases and evaluation sets | CC BY 4.0 |
-| `open-data/` | Aggregated public data and field dictionary | CC BY 4.0 |
-| `docs/` | Architecture, roadmap, Digital Public Goods mapping | CC BY 4.0 |
-| `tools/` | Hygiene checks and repository tooling | MIT |
+| Path         | Content                                                               | Licence (at publication) |
+| ------------ | --------------------------------------------------------------------- | ------------------------ |
+| `engine/`    | Portable rules engine and reference tests                             | MIT                      |
+| `app/`       | Installable offline web app                                           | MIT                      |
+| `speech/`    | Open French and Wolof speech model: card, scripts, browser conversion | MIT                      |
+| `resolver/`  | Local name resolver (French, Wolof)                                   | MIT                      |
+| `knowledge/` | Rules, one file per rule, with its source; `sources.yaml`             | CC BY 4.0                |
+| `registry/`  | Products and plants with evidence levels                              | CC BY 4.0                |
+| `eval/`      | Synthetic cases and evaluation sets                                   | CC BY 4.0                |
+| `open-data/` | Aggregated public data and field dictionary                           | CC BY 4.0                |
+| `docs/`      | Architecture, roadmap, Digital Public Goods mapping                   | CC BY 4.0                |
+| `tools/`     | Hygiene checks and repository tooling                                 | MIT                      |
+
+## Development
+
+Prerequisites: Node 24 (see `.nvmrc`) and pnpm 12.
+
+```
+pnpm install
+pnpm test
+pnpm --filter @siapso/app dev
+```
 
 ## Contributing
 

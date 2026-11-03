@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Dependabot version updates for GitHub Actions; Dependabot alerts and security updates enabled.
 - impeccable design plugin for interface work.
 - `tools/github/merge-pr.sh`: squash-merges a pull request only once every check is green.
+- pnpm workspace with engine, resolver, speech and app packages; CI for lint, types, tests, build and end-to-end tests.
 
 ### Fixed
 

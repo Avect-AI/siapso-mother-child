@@ -7,6 +7,8 @@ Thank you for helping. This project handles health information for pregnant and 
 1. Clone the repository.
 2. Enable the repository git hooks: `git config core.hooksPath .githooks`.
 3. Make sure Python 3 is available: the hooks use it for the hygiene check.
+4. Install Node 24 and pnpm 12, then run `pnpm install`.
+5. Install the browser used by the end-to-end tests: `pnpm --filter @siapso/app exec playwright install chromium`.
 
 ## Making a change
 

@@ -1,14 +1,31 @@
 # Dependabot version updates. Security alerts and security updates are enabled
 # in the repository settings (see tools/github/setup-repo.sh).
-# The npm ecosystem is added with the monorepo, once package.json exists.
+# The cooldown matches minimumReleaseAge (14 days) in pnpm-workspace.yaml.
 version: 2
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-    labels: ["dependencies"]
+      interval: 'weekly'
+      day: 'monday'
+    cooldown:
+      default-days: 14
+    labels: ['dependencies']
     commit-message:
-      prefix: "chore"
-      include: "scope"
+      prefix: 'chore'
+      include: 'scope'
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    labels: ['dependencies']
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
+    groups:
+      dev-dependencies:
+        dependency-type: 'development'
