@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
-# Refuses a commit message with an em dash, an emoji or a Claude attribution.
+# SPDX-License-Identifier: MIT
+# Refuses a commit message that is not a Conventional Commits subject, or that
+# contains an em dash, an emoji or an AI attribution.
 root="$(git rev-parse --show-toplevel)"
 exec sh "$root/tools/hygiene/py.sh" "$root/tools/hygiene/hygiene.py" message "$1"

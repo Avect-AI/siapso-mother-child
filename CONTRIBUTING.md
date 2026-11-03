@@ -1,35 +1,60 @@
-# Contribuer à SIAPSO Mère-Enfant
+# Contributing to SIAPSO Mother-Child
 
-## Mise en place sur un poste
+Thank you for helping. This project handles health information for pregnant and breastfeeding women, so safety and honesty come before speed. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
-1. Cloner le dépôt (privé pendant le développement).
-2. Activer les hooks git du dépôt : `git config core.hooksPath .githooks`.
-3. Vérifier que Python 3 est disponible : les hooks l'utilisent pour le contrôle d'hygiène.
+## Set up
 
-## Circuit d'une modification
+1. Clone the repository.
+2. Enable the repository git hooks: `git config core.hooksPath .githooks`.
+3. Make sure Python 3 is available: the hooks use it for the hygiene check.
 
-1. Prendre un ticket Jira du projet `SCRUM` : un ticket correspond à une fonctionnalité et à une pull request.
-2. Créer la branche `feat/SCRUM-<n>-<sujet-court>`.
-3. Écrire les commits au format `SCRUM-<n>: <verbe> <objet>`.
-4. Ouvrir la PR avec le titre `SCRUM-<n>: ...` et remplir le modèle.
-5. La PR est fusionnée (squash) dès que toute la CI est verte. Le ticket passe ensuite à « Terminé ».
+## Making a change
 
-## Règles de texte
+1. **Pick a ticket.** Internal contributors take a Jira ticket from project `SCRUM`; external contributors open or comment on a GitHub issue first.
+2. **Create a branch**: `<type>/SCRUM-<n>-<short-topic>`, for example `fix/SCRUM-25-result-contrast`.
+3. **Commit** with [Conventional Commits](https://www.conventionalcommits.org) subjects in English: `type(scope): imperative summary`, at most 72 characters, no final period.
+4. **Sign off every commit** (`git commit -s`). By signing off you certify the [Developer Certificate of Origin](https://developercertificate.org/): you wrote the change or have the right to submit it under the project licences.
+5. **Reference the ticket** with a `Refs: SCRUM-<n>` footer (internal contributors).
+6. **Open a pull request** whose title is a Conventional Commits subject, and fill in the template. One pull request delivers one feature or fix.
+7. **Merge**: maintainers squash-merge once every check is green.
 
-Le contrôle `tools/hygiene/hygiene.py` refuse :
+Example:
 
-- le tiret cadratin (U+2014) : utilisez une virgule, deux points ou des parenthèses ;
-- les emojis et pictogrammes ;
-- toute attribution d'un commit ou d'une PR à un assistant d'IA.
+```
+feat(engine): add pregnancy window rules
 
-Lancer le contrôle à la main : `sh tools/hygiene/py.sh tools/hygiene/hygiene.py files`.
+Rules now take the gestational age into account, with an unknown
+term treated as the riskiest window.
 
-Seuls les fichiers tiers que nous n'écrivons pas peuvent être exclus, dans `.hygieneignore`.
+Refs: SCRUM-18
+Signed-off-by: Jane Doe <jane@example.org>
+```
+
+## Text rules
+
+The hygiene check (`tools/hygiene/hygiene.py`) rejects:
+
+- the em dash (U+2014): use a comma, a colon or parentheses;
+- emoji and pictographs;
+- any attribution of a commit or pull request to an AI assistant;
+- commit subjects and pull request titles that are not Conventional Commits.
+
+Run it by hand: `sh tools/hygiene/py.sh tools/hygiene/hygiene.py files`.
+
+Only third-party files we do not author may be excluded, in `.hygieneignore`.
+
+## Language
+
+Code, comments, documentation, commits and pull requests are in English. The interface is in French and English, through translation files.
 
 ## Interface
 
-Chaque écran suit `PRODUCT.md` et `DESIGN.md`, et passe par le plugin impeccable avant la PR (`critique`, `audit`, `detect`).
+Every screen follows `PRODUCT.md` and `DESIGN.md`, and goes through the impeccable plugin before the pull request (`critique`, `audit`, `detect`).
 
-## Contenu clinique
+## Clinical content
 
-Une règle n'est publiée qu'avec sa source (listée dans `knowledge/sources.yaml`), son niveau de preuve et le nom de ses deux relecteurs. Rien n'est présenté comme validé avant la double signature d'une pharmacienne et d'une sage-femme.
+A rule is published only with its source (listed in `knowledge/sources.yaml`), its evidence level and the names of its two reviewers. Nothing is presented as validated before it is signed off by a pharmacist and a midwife.
+
+## Licences
+
+By contributing, you agree that your code is released under the [MIT licence](LICENSE) and your content (rules, registries, documentation) under CC BY 4.0, as described in the README.

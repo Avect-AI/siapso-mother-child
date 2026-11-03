@@ -1,20 +1,20 @@
-## Ticket
+## Summary
 
-SCRUM-
+<!-- What this pull request changes and why, in a few lines. -->
 
-## Ce que change cette PR
+Refs: SCRUM-
 
--
-
-## Comment vérifier
+## How to test
 
 -
 
-## Contrôles
+## Checklist
 
-- [ ] Une seule fonctionnalité, celle du ticket
-- [ ] Tests ajoutés ou mis à jour, CI verte
-- [ ] Aucun tiret cadratin, aucun emoji, aucune attribution (contrôle hygiene)
-- [ ] Interface : `/impeccable critique` et `/impeccable audit` passés, `impeccable detect` sans alerte
-- [ ] Textes affichés : aucun « sûr », « vérifié », « arrêtez » ; source et version de la base affichées
-- [ ] Aucune donnée personnelle ni aucun secret ajoutés
+- [ ] One feature or fix only, matching the ticket
+- [ ] Title follows Conventional Commits (`type(scope): summary`)
+- [ ] Every commit is signed off (`git commit -s`)
+- [ ] Tests added or updated, CI green
+- [ ] No em dash, no emoji, no AI attribution
+- [ ] Interface changes: `/impeccable critique` and `/impeccable audit` done, `impeccable detect` clean
+- [ ] User-facing text: never "safe", "verified" or "stop"; source and knowledge base version shown
+- [ ] No personal data and no secret added

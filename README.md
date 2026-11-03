@@ -28,7 +28,14 @@ Offline safety information on medicines and traditional remedies during pregnanc
 
 ## Contributing
 
-See `CONTRIBUTING.md`. Every change goes through a pull request linked to a Jira ticket, and must pass the hygiene check (no em dash, no emoji, no AI attribution).
+Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md):
+
+- one pull request per feature or fix, squash-merged once CI is green;
+- [Conventional Commits](https://www.conventionalcommits.org) subjects in English;
+- every commit signed off under the [Developer Certificate of Origin](https://developercertificate.org/);
+- the hygiene check must pass (no em dash, no emoji, no AI attribution).
+
+Security issues: see [SECURITY.md](SECURITY.md). Release notes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Disclaimer
 

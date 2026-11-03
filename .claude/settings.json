@@ -29,7 +29,7 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PROJECT_DIR}/tools/hygiene/py.sh\" \"${CLAUDE_PROJECT_DIR}/tools/hygiene/hygiene.py\" claude-hook --root \"${CLAUDE_PROJECT_DIR}\"",
             "timeout": 20,
-            "statusMessage": "Controle hygiene SIAPSO"
+            "statusMessage": "SIAPSO text hygiene check"
           }
         ]
       }

@@ -18,7 +18,7 @@ Secondary users are women who can read, mostly in peri-urban areas, who use a re
 
 ## Product Purpose
 
-SIAPSO Mère-Enfant flags risky medicines and traditional remedies during pregnancy and breastfeeding, and tells the user who to show them to and when. It fills the gap between two contacts with a health worker, when a woman takes medicines and remedies at home with nobody who knows the plants.
+SIAPSO Mother-Child flags risky medicines and traditional remedies during pregnancy and breastfeeding, and tells the user who to show them to and when. It fills the gap between two contacts with a health worker, when a woman takes medicines and remedies at home with nobody who knows the plants.
 
 Success means: no missed danger signal on the reference cases, a result understood by the accompanying person in under a minute, and every alert traceable to a cited source and a knowledge base version.
 

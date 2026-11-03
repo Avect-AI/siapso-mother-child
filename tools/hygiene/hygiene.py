@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Text hygiene checks for SIAPSO Mere-Enfant.
+# SPDX-License-Identifier: MIT
+"""Text hygiene and commit conventions for SIAPSO Mother-Child.
 
-Blocks three things everywhere in the repository (code, interface text, docs,
-commit messages, pull request text):
+Blocks, everywhere in the repository (code, interface text, docs, commit
+messages, pull request text):
 
 1. the em dash (U+2014);
 2. emoji and pictographic symbols;
 3. any mention of Claude or Anthropic as co-author or generator.
 
+Commit subjects and pull request titles must also follow Conventional Commits
+(https://www.conventionalcommits.org), in at most 72 characters.
+
 Usage:
     hygiene.py files [PATH ...]      check files (default: every tracked file)
     hygiene.py staged                check the staged version of staged files
     hygiene.py message FILE          check a commit message file
-    hygiene.py text                  check text read from stdin
+    hygiene.py title                 check a pull request title read from stdin
+    hygiene.py text                  check free text read from stdin
     hygiene.py claude-hook [--root DIR]
                                      Claude Code PreToolUse hook (JSON on stdin)
 
@@ -60,6 +65,14 @@ ATTRIBUTION_RE = re.compile(
     r"|https://claude\.ai/code/session",
     re.IGNORECASE,
 )
+
+CONVENTIONAL_RE = re.compile(
+    r"^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)"
+    r"(\([a-z0-9][a-z0-9._/-]*\))?!?: \S.*[^.]$"
+)
+# Subjects written by git itself, kept as they are.
+GIT_GENERATED_RE = re.compile(r'^(Merge |Revert "|fixup! |squash! |amend! )')
+MAX_SUBJECT = 72
 
 SKIP_DIRS = {
     ".git", "node_modules", "dist", "build", "coverage", ".venv", "venv",
@@ -128,15 +141,30 @@ def scan_text(text: str, where: str, attribution: bool = False) -> list[Finding]
     for lineno, line in enumerate(text.splitlines(), start=1):
         col = line.find(EM_DASH)
         if col >= 0:
-            findings.append(Finding(where, lineno, col + 1, "tiret cadratin (U+2014)", line.strip()[:120]))
+            findings.append(Finding(where, lineno, col + 1, "em dash (U+2014)", line.strip()[:120]))
         match = EMOJI_RE.search(line)
         if match:
             code = f"U+{ord(match.group(0)):04X}"
-            findings.append(Finding(where, lineno, match.start() + 1, f"emoji ou pictogramme ({code})", line.strip()[:120]))
+            findings.append(Finding(where, lineno, match.start() + 1, f"emoji or pictograph ({code})", line.strip()[:120]))
         if attribution:
             att = ATTRIBUTION_RE.search(line)
             if att:
-                findings.append(Finding(where, lineno, att.start() + 1, "attribution a Claude interdite", line.strip()[:120]))
+                findings.append(Finding(where, lineno, att.start() + 1, "AI attribution is not allowed", line.strip()[:120]))
+    return findings
+
+
+def check_subject(subject: str, where: str) -> list[Finding]:
+    if GIT_GENERATED_RE.match(subject):
+        return []
+    findings = []
+    if not CONVENTIONAL_RE.match(subject):
+        findings.append(Finding(
+            where, 1, 1,
+            "not a Conventional Commits subject (type(scope): imperative summary, no final period)",
+            subject[:120],
+        ))
+    if len(subject) > MAX_SUBJECT:
+        findings.append(Finding(where, 1, MAX_SUBJECT + 1, f"subject longer than {MAX_SUBJECT} characters", subject[:120]))
     return findings
 
 
@@ -199,23 +227,32 @@ def cmd_staged() -> int:
 
 def cmd_message(path: str) -> int:
     text = Path(path).read_text(encoding="utf-8", errors="replace")
-    body = "\n".join(l for l in text.splitlines() if not l.startswith("#"))
-    return report(scan_text(body, "message de commit", attribution=True))
+    lines = [l for l in text.splitlines() if not l.startswith("#")]
+    body = "\n".join(lines)
+    subject = next((l for l in lines if l.strip()), "")
+    findings = check_subject(subject, "commit message") + scan_text(body, "commit message", attribution=True)
+    return report(findings)
+
+
+def cmd_title() -> int:
+    title = sys.stdin.read().strip()
+    findings = check_subject(title, "pull request title") + scan_text(title, "pull request title", attribution=True)
+    return report(findings)
 
 
 def cmd_text() -> int:
-    return report(scan_text(sys.stdin.read(), "texte", attribution=True))
+    return report(scan_text(sys.stdin.read(), "text", attribution=True))
 
 
 def report(findings: list[Finding]) -> int:
     if not findings:
         return 0
-    print("Hygiene : contenu refuse.", file=sys.stderr)
+    print("Hygiene check failed.", file=sys.stderr)
     for f in findings:
         print(f"  {f}", file=sys.stderr)
     print(
-        "Remplacez le tiret cadratin par une virgule, deux points ou des parentheses, "
-        "retirez les emojis et toute attribution a Claude.",
+        "Replace em dashes with a comma, a colon or parentheses, remove emoji and any "
+        "AI attribution, and use a Conventional Commits subject.",
         file=sys.stderr,
     )
     return 1
@@ -237,7 +274,7 @@ def cmd_claude_hook(root_arg: str | None) -> int:
     try:
         payload = json.load(sys.stdin)
     except json.JSONDecodeError as exc:
-        print(f"Hygiene : entree du hook illisible ({exc}), controle ignore.", file=sys.stderr)
+        print(f"Hygiene: unreadable hook input ({exc}), check skipped.", file=sys.stderr)
         return 0
     tool = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
@@ -266,14 +303,14 @@ def cmd_claude_hook(root_arg: str | None) -> int:
             inside = False
         if not (inside or mentions_repo):
             return 0
-        findings = scan_text(command, "commande", attribution=True)
+        findings = scan_text(command, "command", attribution=True)
     else:
         return 0
 
     if not findings:
         return 0
-    reason = "Hygiene SIAPSO : " + " ; ".join(f"{f.kind} ligne {f.line}" for f in findings[:5])
-    reason += ". Pas de tiret cadratin, pas d'emoji, pas d'attribution a Claude."
+    reason = "SIAPSO hygiene: " + "; ".join(f"{f.kind} on line {f.line}" for f in findings[:5])
+    reason += ". No em dash, no emoji, no AI attribution."
     print(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -295,6 +332,8 @@ def main(argv: list[str]) -> int:
         return cmd_staged()
     if command == "message" and rest:
         return cmd_message(rest[0])
+    if command == "title":
+        return cmd_title()
     if command == "text":
         return cmd_text()
     if command == "claude-hook":

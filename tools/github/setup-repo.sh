@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
+# SPDX-License-Identifier: MIT
 # Creates and configures the private GitHub repository. Run once, from the
 # repository root, after `gh auth login` with an account that can create
 # repositories in the Avect-AI organisation.
 set -eu
 
 ORG="${ORG:-Avect-AI}"
-REPO="${REPO:-siapso-mere-enfant}"
+REPO="${REPO:-siapso-mother-child}"
 FULL="$ORG/$REPO"
 
 if ! gh repo view "$FULL" >/dev/null 2>&1; then
@@ -15,28 +16,29 @@ if ! gh repo view "$FULL" >/dev/null 2>&1; then
 fi
 git push -u origin main
 
-# Merge policy: squash only, PR title as commit title, branches deleted after merge.
+# Merge policy: squash only, PR title as commit title, commit messages (with
+# their Signed-off-by lines) as commit body, branches deleted after merge.
 gh api -X PATCH "repos/$FULL" \
   -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false \
   -F delete_branch_on_merge=true -F allow_update_branch=true \
-  -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=PR_BODY >/dev/null
-echo "Politique de fusion : squash uniquement."
+  -f squash_merge_commit_title=PR_TITLE -f squash_merge_commit_message=COMMIT_MESSAGES >/dev/null
+echo "Merge policy: squash only."
 
 # Auto-merge: only on plans that support it for private repositories.
 if gh api -X PATCH "repos/$FULL" -F allow_auto_merge=true >/dev/null 2>&1; then
-  echo "Fusion automatique GitHub : activee."
+  echo "GitHub auto-merge: enabled."
 else
-  echo "Fusion automatique GitHub indisponible sur ce plan : fusion par gh apres CI verte."
+  echo "GitHub auto-merge not available on this plan: merge with gh once CI is green."
 fi
 
 # Dependabot: vulnerability alerts and security updates.
-gh api -X PUT "repos/$FULL/vulnerability-alerts" >/dev/null && echo "Alertes Dependabot : activees."
-gh api -X PUT "repos/$FULL/automated-security-fixes" >/dev/null && echo "Correctifs de securite Dependabot : actives."
+gh api -X PUT "repos/$FULL/vulnerability-alerts" >/dev/null && echo "Dependabot alerts: enabled."
+gh api -X PUT "repos/$FULL/automated-security-fixes" >/dev/null && echo "Dependabot security updates: enabled."
 
 # Branch protection on main: requires GitHub Team for private repositories.
 cat > "${TMPDIR:-/tmp}/protection.json" <<'JSON'
 {
-  "required_status_checks": { "strict": true, "contexts": ["Texte propre (tirets cadratins, emojis, attribution)"] },
+  "required_status_checks": { "strict": true, "contexts": ["Text hygiene", "Developer Certificate of Origin"] },
   "enforce_admins": false,
   "required_pull_request_reviews": null,
   "restrictions": null,
@@ -45,9 +47,9 @@ cat > "${TMPDIR:-/tmp}/protection.json" <<'JSON'
 }
 JSON
 if gh api -X PUT "repos/$FULL/branches/main/protection" --input "${TMPDIR:-/tmp}/protection.json" >/dev/null 2>&1; then
-  echo "Protection de main : activee (CI obligatoire)."
+  echo "Branch protection on main: enabled (CI required)."
 else
-  echo "Protection de main indisponible sur ce plan pour un depot prive : la CI reste verifiee avant chaque fusion par gh."
+  echo "Branch protection not available on this plan for a private repository: CI is still checked before every merge."
 fi
 
-gh repo view "$FULL" --json visibility,url --jq '"Depot " + .url + " : " + .visibility'
+gh repo view "$FULL" --json visibility,url --jq '"Repository " + .url + ": " + .visibility'

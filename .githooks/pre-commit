@@ -1,4 +1,5 @@
 #!/usr/bin/env sh
+# SPDX-License-Identifier: MIT
 # Refuses a commit whose staged files contain an em dash or an emoji.
 root="$(git rev-parse --show-toplevel)"
 exec sh "$root/tools/hygiene/py.sh" "$root/tools/hygiene/hygiene.py" staged

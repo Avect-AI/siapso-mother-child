@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 name: hygiene
 
 on:
@@ -10,42 +11,72 @@ permissions:
 
 jobs:
   text:
-    name: Texte propre (tirets cadratins, emojis, attribution)
+    name: Text hygiene
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Fichiers suivis
+      - name: Tracked files (no em dash, no emoji)
         run: python3 tools/hygiene/hygiene.py files
 
-      - name: Messages de commit de la PR
+      - name: Commit messages (Conventional Commits, no AI attribution)
         if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           status=0
-          for sha in $(git rev-list "$BASE..$HEAD"); do
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
             git log -1 --format=%B "$sha" > "$RUNNER_TEMP/msg.txt"
             python3 tools/hygiene/hygiene.py message "$RUNNER_TEMP/msg.txt" || status=1
           done
           exit $status
 
-      - name: Titre et description de la PR
+      - name: Pull request title and description
         if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
         env:
           TITLE: ${{ github.event.pull_request.title }}
           BODY: ${{ github.event.pull_request.body }}
-        run: printf '%s\n%s\n' "$TITLE" "$BODY" | python3 tools/hygiene/hygiene.py text
-
-      - name: Titre lie a un ticket Jira
-        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
-        env:
-          TITLE: ${{ github.event.pull_request.title }}
         run: |
-          echo "$TITLE" | grep -Eq '^SCRUM-[0-9]+: ' || {
-            echo "Le titre de la PR doit commencer par 'SCRUM-<n>: '." >&2
+          printf '%s\n' "$TITLE" | python3 tools/hygiene/hygiene.py title
+          printf '%s\n' "$BODY" | python3 tools/hygiene/hygiene.py text
+
+      - name: Jira reference for internal pull requests
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.actor != 'dependabot[bot]' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n%s\n' "$BRANCH" "$BODY" | grep -Eq 'SCRUM-[0-9]+' || {
+            echo "Internal pull requests must reference a Jira ticket (SCRUM-<n>) in the branch name or the description." >&2
             exit 1
           }
+
+  dco:
+    name: Developer Certificate of Origin
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Every commit is signed off by its author
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            email="$(git log -1 --format=%ae "$sha")"
+            if ! git log -1 --format=%B "$sha" | grep -Eiq "^Signed-off-by: .+ <${email}>$"; then
+              echo "Commit $sha has no 'Signed-off-by' line matching its author <$email>. Use 'git commit -s'." >&2
+              status=1
+            fi
+          done
+          exit $status
