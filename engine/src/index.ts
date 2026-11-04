@@ -28,6 +28,7 @@ export type {
   Plant,
   PregnancyContext,
   Product,
+  Reminder,
   Requirement,
   Reviewer,
   Rule,

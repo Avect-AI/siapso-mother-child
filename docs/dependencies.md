@@ -2,7 +2,7 @@
 
 # Dependencies: open alerts and revisit dates
 
-Dependabot version updates wait 14 days after a release (`cooldown` in `.github/dependabot.yml`, the same as `minimumReleaseAge` in `pnpm-workspace.yaml`). A fixed version is therefore not proposed, and cannot be installed, until it is 14 days old. Four Dependabot alerts were open on 2026-11-04. All four are build-time only: they come from `workbox-build` (pulled in by `vite-plugin-pwa`), which runs on the developer machine and in CI to generate the service worker, never in the app or on a phone.
+Dependabot version updates wait 14 days after a release (`cooldown` in `.github/dependabot.yml`, the same as `minimumReleaseAge` in `pnpm-workspace.yaml`). A fixed version is therefore not proposed, and cannot be installed, until it is 14 days old. Four Dependabot alerts were open on 2026-11-04. All four are build-time only, never shipped in the app or run on a phone: serialize-javascript, deepmerge and minimatch 5 come from `workbox-build` (pulled in by `vite-plugin-pwa`) to generate the service worker; minimatch 10 and glob come from development tooling (ESLint and the build).
 
 | Alert | Package                      | Fixed version | Severity | Eligible (14 days old) | Revisit    |
 | ----- | ---------------------------- | ------------- | -------- | ---------------------- | ---------- |
