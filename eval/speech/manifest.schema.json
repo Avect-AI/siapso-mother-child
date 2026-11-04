@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Avect-AI/siapso-mother-child/eval/speech/manifest.schema.json",
+  "title": "SIAPSO voice evaluation manifest",
+  "description": "One entry per consented volunteer recording of a medicine or remedy name. The consent record itself is kept outside the repository.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["file", "text", "lang", "speaker", "consent", "licence"],
+    "properties": {
+      "file": {
+        "description": "Path of the 16-bit WAV file, relative to eval/speech/audio/. No parent folder, no drive letter, forward slashes only.",
+        "type": "string",
+        "pattern": "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._/-]*\\.wav$"
+      },
+      "text": {
+        "description": "Reference transcription, exactly what the speaker says.",
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "lang": {
+        "description": "Language spoken: French, Wolof, or both in the same utterance.",
+        "enum": ["fr", "wo", "mix"]
+      },
+      "expect": {
+        "description": "Id of the product or plant the resolver should return (optional; used for name accuracy).",
+        "type": "string",
+        "minLength": 1
+      },
+      "speaker": {
+        "description": "Pseudonymous speaker id, never a name.",
+        "type": "string",
+        "pattern": "^spk-[0-9]{3,6}$"
+      },
+      "consent": {
+        "description": "Reference of the consent record, which is kept outside the repository.",
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "licence": {
+        "description": "Licence the speaker agreed to for publication of the recording.",
+        "const": "CC-BY-4.0"
+      }
+    }
+  }
+}

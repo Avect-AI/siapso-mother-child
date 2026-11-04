@@ -22,6 +22,7 @@
     "e2e": "pnpm --filter @siapso/app e2e",
     "voice:convert": "sh tools/hygiene/py.sh speech/convert/convert.py",
     "voice:install-local": "node speech/scripts/install-local.mjs",
+    "eval:speech": "pnpm --filter @siapso/speech eval",
     "voice:bench": "pnpm --filter @siapso/speech bench"
   },
   "devDependencies": {

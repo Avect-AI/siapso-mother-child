@@ -1,0 +1,1275 @@
+{
+  "date": "2026-11-04",
+  "pack": "whisper-small-wolof-q8",
+  "source": {
+    "repo": "M9and2M/whisper-small-wolof",
+    "revision": "8cc20b3c6e77ecb490210103d3b4fd0b85c3d1d8",
+    "licence": "MIT",
+    "base": "openai/whisper-small",
+    "baseRevision": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    "baseLicence": "MIT"
+  },
+  "convertTools": {
+    "torch": "2.8.0+cpu",
+    "transformers": "4.57.6",
+    "optimum": "2.1.0",
+    "optimum-onnx": "0.1.0",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.23.2"
+  },
+  "graphs": [
+    {
+      "path": "onnx/decoder_model_merged_quantized.onnx",
+      "bytes": 195955925,
+      "sha256": "ea2e6031f0c48f0b8398e61dd0ed9630815f22117fed622b3b6f3b323609e530"
+    },
+    {
+      "path": "onnx/encoder_model_quantized.onnx",
+      "bytes": 98490861,
+      "sha256": "8f9b8d71a956f1d1a80807a96fb3eb907b5918b78e1342e9991c172573999ade"
+    }
+  ],
+  "decoding": {
+    "maxNewTokens": 96,
+    "strategy": "greedy",
+    "prompts": {
+      "wo": [50258]
+    }
+  },
+  "runtime": {
+    "transformersJs": "4.3.1",
+    "node": "v26.13.0",
+    "device": "cpu (onnxruntime-node)",
+    "platform": "win32 x64",
+    "cpu": "AMD Ryzen 5 8640HS w/ Radeon 760M Graphics",
+    "logicalCores": 12
+  },
+  "sets": {
+    "FLEURS wo_sn": {
+      "dataset": {
+        "repo": "google/fleurs",
+        "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+        "config": "wo_sn",
+        "split": "test",
+        "licence": "CC-BY-4.0",
+        "lang": "wo"
+      },
+      "summary": {
+        "utterances": 100,
+        "words": 2289,
+        "substitutions": 910,
+        "deletions": 180,
+        "insertions": 149,
+        "wer": 0.5412844036697247,
+        "audioSeconds": 1615,
+        "ms": {
+          "mean": 3729,
+          "median": 3655,
+          "p95": 4624
+        }
+      },
+      "results": [
+        {
+          "id": "1740",
+          "hypothesis": "musiku piramid ak limiir bu ñuy woowe bu ñuy wone mooy mbir yu gën am solo ci diiwaan ngir xale yi",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 1,
+            "insertions": 3,
+            "referenceWords": 19
+          },
+          "audioSeconds": 13.2,
+          "ms": 4356
+        },
+        {
+          "id": "1825",
+          "hypothesis": "soo bëggee jege jëf ji dina laaj ngateel a jóg am ab kamping bi ngay dal bu jege misig bi",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 11.58,
+          "ms": 3984
+        },
+        {
+          "id": "1704",
+          "hypothesis": "si atum  junni ak juróom ñenni téemé ak juróom yiy fukk yokk nañu li mu barab yu worandi si addina bi am ndax dankafu suufu deser bi",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 9,
+            "referenceWords": 18
+          },
+          "audioSeconds": 14.04,
+          "ms": 4153
+        },
+        {
+          "id": "1849",
+          "hypothesis": "bu dee seetaan ga filmu nasionale tëjëmën ngaa xalaat mi rodd nañu nataaloo xëyewal ci gëmnaamu bëglaration",
+          "errors": {
+            "substitutions": 16,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 18
+          },
+          "audioSeconds": 20.88,
+          "ms": 4624
+        },
+        {
+          "id": "1787",
+          "hypothesis": "bologin ak jumtukaay la buy xalaatloo ab laka luy te ñaxnongo yu yóg  yu yóg",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 9,
+            "insertions": 0,
+            "referenceWords": 24
+          },
+          "audioSeconds": 16.38,
+          "ms": 4965
+        },
+        {
+          "id": "1931",
+          "hypothesis": "cax bi dañu koy jëfandikoo lu bari boo ko nasi gën ngir damm sa banneex ak tukki yu am joxe yu sore ak soxlaay baat",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 25
+          },
+          "audioSeconds": 15.6,
+          "ms": 4852
+        },
+        {
+          "id": "1956",
+          "hypothesis": "jafandikoo ay gaal ngir yóbbu ay marsandiis mooy anam bi gën a ba ngir jallale nit ñu bari ak marsandiis yu bari ci géej yi",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 24
+          },
+          "audioSeconds": 13.62,
+          "ms": 4725
+        },
+        {
+          "id": "1695",
+          "hypothesis": "reer bu yobb te suub itam ci jamono nawet mooy paamb olig mburu ak du olig tamate ak cafka bu am lu mel miy formas jël mbaaw",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 27
+          },
+          "audioSeconds": 21.18,
+          "ms": 4127
+        },
+        {
+          "id": "1743",
+          "hypothesis": "lu ëpp ci gis di suur dawaatéel xarala day séddoo ñaari xarala ci boppam day togge benn yoon bu nekk lool ci kaw xalaatu aada walla politig bi xarala ci boppam am na doxalin ci nekkiinu nit yi",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 10,
+            "insertions": 2,
+            "referenceWords": 46
+          },
+          "audioSeconds": 34.92,
+          "ms": 3766
+        },
+        {
+          "id": "1699",
+          "hypothesis": "biskeeg benn seetlu kat wax nañu ni day xalaat ci tolluwaay yax",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 17,
+            "insertions": 0,
+            "referenceWords": 29
+          },
+          "audioSeconds": 16.92,
+          "ms": 3573
+        },
+        {
+          "id": "1826",
+          "hypothesis": "mba gangande bi xewee gibson yobbu nañu kolopitaal wante daa mujje ñakk ba kanam diir bu yaggul ba mu egge",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 20
+          },
+          "audioSeconds": 13.2,
+          "ms": 4005
+        },
+        {
+          "id": "1908",
+          "hypothesis": "li yoon bu am solo la ngir raññeele weer bi yi ak obje yi",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 13
+          },
+          "audioSeconds": 9.6,
+          "ms": 4111
+        },
+        {
+          "id": "1903",
+          "hypothesis": "bu nu jëfandikoo ci anam yu baah jumtukaay yi jappandi yépp jaare ko doxin yi banqaas bu benn mbootaay xamxamu defar ak xareñte mën na am",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 26
+          },
+          "audioSeconds": 18.24,
+          "ms": 3998
+        },
+        {
+          "id": "1880",
+          "hypothesis": "kon keryoon bi xaj bu baax la woon ngir lujj ngib bari bu mu génnee",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 13
+          },
+          "audioSeconds": 9.36,
+          "ms": 4333
+        },
+        {
+          "id": "1778",
+          "hypothesis": "am na aéropota ci tale yu yu wone saxaar su weer yu bawoo ci usin bi am naéropota ci tale bi yu wone saxaar su weer yu bawoo ci usin bi",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 15,
+            "referenceWords": 16
+          },
+          "audioSeconds": 16.56,
+          "ms": 4351
+        },
+        {
+          "id": "1755",
+          "hypothesis": "benn bomb kalaate na sibbite biro goroor bu mag bi",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 11
+          },
+          "audioSeconds": 8.52,
+          "ms": 4127
+        },
+        {
+          "id": "1839",
+          "hypothesis": "llaatal dem def ski ndoxamtu",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 7
+          },
+          "audioSeconds": 6.6,
+          "ms": 3729
+        },
+        {
+          "id": "1757",
+          "hypothesis": "ay coppite rekk ci bërëb bu mu cosaan mën nañu lenn toxal ci ay xale fëgg ne coppite yi feneen mën nañu njuru faatug bërëb walla fëggalug cancer",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 27
+          },
+          "audioSeconds": 21.6,
+          "ms": 3730
+        },
+        {
+          "id": "1983",
+          "hypothesis": "baatu civiliisatio mu ngi bawoo ci lakku latin civilis mu tekki civil méngo civil ci latin di tekki situwoyin ak ci civilis di tekki gox walla payib réew te loolu mooy firi tolluwayi sosiat bi",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 34
+          },
+          "audioSeconds": 30.42,
+          "ms": 4287
+        },
+        {
+          "id": "1676",
+          "hypothesis": "neeem ak parku nasiyonal yu afrig di sud yépp am na ay waxtaan bees bu ne ak fay ngir lu gu ci bërëb bi",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 23
+          },
+          "audioSeconds": 18.54,
+          "ms": 4330
+        },
+        {
+          "id": "1733",
+          "hypothesis": "bu njëkk ci  yi mu def mooy ab jëf bu and ak pelloo war nañu ko def balaa njëg ngir war jallukaay iraak yi ci song xare yi te indiwaat jikko ci walli diplomasi ak dëkkandoo",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 4,
+            "insertions": 0,
+            "referenceWords": 40
+          },
+          "audioSeconds": 25.68,
+          "ms": 3985
+        },
+        {
+          "id": "1946",
+          "hypothesis": "politiku fomb bi dafay wuute waaye bi wéeru marse di waaja jeex politiku fomb ndax koronaawiris weesuwul soge  bi ñu jappe beneen dat ngir olympia gi",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 26
+          },
+          "audioSeconds": 26.88,
+          "ms": 4179
+        },
+        {
+          "id": "1796",
+          "hypothesis": "mbalit yi amoon nañ solo ngir defar ay baa ngu suuf ak ay tefes yu doon nekk dëkkuwaay malay",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 19
+          },
+          "audioSeconds": 11.64,
+          "ms": 3842
+        },
+        {
+          "id": "1768",
+          "hypothesis": "yenn pacc yu bari ci batima bi dañu leen tabaxaat yiir maye ñee fiy ñëw lisiyaare ñu gën a mën xam li seen cosaan",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 26
+          },
+          "audioSeconds": 17.28,
+          "ms": 4658
+        },
+        {
+          "id": "1763",
+          "hypothesis": "mi weer wii ame doole ci kaw suuf ba yékkati géej gi noonu lëyt milikwee bi ame doole ci galaxi say taarius",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 22
+          },
+          "audioSeconds": 13.44,
+          "ms": 4394
+        },
+        {
+          "id": "1694",
+          "hypothesis": "xale yi dañu leen di yóbbu ci ay jaboot yu leen i toppatoo mbir ay mbir yu bare yu nekk ci diggante ñakk toppatoo sakku ba ci nangoo li mu yor",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 30
+          },
+          "audioSeconds": 23.46,
+          "ms": 3955
+        },
+        {
+          "id": "1856",
+          "hypothesis": "pxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpxpx",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 25,
+            "insertions": 0,
+            "referenceWords": 26
+          },
+          "audioSeconds": 17.16,
+          "ms": 4123
+        },
+        {
+          "id": "1996",
+          "hypothesis": "doomu ostraali bi di mbëccël góorle mooy jël ojjee palaas ci suppeer ji bu góorñi nattangoom bi di oljuddëjjili nekk moo jël seesam ci suppeer ji bu góorñi toog",
+          "errors": {
+            "substitutions": 17,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 31
+          },
+          "audioSeconds": 20.64,
+          "ms": 3699
+        },
+        {
+          "id": "1789",
+          "hypothesis": "yeneen tanneef yi bokk na sinatal bi gën njiit sinematograafi wasi defaru film yi misig piire yi yuref defar defar ab déglu boole ay déglu ak ekaran piire",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 28
+          },
+          "audioSeconds": 19.32,
+          "ms": 4532
+        },
+        {
+          "id": "1737",
+          "hypothesis": "ngaynde yi nooy xetu muus yi gën a bëgg mbooloo seeni moo taay a ngi tudd gëm sa bopp",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 17
+          },
+          "audioSeconds": 11.34,
+          "ms": 4100
+        },
+        {
+          "id": "1918",
+          "hypothesis": "sun darbës bokk na ci barab yu unesco di woowe barab yu adduna bi yépp bokk wallu wallu all bi bokk ci réewum ind lañuy woowe park nasionale sun darbës",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 1,
+            "insertions": 3,
+            "referenceWords": 28
+          },
+          "audioSeconds": 23.46,
+          "ms": 3655
+        },
+        {
+          "id": "1801",
+          "hypothesis": "defelebatima bu defar leen orison bu honqonq dañ ko méngale ab rëdd bu weñ bi teewayu ndoxee poñ bu victor ya feeñal",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 2,
+            "insertions": 1,
+            "referenceWords": 23
+          },
+          "audioSeconds": 18.3,
+          "ms": 3552
+        },
+        {
+          "id": "1762",
+          "hypothesis": "feebar bi ay mbamb ku ñoo koy joxe yoyu ñoo koy jox bit mi",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 12
+          },
+          "audioSeconds": 9.48,
+          "ms": 3586
+        },
+        {
+          "id": "1959",
+          "hypothesis": "balee bi jëlal digal jiit yi nanguwibbindikaay ak bayyil xel ci yëgle yu am kaaraange",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 17
+          },
+          "audioSeconds": 15.78,
+          "ms": 3340
+        },
+        {
+          "id": "1840",
+          "hypothesis": "si dëkk yu baree xiitali ak ci deesu adduna rawat na si poloñ ay ron foog yu mel mi lañ mi dafa ron nit ñu bare gis leen",
+          "errors": {
+            "substitutions": 15,
+            "deletions": 1,
+            "insertions": 6,
+            "referenceWords": 23
+          },
+          "audioSeconds": 12.84,
+          "ms": 3281
+        },
+        {
+          "id": "2003",
+          "hypothesis": "soo bëggee gis taaru onkoon danga fay jóge nga dem ci kowlon kowlon nekk ci géej yi mu jëkaar loog dinga gis taar bi",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 23
+          },
+          "audioSeconds": 21.96,
+          "ms": 4049
+        },
+        {
+          "id": "1675",
+          "hypothesis": "tuur yépp ci wetu baatu ci ngir yaw dañuy tambali ci araf gu mag doonte ci diggu baatal bi la nekk",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 11.52,
+          "ms": 3417
+        },
+        {
+          "id": "1807",
+          "hypothesis": "lakk waa itali neex na tamit lakk bu ñiy liggéey ci nguur gi jëfandikoo lu bari wante la tey moom lañuy jëfandikoo yenn saay ci xewxewd yi na yi",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 26
+          },
+          "audioSeconds": 14.22,
+          "ms": 3183
+        },
+        {
+          "id": "1884",
+          "hypothesis": "nee nañu mën nañu gis ndax nit dafay feeñ sunu firiwee bu baax jëfinam yu gën a ndaw",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 17
+          },
+          "audioSeconds": 10.44,
+          "ms": 3391
+        },
+        {
+          "id": "1962",
+          "hypothesis": "diiwaan niiwe bees mooy tolluwaay yiy yónni jarul seen yi as bi ci biir bees bi ci puro di simbik bu yu séyitu",
+          "errors": {
+            "substitutions": 14,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 20
+          },
+          "audioSeconds": 13.98,
+          "ms": 3503
+        },
+        {
+          "id": "1904",
+          "hypothesis": "montar ndax yoonu jokkoo lu yéex yi doxalin yi ci sowu mën na des ginnaaw lu toll ci ñaafook ak juróom ba  at",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 22
+          },
+          "audioSeconds": 16.68,
+          "ms": 3506
+        },
+        {
+          "id": "1976",
+          "hypothesis": "bateeru ord mooy yi sasin tendukar ak raxul davit liggéey nañu bu baax te amal nañu ab lëkkalo si téemeeri poñ",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 14.22,
+          "ms": 3454
+        },
+        {
+          "id": "1993",
+          "hypothesis": "fokkeelu taaw ngelam bu atlantik bu am ar bu nekk yu tuddee ko sitropik somjari junna sidyeju atlantik bi tey",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 3,
+            "insertions": 0,
+            "referenceWords": 23
+          },
+          "audioSeconds": 10.38,
+          "ms": 3456
+        },
+        {
+          "id": "1685",
+          "hypothesis": "simisaal ngitaal bi gëna siw si wallu foto ak tolluwaayam si adduna mooy  metfugka juróom miniméeta mu nekkoon taay film bi gënna am doole siwatu jamono filmu analog bi",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 2,
+            "insertions": 2,
+            "referenceWords": 29
+          },
+          "audioSeconds": 15.66,
+          "ms": 3027
+        },
+        {
+          "id": "1945",
+          "hypothesis": "gasablanca mooy barab bi gën a ñakk am solo ngir lëb ci marok",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 12
+          },
+          "audioSeconds": 7.5,
+          "ms": 3569
+        },
+        {
+          "id": "1906",
+          "hypothesis": "lii du nekk ab taggatoo lii mooy benn sappiteer ak ubbite bu bees",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 13
+          },
+          "audioSeconds": 8.88,
+          "ms": 3234
+        },
+        {
+          "id": "1952",
+          "hypothesis": "kepp ku na dawa si bërëb yu abe yu ci melni ci kaw montañ war na sooraale daje ab neex glaas walla ay temparato yu sedd guy",
+          "errors": {
+            "substitutions": 15,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 26
+          },
+          "audioSeconds": 12.96,
+          "ms": 3194
+        },
+        {
+          "id": "1925",
+          "hypothesis": "liggéey bi nu amal li ci ëpp ci kaddu la lalu waaye li waral nu binde progëraan bi mooy jëm ak saytu yi nu amal ci galaxi sagiteer",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 28
+          },
+          "audioSeconds": 19.8,
+          "ms": 3700
+        },
+        {
+          "id": "1851",
+          "hypothesis": "kuraay yu sanniwaat li mu dellu yu gu vag yi la yuy yaq tefes bi li ci bari ci ay xeer yu ni mel",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 21
+          },
+          "audioSeconds": 13.62,
+          "ms": 3832
+        },
+        {
+          "id": "1953",
+          "hypothesis": "ginnaaw gii toxal nañu ko ca barab wajukaay bu andee mbroom ci tamir",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 11
+          },
+          "audioSeconds": 10.2,
+          "ms": 3786
+        },
+        {
+          "id": "1909",
+          "hypothesis": "kureel yu ñuy dul gis deñ tollo kurél yu dëgg yi waaye am na ay wute yu ndaw",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 17
+          },
+          "audioSeconds": 8.28,
+          "ms": 3596
+        },
+        {
+          "id": "2004",
+          "hypothesis": "ci menn weer beneen falfanaaw génn na yoonam ca mag shat te mëkk na benn mbir rey fukki nit ak juróom ñaar",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 20
+          },
+          "audioSeconds": 12,
+          "ms": 3377
+        },
+        {
+          "id": "1837",
+          "hypothesis": "kirit ku liberal ci lu ñuy jéem a defaraat jublu nas yi sargal déggoo yi ci ay nit yuy sog a xam washington",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 19
+          },
+          "audioSeconds": 17.04,
+          "ms": 3780
+        },
+        {
+          "id": "1862",
+          "hypothesis": "mëcc jenn ab jumtukaay la bu fafa wax ne dina ma yi fafalnaaw yi daw yoon yu barewul de sakkanal ay milyoon galoon galoon wu perosen at mu net te waññi ginné karbon",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 30
+          },
+          "audioSeconds": 22.8,
+          "ms": 3704
+        },
+        {
+          "id": "1844",
+          "hypothesis": "bayyalu weer wi ay xeer defare ak puuse lañ ko kuusu bu nekk sibbite weer wi lañuy woowe kurut",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 20
+          },
+          "audioSeconds": 13.44,
+          "ms": 4006
+        },
+        {
+          "id": "1896",
+          "hypothesis": "jimnaastik bu amerik ak usug ñoo bokk jubluwaay fexe ba jimnaastik ak yeneen xeeti taggat yaram wóor ngir jonantekat yi topp seeni mbébet ci nekkin bu baax te am doole",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 30
+          },
+          "audioSeconds": 23.46,
+          "ms": 4031
+        },
+        {
+          "id": "1812",
+          "hypothesis": "naam am na benn ñakk bu gis ne mën a waññi limu ñiy faatu ci ebola mba liggi amul benn garab bu ñu gis ne mën a faj ñi am feebar bi",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 31
+          },
+          "audioSeconds": 16.8,
+          "ms": 3976
+        },
+        {
+          "id": "2005",
+          "hypothesis": "wante am na lu bari lu aaju ci picc yuy nirook dinosor ba leegi",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 14
+          },
+          "audioSeconds": 10.92,
+          "ms": 4112
+        },
+        {
+          "id": "1815",
+          "hypothesis": "bombu féshul bi dafay dox ci lu ñu japp ci defay soxla energie ngir boole ak nikleer ak ay portoon ak i nettoroñ yu bari",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 23
+          },
+          "audioSeconds": 12.54,
+          "ms": 4107
+        },
+        {
+          "id": "1700",
+          "hypothesis": "ci suufu maria la gën a wëfe gën a dijj ci kow platoo yi",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 12
+          },
+          "audioSeconds": 6.6,
+          "ms": 4559
+        },
+        {
+          "id": "1702",
+          "hypothesis": "ci ñaari ayu beddoon amerikane amerikane yi ak soldaaro  fari frãs wallu nëgge sowu frãs te njaal ci allam alma",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 18
+          },
+          "audioSeconds": 16.68,
+          "ms": 3904
+        },
+        {
+          "id": "1977",
+          "hypothesis": "jom mu ngi bayyi ko ci benn ci ngëtëngor ak sëfan wër jigéen ak xale",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 14
+          },
+          "audioSeconds": 8.16,
+          "ms": 3597
+        },
+        {
+          "id": "1720",
+          "hypothesis": "sókolaa bu tang bi dafa weesu yu belsi tible ndoxu firiw yi dañu seere wa yi dañu neex lool",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 18
+          },
+          "audioSeconds": 15.54,
+          "ms": 3771
+        },
+        {
+          "id": "1853",
+          "hypothesis": "jiankarloo fishexeram dafa pert kontrolu ndamaram te mujjee jeexal rawanteewam bi ñuy sog a tambali",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 13
+          },
+          "audioSeconds": 15,
+          "ms": 3588
+        },
+        {
+          "id": "1817",
+          "hypothesis": "bërëb sangeen dee mu ngi dox mel ni benn réew ci noonu",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 11
+          },
+          "audioSeconds": 6.84,
+          "ms": 3862
+        },
+        {
+          "id": "1808",
+          "hypothesis": "ñaari at ba xare ba jeexee ñu faroon bu njëg ñoowul batiku nekk ay noon te xare bu amul xeex tambali",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 12.78,
+          "ms": 3969
+        },
+        {
+          "id": "1912",
+          "hypothesis": "duñ yu ndaw yu bare ay dëkk yu moom seen bopp lañu warañu boole leen ak farãs teñu gën xam ci tefes yu bakkane",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 26
+          },
+          "audioSeconds": 19.56,
+          "ms": 3299
+        },
+        {
+          "id": "1806",
+          "hypothesis": "policër bu ndaw si jamono bu neex bi du xeetu galankoor bi muy am tey dañu faral di nekk ci dëkk yi walla ci kampus yi mu gën a yomb jott ka tabax yi am ligg yi",
+          "errors": {
+            "substitutions": 16,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 34
+          },
+          "audioSeconds": 17.7,
+          "ms": 3913
+        },
+        {
+          "id": "1905",
+          "hypothesis": "kapitaalu maldoowa mooy sisiinayu lakk bu ñu fay lakk mooy romay wayrius lañuy gën a jëfandikoo",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 15
+          },
+          "audioSeconds": 12.84,
+          "ms": 3687
+        },
+        {
+          "id": "1741",
+          "hypothesis": "barab yaatu bu gën a jegee bejjeginaam ñoo gën a néwle ay nit yenn yi amul ñu sax nit yu fa dëkk",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 2,
+            "insertions": 1,
+            "referenceWords": 23
+          },
+          "audioSeconds": 12.24,
+          "ms": 3898
+        },
+        {
+          "id": "1784",
+          "hypothesis": "groyland bariwul woon waay dëkk ci tariq skandinaaw ñoo ngi wax ni erik la ruj dañu ko toxal ci",
+          "errors": {
+            "substitutions": 15,
+            "deletions": 14,
+            "insertions": 0,
+            "referenceWords": 33
+          },
+          "audioSeconds": 27.6,
+          "ms": 3461
+        },
+        {
+          "id": "1841",
+          "hypothesis": "manuñu gis daral dul asamaan su leer te rafet ci kaw ay montan yu bare yu wër puti ci addina bi lañu mëna gis mbaa déeg ci biir kaaf bi",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 31
+          },
+          "audioSeconds": 15.18,
+          "ms": 3462
+        },
+        {
+          "id": "1870",
+          "hypothesis": "natal yi won nañu ko si piramit ak piramit yu wute leeral nañu ko",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 12
+          },
+          "audioSeconds": 8.52,
+          "ms": 3772
+        },
+        {
+          "id": "1822",
+          "hypothesis": "sirtan bu marokk dafa defaral dëkk bi ndeeroo bari bari ya tejjaggatuwaa espaañ yi coxoon ko turu kër sëblanka mi defar foofa yi barobu jële ak këjaay",
+          "errors": {
+            "substitutions": 17,
+            "deletions": 2,
+            "insertions": 1,
+            "referenceWords": 28
+          },
+          "audioSeconds": 21.24,
+          "ms": 6088
+        },
+        {
+          "id": "1874",
+          "hypothesis": "am na nit ñu yaakaar ne waxoon na dégg wante nit ñu bare yaakaaruñ loolu muy jant bi dafay wee suuf si boole ci jant bi ak yeneen bi déew yi",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 31
+          },
+          "audioSeconds": 18.42,
+          "ms": 3202
+        },
+        {
+          "id": "2009",
+          "hypothesis": "mbir mi gën a am solo mi nit ji mën amee ci gancax bi mooy",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 20,
+            "insertions": 1,
+            "referenceWords": 34
+          },
+          "audioSeconds": 18.6,
+          "ms": 3106
+        },
+        {
+          "id": "1972",
+          "hypothesis": "nit ñu bari yaakaaruñu ne dinosoor lañu ndaxte dañu am ay laaf te mën nañu naaw",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 17
+          },
+          "audioSeconds": 10.86,
+          "ms": 3059
+        },
+        {
+          "id": "2007",
+          "hypothesis": "kooru añsa nër bu ameri xëy manee",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 10,
+            "insertions": 0,
+            "referenceWords": 17
+          },
+          "audioSeconds": 11.16,
+          "ms": 3078
+        },
+        {
+          "id": "1719",
+          "hypothesis": "njooy baat yi ñuy faral di jëfandikoo ngir wax jafejafee ak loraange yi ñu mën def ci nit ñi koy dund",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 6,
+            "insertions": 0,
+            "referenceWords": 27
+          },
+          "audioSeconds": 17.82,
+          "ms": 3333
+        },
+        {
+          "id": "1816",
+          "hypothesis": "du wall mi am jabar te am ñaari doom yu mag joxul milyar impresion bu baax sëluñ ko lag lekkale woon ak iswaar bi",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 22
+          },
+          "audioSeconds": 11.88,
+          "ms": 3378
+        },
+        {
+          "id": "1892",
+          "hypothesis": "mooy barab bi britani jappee ni ñoo ko moomal seen bopp kon su dee danga weer taariixu jaar jaaru kolonisaasjon bi fii nga war tambale",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 24
+          },
+          "audioSeconds": 16.92,
+          "ms": 3409
+        },
+        {
+          "id": "1898",
+          "hypothesis": "moom biy dëggal ci noxt la lanu tambali lanu tambali di wax diy max li ci yiit mooy mu doxale mel ni lépp lanu teg ci lu yoon tëral ñaaral ñaaral ba mel ni ku ñuy diglu ba far araal",
+          "errors": {
+            "substitutions": 15,
+            "deletions": 1,
+            "insertions": 6,
+            "referenceWords": 35
+          },
+          "audioSeconds": 30.12,
+          "ms": 3563
+        },
+        {
+          "id": "1793",
+          "hypothesis": "soo taamul dawal si yooni kaw ga jëlal say matuwaay foo toll pent yukk aw yoon yu sew jaddukaay yu sew ñoo fa ëpp",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 24
+          },
+          "audioSeconds": 15.3,
+          "ms": 3508
+        },
+        {
+          "id": "1761",
+          "hypothesis": "nataalkat yi nataar nañu béreppi ak benn jigéen bu mag bi mu soxla wanag bi bu nañu mendoo ja",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 2,
+            "insertions": 1,
+            "referenceWords": 20
+          },
+          "audioSeconds": 15.72,
+          "ms": 3568
+        },
+        {
+          "id": "1943",
+          "hypothesis": "lu sa xol di gëna woyof lépp ci gëna woyof ci sa adduna nit ku bëgg war ngaa men a fexe noy dunde ci jaamu ak salaam",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 26
+          },
+          "audioSeconds": 13.92,
+          "ms": 3013
+        },
+        {
+          "id": "1794",
+          "hypothesis": "ciwikisaation benn cosaan la buñu seddale ci gurubu nit yu bare yu dëkk tey liggéeyandoo ci ab ko operatif aw askan",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 20
+          },
+          "audioSeconds": 17.88,
+          "ms": 3131
+        },
+        {
+          "id": "1858",
+          "hypothesis": "dañeel lantañ benn boroom xamxamu yu an ci feebar bi wax nañi say tukkatu jam yi ñoo indi feebar bi",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 17
+          },
+          "audioSeconds": 16.8,
+          "ms": 2997
+        },
+        {
+          "id": "1855",
+          "hypothesis": "bëg te gayde yi mel ni bu ay segg walla ay xecc walla yu miroo ak gayde yi waaye du yeneen muus yu mag yi ci jot ak bu baax ak seen yi yapp",
+          "errors": {
+            "substitutions": 14,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 31
+          },
+          "audioSeconds": 19.32,
+          "ms": 3273
+        },
+        {
+          "id": "1994",
+          "hypothesis": "jarul wax soo manee ab lakk bu waarum dina gën a yomb ci yaw yëdang lakk  pourtudees",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 17
+          },
+          "audioSeconds": 13.8,
+          "ms": 3300
+        },
+        {
+          "id": "1710",
+          "hypothesis": "bés bi ñu gënt metti xamle na ni  epal xamle woon na ko ci yeneen trankat xewi tang yi yu ñu ci doole bi këruligéeyukaay bi di woye ñaka sëri yi",
+          "errors": {
+            "substitutions": 14,
+            "deletions": 2,
+            "insertions": 2,
+            "referenceWords": 31
+          },
+          "audioSeconds": 27,
+          "ms": 3479
+        },
+        {
+          "id": "1681",
+          "hypothesis": "gos doy wa sën yamul ci def experiencës sunuy wax experiencës sunuy saydu biy def yër mën a tegge mën a walla ay yër yuy yi yaakaar yëg biy yi yaakaar yu mën a nekk amal ay laaj yu bari ak sëtlu",
+          "errors": {
+            "substitutions": 24,
+            "deletions": 7,
+            "insertions": 6,
+            "referenceWords": 43
+          },
+          "audioSeconds": 27.18,
+          "ms": 3459
+        },
+        {
+          "id": "1921",
+          "hypothesis": "ci beneen walla klimaabu sedd bi ak net bi lujaadula ci yeneen dégg yu bare te loolu du tere oto yi mën daw ak at yépp te luñu am jafejafejaal",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 5,
+            "insertions": 0,
+            "referenceWords": 35
+          },
+          "audioSeconds": 20.16,
+          "ms": 3220
+        },
+        {
+          "id": "1891",
+          "hypothesis": "laa xasin la woon xampman bóotum waykat waa ju kandewal moo guñnee woon",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 14
+          },
+          "audioSeconds": 13.38,
+          "ms": 3351
+        },
+        {
+          "id": "1923",
+          "hypothesis": "pexeem yu jëloon may nañu doon li nu doon wut dagg lépp lu soldaar ak nit ñi di soxla dagg googu dafay jalgati sart yi samm yëllëtu doomi a deme ni nga xam ni réew yu bare xat yi nañu ñaari",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 5,
+            "insertions": 3,
+            "referenceWords": 43
+          },
+          "audioSeconds": 40.32,
+          "ms": 3120
+        },
+        {
+          "id": "1988",
+          "hypothesis": "ca diiru ati  junni ak juróom ñenti téeméer ak ñaar fukki yi jëfën yu gënoon a fee sinnit dëkk yu bare moodoon jamm ak bëru",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 1,
+            "insertions": 7,
+            "referenceWords": 19
+          },
+          "audioSeconds": 13.56,
+          "ms": 3354
+        },
+        {
+          "id": "1902",
+          "hypothesis": "ci bërëb bu fajukaay bu jem spagee ci greej yamu lañu ko téye woon",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 12
+          },
+          "audioSeconds": 10.5,
+          "ms": 3499
+        },
+        {
+          "id": "1832",
+          "hypothesis": "tagari yaram yi gën a siiw ñooy futbël mbasket bël wole bël woto pëló  iskërim  rid bi kurs wélo  oki siglaas rólo xoke ak kurs oto ff",
+          "errors": {
+            "substitutions": 21,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 26
+          },
+          "audioSeconds": 21.3,
+          "ms": 3001
+        },
+        {
+          "id": "1820",
+          "hypothesis": "leegi nit ñi dañuy bind ay bataaxal siay ekraanordinateur te bañ a jege ab dagukaay",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 16
+          },
+          "audioSeconds": 9.96,
+          "ms": 2792
+        },
+        {
+          "id": "1914",
+          "hypothesis": "gëstu yiñ amal ci ñaar keelu xarnu bi wann a ni am na ñaari xeeti jennit yu wute bu nëbbu ak bu feeñ",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 22
+          },
+          "audioSeconds": 12.84,
+          "ms": 3031
+        },
+        {
+          "id": "1961",
+          "hypothesis": "benn ci anam bu ëpp jëfandikoo ngir wone soloy mool mooy dafa ay bërgxale yu nekk ci ñakk topputoo mettit walla saaga ame jokkoo ci muqalaaf yi sax dañuy mag",
+          "errors": {
+            "substitutions": 18,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 31
+          },
+          "audioSeconds": 16.86,
+          "ms": 2885
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1272 @@
+{
+  "date": "2026-11-04",
+  "pack": "whisper-base-fr-q8",
+  "source": {
+    "repo": "openai/whisper-base",
+    "revision": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+    "licence": "MIT"
+  },
+  "convertTools": {
+    "torch": "2.8.0+cpu",
+    "transformers": "4.57.6",
+    "optimum": "2.1.0",
+    "optimum-onnx": "0.1.0",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.23.2"
+  },
+  "graphs": [
+    {
+      "path": "onnx/decoder_model_merged_quantized.onnx",
+      "bytes": 79795697,
+      "sha256": "54d4429fb7039a79f1e25d8e8eb29350be05e021a7d7e1c9eb1ff59aa9880e21"
+    },
+    {
+      "path": "onnx/encoder_model_quantized.onnx",
+      "bytes": 26009998,
+      "sha256": "205a64bc6932a72fa1a47798f65553a1b282190bf270d15031ca0d1eac3fbb0b"
+    }
+  ],
+  "decoding": {
+    "maxNewTokens": 96,
+    "strategy": "greedy",
+    "prompts": {
+      "fr": [50258, 50265, 50359, 50363]
+    }
+  },
+  "runtime": {
+    "transformersJs": "4.3.1",
+    "node": "v26.13.0",
+    "device": "cpu (onnxruntime-node)",
+    "platform": "win32 x64",
+    "cpu": "AMD Ryzen 5 8640HS w/ Radeon 760M Graphics",
+    "logicalCores": 12
+  },
+  "sets": {
+    "FLEURS fr_fr": {
+      "dataset": {
+        "repo": "google/fleurs",
+        "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+        "config": "fr_fr",
+        "split": "test",
+        "licence": "CC-BY-4.0",
+        "lang": "fr"
+      },
+      "summary": {
+        "utterances": 100,
+        "words": 2652,
+        "substitutions": 580,
+        "deletions": 89,
+        "insertions": 134,
+        "wer": 0.30279034690799395,
+        "audioSeconds": 1009,
+        "ms": {
+          "mean": 944,
+          "median": 900,
+          "p95": 1209
+        }
+      },
+      "results": [
+        {
+          "id": "1829",
+          "hypothesis": "Les voyages à destination de pays où les taxes sont élevés peuvent parfois faire des économies considérablement particuliers sur des produits comme les voies-sans alcoolisés ou le tabard.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 29
+          },
+          "audioSeconds": 9.42,
+          "ms": 1209
+        },
+        {
+          "id": "1679",
+          "hypothesis": "Le couple à Erosmith c'est à lui les derniers concerts de sa tournée.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 11
+          },
+          "audioSeconds": 6,
+          "ms": 798
+        },
+        {
+          "id": "1707",
+          "hypothesis": "Il s'agit de l'un départ d'attractions les plus connues en Afrique du Sud et considérant qu'ils feront des parcs nationales au Sud-Africain sans parcs.",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 28
+          },
+          "audioSeconds": 8.22,
+          "ms": 880
+        },
+        {
+          "id": "1763",
+          "hypothesis": "Tout comme la lune exerce une traction sur la terre, provoquant démarrer la voile à côté exerce une force sur la galaxie du s'ajoutat.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 24
+          },
+          "audioSeconds": 7.02,
+          "ms": 1046
+        },
+        {
+          "id": "1844",
+          "hypothesis": "La surface de la lune est constituée de pierres et de poussaires. Sa couche extérieure est appelée la croute.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 19
+          },
+          "audioSeconds": 7.56,
+          "ms": 853
+        },
+        {
+          "id": "1842",
+          "hypothesis": "Et en donné que les plumes de dinosaur n'ont pas une tige en tirant dans les développés, que l'on appelle rachis, mais montre, cependant, d'autres caractéristiques propres aux plumes, barbes et barbules. Les chercheurs en ont déduits que les rachis étaient probablement un développement évolutif ultérieure à ces autres caractéristiques.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 49
+          },
+          "audioSeconds": 18.78,
+          "ms": 1636
+        },
+        {
+          "id": "1866",
+          "hypothesis": "Premièrement, la plupart des cavaliers portent des bottes d'équitation avec un talon et une semelle liste et assez étroite.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 20
+          },
+          "audioSeconds": 10.86,
+          "ms": 798
+        },
+        {
+          "id": "1925",
+          "hypothesis": "Le travail effectué était principalement théorique, le programme a été écrit pour simuler les observations faites de la galaxie du Ségitaire.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 22
+          },
+          "audioSeconds": 8.88,
+          "ms": 875
+        },
+        {
+          "id": "1975",
+          "hypothesis": "Le Vatican compte environ 800 habitants. C'est le plus petit pays indépendant au monde et le moins peu plus.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 19
+          },
+          "audioSeconds": 9.36,
+          "ms": 790
+        },
+        {
+          "id": "1797",
+          "hypothesis": "Tout le monde fait partie de la société et utilise des systèmes de transport. Qu'est-ce qu'il manque tout le monde se plaît des systèmes de transport?",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 0,
+            "insertions": 5,
+            "referenceWords": 24
+          },
+          "audioSeconds": 8.46,
+          "ms": 953
+        },
+        {
+          "id": "1775",
+          "hypothesis": "Je vous enregistre mon vidéo à mener à deux grandes et ouvertes dans l'interprétation des micros-expression, c'est-à-dire l'expression facile durant quelques minutes et secondes.",
+          "errors": {
+            "substitutions": 14,
+            "deletions": 1,
+            "insertions": 3,
+            "referenceWords": 28
+          },
+          "audioSeconds": 7.5,
+          "ms": 1371
+        },
+        {
+          "id": "1985",
+          "hypothesis": "Cela ressemble au skill de remblier de type A-Pain, ainsi qu'à l'alpinisme, sans tout de fort encore pour réélié en général ces activités qui se pratiquent sur des terres accidentées et qui exige l'utilisation de skill et de battre beaucoup plus rigide.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 5,
+            "referenceWords": 41
+          },
+          "audioSeconds": 14.04,
+          "ms": 1516
+        },
+        {
+          "id": "1896",
+          "hypothesis": "Ue is agimnacique de l'usok, on le même objectif, rendre agimnacique ainsi que d'autres sports, c'est sûr que possible pour que les atlètes puissent pour vivre le rêve dans un environnement sûr positif et responsable dans.",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 1,
+            "insertions": 4,
+            "referenceWords": 36
+          },
+          "audioSeconds": 14.46,
+          "ms": 1207
+        },
+        {
+          "id": "1983",
+          "hypothesis": "Le terme civilisation est d'arriver du molatin civilis qui signifie civil et qui est apparenté au molatin civil qui signifie citoyen et si vitasse qui veut dire grande ville ou ville état et qui indique aussi en quelque sorte, l'attaque de la société à laquelle il sera porte.",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 50
+          },
+          "audioSeconds": 20.52,
+          "ms": 1262
+        },
+        {
+          "id": "1662",
+          "hypothesis": "Les alliages sont essentiellement mélanges de deux métaux, plus n'oubliez pas que le tableau périodique comporte de nombreuses éléments.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 22
+          },
+          "audioSeconds": 6.42,
+          "ms": 821
+        },
+        {
+          "id": "1798",
+          "hypothesis": "L'initiallement, l'émission était uniquement diffusée sur le venerable site Radio Inter, tout Ginet, Radio Insiste consacré à la radio parler.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 22
+          },
+          "audioSeconds": 8.46,
+          "ms": 1001
+        },
+        {
+          "id": "1715",
+          "hypothesis": "Les annonces régulières dans le métro de son fait qu'en catalan mais les perturbations imprévues sont annoncées par un système automatisé dans de nombreuses langues dont l'espanole, l'anglais, le français, la rab et le japonais.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 38
+          },
+          "audioSeconds": 15.18,
+          "ms": 1063
+        },
+        {
+          "id": "1744",
+          "hypothesis": "Ce qui concerne les inversions magnétiques plus de nos nombre de resbilles et petits moins nettoyant tactiles.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 3,
+            "insertions": 1,
+            "referenceWords": 19
+          },
+          "audioSeconds": 6.96,
+          "ms": 765
+        },
+        {
+          "id": "1839",
+          "hypothesis": "On sait aller tiner rare de ce qui communique tiner rare dans le domaine et similaire.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 13
+          },
+          "audioSeconds": 3.54,
+          "ms": 797
+        },
+        {
+          "id": "1947",
+          "hypothesis": "Avant l'arrivée des troupes, Aitin n'avait pas rencontré de problèmes liés à la maladie depuis les années 1800.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 20
+          },
+          "audioSeconds": 6,
+          "ms": 827
+        },
+        {
+          "id": "1722",
+          "hypothesis": "Couheau mot 53 ans, a commencé sur Manda Coverneur au début de cette année à signer le mois dernier projet du loi, légalisant le mariage entre personne du même sexe.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 3,
+            "insertions": 1,
+            "referenceWords": 32
+          },
+          "audioSeconds": 10.44,
+          "ms": 1009
+        },
+        {
+          "id": "1777",
+          "hypothesis": "Outawa est la charmante capitale Binaung du Canada. Il dispose d'un grand nombre de calories d'arès de musées qui mettent en valeur le passé, et le présent du Canada.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 32
+          },
+          "audioSeconds": 8.4,
+          "ms": 900
+        },
+        {
+          "id": "1878",
+          "hypothesis": "Le tournité central de l'Eglise était à Rome depuis plus de 1000 ans et cette concentration de pouvoir interchange a conduit beaucoup de gens à se demander si cette doctrine était respectée.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 35
+          },
+          "audioSeconds": 9.9,
+          "ms": 879
+        },
+        {
+          "id": "1732",
+          "hypothesis": "Ces événements ont lieu dans la période généralement considérée comme le haut-moyenage, période de l'histoire en Europe courant du 11ème au 13ème siècle, 1 000 à 1 300.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 2,
+            "insertions": 3,
+            "referenceWords": 29
+          },
+          "audioSeconds": 15.96,
+          "ms": 1002
+        },
+        {
+          "id": "2008",
+          "hypothesis": "Parmi les autres sujets à l'ordre du jour, à 20 élus, on a sauvagrandes et dernières forêts du monde et le partage et l'éthécologie pour aider les pays en développement pour conspire, il faut leur croissant de manière moins polluante.",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 38
+          },
+          "audioSeconds": 10.98,
+          "ms": 1124
+        },
+        {
+          "id": "2004",
+          "hypothesis": "De même mois, un autre agent de ligne a fait une sortie de piste à ma chade et hâte est un mur, tu en as ainsi 17 personnes.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 26
+          },
+          "audioSeconds": 8.34,
+          "ms": 950
+        },
+        {
+          "id": "1741",
+          "hypothesis": "Dans une zone plus une orce, on a assez peuplé et certaines sont presque inamitées à l'état sautage.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 19
+          },
+          "audioSeconds": 3.96,
+          "ms": 795
+        },
+        {
+          "id": "1991",
+          "hypothesis": "Pendant cette période de l'histoire européenne, l'Église catholique qui était devenue riche et puissante a été remise en question.",
+          "errors": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 11.7,
+          "ms": 833
+        },
+        {
+          "id": "1675",
+          "hypothesis": "Tous les noms suivis du mot « si » qui signifie « vous » commence toujours par une majuscule même au milieu d'une phrase.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 7.32,
+          "ms": 831
+        },
+        {
+          "id": "1723",
+          "hypothesis": "Le port était le site d'une impasse nouvelle, tristement salèbre en 1889. Pour ce que cette navire d'Allemagne, des États-Unis et de Grande-Bretagne, on refusait de quitter le port.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 32
+          },
+          "audioSeconds": 10.74,
+          "ms": 1011
+        },
+        {
+          "id": "1884",
+          "hypothesis": "On prétend notamment que l'on peut détecter si une personne n'interprète encore des micro-expressions.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 18
+          },
+          "audioSeconds": 6.18,
+          "ms": 839
+        },
+        {
+          "id": "1792",
+          "hypothesis": "C'est ce qu'on appelle le pH d'un produit chimique. Vous pouvez avecer un handicapeur en utilisant du jus de fourouges.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 24
+          },
+          "audioSeconds": 9.24,
+          "ms": 875
+        },
+        {
+          "id": "1660",
+          "hypothesis": "vraiment disent une présentation importante et les mains de déterminisme que tu retirez, décrivent que God, Fist et Schlägel.",
+          "errors": {
+            "substitutions": 13,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 18
+          },
+          "audioSeconds": 7.86,
+          "ms": 810
+        },
+        {
+          "id": "1745",
+          "hypothesis": "Les plantes revêtent leur plus belle apparence lorsqu'il se trouve dans un environnement naturel à l'heure. Résister à l'attentation dont retirer nos skis ne serait-ce qu'une seule.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 29
+          },
+          "audioSeconds": 8.58,
+          "ms": 998
+        },
+        {
+          "id": "1766",
+          "hypothesis": "Certains à taux, mon renoyant instable de sortes qu'ils ont tendance à se briser avec peu ou pas de pression.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 8.64,
+          "ms": 932
+        },
+        {
+          "id": "1769",
+          "hypothesis": "En structure par les égyptiens encore du troisième mille ennère, avanger ce qui est la grande pyramide est l'une des nombreuses structures géantes et régées en honneur des pharons décédées.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 1,
+            "insertions": 3,
+            "referenceWords": 29
+          },
+          "audioSeconds": 9.6,
+          "ms": 1148
+        },
+        {
+          "id": "1838",
+          "hypothesis": "La grande pyramide de Gizé est la seule de cette merveille qui existe encore aujourd'hui.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 16
+          },
+          "audioSeconds": 9.72,
+          "ms": 841
+        },
+        {
+          "id": "1969",
+          "hypothesis": "L'endroit du plus efficace pour le sujet principal se trouve à l'intersection de l'îme divisa en humain du entier, verticalement et horizontalement.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 5,
+            "insertions": 1,
+            "referenceWords": 29
+          },
+          "audioSeconds": 9.6,
+          "ms": 1008
+        },
+        {
+          "id": "1876",
+          "hypothesis": "Le bureau de gestion des ressources des îles-mariennes du Nord a déclaré qu'aucun des gans n'avait été sinalé dans ce pays.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 23
+          },
+          "audioSeconds": 7.2,
+          "ms": 816
+        },
+        {
+          "id": "1928",
+          "hypothesis": "En 1976, 30% du match hôpital avait été restauré et cette restauration s'en poursuit jusqu'aujourd'hui.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 3,
+            "insertions": 1,
+            "referenceWords": 20
+          },
+          "audioSeconds": 8.16,
+          "ms": 813
+        },
+        {
+          "id": "1795",
+          "hypothesis": "Depuis 1988, les yeux ont de doivent être transparentes afin que les électeurs et les observateurs puissent constater qu'une enveloppe ne présente au début du vote et qu'aucune enveloppe n'est ajoutée, sauf celle des électeurs de m'en compter et autoriser.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 1,
+            "insertions": 4,
+            "referenceWords": 41
+          },
+          "audioSeconds": 14.22,
+          "ms": 1046
+        },
+        {
+          "id": "1923",
+          "hypothesis": "Cette stratégie s'est à vérifier à ce coup pour les improvisements militaires de ces vidéos, que ce burcure s'est violé de droite internationale, généralement accepté et codifié par plusieurs internationaux des deux derniers siècles.",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 2,
+            "insertions": 4,
+            "referenceWords": 34
+          },
+          "audioSeconds": 13.08,
+          "ms": 973
+        },
+        {
+          "id": "1717",
+          "hypothesis": "En raison de la topologie sous marine, le flux de retour est concentré sur des quelques sections plus profondes et un courant rapide vers les autres profondes peut s'y former.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 30
+          },
+          "audioSeconds": 11.4,
+          "ms": 988
+        },
+        {
+          "id": "1911",
+          "hypothesis": "De même, on est en Eiffel-Aschengen, vous n'avez pas besoin de demander séparément à visa pour chacun des bénéliments pour de l'espace, ce qui permet d'économiser du temps de l'argent et des formality administratives.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 39
+          },
+          "audioSeconds": 10.14,
+          "ms": 1172
+        },
+        {
+          "id": "1665",
+          "hypothesis": "D'après la fuite, le document portera sur le différent à la frontière que la Palestine revendique sur la base des frontières existantes avant la guerre du Moyen-Orient, de 1977.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 31
+          },
+          "audioSeconds": 16.38,
+          "ms": 979
+        },
+        {
+          "id": "1786",
+          "hypothesis": "La composition de ces Christos pour respons de ce qui est trouvé dans l'urine des animaux domestiques affectés lorsque l'on compare par spectroscopie inframuche.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 25
+          },
+          "audioSeconds": 9.18,
+          "ms": 910
+        },
+        {
+          "id": "1689",
+          "hypothesis": "Le rap est un continent relativement petit mais comportant de nombreux pays indépendants dans les circonstances classiques. Voyagez à travers plusieurs pays un piquet compte de devoir posséder à plusieurs demandes de visar et de subir plusieurs vérifications de passeport.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 39
+          },
+          "audioSeconds": 14.52,
+          "ms": 1174
+        },
+        {
+          "id": "1963",
+          "hypothesis": "En repassant les vétranges humides, on peut les faire sécher plus facilement, de nombreux hauteurs disposent à faire d'une planche repassée qui peuvent être prétés, même si on n'a pas dans les chambres.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 5,
+            "insertions": 0,
+            "referenceWords": 40
+          },
+          "audioSeconds": 13.62,
+          "ms": 999
+        },
+        {
+          "id": "1709",
+          "hypothesis": "Le rapport est critique envers presque tous les aspects de la politique actuelle du gouvernement, à l'égard de l'Iraque, et puis à diximement pour un changement de direction immédiate.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 31
+          },
+          "audioSeconds": 9.36,
+          "ms": 952
+        },
+        {
+          "id": "1957",
+          "hypothesis": "Il a qualifié le rumeur de bordage et le bêtise politique.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 11
+          },
+          "audioSeconds": 6.42,
+          "ms": 654
+        },
+        {
+          "id": "1933",
+          "hypothesis": "En outre, il existe de nombreux petits chats, et compris les chats de compagnie en liberté, qui banche les petites preu, bien plus nombreuses, comme les insectes, les rongeurs, les arts et les oiseaux.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 34
+          },
+          "audioSeconds": 14.28,
+          "ms": 966
+        },
+        {
+          "id": "1968",
+          "hypothesis": "La ville de Berlin en Allemagne mentionnée dans certaines brochures pour de croire bien comme vous pouvez le constater en consultant la carte ci-dessus. Berlin n'est pas du tout situé près du bord de la mer et aucune visite de cette ville n'est comprise dans le prix de la Croix-Oien.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 53
+          },
+          "audioSeconds": 14.22,
+          "ms": 1126
+        },
+        {
+          "id": "1822",
+          "hypothesis": "Le Sultan Marocain reconstruit la vie sous le nombre d'Al-Baidan et elle a été rebatisée qu'elle s'appelait par les commerçants espagnols qui sont établies des comptoirs de négoce.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 3,
+            "insertions": 3,
+            "referenceWords": 32
+          },
+          "audioSeconds": 11.52,
+          "ms": 1021
+        },
+        {
+          "id": "1772",
+          "hypothesis": "et donc probable que la notation a été ajoutée simplement comme une éthicate.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 14
+          },
+          "audioSeconds": 4.44,
+          "ms": 724
+        },
+        {
+          "id": "1789",
+          "hypothesis": "Parmi les autres nominations, figure-celle du meilleur film, du meilleur réalisateur, de la meilleure cinéma de graphie, de meilleur costume, du meilleur montage, de la meilleure musique originale, des meilleurs décors, du meilleur montage sonore, du meilleur mixage et du meilleur scénario originale.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 42
+          },
+          "audioSeconds": 19.5,
+          "ms": 1343
+        },
+        {
+          "id": "1760",
+          "hypothesis": "Le mousasor était le super prédateur de l'époque. Il ne craignait rien, sauf les autres bousasors.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 16
+          },
+          "audioSeconds": 9.78,
+          "ms": 1012
+        },
+        {
+          "id": "1813",
+          "hypothesis": "Les langues officielles de Barcelone sont le catalan et l'Espagne-ul. En vie, on la voit les habitants préfèrent par les catalans. Une grande majorité le comprend et pratiquement tout le monde est capable de parler l'Espagne-ul.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 0,
+            "insertions": 6,
+            "referenceWords": 34
+          },
+          "audioSeconds": 14.88,
+          "ms": 1094
+        },
+        {
+          "id": "1667",
+          "hypothesis": "De manière générale, deux comportements peuvent émerger lorsqu'un manager devient le chef d'anciens collègues. D'une des extrémités du spectre étant d'essayer de rester le bon copain ou la bonne copine.",
+          "errors": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 34
+          },
+          "audioSeconds": 13.2,
+          "ms": 1024
+        },
+        {
+          "id": "1912",
+          "hypothesis": "A plus par des petites îles sont des naissons indépendantes, voici la France et son connue pour être des stations banaires de l'UX.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 2,
+            "insertions": 2,
+            "referenceWords": 24
+          },
+          "audioSeconds": 7.8,
+          "ms": 877
+        },
+        {
+          "id": "1750",
+          "hypothesis": "Cette découverte permet également de mieux comprendre l'évolution des primes chez les oiseaux.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 14
+          },
+          "audioSeconds": 8.64,
+          "ms": 840
+        },
+        {
+          "id": "1894",
+          "hypothesis": "Incurée d'appel à Wastair de dépice accompagné de viande ou de légumes.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 5,
+            "insertions": 0,
+            "referenceWords": 18
+          },
+          "audioSeconds": 6.96,
+          "ms": 802
+        },
+        {
+          "id": "1778",
+          "hypothesis": "Les reportages télévisés montrent de la fumée blanche provenant de l'usine.",
+          "errors": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 12
+          },
+          "audioSeconds": 8.4,
+          "ms": 777
+        },
+        {
+          "id": "1916",
+          "hypothesis": "Mon produit de boingé allemand contient également des emmanteuses et des autres noix. Les gâteaux peuplés vers ce marie souvent particulièrement bien avec une test de café serré.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 3,
+            "insertions": 1,
+            "referenceWords": 30
+          },
+          "audioSeconds": 9,
+          "ms": 961
+        },
+        {
+          "id": "1693",
+          "hypothesis": "Après avoir perdu le glitché de son capitaine, l'un d'un réalisé que 36 cours s'est perdu cette glitché jusqu'à la fin de la manche.",
+          "errors": {
+            "substitutions": 8,
+            "deletions": 1,
+            "insertions": 1,
+            "referenceWords": 28
+          },
+          "audioSeconds": 7.32,
+          "ms": 816
+        },
+        {
+          "id": "1836",
+          "hypothesis": "Depuis l'antiquité, les peuples sont familiers des éléments chimiques de base comme l'or, l'argent et le cuivre, car ils se trouvent dans la nature sous forme brut et sont assez simples à m'inquiéder à l'aide d'outils primitifs.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 42
+          },
+          "audioSeconds": 15.36,
+          "ms": 1101
+        },
+        {
+          "id": "1695",
+          "hypothesis": "Un dîner simple et populaire, surtout en été, est le pal amboli du pain avec de l'udolive, de la tomate et tous les condiments disponibles, tel que le fromage, le temps, etc.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 3,
+            "insertions": 0,
+            "referenceWords": 36
+          },
+          "audioSeconds": 14.76,
+          "ms": 856
+        },
+        {
+          "id": "1990",
+          "hypothesis": "Les blogs peuvent également aider les étudiants à améliorer leur compétence en rédaction. Même si les étudiants tentent souvent l'expérience du blog avec une grammaire et une orthographe négligée, le fait d'avoir un public généralement évolué la situation.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 41
+          },
+          "audioSeconds": 17.04,
+          "ms": 1138
+        },
+        {
+          "id": "1981",
+          "hypothesis": "Si vous ne vous rendez à terre avec des excursions de croisière, vous n'aurez pas besoin d'un visage distant à partir de 2009.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 26
+          },
+          "audioSeconds": 8.46,
+          "ms": 845
+        },
+        {
+          "id": "1698",
+          "hypothesis": "Tout dans l'univers est fait de manière de matière. Tout de la matière est faite de minuscule particule à pléato.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 3,
+            "referenceWords": 18
+          },
+          "audioSeconds": 7.08,
+          "ms": 805
+        },
+        {
+          "id": "1987",
+          "hypothesis": "L'accident a élu en tirant un montagneux et il semblera que cela a été causé par un incendie malveillant.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 20
+          },
+          "audioSeconds": 9.54,
+          "ms": 908
+        },
+        {
+          "id": "1920",
+          "hypothesis": "Les proposent généralement des offres spéciales de plat, de boissons et de divertissement afin de maintenir la bonne humeur, des invités et de les garder sur place.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 27
+          },
+          "audioSeconds": 10.14,
+          "ms": 872
+        },
+        {
+          "id": "1860",
+          "hypothesis": "J'ai reçu des vrais de la police.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 8,
+            "insertions": 0,
+            "referenceWords": 16
+          },
+          "audioSeconds": 4.62,
+          "ms": 705
+        },
+        {
+          "id": "1880",
+          "hypothesis": "Si le crayon était un bon ami, pour beaucoup de gens lorsqu'il est sorti.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 15
+          },
+          "audioSeconds": 5.88,
+          "ms": 752
+        },
+        {
+          "id": "1979",
+          "hypothesis": "La monnaie officielle des îles malgré l'univer des îles malgré l'FKB dans la valeur et qui valente un earstery, GBP.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 2,
+            "insertions": 1,
+            "referenceWords": 23
+          },
+          "audioSeconds": 11.1,
+          "ms": 830
+        },
+        {
+          "id": "1733",
+          "hypothesis": "La première de ses 68 recommandations est qu'une nouvelle initiative diplomatique devrait être prise avant l'enfant de l'année pour sécuriser les frontières de l'Irak contre les interventions et infants de rétablir la relation diplomatique avec ses voisins.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 42
+          },
+          "audioSeconds": 14.58,
+          "ms": 1089
+        },
+        {
+          "id": "1705",
+          "hypothesis": "Le 15 août 1940, les alliés des barquers dans le sud de la France, une invasion appelée Operation Dragon.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 18
+          },
+          "audioSeconds": 12.24,
+          "ms": 732
+        },
+        {
+          "id": "1727",
+          "hypothesis": "Les enfants sauvèrent que je peux avoir suivi de graves abus, autrementimes avant d'être vraiment donné ou de s'enfuir.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 3,
+            "referenceWords": 19
+          },
+          "audioSeconds": 7.86,
+          "ms": 977
+        },
+        {
+          "id": "1761",
+          "hypothesis": "Les photographes ont ensuite pris la place d'une dame âgée qui avait besoin d'aller au toilette mais nos aides étaient à bâche.",
+          "errors": {
+            "substitutions": 6,
+            "deletions": 0,
+            "insertions": 2,
+            "referenceWords": 22
+          },
+          "audioSeconds": 7.5,
+          "ms": 851
+        },
+        {
+          "id": "1832",
+          "hypothesis": "Parmi les sports populaires, figures le football, le basketball, le volleyball ou le water polo, les crimes, le rugby, le cyclisme, le hockey sur gas, le rulleur, le rulleur, le hockey et la formulant.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 2,
+            "insertions": 3,
+            "referenceWords": 33
+          },
+          "audioSeconds": 10.68,
+          "ms": 1139
+        },
+        {
+          "id": "1989",
+          "hypothesis": "Il a également gravé des billets de banque pour de nombreux pays parmi les exemples récentes de son travail. On peut citer les portraits du premier ministre au rekto des nouveaux billets Canadiens de 5 essai de l'Olar.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 38
+          },
+          "audioSeconds": 15.36,
+          "ms": 1091
+        },
+        {
+          "id": "1939",
+          "hypothesis": "Aussi après la révolution, les métiers fûrent ouvert à tous les candidats masculins, permettant aux plus ambitieux et aux plus talentueux de réussir.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 23
+          },
+          "audioSeconds": 9.42,
+          "ms": 828
+        },
+        {
+          "id": "1749",
+          "hypothesis": "Elle était gouvernée par des Français de Vichy, des Français qui ont fait la paix avec les allemands 1940, et ont collaboré avec l'occupant au lieu de leur frontier.",
+          "errors": {
+            "substitutions": 3,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 31
+          },
+          "audioSeconds": 9.6,
+          "ms": 947
+        },
+        {
+          "id": "1853",
+          "hypothesis": "Jean-Carlo fit Tiela, à perdu le contrôle de sa voiture et à terminer la course, après le démarrage.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 1,
+            "insertions": 2,
+            "referenceWords": 18
+          },
+          "audioSeconds": 7.8,
+          "ms": 794
+        },
+        {
+          "id": "1895",
+          "hypothesis": "Avec le déclin de la connaissance du grec, l'Occident s'en retrouve écoupé de serracine philosophique et scientifique grec.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 1,
+            "insertions": 0,
+            "referenceWords": 21
+          },
+          "audioSeconds": 11.4,
+          "ms": 884
+        },
+        {
+          "id": "1873",
+          "hypothesis": "Soyez ferme dans leur refus des avances. Et n'ayez pas peur de tenir bon différence, qu'il te chera et le n'en s'en aille pas d'ailleurs que c'est acceptable.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 1,
+            "insertions": 6,
+            "referenceWords": 29
+          },
+          "audioSeconds": 9.3,
+          "ms": 901
+        },
+        {
+          "id": "1930",
+          "hypothesis": "6 hôtages dans des enfants et des personnages ont été libérés prématurément tout comme les photographies.",
+          "errors": {
+            "substitutions": 5,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 18
+          },
+          "audioSeconds": 6.84,
+          "ms": 815
+        },
+        {
+          "id": "1905",
+          "hypothesis": "L'invénement de la mode avie est chiscina, l'anglocal est le roman mais le russe est très répondi.",
+          "errors": {
+            "substitutions": 10,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 19
+          },
+          "audioSeconds": 4.98,
+          "ms": 885
+        },
+        {
+          "id": "1904",
+          "hypothesis": "C'est pas dans le raison de la l'ananitaire des moyens de communication, l'imode occidentale pouvait accuser un retard de 25 à 30 ans.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 22
+          },
+          "audioSeconds": 6.06,
+          "ms": 867
+        },
+        {
+          "id": "1824",
+          "hypothesis": "La tue de guisez ou nécropole de guisez dans la vallée des morts en Egypte, en gros plusieurs pyramides. La grande pyramide est en la plus importante. L'usure petit en beau, de nombreux temples et le Grand Sphynes.",
+          "errors": {
+            "substitutions": 12,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 35
+          },
+          "audioSeconds": 12.72,
+          "ms": 1171
+        },
+        {
+          "id": "1906",
+          "hypothesis": "ce n'est pas en au revoir, c'est une pâche qui se tourne et une autre qui s'ouvre",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 20
+          },
+          "audioSeconds": 8.16,
+          "ms": 819
+        },
+        {
+          "id": "1891",
+          "hypothesis": "Quentin la quesseign, il a lui aussi présenté le chapeau en bug, Bajon, tout en étant à accompagner du chanteur Redjou Candle de la Wall.",
+          "errors": {
+            "substitutions": 9,
+            "deletions": 1,
+            "insertions": 5,
+            "referenceWords": 21
+          },
+          "audioSeconds": 12.9,
+          "ms": 981
+        },
+        {
+          "id": "1669",
+          "hypothesis": "Chandra Chécart, selon qui est comme si un policier dégaré que les personnes accusées avait le visage d'ici huiler lorsqu'elles sont comparues devant le tribunal.",
+          "errors": {
+            "substitutions": 11,
+            "deletions": 0,
+            "insertions": 4,
+            "referenceWords": 23
+          },
+          "audioSeconds": 9.6,
+          "ms": 888
+        },
+        {
+          "id": "1980",
+          "hypothesis": "Mais à le raison, il est difficile d'étudier le flux de circulation, qui a les comportements des conducteurs ne peut être présides, avec 100% de sortitudes.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 2,
+            "insertions": 4,
+            "referenceWords": 25
+          },
+          "audioSeconds": 11.64,
+          "ms": 820
+        },
+        {
+          "id": "1992",
+          "hypothesis": "Le langage courant le terme safari désigne une expurcution sur la terre africaine en particulier dans la savane ayant pour insister au spectacle si j'essayant des animaux sauvages dans leur milieu.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 2,
+            "insertions": 0,
+            "referenceWords": 34
+          },
+          "audioSeconds": 10.5,
+          "ms": 1037
+        },
+        {
+          "id": "2006",
+          "hypothesis": "Des éléments comme le calcium et le potassium sont considérés comme des métaux. Bien sûr, il y a aussi des métaux comme l'argent et l'or.",
+          "errors": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 27
+          },
+          "audioSeconds": 9.96,
+          "ms": 819
+        },
+        {
+          "id": "1828",
+          "hypothesis": "Une recherche sur Internet, de cours en environnement hostile, fournira probablement l'adresse d'une surprise auquel.",
+          "errors": {
+            "substitutions": 2,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 17
+          },
+          "audioSeconds": 11.94,
+          "ms": 852
+        },
+        {
+          "id": "1747",
+          "hypothesis": "Les autres luteurs ont également rendu hommage à Luna.",
+          "errors": {
+            "substitutions": 1,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 9
+          },
+          "audioSeconds": 4.8,
+          "ms": 633
+        },
+        {
+          "id": "1910",
+          "hypothesis": "Les parisins ont la réputation d'être egocentrique grossie et arauvant.",
+          "errors": {
+            "substitutions": 4,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 11
+          },
+          "audioSeconds": 4.44,
+          "ms": 746
+        },
+        {
+          "id": "1719",
+          "hypothesis": "L'étend violent est le terme générique pour tout phénomène météorologique, tant genre susceptible de causer des dommages, de grave bouleversement sociaux ou la perte de vie humée.",
+          "errors": {
+            "substitutions": 7,
+            "deletions": 0,
+            "insertions": 1,
+            "referenceWords": 27
+          },
+          "audioSeconds": 11.16,
+          "ms": 983
+        },
+        {
+          "id": "1833",
+          "hypothesis": "Aristote, un philosophe, a théorisé que tout est constitué d'un mélange d'un ou plusieurs des quatre éléments. Il s'agissait de la terre, de l'eau, de l'air et du feu.",
+          "errors": {
+            "substitutions": 0,
+            "deletions": 0,
+            "insertions": 0,
+            "referenceWords": 34
+          },
+          "audioSeconds": 15.12,
+          "ms": 928
+        }
+      ]
+    }
+  }
+}
