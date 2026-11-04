@@ -1,0 +1,10 @@
+<!-- SPDX-License-Identifier: MIT -->
+<!-- Maskable: the ground fills the square; the notebook stays inside the 80 percent safe circle. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#22379a"/>
+  <rect x="148" y="100" width="224" height="312" rx="28" fill="#ffffff"/>
+  <path d="M148 128a28 28 0 0 1 28-28h28v312h-28a28 28 0 0 1-28-28z" fill="#c9d3f6"/>
+  <rect x="240" y="164" width="96" height="16" rx="8" fill="#22379a"/>
+  <rect x="240" y="212" width="96" height="16" rx="8" fill="#22379a"/>
+  <rect x="240" y="260" width="64" height="16" rx="8" fill="#22379a"/>
+</svg>

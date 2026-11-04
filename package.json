@@ -17,6 +17,7 @@
     "knowledge:build": "siapso-pack build",
     "knowledge:import-bdpm": "siapso-pack import-bdpm",
     "build": "pnpm knowledge:build && pnpm -r --if-present build",
+    "budget:app": "node tools/budget/check-app-size.mjs",
     "e2e": "pnpm --filter @siapso/app e2e"
   },
   "devDependencies": {

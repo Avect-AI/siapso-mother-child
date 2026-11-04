@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Starter registry: 55 substances, the `nsaid`, `tetracycline`, `raas-blocker` and `valproate` classes, 14 traditional remedies, demo products written by hand and 300 medicines imported from the BDPM (brands most used in Senegal always kept).
 - `pnpm knowledge:import-bdpm <dir>`: imports medicines from the official BDPM files into `registry/products/bdpm.yaml`; a product file may hold a generated list of products.
 - Blocking reference cases (`eval/cases`, schema `eval/schema/case.schema.json`): the 14 cases of the dossier (17 files with the term variants of case 1), each with the exact expected level, findings, reminders and notes. Any change in the engine output for them fails the tests; message ids and wording are checked in both languages.
+- Installable offline app shell: a service worker (vite-plugin-pwa, update prompt, never a silent reload) precaches the app, its fonts and the knowledge pack; the pack is checked against its manifest (sha256), validated and kept in IndexedDB; welcome screen (language, then mode) with settings stored in IndexedDB; Home; header with the danger signs shortcut and an offline badge; danger signs route; typed French and English dictionaries; neutral notebook icons and the `Carnet` default name (`VITE_APP_NAME`).
+- `pnpm budget:app`: the app stays at or under 1.5 MB without the pack and the voice files, checked in CI.
+- `docs/testing.md`: automated checks and how to test in airplane mode on a real phone.
 
 ### Fixed
 

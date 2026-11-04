@@ -40,6 +40,8 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scrollbar-color: var(--color-border) var(--color-bg);
+  /* The update band's height while it shows (UpdatePrompt sets it): focus never hides under it. */
+  scroll-padding-block-end: var(--update-band-height, 0px);
 }
 
 body {
@@ -190,8 +192,14 @@ a {
   color: var(--color-primary-text);
 }
 
-.button--primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+/*
+ * Hover only where a pointer can hover: on a touch screen :hover sticks to
+ * whatever was tapped last and fakes a state that does not exist.
+ */
+@media (hover: hover) {
+  .button--primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+  }
 }
 
 .button--secondary {
@@ -200,8 +208,10 @@ a {
   border-color: var(--color-primary);
 }
 
-.button--secondary:hover:not(:disabled) {
-  background: var(--color-primary-tint);
+@media (hover: hover) {
+  .button--secondary:hover:not(:disabled) {
+    background: var(--color-primary-tint);
+  }
 }
 
 .button--quiet {
@@ -213,8 +223,10 @@ a {
   text-underline-offset: 0.2em;
 }
 
-.button--quiet:hover:not(:disabled) {
-  background: var(--color-primary-tint);
+@media (hover: hover) {
+  .button--quiet:hover:not(:disabled) {
+    background: var(--color-primary-tint);
+  }
 }
 
 /* Disabled reads as absent, never as the grey "unknown" level: dashed, muted, unfilled. */
@@ -272,8 +284,10 @@ a {
   font: inherit;
 }
 
-.text-field__input:hover:not(:disabled) {
-  border-color: var(--color-text-muted);
+@media (hover: hover) {
+  .text-field__input:hover:not(:disabled) {
+    border-color: var(--color-text-muted);
+  }
 }
 
 .text-field__input:focus-visible {
@@ -434,8 +448,320 @@ a {
   color: var(--level-danger-border);
 }
 
-.danger-banner__action:hover:not(:disabled) {
-  background: var(--color-bg);
+@media (hover: hover) {
+  .danger-banner__action:hover:not(:disabled) {
+    background: var(--color-bg);
+  }
+}
+
+/*
+ * App layout: the shell band, the screen, then the update prompt. The column
+ * is at most 40rem wide, centred; bands run edge to edge and hold their
+ * content to the same column.
+ */
+
+.app {
+  --column: 40rem;
+  /* Lines band content up with the screen's text, which sits inside its own 16 px padding. */
+  --column-gutter: max(var(--space-4), (100% - var(--column)) / 2 + var(--space-4));
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.screen {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: var(--column);
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
+
+/*
+ * The screen's lead line, at headline size. With large text on a narrow phone
+ * it grows to the title size (still scaled by the user's setting) rather than
+ * the headline's, so a long word like "médicament" keeps fitting the column:
+ * 9vw is 32 px on a 360 px screen, between the two sizes at 100 percent. A
+ * word that still cannot fit breaks rather than pushing the page sideways,
+ * never with an added hyphen (a later screen's heading may be a product name).
+ */
+.screen h1 {
+  font-size: clamp(var(--font-size-title), 9vw, var(--font-size-headline));
+  overflow-wrap: break-word;
+}
+
+/* A heading takes focus only to start a screen reader on a new screen. */
+.screen [tabindex='-1']:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/*
+ * Header: the ultramarine shell band. The app name leads home; the danger
+ * signs shortcut keeps its place at the end of the row (it drops under the
+ * name only when large text leaves no room). The offline badge sits under them.
+ */
+
+.header {
+  --color-focus: var(--color-primary-text);
+
+  padding: var(--space-2) var(--column-gutter);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.header__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* The mark before the name makes it read as the way home, not a title. */
+.header__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  color: inherit;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .header__name:hover {
+    text-decoration: underline;
+  }
+}
+
+.header__danger {
+  gap: var(--space-1);
+  margin-inline-start: auto;
+  padding-inline: var(--space-4) var(--space-3);
+  border-color: var(--color-surface);
+  text-decoration: none;
+}
+
+/* On the danger signs screen the shortcut shows where you are: outlined, not filled. */
+.header__danger[aria-current='page'],
+.header__danger[aria-current='page']:hover {
+  background: transparent;
+  color: var(--color-primary-text);
+  border-color: var(--color-primary-text);
+  cursor: default;
+}
+
+.chevron {
+  flex: none;
+}
+
+/*
+ * Offline badge: the word with a no-signal mark, a filled tag in the band's
+ * deeper shade, so it reads as a status and not as an outlined button. The
+ * transparent border shows in forced colours.
+ */
+
+.offline-badge-region:not(:empty) {
+  padding-block: var(--space-1);
+}
+
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-hover);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+}
+
+/* Update prompt: a band held at the bottom of the screen until the user reloads. */
+
+.update-region {
+  position: sticky;
+  bottom: 0;
+}
+
+.update-prompt {
+  --color-focus: var(--color-primary-text);
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--column-gutter);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.update-prompt__message {
+  flex: 1 1 12rem;
+  font-weight: var(--font-weight-strong);
+}
+
+/* App mark: the home screen icon, drawn with the tokens. */
+
+.app-mark {
+  flex: none;
+}
+
+.app-mark__ground,
+.app-mark__line {
+  fill: var(--color-primary);
+}
+
+.app-mark__cover {
+  fill: var(--color-surface);
+}
+
+.app-mark__spine {
+  fill: var(--color-selection);
+}
+
+/*
+ * Choices: full-width answers, a label and an optional hint, read left to
+ * right like the question above them.
+ */
+
+/* A word too long for the button at large text sizes breaks instead of widening the column. */
+.choices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.choice {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: var(--touch-target-large);
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  overflow-wrap: break-word;
+}
+
+.choice__hint {
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-body);
+}
+
+/*
+ * Welcome: the question and its answers low on the screen, where the thumb
+ * reaches on a phone held in one hand; the app's mark and name centred in the
+ * space above them, the same mark as on the phone's home screen.
+ */
+
+.welcome__identity {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-block: auto;
+}
+
+.welcome__step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.welcome__question {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.welcome__question h2 {
+  font-size: var(--font-size-title);
+}
+
+.welcome__question p {
+  color: var(--color-text-muted);
+}
+
+.welcome__back {
+  justify-self: start;
+}
+
+/*
+ * Home: the question and its one action held together, centred in the space
+ * between the band and the closing line: in easy thumb reach on a phone, and
+ * when the offline badge appears the group moves half as far.
+ */
+
+/* minmax(0, 1fr): a long word at large text breaks instead of widening the track. */
+.home__task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  margin-block: auto;
+}
+
+.home__intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.home__check {
+  width: 100%;
+}
+
+.home__closing {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+/* A problem the user can act on: ink with the triangle mark, never red. */
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-strong);
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+/* Danger signs */
+
+/* The condition, then the orientation: the strongest line of the content. */
+.danger__orientation {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.danger__orientation .orientation {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+}
+
+.danger__signs {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.danger__signs li {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.danger__signs li:first-child {
+  border-top: 1px solid var(--color-rule);
 }
 
 /* Windows high contrast and other forced colours: keep every contour. */
@@ -448,6 +774,11 @@ a {
 
   .button {
     border-color: ButtonText;
+  }
+
+  .header,
+  .update-prompt {
+    border-bottom: var(--border-width) solid CanvasText;
   }
 }
 

@@ -2,6 +2,8 @@
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { ServiceWorkerUpdate } from './pwa/ServiceWorkerUpdate.js';
+import { AppProvider } from './state/app-state.js';
 import './styles/tokens.css';
 import './styles/base.css';
 
@@ -22,5 +24,11 @@ if (import.meta.env.DEV && window.location.hash === '#/design') {
     show(<Gallery />);
   });
 } else {
-  show(<App />);
+  show(
+    <AppProvider>
+      <App>
+        <ServiceWorkerUpdate />
+      </App>
+    </AppProvider>,
+  );
 }
