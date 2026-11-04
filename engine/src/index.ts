@@ -23,6 +23,7 @@ export type {
   Localized,
   Message,
   Note,
+  NoteKind,
   Pack,
   Plant,
   PregnancyContext,

@@ -3,6 +3,8 @@ name: hygiene
 
 on:
   pull_request:
+    # edited: re-check the title and description when they change.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 

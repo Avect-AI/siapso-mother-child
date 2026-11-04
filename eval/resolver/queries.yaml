@@ -27,6 +27,30 @@
         { kind: product, id: doliprane-adultes-1000-mg-67488731 },
       ],
   }
+# The registry has no children's Doliprane by name: the age word must not
+# lose the brand, any Doliprane is an acceptable answer.
+- {
+    query: doliprane enfant,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
 - {
     query: Doliprane 1000,
     type: brand,
@@ -1103,3 +1127,7 @@
 - { query: 'comprimé', type: noise, expect: none }
 - { query: 'gélule', type: noise, expect: none }
 - { query: pommade, type: noise, expect: none }
+# Generic words and short common words name no medicine either.
+- { query: medicament, type: noise, expect: none }
+- { query: emplatre, type: noise, expect: none }
+- { query: sel, type: noise, expect: none }

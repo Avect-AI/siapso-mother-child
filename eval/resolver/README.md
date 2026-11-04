@@ -13,7 +13,7 @@
 ```
 
 - `query`: the text as typed or transcribed.
-- `type`: `brand`, `inn`, `misspelling`, `local-fr`, `local-wo`, `voice-like` (lowercase, no accents, words split or merged as a speech model would output them) or `noise` (a form, a colour or a packaging word alone, such as "sirop" or "comprimé blanc", which names no medicine).
+- `type`: `brand`, `inn`, `misspelling`, `local-fr`, `local-wo`, `voice-like` (lowercase, no accents, words split or merged as a speech model would output them) or `noise` (a form, a colour, a packaging word, a generic word or a short common word alone, such as "sirop", "comprimé blanc", "medicament", "emplatre" or "sel", which names no medicine).
 - `expect`: one `{ kind, id }`, or a list of acceptable answers. A list is used when several entries are equally right: every product of a brand (the resolver breaks ties by id, so any of them can come first), or the generic product and the branded products of the same substance. A query counts as a hit when one of the candidates is in the list: top-1 for the first candidate, top-3 for the first three. A `noise` query, and only a noise query, has `expect: none`: it is a hit (top-1 and top-3) only when the resolver proposes no candidate at all, so that the app offers "Produit introuvable".
 
 Every expected id must exist in the registry (a test checks it). Do not remove an honest query to make the figures look better; fix the matching or record the miss.

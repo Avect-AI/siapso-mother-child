@@ -92,13 +92,19 @@ export const STOP_WORDS: readonly string[] = [
   'ampoules',
   'flacon',
   'flacons',
-  // French age groups.
-  'adulte',
-  'adultes',
-  'enfant',
-  'enfants',
-  'nourrisson',
-  'nourrissons',
+  // Generic words for the thing itself: they name no medicine.
+  'médicament',
+  'médicaments',
+  'médicamenteux',
+  'médicamenteuse',
+  'médicamenteuses',
+  'medicament',
+  'medicaments',
+  'medicamenteux',
+  'emplatre',
+  'emplatres',
+  'emplâtre',
+  'emplâtres',
   // English forms, packaging and age groups.
   'tablet',
   'tablets',
@@ -119,13 +125,29 @@ export const STOP_WORDS: readonly string[] = [
   'vials',
   'bottle',
   'bottles',
-  'adult',
-  'adults',
-  'child',
-  'children',
-  'infant',
-  'infants',
 ];
+
+/**
+ * Age words, French and English, in the three groups a product name uses.
+ * They are not stop-words: a query word that matches the age word of a product
+ * prefers that product's variant ("doliprane enfant"). They carry no match
+ * weight: they are removed from names and from queries before scoring, and a
+ * query made only of them gets no candidate.
+ */
+const AGE_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  adult: ['adulte', 'adultes', 'adult', 'adults'],
+  child: ['enfant', 'enfants', 'child', 'children'],
+  infant: ['nourrisson', 'nourrissons', 'infant', 'infants'],
+};
+
+/** The age words (not normalised; compared after normalize). */
+export const AGE_WORDS: readonly string[] = Object.values(AGE_GROUPS).flat();
+
+const AGE_GROUP_OF: ReadonlyMap<string, string> = new Map(
+  Object.entries(AGE_GROUPS).flatMap(([group, words]) =>
+    words.map((word) => [normalize(word), group] as const),
+  ),
+);
 
 const STOP_SET: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
 
@@ -136,4 +158,20 @@ export function withoutStopWords(normalized: string): string {
     .split(' ')
     .filter((word) => !STOP_SET.has(word))
     .join(' ');
+}
+
+/**
+ * A normalised text split into its name words and the age groups its age words
+ * name (sorted, without repetition).
+ */
+export function splitAgeWords(normalized: string): { text: string; ages: string[] } {
+  if (normalized === '') return { text: '', ages: [] };
+  const ages = new Set<string>();
+  const words: string[] = [];
+  for (const word of normalized.split(' ')) {
+    const group = AGE_GROUP_OF.get(word);
+    if (group === undefined) words.push(word);
+    else ages.add(group);
+  }
+  return { text: words.join(' '), ages: [...ages].sort() };
 }

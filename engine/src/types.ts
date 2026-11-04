@@ -201,15 +201,24 @@ export interface Finding {
   capped: boolean;
   sources: SourceRef[];
 }
-export interface Note {
+/** A preventive reminder (C10), shown in accompanied mode only. */
+export interface Reminder {
   ruleId: string;
   message: string;
   sources: SourceRef[];
 }
+/**
+ * Which notes an app shows in which mode: `contraception` (C9) in accompanied
+ * mode only, `dose` (max-dose-not-computable) in both modes.
+ */
+export type NoteKind = 'contraception' | 'dose';
+export interface Note extends Reminder {
+  kind: NoteKind;
+}
 export interface Evaluation {
   level: Level;
   findings: Finding[];
-  reminders: Note[];
+  reminders: Reminder[];
   notes: Note[];
   pack: { version: string; date: string; clinicallyValidated: boolean };
 }

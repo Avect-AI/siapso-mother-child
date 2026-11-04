@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: iptp-reminder
+kind: reminder
+when:
+  pregnancy-windows: [20-29]
+  unless-with: [{ substance: ibuprofen }]
+level: next-contact
+evidence: A
+message: iptp-reminder
+sources:
+  - { source: lactmed, locator: 'Fixture record', accessed: 2026-11-04 }
+review:
+  status: draft
+  reviewers: []

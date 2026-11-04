@@ -2,7 +2,7 @@
 import { damerauLevenshtein } from './distance.js';
 import { compiledOf, MIN_WORD_LENGTH } from './index-build.js';
 import type { CompiledName } from './index-build.js';
-import { normalize, withoutStopWords } from './normalize.js';
+import { normalize, splitAgeWords, withoutStopWords } from './normalize.js';
 import { parseStrength } from './strength.js';
 import { jaccard, trigrams } from './trigrams.js';
 import type { Candidate, ResolverIndex, SearchOptions } from './types.js';
@@ -19,8 +19,14 @@ const PREFIX_SCORE = 0.9;
 const FUZZY_WORD_CAP = 0.85;
 /** Score of a query of 1 or 2 characters equal to a whole name or word. */
 const SHORT_SCORE = 0.6;
-/** The shortest query that can be a prefix or fuzzy-matched. */
+/** The shortest query that can be a prefix of a whole name or fuzzy-matched. */
 const MIN_PREFIX_LENGTH = 3;
+/**
+ * The shortest query that can be a prefix of one word of a multi-word name: a
+ * short common word ("sel") must not reach a product through the start of a
+ * longer word.
+ */
+const MIN_WORD_PREFIX_LENGTH = 4;
 const STRENGTH_EPSILON = 1e-6;
 
 /**
@@ -46,11 +52,14 @@ interface Match {
   score: number;
   name: CompiledName;
   strengthMatch: boolean;
+  /** The query holds an age word of the product's age group (see splitAgeWords). */
+  ageMatch: boolean;
 }
 
 /**
  * Order of the matches, best first: score, then a matching strength, then a
- * single-substance product before a combination, then entry priority, then id.
+ * matching age word, then a single-substance product before a combination,
+ * then entry priority, then id.
  */
 function compare(a: Match, b: Match): number {
   const combinationA = (a.name.entry.componentCount ?? 1) > 1 ? 1 : 0;
@@ -60,6 +69,7 @@ function compare(a: Match, b: Match): number {
   return (
     b.score - a.score ||
     Number(b.strengthMatch) - Number(a.strengthMatch) ||
+    Number(b.ageMatch) - Number(a.ageMatch) ||
     combinationA - combinationB ||
     b.name.entry.priority - a.name.entry.priority ||
     (idA < idB ? -1 : idA > idB ? 1 : 0)
@@ -78,12 +88,30 @@ const GENERIC_FAMILY = 'substances:';
  * the usual order applies.
  */
 function compareInFamily(a: Match, b: Match, strengthTyped: boolean): number {
+  // An age word typed in the query ("doliprane enfant") picks the variant of
+  // that age, after a typed strength.
+  if (a.score === b.score && a.strengthMatch === b.strengthMatch && a.ageMatch !== b.ageMatch) {
+    return Number(b.ageMatch) - Number(a.ageMatch);
+  }
   if (!strengthTyped && a.score === b.score && a.name.entry.family.startsWith(GENERIC_FAMILY)) {
     const strengthA = (a.name.entry.strengths ?? []).length > 0 ? 1 : 0;
     const strengthB = (b.name.entry.strengths ?? []).length > 0 ? 1 : 0;
     if (strengthA !== strengthB) return strengthA - strengthB;
   }
   return compare(a, b);
+}
+
+/**
+ * Whether the query is a prefix of the whole name (3 characters or more) or of
+ * one of the words of a multi-word name (4 characters or more), so that a
+ * short common word ("sel") does not reach "Fer et sélénium" through the start
+ * of a longer word inside the name.
+ */
+function prefixMatches(name: CompiledName, query: string): boolean {
+  if (name.norm.startsWith(query)) return true;
+  return (
+    query.length >= MIN_WORD_PREFIX_LENGTH && name.words.some((word) => word.norm.startsWith(query))
+  );
 }
 
 function scoreName(
@@ -101,14 +129,14 @@ function scoreName(
   if (name.norm === query) return 1;
   let score = 0;
   if (name.words.some((word) => word.norm === query)) score = WORD_SCORE;
-  else if (name.norm.startsWith(query) || name.words.some((word) => word.norm.startsWith(query))) {
-    score = PREFIX_SCORE;
-  }
+  else if (prefixMatches(name, query)) score = PREFIX_SCORE;
   score = Math.max(score, fuzzy(query, queryTri, name.norm, name.tri, floor));
   if (query !== compactQuery || name.norm !== name.compact) {
     score = Math.max(score, fuzzy(compactQuery, compactTri, name.compact, name.compactTri, floor));
   }
-  for (const word of name.words) {
+  // Inside a multi-word name a query of 3 characters is not fuzzy-matched
+  // against one word ("sel" would reach "sels ferreux").
+  for (const word of query.length >= MIN_WORD_PREFIX_LENGTH ? name.words : []) {
     if (word.norm.length < MIN_WORD_LENGTH) continue;
     score = Math.max(
       score,
@@ -142,8 +170,11 @@ export function search(
   const parsed = parseStrength(query);
   const wanted = parsed.strengthMg;
   // Form and packaging words are ignored; a query made only of them ("sirop",
-  // "comprimé") names no medicine and gets no candidate.
-  const normalized = withoutStopWords(normalize(parsed.text));
+  // "comprimé") names no medicine and gets no candidate. Age words have no
+  // weight on their own: they only choose between the variants of a product.
+  const { text: normalized, ages: queryAges } = splitAgeWords(
+    withoutStopWords(normalize(parsed.text)),
+  );
   if (normalized === '' || limit <= 0) return [];
   const queryTri = trigrams(normalized);
   const compactQuery = normalized.replaceAll(' ', '');
@@ -159,7 +190,8 @@ export function search(
     const strengthMatch =
       wanted !== undefined &&
       (name.entry.strengths ?? []).some((mg) => Math.abs(mg - wanted) < STRENGTH_EPSILON);
-    const match: Match = { score, name, strengthMatch };
+    const ageMatch = queryAges.some((age) => name.ages.has(age));
+    const match: Match = { score, name, strengthMatch, ageMatch };
     const known = bestById.get(name.entry.id);
     if (!known || compare(match, known) < 0) bestById.set(name.entry.id, match);
   }

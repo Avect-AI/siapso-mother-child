@@ -55,7 +55,12 @@ function sourcesOf(id: string): SourceRef[] {
   return rule(fixturePack(), id).sources.map((s) => ({ ...s }));
 }
 
-const note = { ruleId: MAX_DOSE_RULE, message: NOTE_MESSAGE, sources: sourcesOf(MAX_DOSE_RULE) };
+const note = {
+  kind: 'dose',
+  ruleId: MAX_DOSE_RULE,
+  message: NOTE_MESSAGE,
+  sources: sourcesOf(MAX_DOSE_RULE),
+};
 
 describe('the max-dose-not-computable note', () => {
   it('is a builtin message', () => {
@@ -84,7 +89,17 @@ describe('the max-dose-not-computable note', () => {
     expect(run({ items: [product('codeine-syrup', { unitsPerDay: 3 })] }).notes).toEqual([]);
   });
 
-  it('is given together with the C7 finding when the known part already exceeds', () => {
+  it('has a kind: dose for the max-dose note, contraception for the C9 note', () => {
+    const result = run({
+      items: [product('paracetamol-generic', { unitsPerDay: 2 }), product('asaq')],
+    });
+    expect(result.notes.map((n) => [n.ruleId, n.kind])).toEqual([
+      [CONTRACEPTION_RULE, 'contraception'],
+      [MAX_DOSE_RULE, 'dose'],
+    ]);
+  });
+
+  it('is not given when the same rule already triggered C7 (the finding is enough)', () => {
     const result = run({
       items: [
         product('paracetamol-1000', { unitsPerDay: 5 }),
@@ -94,7 +109,37 @@ describe('the max-dose-not-computable note', () => {
     expect(result.findings.filter((f) => f.check === 'C7')).toMatchObject([
       { ruleId: MAX_DOSE_RULE, items: [0, 1] },
     ]);
-    expect(result.notes).toStrictEqual([note]);
+    expect(result.notes).toEqual([]);
+  });
+
+  it('is still given for another substance whose rule did not trigger C7', () => {
+    const pack = packWithGeneric((p) => {
+      p.rules.push({
+        ...rule(p, MAX_DOSE_RULE),
+        id: 'fixture-extra-max-dose-quinine',
+        when: { subject: { substance: 'quinine' }, maxMgPerDay: 1000 },
+      });
+      const quinine = p.products.find((x) => x.id === 'quinine-300');
+      if (!quinine) throw new Error('No fixture product');
+      p.products.push({
+        ...quinine,
+        id: 'quinine-generic',
+        components: [{ substance: 'quinine' }],
+      });
+    });
+    const result = run(
+      {
+        items: [
+          product('paracetamol-1000', { unitsPerDay: 5 }),
+          product('quinine-generic', { unitsPerDay: 3 }),
+        ],
+      },
+      pack,
+    );
+    expect(result.findings.filter((f) => f.check === 'C7').map((f) => f.ruleId)).toEqual([
+      MAX_DOSE_RULE,
+    ]);
+    expect(result.notes.map((n) => n.ruleId)).toEqual(['fixture-extra-max-dose-quinine']);
   });
 
   it('follows the conditions of the rule: not given when the rule cannot apply', () => {

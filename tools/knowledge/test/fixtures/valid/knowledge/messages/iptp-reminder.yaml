@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: iptp-reminder
+fr:
+  fact: 'Demandez si le traitement préventif du paludisme a été donné.'
+  risk: 'Il protège la mère et le bébé.'
+en:
+  fact: 'Ask whether the preventive malaria treatment was given.'
+  risk: 'It protects the mother and the baby.'

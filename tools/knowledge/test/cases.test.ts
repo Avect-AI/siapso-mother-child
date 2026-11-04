@@ -239,7 +239,7 @@ describe('projectOf', () => {
         },
       ],
       reminders: [{ ruleId: 'iptp-reminder', message: 'iptp-reminder', sources: [] }],
-      notes: [{ ruleId: 'n', message: 'n', sources: [] }],
+      notes: [{ kind: 'dose', ruleId: 'n', message: 'n', sources: [] }],
       pack: { version: '0', date: '2026-01-01', clinicallyValidated: false },
     } satisfies Evaluation;
     expect(projectOf(evaluation as Evaluation)).toStrictEqual({

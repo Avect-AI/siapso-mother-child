@@ -224,6 +224,17 @@ function checkRules(content: Content): Problem[] {
         problem(rule, 'when.strength-above-mg', 'is only allowed with a substance subject'),
       );
     }
+    // Only the informational kinds: a content mistake in a risk rule must not
+    // silently switch the rule off when an unrelated item is present.
+    if (when['unless-with'] !== undefined && kind !== 'reminder' && kind !== 'contraception-info') {
+      problems.push(
+        problem(
+          rule,
+          'when.unless-with',
+          `is only allowed for a reminder or a contraception-info rule, not for a ${kind} rule (an exception must not silently disable a risk rule)`,
+        ),
+      );
+    }
     if (when['max-mg-per-day'] !== undefined && kind !== 'max-dose') {
       problems.push(
         problem(

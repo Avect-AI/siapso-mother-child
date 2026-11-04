@@ -16,13 +16,14 @@ describe('loadContent', () => {
       'clinically-validated': false,
     });
     expect(raw.rules.map((f) => f.file)).toEqual([
+      'knowledge/rules/iptp-reminder.yaml',
       'knowledge/rules/moringa-paracetamol.yaml',
       'knowledge/rules/moringa-toxic.yaml',
       'knowledge/rules/nsaid-pregnancy-from-20-weeks.yaml',
       'knowledge/rules/paracetamol-max-dose.yaml',
       'knowledge/rules/paracetamol-strong-pregnancy.yaml',
     ]);
-    expect(raw.messages).toHaveLength(9);
+    expect(raw.messages).toHaveLength(10);
     expect(raw.products.map((f) => f.file)).toEqual([
       'registry/products/ibuprofen-400.yaml',
       'registry/products/paracetamol-1000.yaml',

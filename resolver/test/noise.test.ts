@@ -83,9 +83,16 @@ describe('stop-words', () => {
       'injectable',
       'ampoule',
       'flacon',
-      'adultes',
-      'enfants',
-      'nourrissons',
+      'médicament',
+      'médicaments',
+      'médicamenteux',
+      'medicament',
+      'medicaments',
+      'medicamenteux',
+      'emplâtre',
+      'emplâtres',
+      'emplatre',
+      'emplatres',
       'tablet',
       'tablets',
       'capsules',
@@ -97,6 +104,13 @@ describe('stop-words', () => {
     ]) {
       expect(STOP_WORDS, word).toContain(word);
     }
+  });
+
+  it('do not include the age words, which are kept apart from the name', () => {
+    for (const word of ['adulte', 'adultes', 'enfant', 'enfants', 'nourrisson', 'nourrissons']) {
+      expect(STOP_WORDS, word).not.toContain(word);
+    }
+    expect(withoutStopWords(normalize('doliprane enfants'))).toBe('dolipran enfants');
   });
 
   it('are removed from a normalised text, accented or not, whatever the case', () => {
@@ -122,6 +136,13 @@ describe('stop-words', () => {
       'syrup',
       'sirop enfants',
       'comprimé pelliculé sécable',
+      'médicament',
+      'medicament',
+      'médicaments',
+      'médicamenteux',
+      'emplâtre',
+      'emplatre',
+      'emplâtres',
     ]) {
       expect(ids(query, { minScore: 0 }), query).toEqual([]);
     }

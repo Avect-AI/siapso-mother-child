@@ -114,7 +114,7 @@ Condition ids: `hiv-cotrimoxazole`, `tuberculosis-treatment`, `epilepsy-treatmen
 
 There is no resolver index file: the app builds the resolver index on the device from the products, plants and substances of the pack.
 
-The runtime format is typed by `@siapso/engine` (`Pack`); the build script is typed against it, so a mismatch fails type checking. The build is deterministic (no clock: version and date come from `pack.yaml`); building twice gives identical bytes. Budget: under 3 MB gzip. The build also generates `NOTICE` from `sources.yaml`.
+The runtime format is typed by `@siapso/engine` (`Pack`); the build script is typed against it, but only in part. Type-checked: the products and plants (each field is mapped explicitly), the metadata (`version`, `date`, `clinicallyValidated`), the sources, and the keys of a rule `when` (a test compares the keys of the rule schema with `RULE_WHEN_KEYS`, which the engine types by `RuleWhen`). Checked at runtime only, by `parsePack` on the built pack (the build fails, naming the file): the messages, the top level of a rule (these are cast to `Rule`, `Message` and `DangerSign` after the camelCase conversion), and the danger signs. So a change to one of those engine types needs the matching schema and tests to be updated by hand. The build is deterministic (no clock: version and date come from `pack.yaml`); building twice gives identical bytes. Budget: under 3 MB gzip. The build also generates `NOTICE` from `sources.yaml`.
 
 ## 5. Engine
 
@@ -151,10 +151,12 @@ interface Finding {
 interface Evaluation {
   level: Level;              // highest finding level
   findings: Finding[];       // sorted: level (danger first), then check, then rule id
-  reminders: Note[];         // C10, accompanied mode only
-  notes: Note[];             // C9 (accompanied mode only) and max-dose-not-computable (both modes)
+  reminders: Reminder[];     // C10, accompanied mode only
+  notes: Note[];             // C9 (kind 'contraception', accompanied mode only) and max-dose-not-computable (kind 'dose', both modes)
   pack: { version: string; date: string; clinicallyValidated: boolean };
 }
+interface Reminder { ruleId: string; message: string; sources: SourceRef[] }
+interface Note extends Reminder { kind: 'contraception' | 'dose' }  // the app filters on kind
 function evaluate(pack: Pack, context: EvaluationContext): Evaluation;
 
 type Subject = { substance: string } | { class: string } | { plant: string };
@@ -162,7 +164,7 @@ interface RuleWhen {
   subject?: Subject;                // required for every kind except reminder
   requires?: ({ with: Subject } | { condition: ConditionId })[]; // any-of
   unlessConditions?: ConditionId[]; // the rule does not apply when one is present
-  unlessWith?: Subject[];           // the rule does not apply when any item matches one
+  unlessWith?: Subject[];           // reminder and contraception-info only: the rule does not apply when any item matches one
   pregnancyWindows?: WindowId[];
   breastfeeding?: { babyAgeWeeksMax?: number; premature?: boolean };
   maxMgPerDay?: number;             // max-dose only
@@ -182,9 +184,9 @@ Level order: `danger` > `before-next-dose` > `next-contact` > `unknown`.
 | C4 herb-drug | Same as C3 with a plant subject and a medicine partner. |
 | C5 toxicity | Subject present, context conditions met; not capped by evidence. |
 | C6 duplicate | Two or more distinct items share a substance (or a class) that has a duplicate rule. |
-| C7 maximum dose | The known sum over items of strength-mg x units-per-day for the substance is greater than the rule threshold, even if some items lack a unit count or a strength (a known partial sum above the threshold is a certain excess); skipped only when the known sum is at or below the threshold. When the rule could apply and an item holding the substance has units per day but no strength, a note `max-dose-not-computable` is added (one per rule), never a level. |
+| C7 maximum dose | The known sum over items of strength-mg x units-per-day for the substance is greater than the rule threshold, even if some items lack a unit count or a strength (a known partial sum above the threshold is a certain excess); skipped only when the known sum is at or below the threshold. When the rule could apply and an item holding the substance has units per day but no strength, a note `max-dose-not-computable` (kind `dose`) is added (one per rule), never a level; it is not added when the same rule already triggered C7 (the finding is enough, and the note would contradict it). |
 | C8 condition | Subject present and one of the conditions (or the `with` item) present. |
-| C9 contraception | Produces a note, never a level. |
+| C9 contraception | Produces a note (kind `contraception`), never a level. |
 | C10 calendar | Produces a reminder, never a level. |
 | C11 danger signs | Each present sign gives a `danger` finding with the standard danger message. |
 | C12 not found | Each unrecognised item gives an `unknown` finding with the "not recognised" message. |
@@ -204,13 +206,15 @@ A product or plant with no finding gives an `unknown` finding: plants use their 
 ## 6. Resolver
 
 - Normalisation: lowercase, NFD with diacritics removed, every character that is not a letter or a digit (apostrophes, hyphens) to a space, collapse spaces, then per word: `ph` to `f`, `y` to `i`, a doubled consonant to one, a trailing `e` dropped in words of more than 4 letters. `kh` is not mapped to `x`: it would change the meaning of Wolof names (dakhar stays dakhar).
-- Stop-words: the words of pharmaceutical forms, packaging and age groups (comprime, pellicule, secable, effervescent, orodispersible, gelule, capsule, sirop, solution, suspension, buvable, poudre, sachet, granules, creme, pommade, gel, collyre, suppositoire, injectable, ampoule, flacon, adultes, enfants, nourrissons, and English tablet, capsule, syrup, cream and the like, accented or not) are removed from indexed names and from the query; a query made only of stop-words gets no candidate.
+- Stop-words: the words of pharmaceutical forms and packaging, and the generic words medicament and emplatre (comprime, pellicule, secable, effervescent, orodispersible, gelule, capsule, sirop, solution, suspension, buvable, poudre, sachet, granules, creme, pommade, gel, collyre, suppositoire, injectable, ampoule, flacon, medicament, medicaments, medicamenteux, emplatre, emplatres, and English tablet, capsule, syrup, cream and the like, accented or not) are removed from indexed names and from the query; a query made only of stop-words gets no candidate.
+- Age words (adulte, enfant, nourrisson and their plurals, and English adult, child, infant) are not stop-words but carry no match weight: they are removed from the name before scoring, and a query made only of them gets no candidate. A query word that matches an age word of a product makes that product's variant the candidate of its family ("doliprane enfant" returns a children's Doliprane first when the registry has one); a typed strength comes first.
+- Prefixes: a query is a prefix of a whole name from 3 characters, but a prefix of one word inside a multi-word name (and a fuzzy match on one word of it) only from 4, so that a short common word ("sel") does not reach a product through the start of a longer word.
 - Index: every brand, INN, French and English name, local name (with language) of products, substances and plants. A strength in the query ("1 g", "500", "0,5 g") is read apart and not matched as a name.
 - Families: one candidate per family (the brand of a branded product, the sorted substances of a generic, the plant), with the other products of the family as `variants`, strength ascending, for the confirm screen. A product whose name starts with its first brand is a branded product; the brands of a generic are other names of it, so an INN query still lists the generic first. In a family of generics, the product without strength stands for the family when the query gives none (`paracetamol-generic`, with variants `paracetamol-500-generic` and `paracetamol-1000-generic`); a typed strength selects the matching product.
 - Scoring: exact normalised match, then whole word, then prefix, then trigram similarity (Jaccard) combined with Damerau-Levenshtein (optimal string alignment) distance normalised by length; ties broken by a matching strength, single-substance before combination, entry priority (product brands before substances) and then by id for determinism.
 - Output: at most 3 candidates with kind, id, family, variants, display name, detail, matched name and its language, score. Candidates below 0.55, or below 0.8 times the best candidate's score, are dropped; with no candidate left the app offers "Produit introuvable".
 - Never decides a level.
-- Evaluation: `eval/resolver/queries.yaml` (query, expected ids, kind of query: brand, inn, misspelling, local-fr, local-wo, voice-like transcription, and noise, a form or colour alone that must get no candidate); `pnpm eval:resolver` reports top-1 and top-3 accuracy and p95 latency; the CI fails below the recorded baseline, or on an empty query file, an invalid baseline or a measure that is not a number.
+- Evaluation: `eval/resolver/queries.yaml` (query, expected ids, kind of query: brand, inn, misspelling, local-fr, local-wo, voice-like transcription, and noise, a form, a colour, a generic word or a short common word alone that must get no candidate); `pnpm eval:resolver` reports top-1 and top-3 accuracy and p95 latency; the CI fails below the recorded baseline, or on an empty query file, an invalid baseline or a measure that is not a number.
 - Target: under 50 ms per query on an entry-level phone (measured in CI on the runner with a 4x CPU slowdown factor applied to the budget: 12 ms on the runner).
 
 ## 7. App

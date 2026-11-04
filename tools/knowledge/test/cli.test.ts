@@ -43,7 +43,7 @@ describe('siapso-pack check', () => {
     const result = await run(['check', '--root', FIXTURE_ROOT, '--schemas', REPO_ROOT]);
     expect(result.err).toEqual([]);
     expect(result.code).toBe(0);
-    expect(result.out.join('\n')).toMatch(/5 rules/);
+    expect(result.out.join('\n')).toMatch(/6 rules/);
   });
 
   it('checks the repository content by default', async () => {

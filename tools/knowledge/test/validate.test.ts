@@ -403,7 +403,7 @@ describe('validateContent', () => {
     });
 
     it('rejects an unknown subject in unless-with, and an empty unless-with', async () => {
-      const raw = patch(await fresh(), 'rules', 'moringa-paracetamol', (d) => {
+      const raw = patch(await fresh(), 'rules', 'iptp-reminder', (d) => {
         sub(d, 'when')['unless-with'] = [{ substance: 'ibuprofen' }, { class: 'nsaidz' }];
       });
       patch(raw, 'rules', NSAID, (d) => {
@@ -411,7 +411,7 @@ describe('validateContent', () => {
       });
       const problems = validateContent(raw);
       expectProblem(problems, {
-        file: 'knowledge/rules/moringa-paracetamol.yaml',
+        file: 'knowledge/rules/iptp-reminder.yaml',
         path: 'when.unless-with[1].class',
         message: /unknown class "nsaidz"/,
       });
@@ -419,6 +419,31 @@ describe('validateContent', () => {
       expect(
         problems.filter((p) => p.path === 'when.unless-with[0].substance'),
         'a known substance is accepted',
+      ).toEqual([]);
+    });
+
+    it('rejects unless-with on any kind except reminder and contraception-info', async () => {
+      const raw = patch(await fresh(), 'rules', NSAID, (d) => {
+        sub(d, 'when')['unless-with'] = [{ substance: 'ibuprofen' }];
+      });
+      patch(raw, 'rules', 'moringa-paracetamol', (d) => {
+        sub(d, 'when')['unless-with'] = [{ substance: 'ibuprofen' }];
+      });
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: RULE,
+        path: 'when.unless-with',
+        message:
+          /only allowed for a reminder or a contraception-info rule, not for a pregnancy rule/,
+      });
+      expectProblem(problems, {
+        file: 'knowledge/rules/moringa-paracetamol.yaml',
+        path: 'when.unless-with',
+        message: /not for a herb-drug rule/,
+      });
+      expect(
+        problems.filter((p) => p.file.endsWith('iptp-reminder.yaml')),
+        'a reminder may use it',
       ).toEqual([]);
     });
 

@@ -38,7 +38,8 @@ describe('buildPack', () => {
 
     const herb = pack.rules.find((r) => r.id === 'moringa-paracetamol');
     expect(herb?.when.unlessConditions).toEqual(['sickle-cell']);
-    expect(herb?.when.unlessWith).toEqual([{ substance: 'ibuprofen' }]);
+    const reminder = pack.rules.find((r) => r.id === 'iptp-reminder');
+    expect(reminder?.when.unlessWith).toEqual([{ substance: 'ibuprofen' }]);
     const strong = pack.rules.find((r) => r.id === 'paracetamol-strong-pregnancy');
     expect(strong?.when.strengthAboveMg).toBe(500);
     const dose = pack.rules.find((r) => r.id === 'paracetamol-max-dose');
@@ -127,6 +128,7 @@ describe('buildPack', () => {
       expect(ids).toEqual([...ids].sort());
     }
     expect(pack.rules.map((r) => r.id)).toEqual([
+      'iptp-reminder',
       'moringa-paracetamol',
       'moringa-toxic',
       'nsaid-pregnancy-from-20-weeks',

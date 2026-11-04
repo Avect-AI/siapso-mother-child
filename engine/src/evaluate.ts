@@ -7,7 +7,17 @@ import { entryKey } from './match.js';
 import { applyRule, CHECK_OF_KIND, uncomputableDoseItems } from './rules.js';
 import type { RuleMatch, RuleScope } from './rules.js';
 import { BUILTIN_MESSAGES } from './types.js';
-import type { CheckId, Evaluation, EvaluationContext, Finding, Note, Pack, Rule } from './types.js';
+import type {
+  CheckId,
+  Evaluation,
+  EvaluationContext,
+  Finding,
+  Note,
+  NoteKind,
+  Pack,
+  Reminder,
+  Rule,
+} from './types.js';
 import { windowsCovered } from './windows.js';
 
 const CHECK_ORDER: readonly CheckId[] = [
@@ -59,11 +69,15 @@ function ruleFinding(rule: Rule, match: RuleMatch): Finding {
   return finding;
 }
 
-function noteOf(rule: Rule, message: string = rule.message): Note {
-  return { ruleId: rule.id, message, sources: copySources(rule.sources) };
+function reminderOf(rule: Rule): Reminder {
+  return { ruleId: rule.id, message: rule.message, sources: copySources(rule.sources) };
 }
 
-function byRuleId(a: Note, b: Note): number {
+function noteOf(rule: Rule, kind: NoteKind, message: string = rule.message): Note {
+  return { kind, ...reminderOf(rule), message };
+}
+
+function byRuleId(a: Reminder, b: Reminder): number {
   return compareStrings(a.ruleId, b.ruleId);
 }
 
@@ -101,17 +115,19 @@ export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
   };
 
   const findings: Finding[] = [];
-  const reminders: Note[] = [];
+  const reminders: Reminder[] = [];
   const notes: Note[] = [];
   for (const rule of pack.rules) {
-    // C7 is a level check: a total it cannot compute gives a note, never a level.
-    if (uncomputableDoseItems(rule, scope).length > 0) {
-      notes.push(noteOf(rule, BUILTIN_MESSAGES.maxDoseNotComputable));
-    }
     const match = applyRule(rule, scope);
+    // C7 is a level check: a total it cannot compute gives a note, never a
+    // level. When the rule already triggered C7 the finding is enough, and the
+    // note would contradict it.
+    if (!match && uncomputableDoseItems(rule, scope).length > 0) {
+      notes.push(noteOf(rule, 'dose', BUILTIN_MESSAGES.maxDoseNotComputable));
+    }
     if (!match) continue;
-    if (rule.kind === 'reminder') reminders.push(noteOf(rule));
-    else if (rule.kind === 'contraception-info') notes.push(noteOf(rule));
+    if (rule.kind === 'reminder') reminders.push(reminderOf(rule));
+    else if (rule.kind === 'contraception-info') notes.push(noteOf(rule, 'contraception'));
     else findings.push(ruleFinding(rule, match));
   }
 

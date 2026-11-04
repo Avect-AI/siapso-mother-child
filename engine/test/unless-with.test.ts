@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 // when.unlessWith: a rule does not apply when an item matches one of its subjects.
 import { describe, expect, it } from 'vitest';
-import { evaluate, PackError, parsePack, RULE_WHEN_KEYS } from '../src/index.js';
+import { evaluate, PackError, parsePack, RULE_KINDS, RULE_WHEN_KEYS } from '../src/index.js';
 import type { CheckedItem, Evaluation, EvaluationContext, Pack, Rule } from '../src/index.js';
 import { deepFreeze } from './fixtures/freeze.js';
 import { fixturePack } from './fixtures/pack.js';
 
 const REMINDER_RULE = 'fixture-reminder-iptp';
-const NSAID_RULE = 'fixture-pregnancy-nsaid-20-plus';
+const CONTRACEPTION_RULE = 'fixture-contraception-info-artesunate';
 const PREGNANT = { weeksMin: 25, weeksMax: 25, precision: 'exact' as const };
 
 function run(context: Partial<EvaluationContext>, pack: Pack = fixturePack()): Evaluation {
@@ -58,27 +58,26 @@ describe('when.unlessWith in evaluate', () => {
     expect(run({ items }).reminders.map((r) => r.ruleId)).toEqual([REMINDER_RULE]);
   });
 
-  it('drops a finding when an item matches a class or a plant listed in unlessWith', () => {
+  it('drops a note when an item matches a class or a plant listed in unlessWith', () => {
     const byClass = fixturePack();
-    rule(byClass, NSAID_RULE).when.unlessWith = [{ class: 'antimalarial' }];
-    const items = [product('ibuprofen-400')];
-    expect(run({ items }, byClass).findings.map((f) => f.ruleId)).toEqual([NSAID_RULE]);
-    expect(
-      run({ items: [...items, product('quinine-300')] }, byClass).findings.map((f) => f.ruleId),
-    ).not.toContain(NSAID_RULE);
+    rule(byClass, CONTRACEPTION_RULE).when.unlessWith = [{ class: 'nsaid' }];
+    const items = [product('asaq')];
+    expect(run({ items }, byClass).notes.map((n) => n.ruleId)).toEqual([CONTRACEPTION_RULE]);
+    expect(run({ items: [...items, product('ibuprofen-400')] }, byClass).notes).toEqual([]);
 
     const byPlant = fixturePack();
-    rule(byPlant, NSAID_RULE).when.unlessWith = [{ substance: 'codeine' }, { plant: 'clay' }];
+    rule(byPlant, CONTRACEPTION_RULE).when.unlessWith = [
+      { substance: 'codeine' },
+      { plant: 'clay' },
+    ];
     const withClay = run({ items: [...items, { ref: { kind: 'plant', id: 'clay' } }] }, byPlant);
-    expect(withClay.findings.map((f) => f.ruleId)).not.toContain(NSAID_RULE);
+    expect(withClay.notes).toEqual([]);
   });
 
   it('applies to the subject item itself: an item matching unlessWith cancels the rule', () => {
     const pack = fixturePack();
-    rule(pack, NSAID_RULE).when.unlessWith = [{ substance: 'ibuprofen' }];
-    expect(run({ items: [product('ibuprofen-400')] }, pack).findings).toMatchObject([
-      { check: 'no-finding', items: [0] },
-    ]);
+    rule(pack, CONTRACEPTION_RULE).when.unlessWith = [{ substance: 'artesunate' }];
+    expect(run({ items: [product('asaq')] }, pack).notes).toEqual([]);
   });
 });
 
@@ -112,5 +111,27 @@ describe('when.unlessWith in parsePack', () => {
       expect(message, JSON.stringify(value)).toMatch(/fixture-reminder-iptp/);
       expect(message, JSON.stringify(value)).toMatch(pattern);
     }
+  });
+
+  it('is refused on every kind except reminder and contraception-info, naming the rule', () => {
+    const allowed = ['reminder', 'contraception-info'];
+    const base = fixturePack();
+    const kinds = new Set(base.rules.map((r) => r.kind));
+    for (const kind of RULE_KINDS) {
+      const pack = fixturePack();
+      const target = pack.rules.find((r) => r.kind === kind);
+      if (!target) continue;
+      target.when.unlessWith = [{ substance: 'sulfamethoxazole' }];
+      if (allowed.includes(kind)) {
+        expect(() => parsePack(pack), kind).not.toThrow();
+      } else {
+        const message = errorOf(pack).message;
+        expect(message, kind).toContain(target.id);
+        expect(message, kind).toMatch(
+          /unlessWith.*only allowed for a reminder or a contraception-info/,
+        );
+      }
+    }
+    expect(kinds.has('pregnancy') && kinds.has('max-dose') && kinds.has('herb-drug')).toBe(true);
   });
 });

@@ -76,7 +76,7 @@ describe('writePack', () => {
         classes: 1,
         products: 2,
         plants: 1,
-        rules: 5,
+        rules: 6,
         dangerSigns: 2,
         sources: 4,
       },

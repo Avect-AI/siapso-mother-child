@@ -449,6 +449,7 @@ describe('C9 contraception-info', () => {
     const result = run({ items: [product('asaq')] });
     expect(result.notes).toStrictEqual([
       {
+        kind: 'contraception',
         ruleId: CONTRACEPTION_RULE,
         message: CONTRACEPTION_RULE,
         sources: ruleSources(CONTRACEPTION_RULE),

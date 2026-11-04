@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { normalize, withoutStopWords } from './normalize.js';
+import { normalize, splitAgeWords, withoutStopWords } from './normalize.js';
 import { trigrams } from './trigrams.js';
 import type { IndexEntry, NameLang, ResolverIndex } from './types.js';
 
@@ -21,6 +21,11 @@ export interface CompiledName {
   compactTri: Set<string>;
   /** Words of at least 2 characters, only for names of several words. */
   words: CompiledWord[];
+  /**
+   * The age groups (adult, child, infant) named by any name of the product
+   * this name belongs to. The age words are not part of `norm`.
+   */
+  ages: ReadonlySet<string>;
 }
 
 export interface CompiledIndex {
@@ -74,11 +79,21 @@ const compiled = new WeakMap<ResolverIndex, CompiledIndex>();
 /** Builds the index. The input order does not matter: the results are sorted. */
 export function buildIndex(entries: IndexEntry[]): ResolverIndex {
   const names: CompiledName[] = [];
+  // Age groups per product id: a product has several names (the age word is in
+  // the full name, not in the brand), and an INN entry shares the id.
+  const agesById = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const ages = agesById.get(entry.id) ?? new Set<string>();
+    for (const name of entry.names) {
+      for (const age of splitAgeWords(withoutStopWords(normalize(name.text))).ages) ages.add(age);
+    }
+    agesById.set(entry.id, ages);
+  }
   for (const entry of entries) {
     for (const name of entry.names) {
-      // Form and packaging words are not part of the matching; a name made
-      // only of them can never be matched (such a query gets no candidate).
-      const norm = withoutStopWords(normalize(name.text));
+      // Form, packaging and age words are not part of the matching; a name
+      // made only of them can never be matched (such a query gets no candidate).
+      const norm = splitAgeWords(withoutStopWords(normalize(name.text))).text;
       if (norm === '') continue;
       const compact = norm.replaceAll(' ', '');
       const parts = norm.split(' ');
@@ -96,6 +111,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
                 .filter((part) => part.length >= MIN_ABBREVIATION_LENGTH)
                 .map((part) => ({ norm: part, tri: trigrams(part) }))
             : [],
+        ages: agesById.get(entry.id) ?? new Set<string>(),
       });
     }
   }

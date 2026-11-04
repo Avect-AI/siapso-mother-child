@@ -209,6 +209,14 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
     list(v, `${where}.unlessConditions`, (item, at) => oneOf(item, CONDITION_IDS, at));
   });
   optional(o.unlessWith, (v) => {
+    // Only the informational kinds: a content mistake in a risk rule must not
+    // silently switch the rule off when an unrelated item is present.
+    if (kind !== 'reminder' && kind !== 'contraception-info') {
+      fail(
+        `${where}.unlessWith`,
+        `is only allowed for a reminder or a contraception-info rule, not for a ${kind} rule`,
+      );
+    }
     if (array(v, `${where}.unlessWith`).length === 0) {
       fail(`${where}.unlessWith`, 'must not be empty (omit it for no exception)');
     }
