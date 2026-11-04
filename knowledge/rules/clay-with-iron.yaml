@@ -24,7 +24,8 @@ sources:
     accessed: 2026-11-03
     quote: 'diminuent la résorption digestive de certains autres médicaments ingérés simultanément.'
   - source: ansm-thesaurus
-    locator: 'Thésaurus des interactions médicamenteuses (ANSM, 15 septembre 2023), TOPIQUES GASTRO-INTESTINAUX, ANTIACIDES ET ADSORBANTS (substances of the class)'
+    # The substances of the class, which the quote lists.
+    locator: 'Thésaurus des interactions médicamenteuses (ANSM, 15 septembre 2023), TOPIQUES GASTRO-INTESTINAUX, ANTIACIDES ET ADSORBANTS'
     url: 'https://ansm.sante.fr/uploads/2024/06/07/20230915-thesaurus-interactions-medicamenteuses-septembre-2023.pdf'
     accessed: 2026-11-03
     quote: 'hydrotalcite, kaolin lourd, lanthane'

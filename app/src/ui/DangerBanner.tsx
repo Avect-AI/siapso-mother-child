@@ -1,32 +1,58 @@
 // SPDX-License-Identifier: MIT
+import { useId } from 'react';
 import { Button } from './Button.js';
 import { LevelIcon } from './LevelIcon.js';
+import type { HeadingLevel } from './ResultCard.js';
 
 /**
- * A danger sign is present: the danger field across the screen, announced to
- * screen readers. The level is named in text beside its octagon, then the
- * sentence, then one action. When the banner shows, its action is the
+ * An instruction longer than this many characters takes the title size, not
+ * the headline size: "Allez au poste de santé maintenant." stays a headline, a
+ * rule's two-sentence instruction stays readable (and is still the banner's
+ * largest line).
+ */
+const LONG_INSTRUCTION = 40;
+
+/**
+ * A danger is present: the danger field across the screen. The level is named
+ * in text beside its octagon, then the instruction (`title`, the banner's
+ * largest line), then one action. When the banner shows, its action is the
  * screen's only primary action; every other button on the screen is secondary.
+ *
+ * The level and the instruction are an alert region: screen readers say them
+ * when the banner appears, in the words shown (so a change of language says
+ * the new words), and read them once when going through the page, since no
+ * hidden copy sits beside them. The button stays outside the region.
  */
 export function DangerBanner({
   levelLabel,
   title,
   action,
+  headingLevel,
   onAction,
 }: {
   levelLabel: string;
   title: string;
   action: string;
+  /** The instruction's heading level, from the page outline. */
+  headingLevel: HeadingLevel;
   onAction: () => void;
 }) {
+  const titleId = useId();
+  const Heading = `h${String(headingLevel)}` as 'h2' | 'h3' | 'h4';
+  const titleClass =
+    title.length > LONG_INSTRUCTION
+      ? 'danger-banner__title danger-banner__title--long'
+      : 'danger-banner__title';
   return (
-    <div className="danger-banner" role="alert">
-      <div className="danger-banner__head">
+    <div className="danger-banner" role="group" aria-labelledby={titleId}>
+      <div className="danger-banner__head" role="alert">
         <p className="danger-banner__level">
           <LevelIcon level="danger" size={48} />
           <span>{levelLabel}</span>
-        </p>
-        <h2 className="danger-banner__title">{title}</h2>
+        </p>{' '}
+        <Heading id={titleId} className={titleClass}>
+          {title}
+        </Heading>
       </div>
       <Button variant="secondary" className="danger-banner__action" onClick={onAction}>
         {action}

@@ -17,7 +17,8 @@ evidence: C
 message: amodiaquine-with-antiretrovirals
 sources:
   - source: literature
-    locator: 'German P, Greenhouse B, Coates C, et al. Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz. Clin Infect Dis. 2007 (letter, no abstract). doi:10.1086/511882. PMID 17304470'
+    # A letter, with no abstract.
+    locator: 'German P, Greenhouse B, Coates C, et al. Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz. Clin Infect Dis. 2007. doi:10.1086/511882. PMID 17304470'
     url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17304470&retmode=xml'
     accessed: 2026-11-03
     quote: 'Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz.'
@@ -27,7 +28,8 @@ sources:
     accessed: 2026-11-03
     quote: 'Artesunate plus amodiaquine was highly efficacious for malaria treatment in HIV-infected children but was associated with a high risk of neutropenia, especially in the context of concurrent antiretroviral use.'
   - source: who
-    locator: 'WHO guidelines for malaria, 13 August 2025: artesunate-amodiaquine in people living with HIV (fact only)'
+    # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+    locator: 'WHO guidelines for malaria, 13 August 2025: artesunate-amodiaquine in people living with HIV'
     url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
     accessed: 2026-11-03
 review:

@@ -3,11 +3,20 @@ import type { Level } from '@siapso/engine';
 import { useId, type ReactNode } from 'react';
 import { LevelIcon } from './LevelIcon.js';
 
+/** A heading level below the screen's h1: the caller knows the page outline. */
+export type HeadingLevel = 2 | 3 | 4;
+
 /**
  * One finding, framed in its level: the level's field carries the pictogram
  * and the level name as a caption, and wraps a white reserve with the product
- * name and the content. Children are the fields, always in the same order:
- * risk, who to show and when, then source, evidence and version.
+ * name and the fields, always in the same order: the reading fields
+ * (children: the risk), then who to show and when (the clearest line of the
+ * reserve), then the details for the health worker (`details`), then the
+ * source, evidence and version lines (`meta`).
+ *
+ * The heading says the level before the product, so a screen reader that
+ * jumps from heading to heading hears both; the caption, the same words, is
+ * left to the eye. The card is named by its heading.
  *
  * The card is a size container (it trims its padding when narrow), so give it
  * a width from its parent: a block, a grid track or a stretched flex item. In
@@ -17,27 +26,42 @@ export function ResultCard({
   level,
   levelLabel,
   title,
+  headingLevel,
+  orientation,
+  details,
+  meta,
   children,
 }: {
   level: Level;
   levelLabel: string;
-  title: string;
+  /** The product names, as confirmed (text, or names set on their own lines). */
+  title: ReactNode;
+  /** The product name's heading level, from the page outline. */
+  headingLevel: HeadingLevel;
+  /** Who to show and when. */
+  orientation: string;
+  /** More for the health worker (fact, detailed risk), after the orientation. */
+  details?: ReactNode;
+  /** Source, evidence and version lines, last. */
+  meta?: ReactNode;
   children: ReactNode;
 }) {
-  const id = useId();
-  const levelId = `${id}level`;
-  const titleId = `${id}title`;
+  const titleId = useId();
+  const Heading = `h${String(headingLevel)}` as 'h2' | 'h3' | 'h4';
   return (
-    <article className={`result-card level--${level}`} aria-labelledby={`${levelId} ${titleId}`}>
-      <p className="result-card__level">
+    <article className={`result-card level--${level}`} aria-labelledby={titleId}>
+      <p className="result-card__level" aria-hidden="true">
         <LevelIcon level={level} size={32} />
-        <span id={levelId}>{levelLabel}</span>
+        <span>{levelLabel}</span>
       </p>
       <div className="result-card__body">
-        <h2 id={titleId} className="result-card__title">
-          {title}
-        </h2>
+        <Heading id={titleId} className="result-card__title">
+          <span className="sr-only">{levelLabel}.</span> {title}
+        </Heading>
         {children}
+        <p className="result-card__orientation">{orientation}</p>
+        {details === undefined ? null : <div className="result-card__details">{details}</div>}
+        {meta === undefined ? null : <div className="result-card__meta">{meta}</div>}
       </div>
     </article>
   );

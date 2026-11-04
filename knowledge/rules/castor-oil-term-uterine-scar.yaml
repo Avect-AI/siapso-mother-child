@@ -21,7 +21,8 @@ sources:
     accessed: 2026-11-03
     quote: 'a portion of the umbilical cord was protruding from a 2-cm rupture of the lower transverse scar'
   - source: literature
-    locator: 'Bayoumi YA, Alalfy M, Sharkawy M, et al. Castor oil for labor initiation in women with a previous cesarean section: a double-blind randomized study. J Matern Fetal Neonatal Med. 2022. doi:10.1080/14767058.2021.2008350. PMID 34886746 (no harm seen in 70 women; too small for a rare rupture)'
+    # No harm was seen in 70 women; the study was too small to see a rare rupture.
+    locator: 'Bayoumi YA, Alalfy M, Sharkawy M, et al. Castor oil for labor initiation in women with a previous cesarean section: a double-blind randomized study. J Matern Fetal Neonatal Med. 2022. doi:10.1080/14767058.2021.2008350. PMID 34886746'
     url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=34886746&retmode=xml'
     accessed: 2026-11-03
     quote: 'Castor oil appears to be an effective, low-cost, and non-harmful method for the initiation of labor in patients with a previous cesarean section.'

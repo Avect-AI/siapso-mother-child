@@ -151,33 +151,36 @@ function SampleProducts() {
           level="before-next-dose"
           levelLabel="À montrer avant la prochaine prise"
           title={'Ibuprofène 400 mg, comprimé'}
+          headingLevel={3}
+          orientation="Montrez ce produit à la sage-femme, à l’infirmier ou au pharmacien avant la prochaine prise."
+          meta={<p>Source&nbsp;: exemple fictif. Niveau de preuve A&nbsp;: peut provoquer</p>}
         >
           <p>Ce médicament peut abîmer les reins du bébé.</p>
-          <p className="orientation">
-            Montrez ce produit à la sage-femme, à l’infirmier ou au pharmacien avant la prochaine
-            prise.
-          </p>
-          <p className="meta">Source&nbsp;: exemple fictif. Preuve A&nbsp;: peut provoquer.</p>
         </ResultCard>
         <ResultCard
           level="next-contact"
           levelLabel="À signaler au prochain contact"
           title="Sirop contre la toux à la codéine"
+          headingLevel={3}
+          orientation="Dites-le à la sage-femme à la prochaine visite."
+          meta={
+            <p>
+              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas graves ont été
+              rapportés
+            </p>
+          }
         >
           <p>Pris longtemps en fin de grossesse, ce sirop peut gêner le bébé à la naissance.</p>
-          <p className="orientation">Dites-le à la sage-femme à la prochaine visite.</p>
-          <p className="meta">
-            Source&nbsp;: exemple fictif. Preuve C&nbsp;: des cas graves ont été rapportés.
-          </p>
         </ResultCard>
         <ResultCard
           level="unknown"
           levelLabel="On ne sait pas"
           title="Poudre achetée au marché (nom inconnu)"
+          headingLevel={3}
+          orientation="Montrez-le à votre sage-femme ou au pharmacien."
+          meta={<p>Produit absent de la base.</p>}
         >
           <p>Nous n’avons pas d’information fiable. Cela ne veut pas dire que c’est sans risque.</p>
-          <p className="orientation">Montrez-le à votre sage-femme ou au pharmacien.</p>
-          <p className="meta">Produit absent de la base.</p>
         </ResultCard>
         <Closing />
         <Button variant="primary" className="screen__action">
@@ -199,18 +202,27 @@ function SampleDanger() {
         </div>
         <DangerBanner
           levelLabel="Signe de danger"
-          title="Fièvre. Allez au poste de santé maintenant."
-          action="Appeler le poste de santé"
+          title="Allez au poste de santé maintenant."
+          action="Voir qui appeler"
+          headingLevel={3}
           onAction={noop}
         />
-        <ResultCard level="danger" levelLabel="Signe de danger" title="Huile de ricin">
+        <ResultCard
+          level="danger"
+          levelLabel="Signe de danger"
+          title="Huile de ricin"
+          headingLevel={3}
+          orientation="Montrez ce produit à la sage-femme aujourd’hui."
+          meta={
+            <p>
+              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas graves ont été
+              rapportés
+            </p>
+          }
+        >
           <p>
             Avec une cicatrice sur l’utérus, cette huile peut déclencher des contractions trop
             fortes.
-          </p>
-          <p className="orientation">Allez au poste de santé maintenant.</p>
-          <p className="meta">
-            Source&nbsp;: exemple fictif. Preuve C&nbsp;: des cas graves ont été rapportés.
           </p>
         </ResultCard>
         <Closing />
@@ -274,47 +286,49 @@ export function Gallery() {
         <section className="gallery__section" aria-labelledby="gallery-cards">
           <h2 id="gallery-cards">Result cards in English, with long text</h2>
           <div className="gallery__grid">
-            <ResultCard level="danger" levelLabel="Danger sign" title="Castor oil">
+            <ResultCard
+              level="danger"
+              levelLabel="Danger sign"
+              title="Castor oil"
+              headingLevel={3}
+              orientation="Show this product to the midwife today."
+              meta={<p>Source: fictitious example. Evidence level C: serious cases reported</p>}
+            >
               <p>
                 With a scar on the uterus, this oil can bring on contractions that are too strong.
-              </p>
-              <p className="orientation">Go to the health post now.</p>
-              <p className="meta">
-                Source: fictitious example. Evidence C: serious cases reported.
               </p>
             </ResultCard>
             <ResultCard
               level="before-next-dose"
               levelLabel="Show before the next dose"
               title={'Ibuprofen 400 mg, tablet'}
+              headingLevel={3}
+              orientation="Show this product to the midwife, the nurse or the pharmacist before the next dose."
+              meta={<p>Source: fictitious example. Evidence level A: can cause</p>}
             >
               <p>This medicine can harm the baby’s kidneys.</p>
-              <p className="orientation">
-                Show this product to the midwife, the nurse or the pharmacist before the next dose.
-              </p>
-              <p className="meta">Source: fictitious example. Evidence A: can cause.</p>
             </ResultCard>
             <ResultCard
               level="next-contact"
               levelLabel="Mention at the next contact"
               title="Cough syrup with codeine"
+              headingLevel={3}
+              orientation="Tell the midwife at the next visit."
+              meta={<p>Source: fictitious example. Evidence level C: serious cases reported</p>}
             >
               <p>
                 Taken for a long time late in pregnancy, this syrup can affect the baby at birth.
-              </p>
-              <p className="orientation">Tell the midwife at the next visit.</p>
-              <p className="meta">
-                Source: fictitious example. Evidence C: serious cases reported.
               </p>
             </ResultCard>
             <ResultCard
               level="unknown"
               levelLabel="We do not know"
               title="Powder bought at the market in a small paper bag, local name not known"
+              headingLevel={3}
+              orientation="Show it to your midwife or pharmacist."
+              meta={<p>Product not in the knowledge base.</p>}
             >
               <p>We have no reliable information. This does not mean it is risk-free.</p>
-              <p className="orientation">Show it to your midwife or pharmacist.</p>
-              <p className="meta">Product not in the knowledge base.</p>
             </ResultCard>
           </div>
         </section>
@@ -323,8 +337,9 @@ export function Gallery() {
           <h2 id="gallery-banner">Danger banner</h2>
           <DangerBanner
             levelLabel="Danger sign"
-            title="Fever. Go to the health post now."
-            action="Call the health post"
+            title="Go to the health post now."
+            action="See who to call"
+            headingLevel={3}
             onAction={noop}
           />
         </section>

@@ -50,6 +50,8 @@
   --font-weight-heading: 800;
   --line-height-body: 1.5;
   --line-height-tight: 1.2;
+  /* A sentence of several lines at title size: who to show and when. */
+  --line-height-snug: 1.3;
 
   /* Space: a 4 px base */
   --space-1: 0.25rem;

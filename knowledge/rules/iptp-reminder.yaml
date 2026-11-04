@@ -25,7 +25,8 @@ sources:
     accessed: 2026-11-03
     quote: 'successful prevention of these infections reduces the risk of severe maternal anaemia by 38%, low birthweight by 43%, and perinatal mortality by 27% among paucigravidae'
   - source: who
-    locator: 'WHO guidelines for malaria, 13 August 2025: intermittent preventive treatment of malaria in pregnancy (fact only)'
+    # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+    locator: 'WHO guidelines for malaria, 13 August 2025: intermittent preventive treatment of malaria in pregnancy'
     url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
     accessed: 2026-11-03
 review:

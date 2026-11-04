@@ -157,6 +157,17 @@ describe('useCheckStore', () => {
     expect(result.current.changed?.kind).toBe('updated');
   });
 
+  it('lists a known strength apart when she said it is another box', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const unknown: CheckedItem = { ref: EFFERALGAN_1000, strengthUnknown: true, unitsPerDay: 2 };
+    act(() => {
+      result.current.add(unknown, { family: EFFERALGAN });
+      result.current.add({ ref: EFFERALGAN_500 }, { family: EFFERALGAN, anotherBox: true });
+    });
+    expect(result.current.items).toEqual([unknown, { ref: EFFERALGAN_500 }]);
+    expect(result.current.changed?.kind).toBe('added');
+  });
+
   it('refuses a strengthUnknown that is not a boolean, as the engine does', () => {
     const { result } = renderHook(() => useCheckStore());
     expect(() => {

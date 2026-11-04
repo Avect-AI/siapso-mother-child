@@ -4,9 +4,10 @@ fr:
   fact: "L'huile de ricin est un laxatif puissant, utilisé traditionnellement pour faire venir l'accouchement, et l'utérus porte une cicatrice (césarienne ou autre opération)."
   risk: "En fin de grossesse, avec un utérus déjà opéré, un cas grave de rupture de la cicatrice de l'utérus a été rapporté après la prise d'huile de ricin."
   risk-detail: "Un cas publié décrit une rupture de la cicatrice de césarienne peu après la prise d'huile de ricin à terme. Une petite étude chez des femmes ayant eu une césarienne n'a pas vu de problème, mais elle était trop petite pour voir un événement rare. Les données sur les complications graves manquent. Une rupture de l'utérus met la vie de la mère et du bébé en danger."
-  orientation: "Montrez ces produits à la sage-femme aujourd'hui. En cas de saignement ou de douleur très forte, allez immédiatement au centre de santé."
+  # "ce que vous prenez": fits one product or several.
+  orientation: "Montrez ce que vous prenez à la sage-femme aujourd'hui. En cas de saignement ou de douleur très forte, allez immédiatement au centre de santé."
 en:
   fact: 'Castor oil is a strong laxative, traditionally used to bring on labour, and the womb has a scar (caesarean section or other surgery).'
   risk: 'Late in pregnancy, with a womb that has had surgery, a serious case of rupture of the womb scar has been reported after castor oil.'
   risk-detail: 'A published case describes a rupture of the caesarean scar shortly after castor oil at term. A small study in women with a previous caesarean saw no problem, but it was too small to see a rare event. Data on serious complications are missing. A rupture of the womb puts the life of the mother and the baby in danger.'
-  orientation: 'Show these products to the midwife today. If there is bleeding or very strong pain, go to the health centre immediately.'
+  orientation: 'Show what you are taking to the midwife today. If there is bleeding or very strong pain, go to the health centre immediately.'

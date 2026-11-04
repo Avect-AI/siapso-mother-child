@@ -5,6 +5,7 @@ import { cleanup } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach } from 'vitest';
 import { closeAppDb } from '../data/db.js';
+import { forgetVisit } from '../data/history.js';
 
 // Testing Library cleans up by itself only when Vitest globals are on; they
 // are off here, so unmount after every test and start each from an empty page
@@ -14,5 +15,7 @@ afterEach(() => {
   cleanup();
   if (typeof window !== 'undefined') window.history.replaceState(null, '', '/');
   closeAppDb();
+  // Each test is a new visit: the history records every check again.
+  forgetVisit();
   globalThis.indexedDB = new IDBFactory();
 });

@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: CC-BY-4.0
+# One finding per sign: the risk names "this sign", so it reads on its own in
+# woman mode, where the fact is not shown.
 id: danger-sign
 fr:
-  fact: 'Ces signes sont des signes de danger.'
-  risk: 'Ils peuvent mettre la vie de la mère ou du bébé en danger.'
+  fact: "C'est un signe de danger."
+  risk: 'Ce signe peut mettre la vie de la mère ou du bébé en danger.'
   orientation: 'Allez au poste de santé maintenant.'
 en:
-  fact: 'These are danger signs.'
-  risk: 'They can put the life of the mother or the baby in danger.'
+  fact: 'This is a danger sign.'
+  risk: 'This sign can put the life of the mother or the baby in danger.'
   orientation: 'Go to the health post now.'

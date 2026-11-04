@@ -254,7 +254,8 @@ export function Check() {
         disabled={empty}
         aria-describedby={empty ? emptyId : undefined}
         onClick={() => {
-          navigate('/result');
+          // One entry after this one: the result's way back comes here (check-flow.ts).
+          navigate('/result', { state: { stepsToCheck: 1 } });
         }}
       >
         {t('check.seeResult')}

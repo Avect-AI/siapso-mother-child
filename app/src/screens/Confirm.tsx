@@ -135,15 +135,16 @@ interface Listed {
  * - new: lists it;
  * - listed: it is already there (the same product, or the same family with
  *   its strength unknown): only its units per day may change;
- * - takesPlace: a known strength takes the place of the box of the family
- *   listed with its strength unknown (more information, never less);
+ * - askReplace: a known strength while the family is listed with its
+ *   strength unknown: is it the same box (the known strength takes its place:
+ *   more information, never less) or another one (listed apart)?
  * - ask: "I do not know" while the family is listed with known strengths: is
  *   it the same box (keep that product and its strength) or another one?
  */
 type Plan =
   | { kind: 'new' }
   | ({ kind: 'listed' } & Listed)
-  | ({ kind: 'takesPlace' } & Listed)
+  | ({ kind: 'askReplace' } & Listed)
   | { kind: 'ask'; known: Listed[] };
 
 function planOf(
@@ -172,7 +173,7 @@ function planOf(
       item.strengthUnknown !== true && item.ref.kind === 'product' && item.ref.id === chosen.id,
   );
   if (same) return { kind: 'listed', ...same };
-  return unknown ? { kind: 'takesPlace', ...unknown } : { kind: 'new' };
+  return unknown ? { kind: 'askReplace', ...unknown } : { kind: 'new' };
 }
 
 function ConfirmForm({
@@ -232,7 +233,11 @@ function ConfirmForm({
             ref: { kind: candidate.kind, id: chosen.id },
             ...(chosen.strengthUnknown ? { strengthUnknown: true } : {}),
           };
-  const waitsForSameBox = plan?.kind === 'ask' && sameBox === null;
+  const waitsForSameBox = (plan?.kind === 'ask' || plan?.kind === 'askReplace') && sameBox === null;
+  // The box listed with its strength unknown, when she said this one is the same box.
+  const replaced =
+    plan?.kind === 'askReplace' && sameBox !== null && sameBox !== OTHER_BOX ? plan : null;
+  const anotherBox = plan?.kind === 'askReplace' && sameBox === OTHER_BOX;
 
   const nameOf = (item: CheckedItem) =>
     displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
@@ -246,9 +251,10 @@ function ConfirmForm({
   const askUnits = writes !== null && !waitsForSameBox && needsUnitsPerDay(pack, writes.ref);
   let unitsKey = '';
   if (target !== null) unitsKey = `listed:${String(target.index)}`;
+  else if (replaced !== null) unitsKey = `replaces:${String(replaced.index)}:${chosen?.id ?? ''}`;
   else if (chosen !== null) unitsKey = `new:${chosen.id}:${String(chosen.strengthUnknown)}`;
   // A box taking the place of the one listed without strength starts from its count.
-  const startsFrom = target?.item ?? (plan?.kind === 'takesPlace' ? plan.item : undefined);
+  const startsFrom = target?.item ?? replaced?.item;
   const unitsText =
     unitsTyped[unitsKey] ??
     (startsFrom?.unitsPerDay === undefined ? '' : String(startsFrom.unitsPerDay));
@@ -260,8 +266,8 @@ function ConfirmForm({
   // What "yes" does, said where it is decided.
   let readback = '';
   if (target !== null) readback = t('confirm.alreadyNamed', { name: nameOf(target.item) });
-  else if (plan?.kind === 'takesPlace')
-    readback = t('confirm.takesPlace', { name: nameOf(plan.item) });
+  else if (replaced !== null)
+    readback = t('confirm.takesPlace', { name: nameOf(replaced.item), product: shown.name });
   else if (chosen !== null && choice !== null && !waitsForSameBox) {
     readback = t('confirm.adding', { name: shown.name });
   }
@@ -297,7 +303,10 @@ function ConfirmForm({
       ...(unitsPerDay === undefined ? {} : { unitsPerDay }),
       ...(writes.strengthUnknown === true ? { strengthUnknown: true } : {}),
     };
-    check.add(item, family === undefined ? {} : { family });
+    check.add(item, {
+      ...(family === undefined ? {} : { family }),
+      ...(anotherBox ? { anotherBox: true } : {}),
+    });
     setLeaving(true);
     backToCheck(navigate, entry.stepsToCheck);
   };
@@ -314,8 +323,26 @@ function ConfirmForm({
           { value: DONT_KNOW, label: t('confirm.dontKnow'), apart: true },
         ];
 
+  const onSameBox = (value: string) => {
+    answered.current = true;
+    setSameBox(value);
+  };
   let sameBoxQuestion = null;
-  if (plan?.kind === 'ask') {
+  if (plan?.kind === 'askReplace') {
+    sameBoxQuestion = (
+      <RadioGroup
+        question
+        legend={t('confirm.sameBox', { name: nameOf(plan.item) })}
+        error={sameBoxError}
+        options={[
+          { value: String(plan.index), label: t('confirm.sameBoxYes') },
+          { value: OTHER_BOX, label: t('confirm.sameBoxNo') },
+        ]}
+        value={sameBox}
+        onChange={onSameBox}
+      />
+    );
+  } else if (plan?.kind === 'ask') {
     const [only] = plan.known;
     const single = plan.known.length === 1 && only !== undefined;
     sameBoxQuestion = (
@@ -335,10 +362,7 @@ function ConfirmForm({
           { value: OTHER_BOX, label: t('confirm.sameBoxNo') },
         ]}
         value={sameBox}
-        onChange={(value) => {
-          answered.current = true;
-          setSameBox(value);
-        }}
+        onChange={onSameBox}
       />
     );
   }

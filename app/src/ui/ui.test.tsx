@@ -185,6 +185,11 @@ describe('LevelBadge', () => {
   });
 });
 
+/** Whether `a` comes before `b` in the document. */
+function before(a: Node, b: Node): boolean {
+  return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
+
 describe('ResultCard', () => {
   it('names the level before the product and shows the content', () => {
     render(
@@ -192,25 +197,82 @@ describe('ResultCard', () => {
         level="before-next-dose"
         levelLabel="À montrer avant la prochaine prise"
         title="Ibuprofène"
+        headingLevel={2}
+        orientation="Montrez ce produit à la sage-femme avant la prochaine prise."
       >
-        <p>Montrez ce produit à la sage-femme avant la prochaine prise.</p>
+        <p>Ce médicament peut abîmer les reins du bébé.</p>
       </ResultCard>,
     );
-    // The article is named by its level, then its product, so a screen reader
-    // landing on it hears the level first.
-    const card = screen.getByRole('article', {
-      name: 'À montrer avant la prochaine prise Ibuprofène',
-    });
+    // The heading, and so the article, says the level before the product: a
+    // screen reader landing on it, or jumping by heading, hears the level first.
+    const name = 'À montrer avant la prochaine prise. Ibuprofène';
+    const card = screen.getByRole('article', { name });
     expect(card).toHaveClass('result-card', 'level--before-next-dose');
-    expect(screen.getByRole('heading', { name: 'Ibuprofène' })).toBeVisible();
+    const heading = screen.getByRole('heading', { name });
+    expect(heading).toBeVisible();
+    // The caption shows the same words to the eye, before the product.
     const level = screen.getByText('À montrer avant la prochaine prise');
     expect(level).toBeVisible();
-    expect(
-      level.compareDocumentPosition(screen.getByRole('heading', { name: 'Ibuprofène' })) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(level.closest('[aria-hidden="true"]')).toHaveClass('result-card__level');
+    expect(before(level, heading)).toBe(true);
     expect(screen.getByText(/Montrez ce produit/)).toBeVisible();
     expect(card.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('takes its heading level from the page outline', () => {
+    render(
+      <ResultCard
+        level="unknown"
+        levelLabel="On ne sait pas"
+        title="Kinkéliba"
+        headingLevel={3}
+        orientation="Montrez-le à votre sage-femme ou au pharmacien."
+      >
+        <p>Nous n’avons pas d’information fiable.</p>
+      </ResultCard>,
+    );
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'On ne sait pas. Kinkéliba' }),
+    ).toBeVisible();
+    expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+  });
+
+  it('says who to show and when after the risk, then the details, then the source lines', () => {
+    render(
+      <ResultCard
+        level="next-contact"
+        levelLabel="À signaler au prochain contact"
+        title="Moringa"
+        headingLevel={2}
+        orientation="Dites-le à la sage-femme à la prochaine visite."
+        details={<p>Une étude chez des volontaires a montré un effet.</p>}
+        meta={<p>Source : exemple.</p>}
+      >
+        <p>Le moringa peut changer l’effet d’un médicament.</p>
+      </ResultCard>,
+    );
+    const risk = screen.getByText(/peut changer/);
+    const orientation = screen.getByText('Dites-le à la sage-femme à la prochaine visite.');
+    const details = screen.getByText(/volontaires/);
+    const source = screen.getByText('Source : exemple.');
+    expect(orientation).toHaveClass('result-card__orientation');
+    expect(before(risk, orientation)).toBe(true);
+    expect(before(orientation, details)).toBe(true);
+    expect(before(details, source)).toBe(true);
+    expect(details.closest('.result-card__details')).not.toBeNull();
+    expect(source.closest('.result-card__meta')).not.toBeNull();
+  });
+
+  it('makes who to show and when the clearest line of the reserve, apart from the product name', () => {
+    expect(rule('.result-card__orientation')).toMatch(/font-size:\s*var\(--font-size-title\)/);
+    expect(rule('.result-card__orientation')).toMatch(
+      /font-weight:\s*var\(--font-weight-heading\)/,
+    );
+    expect(rule('.result-card__title')).toMatch(/font-size:\s*var\(--font-size-body\)/);
+    // Hairlines by role, not by position: before who and when, and before the sources.
+    expect(rule('.result-card__orientation')).toMatch(/border-top:/);
+    expect(rule('.result-card__meta')).toMatch(/border-top:/);
+    expect(baseCss).not.toMatch(/\.result-card__body > \* \+ \*/);
   });
 
   it('frames every level', () => {
@@ -253,39 +315,81 @@ describe('ResultCard', () => {
 });
 
 describe('DangerBanner', () => {
-  it('announces the danger and runs its action', async () => {
-    const onAction = vi.fn();
-    render(
+  function banner(onAction = vi.fn(), headingLevel: 2 | 3 = 2) {
+    return render(
       <DangerBanner
         levelLabel="Signe de danger"
-        title="Fièvre. Allez au poste de santé maintenant."
-        action="Appeler le poste de santé"
+        title="Allez au poste de santé maintenant."
+        action="Voir qui appeler"
+        headingLevel={headingLevel}
         onAction={onAction}
       />,
     );
-    const banner = screen.getByRole('alert');
-    expect(banner).toHaveTextContent('Fièvre. Allez au poste de santé maintenant.');
-    expect(banner.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
-    const action = screen.getByRole('button', { name: 'Appeler le poste de santé' });
+  }
+
+  it('announces the level and the instruction it shows, from a region that does not hold the button', () => {
+    const { container, rerender } = banner();
+    const alert = screen.getByRole('alert');
+    // The visible words themselves: said when the banner appears, and only
+    // once when read through, never a hidden copy beside them.
+    expect(alert).toHaveTextContent('Signe de danger Allez au poste de santé maintenant.');
+    expect(alert.querySelector('button')).toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.getAllByText('Allez au poste de santé maintenant.')).toHaveLength(1);
+    expect(container.querySelector('.danger-banner .sr-only')).toBeNull();
+    // A change of language: the region says the new words.
+    rerender(
+      <DangerBanner
+        levelLabel="Danger sign"
+        title="Go to the health post now."
+        action="See who to call"
+        headingLevel={2}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Danger sign Go to the health post now.');
+    expect(container.querySelector('.danger-banner svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('sets a long instruction at title size, still its largest line', () => {
+    render(
+      <DangerBanner
+        levelLabel="Signe de danger"
+        title="Montrez ce que vous prenez à la sage-femme aujourd'hui. En cas de saignement ou de douleur très forte, allez immédiatement au centre de santé."
+        action="Voir qui appeler"
+        headingLevel={2}
+        onAction={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('danger-banner__title--long');
+    expect(rule('.danger-banner__title--long')).toMatch(/font-size:\s*var\(--font-size-title\)/);
+    // At 200 percent text a long word ("immédiatement") breaks instead of widening the banner.
+    expect(rule('.danger-banner__head')).toMatch(/min-width:\s*0/);
+    expect(rule('.danger-banner__head')).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+    // The level line stays smaller than the title size.
+    expect(rule('.danger-banner__level')).toMatch(/font-size:\s*var\(--font-size-body\)/);
+  });
+
+  it('runs its action', async () => {
+    const onAction = vi.fn();
+    banner(onAction);
+    const action = screen.getByRole('button', { name: 'Voir qui appeler' });
     expect(action).toHaveClass('button');
     await userEvent.click(action);
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
-  it('always names the level in text, not only with the octagon, before the sentence', () => {
-    render(
-      <DangerBanner
-        levelLabel="Signe de danger"
-        title="Fièvre. Allez au poste de santé maintenant."
-        action="Appeler le poste de santé"
-        onAction={vi.fn()}
-      />,
-    );
+  it('names the level in text before the instruction, which is its largest line', () => {
+    banner(vi.fn(), 3);
     const level = screen.getByText('Signe de danger');
     expect(level).toBeVisible();
     const heading = screen.getByRole('heading', {
-      name: 'Fièvre. Allez au poste de santé maintenant.',
+      level: 3,
+      name: 'Allez au poste de santé maintenant.',
     });
-    expect(level.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(before(level, heading)).toBe(true);
+    expect(heading).not.toHaveClass('danger-banner__title--long');
+    expect(rule('.danger-banner__title')).toMatch(/font-size:[^;]*var\(--font-size-headline\)/);
+    expect(rule('.danger-banner__level')).toMatch(/font-size:\s*var\(--font-size-body\)/);
   });
 });

@@ -504,18 +504,37 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
     expect(within(sameBox).getAllByRole('radio')[0]).toHaveFocus();
     expect(probe.current().items).toHaveLength(1);
   });
+});
 
-  it('puts a known strength in the place of the box listed with its strength unknown', async () => {
-    const { user, probe } = await confirmFirst('Ajouter un médicament', 'efferalgan');
-    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
-    await user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
-    await user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
-    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+describe('Confirm: a known strength for a family listed with its strength unknown', () => {
+  const SAME_AS_UNKNOWN = `Est-ce la même boîte que EFFERALGAN${NBSP}?`;
+
+  async function listEfferalganUnknownTwice() {
+    const flow = await confirmFirst('Ajouter un médicament', 'efferalgan');
+    await flow.user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
+    await flow.user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
+    await flow.user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
+    await flow.user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     await backOnCheck();
+    await searchAgain(flow.user, 'efferalgan 500');
+    return flow;
+  }
 
-    await searchAgain(user, 'efferalgan 500');
+  it('asks whether it is the same box before it takes the place of the one listed', async () => {
+    const { user, probe } = await listEfferalganUnknownTwice();
+
+    // Never in its place without asking: nothing is said until she answers.
+    const sameBox = screen.getByRole('group', { name: SAME_AS_UNKNOWN });
+    expect(screen.queryByText(/devient/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(within(sameBox).getByText("Dites si c'est la même boîte.")).toBeVisible();
+    expect(probe.current().items).toHaveLength(1);
+
+    await user.click(within(sameBox).getByRole('radio', { name: 'Oui, la même' }));
     expect(
-      screen.getByText('EFFERALGAN est dans la liste sans dosage : ce produit prend sa place.'),
+      screen.getByText(
+        /^EFFERALGAN, dosage non connu, devient EFFERALGAN 500 mg, .+ dans la liste\.$/,
+      ),
     ).toBeVisible();
     expect(screen.getByRole('textbox', { name: UNITS })).toHaveValue('2');
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
@@ -525,7 +544,27 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
     expect(rest).toEqual([]);
     expect(only).toMatchObject({ unitsPerDay: 2 });
     expect(only).not.toHaveProperty('strengthUnknown');
-    expect(only?.ref.kind).toBe('product');
     expect(only?.ref.kind === 'product' ? only.ref.id : '').toMatch(/^efferalgan-500-mg-/);
+  });
+
+  it('lists another box apart, the box of unknown strength kept', async () => {
+    const { user, probe } = await listEfferalganUnknownTwice();
+    await user.click(
+      within(screen.getByRole('group', { name: SAME_AS_UNKNOWN })).getByRole('radio', {
+        name: 'Non, une autre boîte',
+      }),
+    );
+    expect(screen.getByText(/^Vous ajoutez : EFFERALGAN 500 mg/)).toBeVisible();
+    expect(screen.getByRole('textbox', { name: UNITS })).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await backOnCheck()).toBeVisible();
+    const items = probe.current().items;
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ strengthUnknown: true, unitsPerDay: 2 });
+    expect(items[1]?.ref.kind === 'product' ? items[1].ref.id : '').toMatch(/^efferalgan-500-mg-/);
+    expect(items[1]).not.toHaveProperty('strengthUnknown');
+    // Two boxes of paracetamol: the engine reads a duplicate.
+    expect(ruleIdsOf(items)).toContain('paracetamol-duplicate-products');
   });
 });

@@ -23,7 +23,7 @@ OWN-WORLD: Glass-white ground, white reserves, ultramarine for the shell and for
 
 STORY: The reader sees the level before reading, reads the caption aloud, then who to show and when. The woman follows shape and colour. Nobody mistakes grey for fine.
 
-FIRST VIEWPORT: At 360 by 800: ultramarine header band with the product name and the danger signs access; a full-width headline band with a 48 px pictogram and the highest level name; the first finding card, framed in its level colour, starting above the fold. The one primary action closes the content.
+FIRST VIEWPORT: At 360 by 800: ultramarine header band with the product name and the danger signs access; when a finding is a danger, the danger banner (the level, then "Allez au poste de santé maintenant." as its largest line, then its action); when there are several findings, the summary rows; the first finding card, framed in its level colour, starting above the fold. With one finding and no danger, the card itself is the headline: no pane repeats the caption of the pane right above it (settled in SCRUM-25). The one primary action closes the content.
 
 FORM: candidate 6 of 7, suwer (reverse-glass painting), seed:71e5c4f7596d6139.
 

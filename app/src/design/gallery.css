@@ -137,43 +137,7 @@
   font-weight: var(--font-weight-strong);
 }
 
-/* Overview of every finding, most urgent first: a level tile, the product, the level. */
-.result-summary {
-  display: grid;
-  margin: 0;
-  padding: 0;
-  border-block: 1px solid var(--color-rule);
-  list-style: none;
-}
-
-.result-summary__row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding-block: var(--space-2);
-}
-
-.result-summary__row + .result-summary__row {
-  border-top: 1px solid var(--color-rule);
-}
-
-.result-summary__mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border: var(--border-width) solid var(--level-border);
-  border-radius: var(--radius-sm);
-  background: var(--level-fill);
-  color: var(--level-fg);
-}
-
-.result-summary__text {
-  display: grid;
-  gap: var(--space-1);
-  line-height: var(--line-height-tight);
-}
+/* The summary rows (.result-summary) come from base.css, as on the result screen. */
 
 .screen__closing {
   display: grid;

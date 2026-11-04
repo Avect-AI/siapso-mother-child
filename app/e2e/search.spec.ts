@@ -83,10 +83,8 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
-  await expect(page.locator('.level-badge')).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Produits regardés' })).toContainText(
-    'Ibuprofène (générique)',
-  );
+  await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
+  await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
   await page.goBack();

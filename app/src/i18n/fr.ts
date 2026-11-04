@@ -212,14 +212,73 @@ export const fr = {
     sameBoxYesNamed: 'Oui, la même que {name}',
     sameBoxNo: 'Non, une autre boîte',
     sameBoxError: "Dites si c'est la même boîte.",
-    // A known strength chosen while the family is listed without one.
-    takesPlace: '{name} est dans la liste sans dosage : ce produit prend sa place.',
+    // A known strength chosen while the family is listed without one, and she said it is the same box.
+    takesPlace: '{name}, dosage non connu, devient {product} dans la liste.',
     missing: "Ce produit n'est pas sur ce téléphone. Cherchez encore.",
   },
   result: {
     title: 'Résultat',
-    items: 'Produits regardés',
+    // Accompanied mode: the profile's pseudonym, never a real name.
+    titleFor: 'Résultat pour {name}',
+    loading: 'Le résultat se prépare.',
     failed: "Le résultat n'a pas pu être donné. Revenez à la liste.",
+    profileMissing: "Ce profil n'est plus sur ce téléphone. Revenez à la liste.",
+    // The overview of the cards, most urgent first, when there are several.
+    summary: 'Résumé',
+    // Default orientation of each level (spec section 10), when a message gives none.
+    orientation: {
+      danger: 'Allez au poste de santé maintenant.',
+      'before-next-dose':
+        "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
+      'next-contact': 'Dites-le à la sage-femme à la prochaine visite.',
+      unknown: 'Montrez-le à votre sage-femme ou au pharmacien.',
+    },
+    // "On ne sait pas" without an orientation of its own: these come first (spec section 10),
+    // each unless what the card has just said contains its phrase (unknownSaid, lowercase).
+    unknown: {
+      noInformation: "Nous n'avons pas d'information fiable.",
+      notRiskFree: "Cela ne veut pas dire que c'est sans risque.",
+    },
+    unknownSaid: {
+      noInformation: "pas d'information fiable",
+      notRiskFree: 'ne veut pas dire',
+    },
+    // Before the next dose, for a finding about several products (a duplicate, an interaction).
+    orientationProducts:
+      "Montrez ces produits à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
+    // The danger banner's action: the referral circuit on the danger signs screen.
+    dangerAction: 'Voir qui appeler',
+    // After the first sentence of "nothing found" (spec section 2).
+    versionInline: '(version {version} du {date})',
+    term: {
+      estimated: 'Terme estimé : ce résultat tient compte de toutes les semaines possibles.',
+      unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',
+    },
+    // Accompanied mode: the evidence level and the wording it sets (knowledge/README.md).
+    // The wording in quotes: it is how the messages of that level are written.
+    evidence: 'Niveau de preuve {level} : « {wording} »',
+    evidenceWording: {
+      A: 'peut provoquer',
+      B: 'une étude chez des volontaires a montré',
+      C: 'des cas graves ont été rapportés',
+      D: "des tests en laboratoire suggèrent, ce n'est pas prouvé chez la femme",
+      E: "c'est possible, mais cela n'a pas été étudié",
+      '0': "pas d'information fiable",
+    },
+    capped: 'Niveau limité parce que la preuve est faible.',
+    sources: 'Sources :',
+    // Said after a source link, for a screen reader.
+    newWindow: "(s'ouvre dans une autre fenêtre)",
+    rule: 'Règle : {id}',
+    rules: 'Règles : {ids}',
+    notes: 'À noter aussi',
+    reminders: 'Rappels',
+    noChange: 'Ne changez rien à votre traitement sans en parler à un professionnel.',
+    version: 'Base de connaissances {version} du {date}',
+    notValidated: "Contenu non validé cliniquement : ne l'utilisez pas seul pour décider.",
+    closing: 'Cet outil ne remplace pas un soignant.',
+    // The check is kept: a forgotten product can still be added.
+    backToList: 'Revenir à la liste',
   },
   // Level names (DESIGN.md, Levels): always shown with their pictogram.
   level: {

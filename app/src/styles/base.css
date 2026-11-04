@@ -555,11 +555,18 @@ a {
   flex: 1 1 10rem;
 }
 
+/*
+ * minmax(0, 1fr): an auto track sizes to the longest word ("traditionnellement"
+ * at 200 percent text) and pushes the words out of the reserve; a bounded
+ * track lets such a word break instead.
+ */
 .result-card__body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--color-surface);
+  overflow-wrap: break-word;
 }
 
 /*
@@ -582,10 +589,39 @@ a {
   }
 }
 
-/* Fields after the first sentence sit on hairline rules, in a fixed order. */
-.result-card__body > * + * + * {
+/*
+ * Who to show and when: the line a reader must find first in the reserve, so
+ * the clearest one, at title size and heading weight, set apart from the
+ * reading fields by a hairline. The product name above it stays at reading size.
+ */
+.result-card__orientation {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-rule);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-snug);
+  overflow-wrap: break-word;
+}
+
+/* The details for the health worker (fact, detailed risk) come after who and when, under a hairline. */
+.result-card__details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+/* Source, evidence and version close the finding, under their own hairline. */
+.result-card__meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  overflow-wrap: break-word;
 }
 
 /* Danger banner: the danger field across the screen, with the screen's one primary action. */
@@ -610,26 +646,44 @@ a {
   color: var(--level-danger-fg);
 }
 
+/*
+ * min-width 0 and a bounded track: at large text the longest word of a long
+ * instruction ("immédiatement") breaks instead of widening the banner.
+ */
 .danger-banner__head {
   display: grid;
   flex: 999 1 18rem;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
+  min-width: 0;
 }
 
-/* Same grammar as a finding: the level name first and strongest, then the sentence. */
+/*
+ * The level name first, beside its octagon, then the instruction: the
+ * banner's largest line, at headline size (title size on a narrow phone at
+ * large text, as a screen's h1). The danger card below keeps the level as its
+ * caption: the banner leads with what to do, not with the same caption.
+ */
 .danger-banner__level {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  font-size: var(--font-size-title);
+  font-size: var(--font-size-body);
   font-weight: var(--font-weight-heading);
   line-height: var(--line-height-tight);
   text-wrap: balance;
 }
 
 .danger-banner__title {
-  font-size: var(--font-size-body);
+  font-size: clamp(var(--font-size-title), 9vw, var(--font-size-headline));
+  overflow-wrap: break-word;
+}
+
+/* A long instruction (a rule's own, of two sentences): title size, still above the level line. */
+.danger-banner__title--long {
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-snug);
 }
 
 .danger-banner__action {
@@ -1326,29 +1380,154 @@ a {
   width: 100%;
 }
 
-/* Result, minimal until Task 12: the level, then the items under hairlines. */
+/*
+ * Result: the danger banner when there is one, the summary when there are
+ * several findings, one pane per finding, the notes, then the closing lines
+ * and the way back to the list. Findings sit 16 px apart; the screen's other
+ * groups keep its 24 px rhythm.
+ */
 
-.result > .level-badge {
-  align-self: flex-start;
+.result__loading {
+  color: var(--color-text-muted);
 }
 
-.result__items {
+/*
+ * Several products in one finding: each on its own line, so one product is
+ * never read as two. The list word ("et") starts the next line, light, so
+ * the names stand out and the sentence still reads aloud.
+ */
+.result__name {
+  display: block;
+}
+
+.result__name + .result__name {
+  margin-top: var(--space-1);
+}
+
+.result__and {
+  font-weight: var(--font-weight-body);
+}
+
+/* A grid track gives each card its width (a card is a size container). */
+.result__findings {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* Overview of every finding, most urgent first: a level tile, the level name, then the product. */
+.result-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--color-rule);
+  list-style: none;
+}
+
+.result-summary__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.result-summary__row + .result-summary__row {
+  border-top: 1px solid var(--color-rule);
+}
+
+.result-summary__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: var(--border-width) solid var(--level-border);
+  border-radius: var(--radius-sm);
+  background: var(--level-fill);
+  color: var(--level-fg);
+}
+
+.result-summary__text {
+  display: grid;
+  flex: 1 1 10rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+/*
+ * Sources: each source named once, then the records it points to, a link
+ * when there is one. A link is a whole-width block at least 48 px tall, so
+ * it is a thumb's target, not a word to aim at.
+ */
+.result-card__sources {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.result-card__sources ul {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.result__items li {
-  padding-block: var(--space-3);
-  border-bottom: 1px solid var(--color-rule);
+.result-card__source-name {
+  color: var(--color-text);
   font-weight: var(--font-weight-strong);
+}
+
+/* A record's words (a DOI, a label set id) may break anywhere rather than push the page sideways. */
+.result-card__sources ul ul {
+  gap: 0;
+  overflow-wrap: anywhere;
+}
+
+/* One line (24 px) and its padding make the 48 px target. */
+.result-card__sources a {
+  display: block;
+  padding-block: var(--space-3);
+}
+
+/* Notes and reminders are never a level: ink on the ground, under hairlines, no level colour. */
+.result__notes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.result__notes h2 {
+  font-size: var(--font-size-title);
+}
+
+.result__note {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
   overflow-wrap: break-word;
 }
 
-.result__items li:first-child {
+/* The fixed sentences, the version, "not clinically validated", then the closing sentence. */
+.result__closing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-rule);
+}
+
+.result__not-validated {
+  font-weight: var(--font-weight-strong);
+}
+
+.result__back {
+  width: 100%;
 }
 
 /* Windows high contrast and other forced colours: keep every contour. */

@@ -37,7 +37,8 @@ export interface CheckState {
    * unknown strength never takes the place of a known one (it is another box
    * unless the user says it is the same, then the known product is given
    * again); a known strength takes the place of an unknown one of its family
-   * (more information, never less). `list` is the list an unrecognised text
+   * (more information, never less) unless `anotherBox` says it is another
+   * box (the confirm screen asks). `list` is the list an unrecognised text
    * was typed in. Throws a RangeError for a unit count other than a whole
    * number from 1 to 24 or a blank text, a TypeError for a strengthUnknown that
    * is not a boolean.
@@ -64,6 +65,11 @@ export interface AddOptions {
   list?: EntryKind;
   /** The resolver family of a product (domain/search-index.ts productFamilyOf). */
   family?: string;
+  /**
+   * She said this box is not the one of its family listed with its strength
+   * unknown: a known strength is then listed apart instead of taking its place.
+   */
+  anotherBox?: boolean;
 }
 
 /**
@@ -161,7 +167,7 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
   const state = { ...base, lists, families };
   const key = identity(item, families);
   let index = state.items.findIndex((listed) => identity(listed, families) === key);
-  if (index < 0) index = unknownToReplace(state, item);
+  if (index < 0 && options.anotherBox !== true) index = unknownToReplace(state, item);
   if (index < 0) {
     return { ...state, items: [...state.items, item], changed: { kind: 'added', item } };
   }

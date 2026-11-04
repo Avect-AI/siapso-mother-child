@@ -136,7 +136,7 @@ The surface is calm and flat. A glass-white ground, white reserves, ink text, ul
 Principles (from `PRODUCT.md`, made visual):
 
 1. **Unknown is not safe.** The grey level is hatched, never a flat pale grey that could read as disabled, empty or fine.
-2. **Orient, never prescribe.** Every finding ends its reading text with who to show and when, in bold.
+2. **Orient, never prescribe.** Every finding says who to show and when right after its risks, the clearest line of its reserve; in accompanied mode the details for the health worker (fact, detailed risk), then source and evidence, come after it.
 3. **Built for the person in the room.** One hand, shared phone, bright sun, under a minute: reading text at 7:1, targets at 48 px or more, nothing hidden behind a gesture.
 4. **Meaning never by colour alone.** Every level has its own silhouette and its name in text, always together.
 5. **Traceable.** Source, evidence and version close every finding, in the same place every time.
@@ -236,19 +236,19 @@ Why a web font rather than the system stack: the phones run Roboto or a vendor f
 
 ### Hierarchy
 
-- **Headline** (800, 1.75rem / 28 px, 1.2): reserved for a screen's single lead line when one is needed.
-- **Title** (800, 1.375rem / 22 px, 1.2): level names, the strongest line wherever a level is said: the result card caption and the danger banner's level line.
-- **Body** (450, 1.125rem / 18 px, 1.5): every sentence read aloud: risk, orientation, fixed sentences. On a phone the measure stays well under 65 characters.
-- **Label** (700 to 800, 1.125rem / 18 px, 1.2): product names in a finding (800), the danger banner sentence, level names in summary rows, buttons, field labels, the screen title.
+- **Headline** (800, 1.75rem / 28 px, 1.2): reserved for a screen's single lead line when one is needed, and for the danger banner's instruction ("Allez au poste de santé maintenant."), its largest line.
+- **Title** (800, 1.375rem / 22 px, 1.2): level names, the strongest line wherever a level is said: the result card caption. Also who to show and when in a finding (line height 1.3), the clearest line of the white reserve.
+- **Body** (450, 1.125rem / 18 px, 1.5): every other sentence read aloud: fact, risk, fixed sentences. On a phone the measure stays well under 65 characters.
+- **Label** (700 to 800, 1.125rem / 18 px, 1.2): product names in a finding (800), the danger banner's level line, level names in summary rows, buttons, field labels, the screen title.
 - **Small** (450, 1rem / 16 px, 1.5): source, evidence and version lines, hints. Tabular numerals.
 
 ### Named Rules
 
-**The One Reading Size Rule.** Everything read aloud is 18 px. Hierarchy comes from the pane, the caption band and weight, not from a ladder of sizes; nothing a reader must say is smaller than 16 px.
+**The One Reading Size Rule.** Everything read aloud is 18 px, with two exceptions that say what to do: who to show and when in a finding (title size) and the danger banner's instruction (headline size). Hierarchy otherwise comes from the pane, the caption band and weight, not from a ladder of sizes; nothing a reader must say is smaller than 16 px.
 
 **The Weight For Sunlight Rule.** Body text is 450, not 400: a touch heavier holds up under glare.
 
-**The Level First Rule.** The level name is always the strongest line: larger than the product name in a finding, bold before the product in a summary row, first in the danger banner.
+**The Level First Rule.** The level name always comes first and is never weaker than the product name: the caption of a finding (on its field, beside its pictogram), bold before the product in a summary row, first in the danger banner (where the instruction under it is the largest line, so the banner and the danger card below it never lead with the same caption).
 
 ## Layout
 
@@ -256,7 +256,7 @@ One column from 360 px, with a 16 px gutter (`--space-4`). The spacing scale has
 
 Components answer to their own width, not the viewport. The danger banner puts its action beside the sentence only when it has room and stacks otherwise. Under 18rem a result card trims its caption and reserve padding. Text beside a pictogram keeps a 10rem basis, so at large system text sizes it drops under the pictogram instead of overflowing. Pictograms are sized in rem and grow with the user's font size. At 360 px with text at 200 percent, nothing scrolls sideways.
 
-The result screen opens with a summary list, one row per finding (a level tile, the level name in bold, then the product name), in the order of the cards, then the finding panes, then the fixed sentences, then the one primary action (see the Gallery sample at `#/design` in development).
+The result screen (`#/result`) opens with the danger banner when a finding is a danger, then, when there are two findings or more, a summary list, one row per level and products (a level tile, the level name in bold, then the product names), in the order of the cards (two cards about the same products at the same level, such as a duplicate and a daily maximum, are one row); with one finding the card is the summary. Then the finding panes, 16 px apart, one per item set and check (the highest level of each), then the notes and, in accompanied mode, the reminders (ink on the ground under hairlines, never a level colour), then the fixed sentences, the version line and "not clinically validated", then the one primary action, "Revenir à la liste" (secondary when the danger banner's action is the primary one). See the Gallery sample at `#/design` in development.
 
 ## Elevation & Depth
 
@@ -318,11 +318,11 @@ The level as a compact tag: pictogram (24 px) and name, on the level field with 
 
 ### Result Card (signature component)
 
-One finding as a level pane. The caption band carries the 32 px pictogram and the level name at title size, the strongest line; the white reserve carries the product name (`h2`, 18 px, 800) and the fields as children, ruled by hairlines. The `article` is named by the level, then the product, so a screen reader hears the level first. Product names are never hyphenated (a hyphen the box does not have would mislead); a word breaks only if it cannot fit alone. The card is a size container (it trims its padding under 18rem), so its parent must give it a width: a block, a grid track or a stretched flex item, never a parent that sizes to its content.
+One finding as a level pane. The caption band carries the 32 px pictogram and the level name at title size, the strongest line; the white reserve carries the product name (18 px, 800, at the heading level the page outline gives: `headingLevel`; several products each on their own line, the list word "et" starting the next line in the reading weight), the reading fields (children: the risks and the term note; a card that stands for several findings of one product and check, such as two pregnancy rules over a range of weeks, keeps the level and orientation of the highest and says every distinct risk, and in accompanied mode every detailed risk, evidence level, rule and source), then who to show and when (`orientation`, title size, under a hairline), then the details for the health worker (`details`: fact and detailed risk in accompanied mode, under a hairline), then the source, evidence and rule lines (`meta`, small, under a hairline). Both modes thus read the same lines first. The card renders the orientation itself, so no finding can lack one or put it out of order. The heading says the level before the product (screen readers only; the caption shows the same words to the eye and is hidden from them), so a screen reader that jumps by heading hears both, and the `article` is named by its heading. Product names are never hyphenated (a hyphen the box does not have would mislead); a word breaks only if it cannot fit alone. The card is a size container (it trims its padding under 18rem), so its parent must give it a width: a block, a grid track or a stretched flex item, never a parent that sizes to its content.
 
 ### Danger Banner
 
-The danger field across the content: the level line first (48 px octagon and the level name in text, title size), then the sentence (`h2`, 18 px, 800), then one action button (white, dark crimson text, 56 px; its text holds 7:1 at rest and on hover). It is announced (`role="alert"`). When it shows, its action is the screen's only primary action and every other button on the screen is secondary.
+The danger field across the content: the level line first (48 px octagon and the level name in text, label size), then the instruction (the banner's largest line, at the heading level the page outline gives: headline size, or title size for an instruction longer than 40 characters), then one action button (white, dark crimson text, 56 px; its text holds 7:1 at rest and on hover). The instruction is the orientation the danger cards share when they all give the same one (a fever's "Allez faire un test au poste de santé aujourd'hui.", a rule's own), and "Allez au poste de santé maintenant." when they differ. The level line and the instruction are the alert region (`role="alert"`), the button outside it: screen readers say the words shown when the banner appears, in the current language, and read them once when going through the page, with no hidden copy. When it shows, its action is the screen's only primary action and every other button on the screen is secondary.
 
 ### Motion
 
@@ -336,7 +336,7 @@ Minimal. The only motion is the press response: background colour and a 1 px mov
 - **Do** give every Button an explicit variant.
 - **Do** keep one primary action per screen; when a danger banner shows, its action is that one.
 - **Do** keep every sentence read aloud at 18 px and every reading pair at 7:1 or more.
-- **Do** end every finding with who to show and when, then source, evidence and version, in that order.
+- **Do** say who to show and when right after a finding's risks, then (accompanied mode) the details, then source and evidence, in that order; the version closes the screen.
 - **Do** hatch the unknown field, and follow it with who to show it to.
 - **Do** keep targets at 48 px or more and check every screen at 360 px wide and at 200 percent text.
 - **Do** take colours from `tokens.css` only, and add every new text pair to `CONTRAST_PAIRS`.
@@ -364,4 +364,4 @@ Shape brief for the result screen, the most important screen of the app. The int
 4. **Scope and boundaries.** This ticket ships the tokens, base styles, six components and a development-only Gallery with sample result screens built from them. The real screen arrives in SCRUM-25. Anti-goals: traffic-light green, check marks that read as "safe", illustrated mothers and babies, pastel clinical teal, dashboards and grids of identical cards, dark mode chosen by taste.
 5. **States and ranges.** One to six findings (typically one to three). Product names from one word ("Doliprane") to a long remedy name with a local name in brackets. Level names up to 34 characters in French ("À montrer avant la prochaine prise"); French runs about 25 percent longer than English. States: danger sign present (banner), every level, "nothing found" (grey), long text, 200 percent text.
 6. **Interaction and layout.** One column from 360 px. A summary list of every finding, most urgent first, then the finding panes, then the fixed sentences and the version line, then the single primary action. When a danger sign is present, the danger banner sits first and its action is the screen's only primary action. No gesture-only action, no hidden content, browser back works.
-7. **Constraints and open decisions.** Offline, Android Go class phones, 48 px targets, WCAG 2.2 AA with reading text at 7:1 for sunlight, French and English through translation files, `Level` from `@siapso/engine`. Open for SCRUM-25: whether the summary list replaces a single headline level (the implementation design names a "headline level"); the order of unknown findings relative to the others; the primary action wording; the header content after unlock.
+7. **Constraints and open decisions.** Offline, Android Go class phones, 48 px targets, WCAG 2.2 AA with reading text at 7:1 for sunlight, French and English through translation files, `Level` from `@siapso/engine`. Settled in SCRUM-25 (inferred from the brief, no one to ask in that run): the danger banner, then the summary list (two findings or more), stand for the headline level, so no pane repeats another pane's caption right above it; unknown findings keep the engine's order (last, by level); the primary action is "Revenir à la liste", which keeps the check; the header content after unlock stays with SCRUM-27.

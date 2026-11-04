@@ -8,11 +8,13 @@
   message: danger-sign-fever
   sources:
     - source: who
-      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs'
       url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
       accessed: 2026-11-04
     - source: who
-      locator: 'WHO guidelines for malaria, 13 August 2025: diagnosis of suspected malaria and malaria in pregnancy (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'WHO guidelines for malaria, 13 August 2025: diagnosis of suspected malaria and malaria in pregnancy'
       url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
       accessed: 2026-11-03
     - source: literature
@@ -26,7 +28,8 @@
   sources:
     - &pcpnc-c15
       source: who
-      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs'
       url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
       accessed: 2026-11-04
 - id: convulsions
@@ -44,7 +47,8 @@
   sources:
     - &pcpnc-c7
       source: who
-      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C7, no fetal movement and ruptured membranes (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C7, no fetal movement and ruptured membranes'
       url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
       accessed: 2026-11-04
 - id: severe-abdominal-pain
@@ -70,7 +74,8 @@
   sources:
     - &pcpnc-d28
       source: who
-      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages D28 and M4, postpartum danger signs (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages D28 and M4, postpartum danger signs'
       url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
       accessed: 2026-11-04
 - id: fever-after-birth
@@ -112,7 +117,8 @@
   sources:
     - &pcpnc-k14
       source: who
-      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages J7 and K14, newborn danger signs (fact only)'
+      # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages J7 and K14, newborn danger signs'
       url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
       accessed: 2026-11-04
     - source: literature

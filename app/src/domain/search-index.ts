@@ -115,7 +115,11 @@ export function productFamilyOf(pack: Pack, id: string): string | undefined {
  * The name of a product of a brand family whose products differ only by
  * their form (CODOLIPRANE tablet and capsule): the brand and its strengths,
  * strongest first ("CODOLIPRANE 500 mg/30 mg"), since the user chose no form
- * (no question is asked: the rules read strengths). Undefined otherwise.
+ * (no question is asked: the rules read strengths). A family with no strength
+ * in mg at all (DERMOVAL cream and gel, a syrup at two concentrations) is
+ * named by its brand alone: the rules read the same thing whichever product
+ * it is, and the name of one of them would be a product she did not choose.
+ * Undefined otherwise.
  */
 function formsOnlyName(pack: Pack, product: Product, lang: Lang): string | undefined {
   const { familyOf, members } = indexedOf(pack);
@@ -133,7 +137,8 @@ function formsOnlyName(pack: Pack, product: Product, lang: Lang): string | undef
   const strengths = product.components
     .flatMap((c) => (c.strengthMg === undefined ? [] : [c.strengthMg]))
     .sort((a, b) => b - a);
-  if (others.length === 0 || !sameStrengths || strengths.length === 0) return undefined;
+  if (others.length === 0 || !sameStrengths) return undefined;
+  if (strengths.length === 0) return brand;
   return `${brand} ${strengths.map((mg) => milligrams(mg, lang)).join('/')}`;
 }
 

@@ -258,6 +258,38 @@ describe('displayOf a product of a family that differs only by its forms', () =>
   });
 });
 
+describe('displayOf a product of a family without any strength in mg', () => {
+  it('names it by its brand alone, never by the name of one product she did not choose', () => {
+    // DERMOVAL cream and gel; AMOXICILLINE ARROW 125 and 250 mg/5 mL: no strength in mg to ask.
+    for (const ids of [
+      ['dermoval-0-05-61777782', 'dermoval-60097833'],
+      ['amoxicilline-arrow-125-mg-5-ml-61771313', 'amoxicilline-arrow-250-mg-5-ml-66773446'],
+    ]) {
+      const names = ids.map((id) => displayOf(pack, { kind: 'product', id }, 'fr').name);
+      const brand = pack.products.find((p) => p.id === ids[0])?.brands[0];
+      expect(names).toEqual([brand, brand]);
+      const candidate = candidateOf(pack, { kind: 'product', id: ids[0] ?? '' });
+      if (candidate === undefined) throw new Error(`no candidate for ${ids[0] ?? ''}`);
+      expect(strengthChoiceOf(pack, candidate, '')).toBeNull();
+      expect(candidateDisplayOf(pack, candidate, '', 'fr').name).toBe(brand);
+    }
+    expect(displayOf(pack, { kind: 'product', id: 'dermoval-60097833' }, 'fr').detail).toBe(
+      'Clobétasol',
+    );
+  });
+
+  it('keeps the whole name of a product alone in its family', () => {
+    const alone = pack.products.find(
+      (p) =>
+        p.components.every((c) => c.strengthMg === undefined) &&
+        candidateOf(pack, { kind: 'product', id: p.id })?.variants.length === 0 &&
+        p.brands.length > 0,
+    );
+    if (alone === undefined) throw new Error('no product alone in its family without a strength');
+    expect(displayOf(pack, { kind: 'product', id: alone.id }, 'fr').name).toBe(alone.names.fr);
+  });
+});
+
 describe('productFamilyOf', () => {
   it('gives the resolver family of a product, and nothing for an id missing from the pack', () => {
     expect(productFamilyOf(pack, 'efferalgan-1000-mg-60025403')).toBe(

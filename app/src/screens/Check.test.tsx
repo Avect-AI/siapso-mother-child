@@ -213,8 +213,8 @@ describe('Check', () => {
   });
 });
 
-describe('Result (minimal until Task 12)', () => {
-  it('shows the level the engine gives for the confirmed items, with its name, and the items', async () => {
+describe('Check to result', () => {
+  it('shows the level the engine gives for the confirmed items', async () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
     await addThrough(user, 'Ajouter un remède', 'kinkeliba');
@@ -222,21 +222,8 @@ describe('Result (minimal until Task 12)', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
     // Kinkeliba has no rule and evidence 0: we do not know, never reassurance.
-    const badge = document.querySelector('.level-badge');
-    expect(badge).toHaveClass('level--unknown');
-    expect(badge).toHaveTextContent('On ne sait pas');
-    expect(
-      within(screen.getByRole('list', { name: 'Produits regardés' })).getByText('Kinkéliba'),
-    ).toBeVisible();
-  });
-
-  it('goes to the check when there is no item to evaluate', async () => {
-    await saveProfile(profileOf());
-    await renderApp({ settings: woman, hash: '#/result', packLoader: loaderOf(pack) });
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toHaveClass(
+      'level--unknown',
+    );
   });
 });
