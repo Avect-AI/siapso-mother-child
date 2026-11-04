@@ -59,6 +59,9 @@ export const CONTRAST_PAIRS: Pair[] = [
   { fg: '--color-text-muted', bg: '--color-bg', min: READING },
   { fg: '--color-text-muted', bg: '--color-surface', min: READING },
   { fg: '--color-text', bg: '--color-selection', min: READING },
+  // A chosen answer of a choice group: ink on the ultramarine tint, and the focus ring on it.
+  { fg: '--color-text', bg: '--color-primary-tint', min: READING },
+  { fg: '--color-focus', bg: '--color-primary-tint', min: NON_TEXT },
   // Buttons: primary text on ultramarine, ultramarine text on white and tint.
   { fg: '--color-primary-text', bg: '--color-primary', min: READING },
   { fg: '--color-primary-text', bg: '--color-primary-hover', min: READING },

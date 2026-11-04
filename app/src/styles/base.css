@@ -245,8 +245,14 @@ a {
  * belongs to danger signs, and a typo is not one.
  */
 
+/*
+ * minmax(0, 1fr) and min-width 0: a native date input has a wide intrinsic
+ * size at large text; the field keeps to the column instead of pushing the
+ * page sideways.
+ */
 .text-field {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
 }
 
@@ -275,6 +281,7 @@ a {
 
 .text-field__input {
   width: 100%;
+  min-width: 0;
   min-height: var(--touch-target);
   padding: var(--space-3) var(--space-4);
   border: var(--border-width) solid var(--color-border);
@@ -304,6 +311,190 @@ a {
   border-style: dashed;
   color: var(--color-text-muted);
   cursor: not-allowed;
+}
+
+/*
+ * Choice group: a question with native radios or checkboxes, in the order of a
+ * text field (legend, hint, error, answers). Each answer is a whole-width
+ * label, the target is the words; the chosen one takes the ultramarine
+ * contour and tint, and its native mark says it in shape too.
+ */
+
+.choice-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* A failed save scrolls the question to fix to the top: keep a little air above it. */
+.choice-group,
+.text-field {
+  scroll-margin-top: var(--space-4);
+}
+
+.choice-group__legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+}
+
+/* A main question of a screen: title size, so the form reads as a few questions. */
+.choice-group--question > .choice-group__legend {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+}
+
+.choice-group__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.choice-group__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+/* Same as a text field error: ink with the triangle, never red. */
+.choice-group__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-weight: var(--font-weight-strong);
+}
+
+.choice-group__error svg {
+  flex: none;
+  margin-top: 0.15em;
+}
+
+/* A size container: its answers react to its width at large text (see the end of this section). */
+.options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  container-type: inline-size;
+}
+
+/* Short answers side by side while they fit; a long one takes its own row. */
+.options--row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.options--row > .option {
+  flex: 1 1 8rem;
+}
+
+/*
+ * --option-contour is the border: 2 px, or 3 px when the answer is chosen or
+ * missing. The padding gives back what a heavier border takes, so nothing
+ * moves when it changes.
+ */
+.option {
+  --option-contour: var(--border-width);
+  --option-pad-block: var(--space-2);
+  --option-pad-inline: var(--space-4);
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--touch-target-large);
+  padding: calc(var(--option-pad-block) + var(--border-width) - var(--option-contour))
+    calc(var(--option-pad-inline) + var(--border-width) - var(--option-contour));
+  border: var(--option-contour) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+
+.option > span {
+  min-width: 0;
+}
+
+.option input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .option:hover {
+    border-color: var(--color-primary);
+  }
+}
+
+/*
+ * The chosen answer: the ultramarine contour at 3 px and the tint. In glare
+ * the tint fades; the heavier contour and the native mark still say it.
+ */
+.option--checked {
+  --option-contour: var(--contour-width);
+
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
+}
+
+/* An answer missing: every answer takes the 3 px ink contour, as an invalid text field does. */
+.choice-group--invalid .option:not(.option--checked) {
+  --option-contour: var(--contour-width);
+
+  border-color: var(--color-text);
+}
+
+/* Keyboard focus: the ring goes around the whole answer, the words included. */
+.option:has(:focus-visible) {
+  outline: var(--contour-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Where :has is understood, that ring replaces the one on the small control (older browsers keep it). */
+@supports selector(:has(*)) {
+  .option input:focus-visible {
+    outline: none;
+  }
+}
+
+/* "None of these" is an answer of its own, set apart by a hairline from the list it answers for. */
+.option--none {
+  position: relative;
+  margin-top: var(--space-4);
+}
+
+.option--none::before {
+  content: '';
+  position: absolute;
+  top: calc(-1 * var(--space-3) - var(--border-width));
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+/*
+ * Large text on a narrow phone: when the answers are narrower than 13rem
+ * (that is, past about 160 percent text at 360 px), the mark goes above the
+ * words and the side padding tightens, so a long word such as
+ * "Drépanocytose" keeps the full width instead of breaking in the middle.
+ */
+@container (max-width: 13rem) {
+  .option {
+    --option-pad-inline: var(--space-2);
+
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .option > span {
+    flex-basis: 100%;
+  }
 }
 
 /* Level badge: the pictogram and the level name, always together. */
@@ -712,7 +903,90 @@ a {
   gap: var(--space-2);
 }
 
-.home__check {
+.home__check,
+.home__profile {
+  width: 100%;
+}
+
+/* A link dressed as a secondary button: no underline, as the header shortcut. */
+.home__profile {
+  text-decoration: none;
+}
+
+.home__saved {
+  font-weight: var(--font-weight-strong);
+}
+
+/*
+ * Profile: a few questions down one column, each group under a hairline.
+ * Follow-up questions appear under the answer that needs them; the term and
+ * the baby's age are read back in words at title size, right under what was
+ * typed (a wrong term changes the result, so it is said where it is seen).
+ */
+
+.profile__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.profile__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.profile__group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-rule);
+}
+
+/*
+ * A readback's live region, while it has nothing to say: out of the layout
+ * (no empty gap in the grid) but still in the accessibility tree, so the
+ * first value it shows is announced.
+ */
+.profile__readback:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.profile__readback p {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.profile__readback-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.profile__readback-value {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+}
+
+/* A quiet button whose words line up with the column, like the text above it. */
+.profile__correct {
+  justify-self: start;
+  margin-top: calc(-1 * var(--space-3));
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+.profile__save {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-rule);
+}
+
+.profile__submit {
   width: 100%;
 }
 

@@ -193,6 +193,7 @@ Every pair is tested in `app/src/styles/tokens.test.ts` from `CONTRAST_PAIRS` in
 | `--color-text-muted`              | `--color-bg`                  | 7.78:1  | 7:1     |
 | `--color-text-muted`              | `--color-surface`             | 8.49:1  | 7:1     |
 | `--color-text`                    | `--color-selection`           | 11.82:1 | 7:1     |
+| `--color-text`                    | `--color-primary-tint`        | 14.39:1 | 7:1     |
 | `--color-primary-text`            | `--color-primary`             | 10.09:1 | 7:1     |
 | `--color-primary-text`            | `--color-primary-hover`       | 12.76:1 | 7:1     |
 | `--color-primary`                 | `--color-surface`             | 10.09:1 | 7:1     |
@@ -215,6 +216,7 @@ Every pair is tested in `app/src/styles/tokens.test.ts` from `CONTRAST_PAIRS` in
 | `--color-border`                  | `--color-surface`             | 5.51:1  | 3:1     |
 | `--color-focus`                   | `--color-bg`                  | 6.43:1  | 3:1     |
 | `--color-focus`                   | `--color-surface`             | 7.01:1  | 3:1     |
+| `--color-focus`                   | `--color-primary-tint`        | 5.74:1  | 3:1     |
 
 ### Named Rules
 
@@ -298,6 +300,17 @@ All components live in `app/src/ui/`, use only tokens (a test fails on any liter
 - **Focus:** border turns ultramarine plus the focus ring.
 - **Error:** `aria-invalid`, a 3 px ink border, and an ink message with a triangle mark that names the problem and the fix.
 - **Disabled:** dashed border, no fill, muted text.
+
+### Choice Groups
+
+- **Use:** a question with a few answers (`RadioGroup`) or a list to tick (`CheckboxGroup`), in a `fieldset` named by its legend. Native radios and checkboxes, never buttons dressed as answers.
+- **Order:** legend, hint, error, then the answers, as in a text field. The hint and the error describe the group.
+- **Answer:** a whole-width label at least 56 px tall with the native control (24 px) and the words; the label is the target. White fill, 2 px control contour, 6 px corners, label weight.
+- **Chosen:** ultramarine contour and the ultramarine tint, ink text; the native mark says it in shape too, so colour is never alone.
+- **Error:** every answer takes the 3 px ink contour, `aria-invalid` and the message as its description (some screen readers skip a fieldset's description); the message is ink with the triangle, as in a text field. A failed save moves focus to the first answer to fix and scrolls its whole question into view.
+- **Focus:** the 3 px focus ring goes around the whole answer (`:has(:focus-visible)`), the words included; browsers without `:has` keep the ring on the native control.
+- **Layout:** short answers (yes, no) sit side by side while they fit and wrap otherwise; longer ones stack. A main question of a screen takes the title size; a follow-up the label size.
+- **Exclusive answer:** "none of these" sits after the list, set apart, and clears the list (and the list clears it): an explicit answer, so a forgotten box is never read as none.
 
 ### Level Badge
 

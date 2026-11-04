@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
-import { screen, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../App.js';
+import { storeSettings } from '../data/db.js';
+import { AppProvider } from '../state/app-state.js';
 import { breakIndexedDB } from '../test/idb.js';
-import { noPack, pendingPack, renderApp } from '../test/render-app.js';
+import { loaderOf, noPack, pendingPack, renderApp, shellPack } from '../test/render-app.js';
 
 const onboarded = { lang: 'fr', mode: 'woman', onboarded: true } as const;
 
@@ -30,7 +33,44 @@ describe('Home', () => {
     await screen.findByRole('banner');
 
     const targets = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(targets.sort()).toEqual(['#/', '#/danger']);
+    expect(targets.sort()).toEqual(['#/', '#/danger', '#/profile']);
+  });
+
+  it('opens her one profile in woman mode', async () => {
+    await renderApp({ settings: onboarded });
+
+    const profile = await screen.findByRole('link', { name: 'Mon profil' });
+    expect(profile).toHaveAttribute('href', '#/profile');
+    expect(profile).toHaveClass('button--secondary');
+  });
+
+  it('opens a new profile in accompanied mode', async () => {
+    await renderApp({ settings: { ...onboarded, mode: 'accompanied' } });
+
+    expect(await screen.findByRole('link', { name: 'Nouveau profil' })).toHaveAttribute(
+      'href',
+      '#/profile/new',
+    );
+    expect(screen.queryByRole('link', { name: 'Mon profil' })).toBeNull();
+  });
+
+  it('says once that the profile was saved, and not again after a reload', async () => {
+    // As the profile screen leaves it, set before anything renders.
+    await storeSettings(onboarded);
+    window.history.replaceState({ profileSaved: 'Awa' }, '', '#/');
+    const { unmount } = render(
+      <AppProvider packLoader={loaderOf(shellPack())}>
+        <App />
+      </AppProvider>,
+    );
+
+    expect(await screen.findByText('Profil enregistré : Awa.')).toBeVisible();
+    expect(window.history.state).toBeNull();
+
+    unmount();
+    await renderApp({ settings: onboarded, hash: '#/' });
+    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(screen.queryByText(/^Profil enregistré/)).toBeNull();
   });
 
   it('says so when the knowledge base could not be loaded', async () => {

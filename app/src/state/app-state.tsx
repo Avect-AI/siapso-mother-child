@@ -36,6 +36,8 @@ export interface AppState {
   /** The pack works but could not be stored on the device. */
   packStoreError: string | null;
   online: boolean;
+  /** How long a screen waits for IndexedDB before saying it could not read or store. */
+  storageTimeoutMs: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = { lang: 'fr', mode: null, onboarded: false };
@@ -84,7 +86,7 @@ function messageOf(error: unknown): string {
 }
 
 /** `promise`, or a rejection once `ms` have passed without an answer. */
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`no answer from storage after ${String(ms)} ms`));
@@ -214,8 +216,17 @@ export function AppProvider({
       packFallbackReason: packState.fallbackReason,
       packStoreError: packState.storeError,
       online,
+      storageTimeoutMs,
     }),
-    [settings, settingsReady, settingsUnavailable, setSettings, packState, online],
+    [
+      settings,
+      settingsReady,
+      settingsUnavailable,
+      setSettings,
+      packState,
+      online,
+      storageTimeoutMs,
+    ],
   );
 
   return <AppContext value={value}>{children}</AppContext>;

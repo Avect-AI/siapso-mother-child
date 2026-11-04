@@ -238,6 +238,7 @@ describe('ResultCard', () => {
 
   it('keeps form errors off the danger red', () => {
     expect(rule('.text-field__error')).toMatch(/color:\s*var\(--color-text\)/);
+    expect(rule('.choice-group__error')).toMatch(/color:\s*var\(--color-text\)/);
     expect(baseCss).not.toMatch(/--color-error/);
   });
 

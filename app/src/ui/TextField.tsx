@@ -4,8 +4,9 @@ import { WarningMark } from './WarningMark.js';
 
 export type TextFieldProps = {
   label: string;
-  hint?: string;
-  error?: string;
+  hint?: string | undefined;
+  /** The problem with the value, or undefined when there is none. */
+  error?: string | undefined;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 /**
