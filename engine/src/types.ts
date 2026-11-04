@@ -181,6 +181,12 @@ export interface CheckedItem {
   ref: ItemRef;
   unitsPerDay?: number;
   longTerm?: boolean;
+  /**
+   * The product is confirmed but the strength on its box is not known: its
+   * component strengths are read as unknown (a strengthAboveMg rule applies,
+   * the max-dose sum skips the item, the max-dose-not-computable note can apply).
+   */
+  strengthUnknown?: boolean;
 }
 export interface EvaluationContext {
   pregnancy?: PregnancyContext;

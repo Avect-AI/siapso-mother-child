@@ -205,6 +205,9 @@ importers:
       '@siapso/engine':
         specifier: workspace:*
         version: link:../engine
+      '@siapso/resolver':
+        specifier: workspace:*
+        version: link:../resolver
       idb:
         specifier: 8.0.4
         version: 8.0.4

@@ -68,6 +68,8 @@ function Fieldset({
 export interface RadioOption<T extends string> {
   value: T;
   label: string;
+  /** An answer of its own after the list ("I do not know"), set apart by a hairline. */
+  apart?: boolean;
 }
 
 /** One answer of several. `row` sets short answers (yes, no) side by side when they fit. */
@@ -97,8 +99,15 @@ export function RadioGroup<T extends string>({
         <div className={row ? 'options options--row' : 'options'}>
           {options.map((option) => {
             const checked = option.value === value;
+            const classes = [
+              'option',
+              checked ? 'option--checked' : null,
+              option.apart ? 'option--none' : null,
+            ]
+              .filter(Boolean)
+              .join(' ');
             return (
-              <label key={option.value} className={checked ? 'option option--checked' : 'option'}>
+              <label key={option.value} className={classes}>
                 <input
                   type="radio"
                   name={name}

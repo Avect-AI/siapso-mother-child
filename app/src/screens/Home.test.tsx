@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App.js';
@@ -65,7 +65,10 @@ describe('Home', () => {
     );
 
     expect(await screen.findByText('Profil enregistré : Awa.')).toBeVisible();
-    expect(window.history.state).toBeNull();
+    // Home takes the note off the history entry in an effect: wait for it, not for the clock.
+    await waitFor(() => {
+      expect(window.history.state).toBeNull();
+    });
 
     unmount();
     await renderApp({ settings: onboarded, hash: '#/' });

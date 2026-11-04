@@ -1038,6 +1038,319 @@ a {
   border-top: 1px solid var(--color-rule);
 }
 
+/* Read by a screen reader, not shown: a live region that only speaks. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * Check: the items being looked at, one row each under a hairline (the name,
+ * then its substances and strengths), the ways to add one, then the one
+ * primary action at the bottom, in thumb reach. A product name is never
+ * hyphenated; a word breaks only if it cannot fit alone.
+ */
+
+.check__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * minmax(0, 1fr) on every grid that holds a product name: an auto track
+ * sizes to the longest word ("ACETYLSALICYLIQUE" at 200 percent text) and
+ * pushes the page sideways; a bounded track lets the word break instead.
+ */
+.check__items {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.check__item:first-child {
+  border-top: 1px solid var(--color-rule);
+}
+
+.check__item-text {
+  display: grid;
+  flex: 1 1 12rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.check__item-name {
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+/* The words line up with the end of the row, like a link at the end of a line. */
+.check__remove {
+  margin-inline-end: calc(-1 * var(--space-3));
+}
+
+.check__empty {
+  color: var(--color-text-muted);
+}
+
+/* What just changed in the list, in words; out of the layout while silent, still in the accessibility tree. */
+.check__status {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+.check__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* The undo sits right under the sentence it undoes, its words lined up with the column. */
+.check__undo {
+  align-self: flex-start;
+  margin-top: calc(-1 * var(--space-4));
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+.check__add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.check__add > .button {
+  flex: 1 1 12rem;
+}
+
+.check__result {
+  width: 100%;
+  margin-top: auto;
+}
+
+/*
+ * Search: the field, then the candidates as whole-width answers (the same
+ * white fill and control contour as a choice group's answers: a candidate is
+ * a choice, not a result), then "not found" as the last option.
+ */
+
+.search__results {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* Out of the layout while silent, but kept in the accessibility tree, so its first words are read. */
+.search__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.search__status {
+  font-weight: var(--font-weight-strong);
+}
+
+.candidates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The words, then the chevron that says the candidate opens its confirm screen. */
+.candidate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--touch-target-large);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .candidate:hover {
+    border-color: var(--color-primary);
+  }
+}
+
+.candidate:active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-tint);
+}
+
+.candidate__text {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.candidate .chevron {
+  color: var(--color-primary);
+}
+
+.candidate__name {
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+.candidate__detail,
+.candidate__local {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  overflow-wrap: break-word;
+}
+
+.search__other {
+  width: 100%;
+}
+
+/* "Not found", then what it does: the text is added as written, not recognised. */
+.search__not-found {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.search__not-found > .button--secondary {
+  width: 100%;
+}
+
+.search__not-found > .button--quiet {
+  justify-self: start;
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+/*
+ * Confirm: what "yes" adds, a statement between two hairlines (its name at
+ * title size, then substances and strengths), never a box that looks like an
+ * answer to tap; then the strength question and the units, then what "yes"
+ * adds said again, then yes (primary) over no.
+ */
+
+.confirm__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.confirm__product {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-block: var(--space-4);
+  border-block: 1px solid var(--color-rule);
+}
+
+.confirm__name {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+.confirm__detail {
+  overflow-wrap: break-word;
+}
+
+/* Units per day: the count between a step down and a step up, each a thumb-sized target. */
+.units__row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.units__step {
+  flex: none;
+  min-width: var(--touch-target-large);
+  padding-inline: var(--space-3);
+  font-size: var(--font-size-title);
+}
+
+.units__input.text-field__input {
+  flex: 0 1 6rem;
+  width: auto;
+  text-align: center;
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+.confirm__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.confirm__adding {
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+.confirm__yes,
+.confirm__no {
+  width: 100%;
+}
+
+/* Result, minimal until Task 12: the level, then the items under hairlines. */
+
+.result > .level-badge {
+  align-self: flex-start;
+}
+
+.result__items {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result__items li {
+  padding-block: var(--space-3);
+  border-bottom: 1px solid var(--color-rule);
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+.result__items li:first-child {
+  border-top: 1px solid var(--color-rule);
+}
+
 /* Windows high contrast and other forced colours: keep every contour. */
 @media (forced-colors: active) {
   .level-badge,

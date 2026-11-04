@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: MIT
-import type { CheckedItem, Pack, Product, Subject } from './types.js';
+import type { CheckedItem, Component, Pack, Product, Subject } from './types.js';
+
+/**
+ * The strength in mg of a component of an item, as the rules read it:
+ * undefined when the pack gives none, or when the user does not know the
+ * strength on the box (strengthUnknown).
+ */
+export function strengthOf(item: CheckedItem, component: Component): number | undefined {
+  return item.strengthUnknown === true ? undefined : component.strengthMg;
+}
 
 /** The pack product of a product item; undefined for any other item or a missing id. */
 export function productOf(pack: Pack, item: CheckedItem): Product | undefined {
@@ -39,7 +48,8 @@ export function substanceMatches(pack: Pack, substanceId: string, subject: Subje
  * An unrecognised item, or an id missing from the pack, matches nothing.
  *
  * With strengthAboveMg and a substance subject, the component must also be
- * stronger than that value; a component of unknown strength still matches.
+ * stronger than that value; a component of unknown strength still matches,
+ * and so does every component of an item whose strength the user does not know.
  */
 export function itemMatches(
   pack: Pack,
@@ -51,13 +61,11 @@ export function itemMatches(
     return item.ref.kind === 'plant' && entryKey(pack, item) === `plant:${subject.plant}`;
   }
   const components = productOf(pack, item)?.components ?? [];
-  return components.some(
-    (c) =>
-      substanceMatches(pack, c.substance, subject) &&
-      (strengthAboveMg === undefined ||
-        c.strengthMg === undefined ||
-        c.strengthMg > strengthAboveMg),
-  );
+  return components.some((c) => {
+    if (!substanceMatches(pack, c.substance, subject)) return false;
+    const strength = strengthOf(item, c);
+    return strengthAboveMg === undefined || strength === undefined || strength > strengthAboveMg;
+  });
 }
 
 /** Substances of a product item, in component order; none for any other item. */

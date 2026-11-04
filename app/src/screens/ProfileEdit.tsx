@@ -90,6 +90,17 @@ function shownTerm(form: ProfileForm, today: string): TermDisplay | undefined {
   }
 }
 
+/**
+ * Where a save goes when the profile screen was opened on the way to another
+ * screen: the check opens it when there is no profile yet, and leaves
+ * `next: '/check'` on the history entry. Null: home, which says it was saved.
+ */
+function nextAfterSave(): string | null {
+  const state: unknown = window.history.state;
+  if (typeof state !== 'object' || state === null || !('next' in state)) return null;
+  return state.next === '/check' ? '/check' : null;
+}
+
 /** Digits only, for the numeric keypad; the value stays text until validation. */
 const NUMBER_INPUT = { inputMode: 'numeric', pattern: '[0-9]*', maxLength: 3 } as const;
 
@@ -466,13 +477,15 @@ function Form({
  * (date of last period, weeks, months or unknown; the term in words), breast
  * feeding with the baby's age and prematurity, and long-term situations (three
  * more in accompanied mode). Pseudonymous: a nickname, no phone number, no
- * address. Saving goes home, which says the profile was saved.
+ * address. Saving goes home, which says the profile was saved, or on to the
+ * check that opened this screen for want of a profile.
  */
 export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
   const { settings, storageTimeoutMs } = useApp();
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
+  const [next] = useState(nextAfterSave);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const kind = target.kind;
   const id = target.kind === 'edit' ? target.id : null;
@@ -529,6 +542,10 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
           base={loaded.base}
           initial={loaded.form === null ? emptyForm(defaultPseudonym(loaded.number)) : loaded.form}
           onSaved={(profile) => {
+            if (next !== null) {
+              navigate(next, { replace: true });
+              return;
+            }
             // Home reads the pseudonym from the history entry to say which profile was saved.
             navigate('/', { replace: true, state: { profileSaved: profile.pseudonym } });
           }}

@@ -134,7 +134,7 @@ interface EvaluationContext {
   signs: DangerSignId[];     // danger signs present now
 }
 type CheckedItem =
-  | { ref: { kind: 'product' | 'plant'; id: string }; unitsPerDay?: number; longTerm?: boolean }
+  | { ref: { kind: 'product' | 'plant'; id: string }; unitsPerDay?: number; longTerm?: boolean; strengthUnknown?: boolean } // strengthUnknown: the strength on the box is not known, component strengths read as unknown
   | { ref: { kind: 'unrecognised'; text: string } };
 
 interface Finding {

@@ -1,30 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { AppMark } from './AppMark.js';
+import { Chevron } from './Chevron.js';
 import { OfflineBadge } from './OfflineBadge.js';
-
-/** An entry-point mark that no level uses: the octagon belongs to the danger level alone. */
-function Chevron() {
-  return (
-    <svg
-      className="chevron"
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      style={{ width: '1.25rem', height: '1.25rem' }}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <path
-        d="M9 4.5 16.5 12 9 19.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 export type HeaderPage = 'home' | 'danger' | null;
 

@@ -40,6 +40,27 @@ describe('RadioGroup', () => {
     );
   });
 
+  it('sets an answer of its own apart from the list, as "none of these" is', () => {
+    render(
+      <RadioGroup
+        legend="Dosage"
+        options={[
+          { value: '500', label: '500 mg' },
+          { value: 'unknown', label: 'Je ne sais pas', apart: true },
+        ]}
+        value={null}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('radio', { name: 'Je ne sais pas' }).closest('label')).toHaveClass(
+      'option--none',
+    );
+    expect(screen.getByRole('radio', { name: '500 mg' }).closest('label')).not.toHaveClass(
+      'option--none',
+    );
+  });
+
   it('answers with the value of the label tapped, the whole label being the target', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

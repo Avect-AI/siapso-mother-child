@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // App-wide state: settings (kept in IndexedDB), the knowledge pack with where
-// it came from, and the connection status. Later tasks add the session and the
-// current check.
+// it came from, the connection status, and the check in progress (in memory,
+// see check-state.ts, read with useCheck). Later tasks add the session.
 import type { Pack } from '@siapso/engine';
 import {
   createContext,
@@ -17,6 +17,7 @@ import {
 import { getStoredSettings, storeSettings } from '../data/db.js';
 import { loadPack, type LoadedPack } from '../data/pack-loader.js';
 import type { Settings } from '../domain/types.js';
+import { CheckContext, useCheckStore } from './check-state.js';
 
 export interface AppState {
   settings: Settings;
@@ -130,6 +131,7 @@ export function AppProvider({
   const latest = useRef<Settings>(DEFAULT_SETTINGS);
   const [packState, setPackState] = useState<PackState>(NO_PACK);
   const online = useSyncExternalStore(subscribeOnline, isOnline);
+  const check = useCheckStore();
 
   useEffect(() => {
     let settled = false;
@@ -229,7 +231,11 @@ export function AppProvider({
     ],
   );
 
-  return <AppContext value={value}>{children}</AppContext>;
+  return (
+    <AppContext value={value}>
+      <CheckContext value={check}>{children}</CheckContext>
+    </AppContext>
+  );
 }
 
 export function useApp(): AppState {

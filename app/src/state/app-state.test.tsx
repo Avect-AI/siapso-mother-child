@@ -7,7 +7,7 @@ import { closeAppDb, getStoredSettings, storeSettings } from '../data/db.js';
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { loaderOf } from '../test/render-app.js';
-import { AppProvider, useApp } from './app-state.js';
+import { AppProvider, STORAGE_TIMEOUT_MS, useApp } from './app-state.js';
 
 const pack = { version: '0.1.0', dangerSigns: [] } as unknown as Pack;
 const loaded = loaderOf(pack);
@@ -113,20 +113,30 @@ describe('AppProvider settings', () => {
 
   it('changes the settings at once even when storage cannot finish, and flags it', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    renderProbe(loaded, 50);
+    // The first read has the usual time (a short timeout would also cut it on
+    // a loaded machine); only the save that never finishes runs on fake timers.
+    renderProbe(loaded, STORAGE_TIMEOUT_MS);
     await screen.findByText('ready: true');
+    expect(screen.getByText('unavailable: false')).toBeInTheDocument();
     closeAppDb();
     hangIndexedDB();
+    vi.useFakeTimers();
+    try {
+      let saving: Promise<void> | undefined;
+      act(() => {
+        saving = latest?.setSettings({ lang: 'en' });
+      });
+      expect(screen.getByText('{"lang":"en","mode":null,"onboarded":false}')).toBeInTheDocument();
+      expect(screen.getByText('unavailable: false')).toBeInTheDocument();
 
-    let saving: Promise<void> | undefined;
-    act(() => {
-      saving = latest?.setSettings({ lang: 'en' });
-    });
-    expect(screen.getByText('{"lang":"en","mode":null,"onboarded":false}')).toBeInTheDocument();
-    expect(screen.getByText('unavailable: false')).toBeInTheDocument();
-
-    await act(() => saving);
-    expect(screen.getByText('unavailable: true')).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(STORAGE_TIMEOUT_MS);
+        await saving;
+      });
+      expect(screen.getByText('unavailable: true')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('asks once for persistent storage when onboarding completes, and ignores a refusal', async () => {

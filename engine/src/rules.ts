@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Whether a pack rule applies to an evaluation context, and to which items.
-import { itemMatches, productOf, substanceMatches } from './match.js';
+import { itemMatches, productOf, strengthOf, substanceMatches } from './match.js';
 import type {
   BreastfeedingContext,
   CheckId,
@@ -72,8 +72,9 @@ function breastfeedingApplies(
 /**
  * Known sum of strength x units per day over the items holding the subject,
  * compared with the rule threshold. An item without a unit count or a
- * strength adds nothing to the sum but does not cancel it: the rule triggers
- * as soon as the known part alone is greater than the threshold.
+ * strength (or whose strength the user does not know) adds nothing to the sum
+ * but does not cancel it: the rule triggers as soon as the known part alone is
+ * greater than the threshold.
  */
 function exceedsMaxDose(rule: Rule, subjectItems: number[], scope: RuleScope): boolean {
   const { subject, maxMgPerDay } = rule.when;
@@ -81,13 +82,12 @@ function exceedsMaxDose(rule: Rule, subjectItems: number[], scope: RuleScope): b
   let known = 0;
   for (const index of subjectItems) {
     const item = scope.context.items[index];
-    const units = item?.unitsPerDay;
-    const components = item ? (productOf(scope.pack, item)?.components ?? []) : [];
-    for (const component of components) {
+    if (item === undefined) continue;
+    const units = item.unitsPerDay;
+    for (const component of productOf(scope.pack, item)?.components ?? []) {
       if (!substanceMatches(scope.pack, component.substance, subject)) continue;
-      if (units !== undefined && component.strengthMg !== undefined) {
-        known += component.strengthMg * units;
-      }
+      const strength = strengthOf(item, component);
+      if (units !== undefined && strength !== undefined) known += strength * units;
     }
   }
   return known > maxMgPerDay;
@@ -191,8 +191,9 @@ export function applyRule(rule: Rule, scope: RuleScope): RuleMatch | undefined {
 /**
  * The items for which a max-dose rule cannot compute the daily total: they
  * hold the subject and have a unit count, but a component of the subject has
- * no strength. Empty for another kind of rule, or when the rule cannot apply
- * to the context (its conditions and requirements are checked as for C7).
+ * no strength (in the pack, or because the user does not know it). Empty for
+ * another kind of rule, or when the rule cannot apply to the context (its
+ * conditions and requirements are checked as for C7).
  */
 export function uncomputableDoseItems(rule: Rule, scope: RuleScope): number[] {
   const { subject, requires } = rule.when;
@@ -204,7 +205,8 @@ export function uncomputableDoseItems(rule: Rule, scope: RuleScope): number[] {
     if (item?.unitsPerDay === undefined) return false;
     const components = productOf(scope.pack, item)?.components ?? [];
     return components.some(
-      (c) => c.strengthMg === undefined && substanceMatches(scope.pack, c.substance, subject),
+      (c) =>
+        strengthOf(item, c) === undefined && substanceMatches(scope.pack, c.substance, subject),
     );
   });
 }

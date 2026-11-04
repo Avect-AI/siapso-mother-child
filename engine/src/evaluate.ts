@@ -82,9 +82,10 @@ function byRuleId(a: Reminder, b: Reminder): number {
 }
 
 /**
- * Refuses numbers that would silently change a result: a baby age that is not
- * a finite number of at least 0, or a unit count that is not a finite number
- * greater than 0 (NaN would make every comparison false).
+ * Refuses values that would silently change a result: a baby age that is not
+ * a finite number of at least 0, a unit count that is not a finite number
+ * greater than 0 (NaN would make every comparison false), or a strengthUnknown
+ * that is not a boolean.
  */
 function checkContextNumbers(context: EvaluationContext): void {
   const babyAgeWeeks = context.breastfeeding?.babyAgeWeeks;
@@ -98,6 +99,13 @@ function checkContextNumbers(context: EvaluationContext): void {
     if (units !== undefined && !(Number.isFinite(units) && units > 0)) {
       throw new RangeError(
         `items[${String(index)}].unitsPerDay must be a finite number greater than 0: ${String(units)}`,
+      );
+    }
+    // A truthy string read as "known" would silently drop a cautious match.
+    const unknown: unknown = item.strengthUnknown;
+    if (unknown !== undefined && typeof unknown !== 'boolean') {
+      throw new TypeError(
+        `items[${String(index)}].strengthUnknown must be a boolean, not ${typeof unknown}`,
       );
     }
   });

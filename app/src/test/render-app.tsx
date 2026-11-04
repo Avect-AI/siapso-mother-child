@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import type { DangerSign, Pack } from '@siapso/engine';
 import { render } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { App } from '../App.js';
 import { storeSettings } from '../data/db.js';
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
@@ -32,17 +33,23 @@ export const noPack = () => Promise.reject(new PackLoadError('no pack in this te
 /** A pack that is still loading for the whole test. */
 export const pendingPack = () => new Promise<LoadedPack>(() => undefined);
 
-/** Renders the whole app as on a phone: stored settings first, then the route in the hash. */
+/**
+ * Renders the whole app as on a phone: stored settings first, then the route
+ * in the hash. `children` render inside the app, after the screens (a probe
+ * reading the app state).
+ */
 export async function renderApp({
   settings,
   hash = '',
   packLoader = loaderOf(shellPack()),
   storageTimeoutMs,
+  children,
 }: {
   settings?: Settings;
   hash?: string;
   packLoader?: () => Promise<LoadedPack>;
   storageTimeoutMs?: number;
+  children?: ReactNode;
 } = {}) {
   if (settings) await storeSettings(settings);
   window.location.hash = hash;
@@ -51,7 +58,7 @@ export async function renderApp({
       packLoader={packLoader}
       {...(storageTimeoutMs === undefined ? {} : { storageTimeoutMs })}
     >
-      <App />
+      <App>{children}</App>
     </AppProvider>,
   );
 }
