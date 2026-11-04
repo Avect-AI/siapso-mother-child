@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: MIT
+# Pinned set for the conversion and the quick check (speech/convert/README.md).
+# Edit this file, then regenerate requirements.txt with its hashes:
+#   speech/convert/.venv/Scripts/python speech/convert/lock.py hash
+#   speech/convert/.venv/Scripts/python speech/convert/lock.py check
+# Every version, transitive ones included, was published on or before
+# 2026-10-20 (PyPI and PyTorch index dates checked on 2026-11-04).
+# optimum-onnx 0.1.0 requires optimum 2.1 and transformers below 4.58, which
+# fixes the rest of the set; onnxruntime 1.23.2 needs Python 3.10 to 3.12
+# here. Supported: Windows x86_64, Linux x86_64 and aarch64, macOS arm64.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Direct requirements. torch: the CPU build (the PyPI build for Linux pulls
+# the CUDA libraries); macOS has a single build.
+torch==2.8.0+cpu ; sys_platform != "darwin"
+torch==2.8.0 ; sys_platform == "darwin"
+transformers==4.57.6
+optimum==2.1.0
+optimum-onnx[onnxruntime]==0.1.0
+onnx==1.19.1
+onnxruntime==1.23.2
+numpy==2.2.6
+huggingface-hub==0.36.2
+tokenizers==0.22.2
+safetensors==0.7.0
+soundfile==0.14.0
+
+# Transitive requirements, with the markers of the packages that need them.
+certifi==2026.10.19
+cffi==2.1.1
+charset-normalizer==3.5.2
+colorama==0.4.6 ; sys_platform == "win32"
+coloredlogs==15.0.1
+filelock==4.1.0
+flatbuffers==25.12.19
+fsspec==2026.9.0
+hf-xet==1.7.0 ; platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "arm64" or platform_machine == "aarch64"
+humanfriendly==10.0
+idna==3.20
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+ml_dtypes==0.6.0
+mpmath==1.3.0
+networkx==3.4.2
+packaging==26.3
+protobuf==7.36.2
+pycparser==3.11
+pyreadline3==3.5.6 ; sys_platform == "win32"
+PyYAML==6.0.3
+regex==2026.9.29
+requests==2.34.2
+setuptools==84.2.1 ; python_version >= "3.12"
+sympy==1.14.0
+tqdm==4.70.1
+typing_extensions==4.16.0
+urllib3==2.8.0

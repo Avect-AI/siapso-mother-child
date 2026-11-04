@@ -49,6 +49,11 @@ Thumbs.db
 # Knowledge pack built from knowledge/ and registry/
 app/public/pack/
 
+# Voice pack: converted model files, never committed (speech/convert/README.md)
+app/public/voice/
+speech/convert/out/
+speech/convert/.venv/
+
 # Test and build output
 playwright-report/
 test-results/

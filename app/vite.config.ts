@@ -25,6 +25,25 @@ function htmlValues(values: Record<string, string>): Plugin {
   };
 }
 
+/** Service worker precache (tested in src/pwa/workbox.test.ts). */
+export const workbox = {
+  // The app shell, its fonts and icons, and the knowledge pack: the
+  // manifest and its fragments. pack.json repeats every fragment in
+  // one file and the app never reads it, so it is not downloaded twice.
+  globPatterns: ['**/*.{html,js,css,woff2,svg,png,webmanifest}', 'pack/*.json'],
+  // The voice pack (voice/) is an optional download of several hundred
+  // megabytes, installed on request into the Cache API by @siapso/speech:
+  // never precached.
+  globIgnores: ['pack/pack.json', 'voice/**'],
+  // Pack fragments grow with the content; a file over the limit would
+  // silently be left out of the precache.
+  maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
+  navigateFallback: 'index.html',
+  // A voice pack file is never answered with the app page.
+  navigateFallbackDenylist: [/\/voice\//],
+  cleanupOutdatedCaches: true,
+};
+
 export default defineConfig(({ mode }) => {
   const name = appName(loadEnv(mode, root, 'VITE_')['VITE_APP_NAME']);
   const themeColour = tokenColour('--color-primary');
@@ -58,18 +77,7 @@ export default defineConfig(({ mode }) => {
             },
           ],
         },
-        workbox: {
-          // The app shell, its fonts and icons, and the knowledge pack: the
-          // manifest and its fragments. pack.json repeats every fragment in
-          // one file and the app never reads it, so it is not downloaded twice.
-          globPatterns: ['**/*.{html,js,css,woff2,svg,png,webmanifest}', 'pack/*.json'],
-          globIgnores: ['pack/pack.json'],
-          // Pack fragments grow with the content; a file over the limit would
-          // silently be left out of the precache.
-          maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
-          navigateFallback: 'index.html',
-          cleanupOutdatedCaches: true,
-        },
+        workbox,
       }),
     ],
   };

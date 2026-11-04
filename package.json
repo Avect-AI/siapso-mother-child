@@ -19,7 +19,10 @@
     "eval:resolver": "pnpm --filter @siapso/pack-tools exec tsx src/eval-resolver.ts",
     "build": "pnpm knowledge:build && pnpm -r --if-present build",
     "budget:app": "node tools/budget/check-app-size.mjs",
-    "e2e": "pnpm --filter @siapso/app e2e"
+    "e2e": "pnpm --filter @siapso/app e2e",
+    "voice:convert": "sh tools/hygiene/py.sh speech/convert/convert.py",
+    "voice:install-local": "node speech/scripts/install-local.mjs",
+    "voice:bench": "pnpm --filter @siapso/speech bench"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

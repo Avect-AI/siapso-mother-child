@@ -13,3 +13,11 @@ minimumReleaseAge: 20160
 # dependency, so the script stays denied (checked on 2026-11-04).
 allowBuilds:
   esbuild: false
+  # onnxruntime-node (pulled in by @huggingface/transformers, used only when the
+  # model runs in Node) ships its CPU binaries in the package; its install
+  # script only downloads the CUDA and TensorRT providers on linux/x64, which
+  # SIAPSO never uses, so the script stays denied (checked on 2026-11-04).
+  onnxruntime-node: false
+  # protobufjs (pulled in by onnxruntime-node) only prints a version scheme
+  # warning after install, so its script stays denied (checked on 2026-11-04).
+  protobufjs: false

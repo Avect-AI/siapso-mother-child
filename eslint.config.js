@@ -12,6 +12,10 @@ export default tseslint.config(
       '.claude/**',
       '.superpowers/**',
       'app/public/pack/**',
+      // Voice pack conversion: Python venv and converted files (git-ignored).
+      'app/public/voice/**',
+      'speech/convert/.venv/**',
+      'speech/convert/out/**',
       '**/playwright-report',
       '**/test-results',
     ],
