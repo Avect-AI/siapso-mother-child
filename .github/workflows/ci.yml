@@ -33,6 +33,7 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test:coverage
+      - run: pnpm eval:resolver
       - run: pnpm build
       - run: pnpm budget:app
 

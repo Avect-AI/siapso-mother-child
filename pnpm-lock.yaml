@@ -269,6 +269,9 @@ importers:
       '@siapso/engine':
         specifier: workspace:*
         version: link:../../engine
+      '@siapso/resolver':
+        specifier: workspace:*
+        version: link:../../resolver
       ajv:
         specifier: 8.20.0
         version: 8.20.0

@@ -29,6 +29,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `pnpm budget:app`: the app stays at or under 1.5 MB without the pack and the voice files, checked in CI.
 - `docs/testing.md`: automated checks and how to test in airplane mode on a real phone.
 
+- Local name resolver (`@siapso/resolver`): normalisation with French and Wolof spelling variants, trigram and Damerau-Levenshtein scoring, ranked candidates with brand, generic, plant and INN priorities; it never returns a level. `pnpm eval:resolver` runs the evaluation set `eval/resolver/queries.yaml` (top-1 and top-3 accuracy per query type, p95 latency) and fails below `eval/resolver/baseline.json`; CI runs it.
+
 ### Fixed
 
 - `setup-repo.sh` now reads the auto-merge setting back instead of trusting the API response.

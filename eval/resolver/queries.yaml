@@ -1,0 +1,1078 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Name resolver evaluation set (see eval/resolver/README.md).
+# The expectations were written from the registry (product names, brands and
+# ids), not from the output of the resolver.
+# Each item: query (as typed or transcribed), expect (one { kind, id } or a list
+# of acceptable answers), type (brand, inn, misspelling, local-fr, local-wo,
+# voice-like).
+- {
+    query: doliprane,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- {
+    query: Doliprane 1000,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+      ],
+  }
+- {
+    query: dafalgan,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+        { kind: product, id: dafalgan-1000-mg-63264636 },
+        { kind: product, id: dafalgan-1000-mg-67154532 },
+        { kind: product, id: dafalgan-500-mg-62815944 },
+        { kind: product, id: dafalgan-500-mg-65609611 },
+        { kind: product, id: dafalgan-500-mg-67721153 },
+        { kind: product, id: dafalgan-adultes-600-mg-69085818 },
+        { kind: product, id: dafalgan-codeine-61109911 },
+        { kind: product, id: dafalgan-codeine-66003374 },
+      ],
+  }
+- {
+    query: efferalgan,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-60025403 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: efferalgan-150-mg-64675665 },
+        { kind: product, id: efferalgan-150-mg-64796108 },
+        { kind: product, id: efferalgan-250-mg-66093336 },
+        { kind: product, id: efferalgan-250-mg-66826710 },
+        { kind: product, id: efferalgan-300-mg-61128406 },
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+        { kind: product, id: efferalgan-80-mg-60298455 },
+        { kind: product, id: efferalgan-80-mg-67617578 },
+        { kind: product, id: efferalgan-pediatrique-30-mg-ml-63390065 },
+        { kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 },
+      ],
+  }
+- {
+    query: bactrim,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: bactrim-40-mg-ml-8-mg-ml-69464049 },
+        { kind: product, id: bactrim-65181349 },
+        { kind: product, id: bactrim-forte-64121235 },
+        { kind: product, id: cotrimoxazole-generic },
+      ],
+  }
+- { query: bactrim forte, type: brand, expect: { kind: product, id: bactrim-forte-64121235 } }
+- {
+    query: flagyl,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: flagyl-125-mg-5-ml-65020253 },
+        { kind: product, id: flagyl-250-mg-68818192 },
+        { kind: product, id: flagyl-500-mg-61659061 },
+      ],
+  }
+- {
+    query: voltarene,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: voltarene-100-mg-66691390 },
+        { kind: product, id: voltarene-50-mg-62431527 },
+        { kind: product, id: voltarene-emulgel-1-63855240 },
+        { kind: product, id: voltarene-l-p-100-mg-63225081 },
+        { kind: product, id: voltarene-l-p-75-mg-60980979 },
+        { kind: product, id: voltarene-lp-75-mg-68344335 },
+      ],
+  }
+- {
+    query: nurofen,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: nurofen-200-mg-60305960 },
+        { kind: product, id: nurofen-200-mg-63005402 },
+        { kind: product, id: nurofen-400-mg-64911902 },
+      ],
+  }
+- {
+    query: advil,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000 },
+        { kind: product, id: advil-400-mg-63646874 },
+        { kind: product, id: advilcaps-200-mg-67848097 },
+        { kind: product, id: advilcaps-400-mg-61959735 },
+        { kind: product, id: advilmed-400-mg-63040606 },
+        { kind: product, id: advilmed-enfants-et-nourrissons-20-mg-1-61902232 },
+      ],
+  }
+- {
+    query: apranax,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: apranax-275-mg-67849644 },
+        { kind: product, id: apranax-550-mg-63738842 },
+        { kind: product, id: apranax-750-mg-67565882 },
+      ],
+  }
+- {
+    query: tegretol,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: tegretol-20-mg-ml-65608566 },
+        { kind: product, id: tegretol-200-mg-61009918 },
+        { kind: product, id: tegretol-l-p-200-mg-63045724 },
+        { kind: product, id: tegretol-l-p-400-mg-67655493 },
+      ],
+  }
+- {
+    query: depakine,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+      ],
+  }
+- {
+    query: coumadine,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: coumadine-2-mg-64631925 },
+        { kind: product, id: coumadine-5-mg-63245753 },
+      ],
+  }
+- {
+    query: contramal,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: contramal-100-mg-ml-60477650 },
+        { kind: product, id: contramal-50-mg-68655884 },
+        { kind: product, id: contramal-lp-100-mg-68951381 },
+        { kind: product, id: contramal-lp-150-mg-61662919 },
+        { kind: product, id: contramal-lp-200-mg-65657321 },
+      ],
+  }
+- {
+    query: tardyferon,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: tardyferon-50-mg-61879666 },
+        { kind: product, id: tardyferon-80-mg-68269288 },
+        { kind: product, id: tardyferon-b9-64875192 },
+      ],
+  }
+- {
+    query: fervex,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: fervex-adultes-69329731 },
+        { kind: product, id: fervex-adultes-framboise-69738404 },
+        { kind: product, id: fervex-adultes-sans-sucre-66947007 },
+        { kind: product, id: fervex-enfants-sans-sucre-66418648 },
+      ],
+  }
+- {
+    query: aspegic,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: aspegic-500-mg-61162942 },
+        { kind: product, id: aspegic-adultes-1000-mg-63936571 },
+        { kind: product, id: aspegic-enfants-250-mg-66311831 },
+        { kind: product, id: aspegic-nourrissons-100-mg-66769394 },
+      ],
+  }
+- {
+    query: kardegic,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: kardegic-160-mg-61348441 },
+        { kind: product, id: kardegic-300-mg-68815221 },
+        { kind: product, id: kardegic-75-mg-64755969 },
+      ],
+  }
+- { query: gymiso, type: brand, expect: { kind: product, id: gymiso-200-microgrammes-69981979 } }
+- { query: misoone, type: brand, expect: { kind: product, id: misoone-400-microgrammes-61240145 } }
+- {
+    query: retrovir,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: retrovir-100-mg-10-ml-60524598 },
+        { kind: product, id: retrovir-100-mg-69290545 },
+        { kind: product, id: retrovir-250-mg-63894243 },
+      ],
+  }
+- {
+    query: epivir,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: epivir-10-mg-ml-68036070 },
+        { kind: product, id: epivir-150-mg-62715513 },
+        { kind: product, id: epivir-300-mg-64777862 },
+      ],
+  }
+- { query: riamet, type: brand, expect: { kind: product, id: riamet-20-mg-120-mg-65574434 } }
+- {
+    query: cozaar,
+    type: brand,
+    expect:
+      [{ kind: product, id: cozaar-100-mg-66928996 }, { kind: product, id: cozaar-50-mg-69197614 }],
+  }
+- {
+    query: coversyl,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: coversyl-10-mg-68391071 },
+        { kind: product, id: coversyl-2-5-mg-69475939 },
+        { kind: product, id: coversyl-5-mg-63849839 },
+      ],
+  }
+- {
+    query: aprovel,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: aprovel-150-mg-67481345 },
+        { kind: product, id: aprovel-300-mg-64522751 },
+      ],
+  }
+- {
+    query: codoliprane,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: codoliprane-500-mg-30-mg-60904643 },
+        { kind: product, id: codoliprane-500-mg-30-mg-62049552 },
+        { kind: product, id: codoliprane-adultes-400-mg-20-mg-64406362 },
+      ],
+  }
+- { query: neo codion, type: brand, expect: { kind: product, id: neo-codion } }
+- { query: 'Néo-Codion', type: brand, expect: { kind: product, id: neo-codion } }
+- { query: asaq, type: brand, expect: { kind: product, id: asaq } }
+- { query: tld, type: brand, expect: { kind: product, id: tld } }
+- { query: 'SP', type: brand, expect: { kind: product, id: sp } }
+- { query: klipal, type: brand, expect: { kind: product, id: klipal-300-mg-25-mg-62094992 } }
+- {
+    query: curacne,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: curacne-10-mg-62318935 },
+        { kind: product, id: curacne-20-mg-69164379 },
+        { kind: product, id: curacne-40-mg-61654491 },
+      ],
+  }
+- {
+    query: rifadine,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: rifadine-2-pour-cent-64085981 },
+        { kind: product, id: rifadine-300-mg-67876901 },
+      ],
+  }
+- { query: doxypalu, type: brand, expect: { kind: product, id: doxypalu-100-mg-63307856 } }
+- {
+    query: doliprane 1 g,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+      ],
+  }
+- {
+    query: doliprane 1000,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+      ],
+  }
+- {
+    query: doliprane 500,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+      ],
+  }
+- {
+    query: 'doliprane 0,5 g',
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+      ],
+  }
+- {
+    query: dafalgan 1 g,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+        { kind: product, id: dafalgan-1000-mg-63264636 },
+        { kind: product, id: dafalgan-1000-mg-67154532 },
+      ],
+  }
+- {
+    query: efferalgan 500 mg,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+      ],
+  }
+- {
+    query: efferalgan 1000,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-60025403 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+      ],
+  }
+- { query: nurofen 400, type: brand, expect: { kind: product, id: nurofen-400-mg-64911902 } }
+- { query: kardegic 300, type: brand, expect: { kind: product, id: kardegic-300-mg-68815221 } }
+- { query: tegretol 200, type: brand, expect: { kind: product, id: tegretol-200-mg-61009918 } }
+- { query: depakine 500, type: brand, expect: { kind: product, id: depakine-500-mg-60184188 } }
+- { query: contramal 50, type: brand, expect: { kind: product, id: contramal-50-mg-68655884 } }
+- {
+    query: paracetamol 500,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: dafalgan-500-mg-62815944 },
+        { kind: product, id: dafalgan-500-mg-65609611 },
+        { kind: product, id: dafalgan-500-mg-67721153 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+        { kind: product, id: codoliprane-500-mg-30-mg-60904643 },
+        { kind: product, id: codoliprane-500-mg-30-mg-62049552 },
+        { kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 },
+      ],
+  }
+- {
+    query: ibuprofene 400,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: advil-400-mg-63646874 },
+        { kind: product, id: advilcaps-400-mg-61959735 },
+        { kind: product, id: advilmed-400-mg-63040606 },
+        { kind: product, id: nurofen-400-mg-64911902 },
+      ],
+  }
+- {
+    query: ibuprofene 200,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000 },
+        { kind: product, id: advilcaps-200-mg-67848097 },
+        { kind: product, id: nurofen-200-mg-60305960 },
+        { kind: product, id: nurofen-200-mg-63005402 },
+      ],
+  }
+- {
+    query: amoxicilline 500 mg,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }
+- {
+    query: doli,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- {
+    query: amox,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-1-g-60151544 },
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+        { kind: product, id: amoxicilline-arrow-250-mg-5-ml-66773446 },
+        { kind: product, id: clamoxyl-1-g-64539416 },
+        { kind: product, id: clamoxyl-125-mg-5-ml-61155773 },
+        { kind: product, id: clamoxyl-250-mg-5-ml-67140810 },
+        { kind: product, id: clamoxyl-500-mg-5-ml-62607530 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }
+- {
+    query: ibuprofene400,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: advil-400-mg-63646874 },
+        { kind: product, id: advilcaps-400-mg-61959735 },
+        { kind: product, id: advilmed-400-mg-63040606 },
+        { kind: product, id: nurofen-400-mg-64911902 },
+      ],
+  }
+- { query: fer, type: voice-like, expect: { kind: product, id: iron-generic } }
+- {
+    query: efferal,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-60025403 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: efferalgan-150-mg-64675665 },
+        { kind: product, id: efferalgan-150-mg-64796108 },
+        { kind: product, id: efferalgan-250-mg-66093336 },
+        { kind: product, id: efferalgan-250-mg-66826710 },
+        { kind: product, id: efferalgan-300-mg-61128406 },
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+        { kind: product, id: efferalgan-80-mg-60298455 },
+        { kind: product, id: efferalgan-80-mg-67617578 },
+        { kind: product, id: efferalgan-pediatrique-30-mg-ml-63390065 },
+        { kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 },
+      ],
+  }
+- {
+    query: tardyf,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: tardyferon-50-mg-61879666 },
+        { kind: product, id: tardyferon-80-mg-68269288 },
+        { kind: product, id: tardyferon-b9-64875192 },
+      ],
+  }
+- {
+    query: doliprane 1g,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+      ],
+  }
+- { query: ibuprofene, type: inn, expect: { kind: product, id: ibuprofen-generic } }
+- { query: 'ibuprofène', type: inn, expect: { kind: product, id: ibuprofen-generic } }
+- { query: paracetamol, type: inn, expect: { kind: product, id: paracetamol-generic } }
+- { query: 'Paracétamol', type: inn, expect: { kind: product, id: paracetamol-generic } }
+- {
+    query: amoxicilline,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-1-g-60151544 },
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+        { kind: product, id: amoxicilline-arrow-250-mg-5-ml-66773446 },
+        { kind: product, id: clamoxyl-1-g-64539416 },
+        { kind: product, id: clamoxyl-125-mg-5-ml-61155773 },
+        { kind: product, id: clamoxyl-250-mg-5-ml-67140810 },
+        { kind: product, id: clamoxyl-500-mg-5-ml-62607530 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }
+- { query: metronidazole, type: inn, expect: { kind: product, id: metronidazole-generic } }
+- { query: doxycycline, type: inn, expect: { kind: product, id: doxycycline-generic } }
+- { query: quinine, type: inn, expect: { kind: product, id: quinine-generic } }
+- { query: tramadol, type: inn, expect: { kind: product, id: tramadol-generic } }
+- { query: 'codéine', type: inn, expect: { kind: product, id: codeine-generic } }
+- { query: misoprostol, type: inn, expect: { kind: product, id: misoprostol-generic } }
+- { query: warfarine, type: inn, expect: { kind: product, id: warfarin-generic } }
+- { query: zidovudine, type: inn, expect: { kind: product, id: zidovudine-generic } }
+- { query: 'isotrétinoïne', type: inn, expect: { kind: product, id: isotretinoin-generic } }
+- { query: rifampicine, type: inn, expect: { kind: product, id: rifampicin-generic } }
+- { query: 'carbamazépine', type: inn, expect: { kind: product, id: carbamazepine-generic } }
+- { query: 'diclofénac', type: inn, expect: { kind: product, id: diclofenac-generic } }
+- { query: piroxicam, type: inn, expect: { kind: product, id: piroxicam-generic } }
+- { query: 'énalapril', type: inn, expect: { kind: product, id: enalapril-generic } }
+- { query: 'clobétasol', type: inn, expect: { kind: product, id: clobetasol-generic } }
+- { query: 'acide méfénamique', type: inn, expect: { kind: product, id: mefenamic-acid-generic } }
+- { query: 'indométacine', type: inn, expect: { kind: product, id: indometacin-generic } }
+- { query: amodiaquine, type: inn, expect: { kind: product, id: amodiaquine-generic } }
+- { query: aspirine, type: inn, expect: { kind: product, id: aspirin-generic } }
+- {
+    query: 'acide acétylsalicylique',
+    type: inn,
+    expect:
+      [
+        { kind: product, id: aspirin-generic },
+        { kind: product, id: acide-acetylsalicylique-biogaran-100-mg-66313736 },
+        { kind: product, id: acide-acetylsalicylique-biogaran-75-mg-61143618 },
+      ],
+  }
+- { query: valproate, type: inn, expect: { kind: product, id: valproic-acid-generic } }
+- {
+    query: lisinopril,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: lisinopril-arrow-20-mg-68748491 },
+        { kind: product, id: lisinopril-eg-20-mg-65370047 },
+        { kind: product, id: lisinopril-eg-5-mg-68529686 },
+        { kind: product, id: lisinopril-teva-20-mg-64505061 },
+        { kind: product, id: lisinopril-teva-5-mg-60697664 },
+        { kind: product, id: lisinopril-viatris-20-mg-69559554 },
+        { kind: product, id: lisinopril-viatris-5-mg-61299147 },
+        { kind: product, id: lisinopril-zentiva-20-mg-62606357 },
+      ],
+  }
+- {
+    query: losartan,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: losartan-accord-100-mg-64201553 },
+        { kind: product, id: losartan-accord-50-mg-68768818 },
+        { kind: product, id: losartan-arrow-lab-100-mg-61133378 },
+        { kind: product, id: losartan-arrow-lab-50-mg-67645691 },
+        { kind: product, id: losartan-biogaran-100-mg-64011358 },
+        { kind: product, id: losartan-biogaran-50-mg-66659784 },
+        { kind: product, id: cozaar-100-mg-66928996 },
+        { kind: product, id: cozaar-50-mg-69197614 },
+      ],
+  }
+- {
+    query: ramipril,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: ramipril-almus-1-25-mg-63624696 },
+        { kind: product, id: ramipril-almus-10-mg-60049895 },
+        { kind: product, id: ramipril-almus-2-5-mg-68604085 },
+        { kind: product, id: ramipril-arrow-generiques-10-mg-65274629 },
+        { kind: product, id: ramipril-arrow-generiques-5-mg-67023052 },
+        { kind: product, id: ramipril-arrow-lab-1-25-mg-67705334 },
+        { kind: product, id: ramipril-arrow-lab-2-5-mg-67791290 },
+        { kind: product, id: ramipril-biogaran-1-25-mg-65671495 },
+      ],
+  }
+- {
+    query: captopril,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: captopril-biogaran-25-mg-64801263 },
+        { kind: product, id: captopril-biogaran-50-mg-67318234 },
+        { kind: product, id: captopril-eg-25-mg-61665915 },
+        { kind: product, id: captopril-eg-50-mg-68080825 },
+        { kind: product, id: captopril-viatris-25-mg-69283419 },
+        { kind: product, id: captopril-viatris-50-mg-68762516 },
+      ],
+  }
+- {
+    query: valsartan,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: valsartan-arrow-lab-160-mg-69593873 },
+        { kind: product, id: valsartan-arrow-lab-40-mg-62241816 },
+        { kind: product, id: valsartan-arrow-lab-80-mg-68598472 },
+        { kind: product, id: valsartan-biogaran-160-mg-66383663 },
+        { kind: product, id: valsartan-biogaran-40-mg-60375880 },
+        { kind: product, id: tareg-160-mg-61823653 },
+        { kind: product, id: tareg-3-mg-ml-62518793 },
+        { kind: product, id: tareg-40-mg-67813947 },
+      ],
+  }
+- {
+    query: 'ténofovir',
+    type: inn,
+    expect:
+      [
+        { kind: product, id: tenofovir-disoproxil-arrow-245-mg-65675166 },
+        { kind: product, id: tenofovir-disoproxil-biogaran-245-mg-64870843 },
+        { kind: product, id: tenofovir-disoproxil-eg-245-mg-61425934 },
+        { kind: product, id: tenofovir-disoproxil-sandoz-245-mg-67540142 },
+        { kind: product, id: tenofovir-disoproxil-teva-245-mg-65124558 },
+        { kind: product, id: tenofovir-disoproxil-viatris-245-mg-63308730 },
+        { kind: product, id: tenofovir-disoproxil-zentiva-lab-245-mg-66633266 },
+        { kind: product, id: tenofovir-disoproxil-zydus-245-mg-64599178 },
+        { kind: product, id: tld },
+        { kind: product, id: tle },
+      ],
+  }
+- {
+    query: 'artéméther luméfantrine',
+    type: inn,
+    expect:
+      [
+        { kind: product, id: artemether-lumefantrine-generic },
+        { kind: product, id: riamet-20-mg-120-mg-65574434 },
+      ],
+  }
+- { query: 'sulfadoxine pyriméthamine', type: inn, expect: { kind: product, id: sp } }
+- {
+    query: cotrimoxazole,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
+- { query: ibuprofen, type: inn, expect: { kind: product, id: ibuprofen-generic } }
+- {
+    query: acid folic,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: acide-folique-arrow-5-mg-67320915 },
+        { kind: product, id: acide-folique-biogaran-0-4-mg-60369895 },
+        { kind: product, id: acide-folique-ccd-0-4-mg-68502917 },
+        { kind: product, id: acide-folique-ccd-5-mg-69448600 },
+        { kind: product, id: acide-folique-viatris-5-mg-69661235 },
+        { kind: product, id: fer-acide-folique },
+      ],
+  }
+- {
+    query: doliprann,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- {
+    query: dolyprane,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- {
+    query: dafalgane,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+        { kind: product, id: dafalgan-1000-mg-63264636 },
+        { kind: product, id: dafalgan-1000-mg-67154532 },
+        { kind: product, id: dafalgan-500-mg-62815944 },
+        { kind: product, id: dafalgan-500-mg-65609611 },
+        { kind: product, id: dafalgan-500-mg-67721153 },
+        { kind: product, id: dafalgan-adultes-600-mg-69085818 },
+        { kind: product, id: dafalgan-codeine-61109911 },
+        { kind: product, id: dafalgan-codeine-66003374 },
+      ],
+  }
+- {
+    query: eferalgan,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-60025403 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: efferalgan-150-mg-64675665 },
+        { kind: product, id: efferalgan-150-mg-64796108 },
+        { kind: product, id: efferalgan-250-mg-66093336 },
+        { kind: product, id: efferalgan-250-mg-66826710 },
+        { kind: product, id: efferalgan-300-mg-61128406 },
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+        { kind: product, id: efferalgan-80-mg-60298455 },
+        { kind: product, id: efferalgan-80-mg-67617578 },
+        { kind: product, id: efferalgan-pediatrique-30-mg-ml-63390065 },
+        { kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 },
+      ],
+  }
+- {
+    query: baktrim,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: bactrim-40-mg-ml-8-mg-ml-69464049 },
+        { kind: product, id: bactrim-65181349 },
+        { kind: product, id: bactrim-forte-64121235 },
+        { kind: product, id: cotrimoxazole-generic },
+      ],
+  }
+- {
+    query: flagil,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: flagyl-125-mg-5-ml-65020253 },
+        { kind: product, id: flagyl-250-mg-68818192 },
+        { kind: product, id: flagyl-500-mg-61659061 },
+      ],
+  }
+- {
+    query: nurofene,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: nurofen-200-mg-60305960 },
+        { kind: product, id: nurofen-200-mg-63005402 },
+        { kind: product, id: nurofen-400-mg-64911902 },
+      ],
+  }
+- {
+    query: voltaren,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: voltarene-100-mg-66691390 },
+        { kind: product, id: voltarene-50-mg-62431527 },
+        { kind: product, id: voltarene-emulgel-1-63855240 },
+        { kind: product, id: voltarene-l-p-100-mg-63225081 },
+        { kind: product, id: voltarene-l-p-75-mg-60980979 },
+        { kind: product, id: voltarene-lp-75-mg-68344335 },
+      ],
+  }
+- { query: ibuprofenne, type: misspelling, expect: { kind: product, id: ibuprofen-generic } }
+- { query: paracettamole, type: misspelling, expect: { kind: product, id: paracetamol-generic } }
+- { query: paracetmol, type: misspelling, expect: { kind: product, id: paracetamol-generic } }
+- {
+    query: amoxiciline,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-1-g-60151544 },
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+        { kind: product, id: amoxicilline-arrow-250-mg-5-ml-66773446 },
+        { kind: product, id: clamoxyl-1-g-64539416 },
+        { kind: product, id: clamoxyl-125-mg-5-ml-61155773 },
+        { kind: product, id: clamoxyl-250-mg-5-ml-67140810 },
+        { kind: product, id: clamoxyl-500-mg-5-ml-62607530 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }
+- { query: metronidazol, type: misspelling, expect: { kind: product, id: metronidazole-generic } }
+- { query: doxicyclin, type: misspelling, expect: { kind: product, id: doxycycline-generic } }
+- { query: tramadole, type: misspelling, expect: { kind: product, id: tramadol-generic } }
+- { query: codeyne, type: misspelling, expect: { kind: product, id: codeine-generic } }
+- {
+    query: depakin,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+      ],
+  }
+- {
+    query: tegretole,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: tegretol-20-mg-ml-65608566 },
+        { kind: product, id: tegretol-200-mg-61009918 },
+        { kind: product, id: tegretol-l-p-200-mg-63045724 },
+        { kind: product, id: tegretol-l-p-400-mg-67655493 },
+      ],
+  }
+- {
+    query: cotrimoxazol,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
+- { query: diclofenak, type: misspelling, expect: { kind: product, id: diclofenac-generic } }
+- { query: misoprostole, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- {
+    query: coumadin,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: coumadine-2-mg-64631925 },
+        { kind: product, id: coumadine-5-mg-63245753 },
+      ],
+  }
+- {
+    query: aspegik,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: aspegic-500-mg-61162942 },
+        { kind: product, id: aspegic-adultes-1000-mg-63936571 },
+        { kind: product, id: aspegic-enfants-250-mg-66311831 },
+        { kind: product, id: aspegic-nourrissons-100-mg-66769394 },
+      ],
+  }
+- {
+    query: rifadin,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: rifadine-2-pour-cent-64085981 },
+        { kind: product, id: rifadine-300-mg-67876901 },
+      ],
+  }
+- { query: kinkiliba, type: misspelling, expect: { kind: plant, id: kinkeliba } }
+- { query: moringua, type: misspelling, expect: { kind: plant, id: moringa } }
+- { query: gingenbre, type: misspelling, expect: { kind: plant, id: ginger } }
+- { query: huille de ricin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: tamarain, type: misspelling, expect: { kind: plant, id: tamarind } }
+- { query: warfarin, type: misspelling, expect: { kind: product, id: warfarin-generic } }
+- { query: kinkeliba, type: local-fr, expect: { kind: plant, id: kinkeliba } }
+- { query: 'kinkéliba', type: local-fr, expect: { kind: plant, id: kinkeliba } }
+- { query: huile de ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: 'feuille amère', type: local-fr, expect: { kind: plant, id: bitter-leaf } }
+- { query: argile, type: local-fr, expect: { kind: plant, id: clay } }
+- { query: kaolin, type: local-fr, expect: { kind: plant, id: clay } }
+- { query: kola amer, type: local-fr, expect: { kind: plant, id: garcinia-kola } }
+- { query: 'ail', type: local-fr, expect: { kind: plant, id: garlic } }
+- { query: gingembre, type: local-fr, expect: { kind: plant, id: ginger } }
+- { query: 'néré', type: local-fr, expect: { kind: plant, id: nere } }
+- { query: noix de cola, type: local-fr, expect: { kind: plant, id: cola-nut } }
+- { query: tamarin, type: local-fr, expect: { kind: plant, id: tamarind } }
+- { query: 'oseille de Guinée', type: local-fr, expect: { kind: plant, id: bissap } }
+- { query: moringa, type: local-fr, expect: { kind: plant, id: moringa } }
+- { query: neem, type: local-fr, expect: { kind: plant, id: neem } }
+- {
+    query: huile de ricin ou argile,
+    type: local-fr,
+    expect: [{ kind: plant, id: castor-oil }, { kind: plant, id: clay }],
+  }
+- { query: nebeday, type: local-wo, expect: { kind: plant, id: moringa } }
+- { query: bissap, type: local-wo, expect: { kind: plant, id: bissap } }
+- { query: guro, type: local-wo, expect: { kind: plant, id: cola-nut } }
+- { query: nguer, type: local-wo, expect: { kind: plant, id: guiera } }
+- { query: nim, type: local-wo, expect: { kind: plant, id: neem } }
+- { query: dakhar, type: local-wo, expect: { kind: plant, id: tamarind } }
+- { query: 'nébédaye', type: local-wo, expect: { kind: plant, id: moringa } }
+- { query: neebeday, type: local-wo, expect: { kind: plant, id: moringa } }
+- { query: gouro, type: local-wo, expect: { kind: plant, id: cola-nut } }
+- { query: nger, type: local-wo, expect: { kind: plant, id: guiera } }
+- { query: ngeur, type: local-wo, expect: { kind: plant, id: guiera } }
+- { query: bisap, type: local-wo, expect: { kind: plant, id: bissap } }
+- { query: dakar, type: local-wo, expect: { kind: plant, id: tamarind } }
+- { query: daxar, type: local-wo, expect: { kind: plant, id: tamarind } }
+- {
+    query: do li prane,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- {
+    query: dolli prane mille,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: doliprane-100-mg-66057393 },
+        { kind: product, id: doliprane-1000-mg-60234100 },
+        { kind: product, id: doliprane-1000-mg-61681702 },
+        { kind: product, id: doliprane-1000-mg-66567738 },
+        { kind: product, id: doliprane-1000-mg-69309629 },
+        { kind: product, id: doliprane-150-mg-60310861 },
+        { kind: product, id: doliprane-2-4-pour-cent-66477582 },
+        { kind: product, id: doliprane-200-mg-64361369 },
+        { kind: product, id: doliprane-200-mg-68794211 },
+        { kind: product, id: doliprane-300-mg-67210479 },
+        { kind: product, id: doliprane-300-mg-69002078 },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: doliprane-500-mg-66731536 },
+        { kind: product, id: doliprane-500-mg-67119691 },
+        { kind: product, id: doliprane-adultes-1000-mg-67488731 },
+      ],
+  }
+- { query: neocodion, type: voice-like, expect: { kind: product, id: neo-codion } }
+- { query: neo codion, type: voice-like, expect: { kind: product, id: neo-codion } }
+- { query: kin ke li ba, type: voice-like, expect: { kind: plant, id: kinkeliba } }
+- { query: kinkeliba, type: voice-like, expect: { kind: plant, id: kinkeliba } }
+- { query: huiledericin, type: voice-like, expect: { kind: plant, id: castor-oil } }
+- { query: huile de ricin, type: voice-like, expect: { kind: plant, id: castor-oil } }
+- { query: feuille amere, type: voice-like, expect: { kind: plant, id: bitter-leaf } }
+- {
+    query: cotri moxazole,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
+- {
+    query: fero grad vitamine c,
+    type: voice-like,
+    expect: { kind: product, id: fero-grad-vitamine-c-500-63234340 },
+  }
+- {
+    query: bi profenid,
+    type: voice-like,
+    expect: { kind: product, id: bi-profenid-lp-100-mg-61165486 },
+  }
+- { query: ibu profene, type: voice-like, expect: { kind: product, id: ibuprofen-generic } }
+- { query: para cetamol, type: voice-like, expect: { kind: product, id: paracetamol-generic } }
+- {
+    query: ef fer al gan,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-60025403 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: efferalgan-150-mg-64675665 },
+        { kind: product, id: efferalgan-150-mg-64796108 },
+        { kind: product, id: efferalgan-250-mg-66093336 },
+        { kind: product, id: efferalgan-250-mg-66826710 },
+        { kind: product, id: efferalgan-300-mg-61128406 },
+        { kind: product, id: efferalgan-500-mg-67326925 },
+        { kind: product, id: efferalgan-500-mg-68605422 },
+        { kind: product, id: efferalgan-80-mg-60298455 },
+        { kind: product, id: efferalgan-80-mg-67617578 },
+        { kind: product, id: efferalgan-pediatrique-30-mg-ml-63390065 },
+        { kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 },
+      ],
+  }
+- {
+    query: da fal gan,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+        { kind: product, id: dafalgan-1000-mg-63264636 },
+        { kind: product, id: dafalgan-1000-mg-67154532 },
+        { kind: product, id: dafalgan-500-mg-62815944 },
+        { kind: product, id: dafalgan-500-mg-65609611 },
+        { kind: product, id: dafalgan-500-mg-67721153 },
+        { kind: product, id: dafalgan-adultes-600-mg-69085818 },
+        { kind: product, id: dafalgan-codeine-61109911 },
+        { kind: product, id: dafalgan-codeine-66003374 },
+      ],
+  }
+- { query: ne be day, type: voice-like, expect: { kind: plant, id: moringa } }
+- { query: bi sap, type: voice-like, expect: { kind: plant, id: bissap } }
+- { query: gin gembre, type: voice-like, expect: { kind: plant, id: ginger } }
+- { query: a sa k, type: voice-like, expect: { kind: product, id: asaq } }
+- { query: mo rin ga, type: voice-like, expect: { kind: plant, id: moringa } }
+- {
+    query: tardy feron,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: tardyferon-50-mg-61879666 },
+        { kind: product, id: tardyferon-80-mg-68269288 },
+        { kind: product, id: tardyferon-b9-64875192 },
+      ],
+  }
+- { query: sp sulfadoxine, type: voice-like, expect: { kind: product, id: sp } }
+- { query: noixdecola, type: voice-like, expect: { kind: plant, id: cola-nut } }
+- { query: baktrim fort, type: voice-like, expect: { kind: product, id: bactrim-forte-64121235 } }
