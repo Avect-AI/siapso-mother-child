@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-02-paracetamol-duplicate-fever
+title: '16 weeks, Doliprane 1000 mg 4 per day plus a cold sachet with paracetamol 500 mg 3 per day, fever'
+context:
+  pregnancy: { weeks: 16 }
+  items:
+    - { product: doliprane-1000-mg-60234100, units-per-day: 4 }
+    - { product: cold-sachet-paracetamol, units-per-day: 3 }
+  signs: [fever]
+expect:
+  level: danger
+  findings:
+    - { check: C11, message: danger-sign-fever, level: danger, items: [], sign: fever }
+    - {
+        check: C6,
+        rule: paracetamol-duplicate-products,
+        level: before-next-dose,
+        evidence: A,
+        items: [0, 1],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0, 1],
+      }
+  reminders: [iptp-reminder]
+  notes: []

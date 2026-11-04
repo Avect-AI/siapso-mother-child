@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-06-quinine-bitter-kola
+title: '10 weeks, quinine plus bitter kola'
+context:
+  pregnancy: { weeks: 10 }
+  items:
+    - { product: quinine-generic }
+    - { plant: garcinia-kola }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C4,
+        rule: bitter-kola-with-quinine,
+        level: before-next-dose,
+        evidence: B,
+        items: [0, 1],
+      }
+  reminders: []
+  notes: []

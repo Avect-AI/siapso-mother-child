@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-14-ibuprofen-not-pregnant
+title: 'Not pregnant and not breastfeeding, ibuprofen: no pregnancy finding'
+context:
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-found, level: unknown, items: [0] }
+  reminders: []
+  notes: []

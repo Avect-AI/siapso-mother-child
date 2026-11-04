@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-03-cotrimoxazole-sp
+title: '18 weeks, living with HIV on cotrimoxazole, SP: one finding, no IPTp reminder'
+context:
+  pregnancy: { weeks: 18 }
+  conditions: [hiv-cotrimoxazole]
+  items:
+    - { product: cotrimoxazole-generic, long-term: true }
+    - { product: sp }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C8,
+        rule: sp-with-cotrimoxazole,
+        level: before-next-dose,
+        evidence: A,
+        items: [0, 1],
+      }
+  reminders: []
+  notes: []

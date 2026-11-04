@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-12-artemether-lumefantrine
+title: '8 weeks, artemether-lumefantrine: no outdated first-trimester warning'
+context:
+  pregnancy: { weeks: 8 }
+  items:
+    - { product: artemether-lumefantrine-generic }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-found, level: unknown, items: [0] }
+  reminders: []
+  notes: []

@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-01-ibuprofen-term-unknown
+title: 'Term unknown, ibuprofen: both NSAID rules apply, with term unknown'
+context:
+  pregnancy: { unknown: true }
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-from-20-weeks,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+        term: unknown,
+      }
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-before-20-weeks,
+        level: next-contact,
+        evidence: C,
+        items: [0],
+        term: unknown,
+      }
+  reminders: [iptp-reminder]
+  notes: []

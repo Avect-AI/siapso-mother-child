@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-07-iron-clay
+title: '24 weeks, iron and folic acid plus clay'
+context:
+  pregnancy: { weeks: 24 }
+  items:
+    - { product: fer-acide-folique }
+    - { plant: clay }
+expect:
+  level: next-contact
+  findings:
+    - { check: C4, rule: clay-with-iron, level: next-contact, evidence: D, items: [0, 1] }
+    - { check: C5, rule: clay-eating-toxicity, level: next-contact, evidence: C, items: [1] }
+  reminders: [iptp-reminder]
+  notes: []

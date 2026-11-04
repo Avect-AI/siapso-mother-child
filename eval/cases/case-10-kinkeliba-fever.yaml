@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-10-kinkeliba-fever
+title: '14 weeks, kinkeliba, fever'
+context:
+  pregnancy: { weeks: 14 }
+  items:
+    - { plant: kinkeliba }
+  signs: [fever]
+expect:
+  level: danger
+  findings:
+    - { check: C11, message: danger-sign-fever, level: danger, items: [], sign: fever }
+    - { check: no-finding, message: kinkeliba, level: unknown, evidence: '0', items: [0] }
+  reminders: [iptp-reminder]
+  notes: []

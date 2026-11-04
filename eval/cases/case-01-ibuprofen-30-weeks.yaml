@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-01-ibuprofen-30-weeks
+title: 'Awa, 30 weeks, ibuprofen for back pain'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-from-20-weeks,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

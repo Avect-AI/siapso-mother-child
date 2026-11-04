@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+export { CASE_SCHEMA_FILE, CASES_FOLDER, contextOf, loadCases, projectOf } from './cases.js';
+export type { CaseItem, ExpectedFinding, ExpectedOutput, ReferenceCase } from './cases.js';
 export { BUILTIN_MESSAGE_IDS } from './checks.js';
 export { buildPack, PackBuildError } from './build.js';
 export { LICENCE_LINE, loadContent, SCHEMA_FILES } from './load.js';

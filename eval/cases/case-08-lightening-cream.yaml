@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-08-lightening-cream
+title: '28 weeks, lightening cream with clobetasol and hydroquinone'
+context:
+  pregnancy: { weeks: 28 }
+  items:
+    - { product: lightening-cream-clobetasol }
+expect:
+  level: before-next-dose
+  findings:
+    - { check: C1, rule: clobetasol-pregnancy, level: before-next-dose, evidence: C, items: [0] }
+  reminders: [iptp-reminder]
+  notes: []

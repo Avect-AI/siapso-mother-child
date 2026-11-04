@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-13-aspirin-500-mg
+title: '30 weeks, Aspegic 500 mg: analgesic-dose aspirin is flagged'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: aspegic-500-mg-61162942 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: aspirin-analgesic-dose-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

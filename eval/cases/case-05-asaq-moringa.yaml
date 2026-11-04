@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-05-asaq-moringa
+title: 'Breastfeeding a 3-month-old baby, ASAQ plus moringa'
+context:
+  breastfeeding: { baby-age-weeks: 13, premature: false }
+  items:
+    - { product: asaq }
+    - { plant: moringa }
+expect:
+  level: next-contact
+  findings:
+    - { check: C4, rule: moringa-with-amodiaquine, level: next-contact, evidence: B, items: [0, 1] }
+  reminders: []
+  notes: []

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-11-unrecognised-product
+title: 'An unrecognised product alone, no pregnancy and no breastfeeding'
+context:
+  items:
+    - { unrecognised: 'comprimés du marché' }
+expect:
+  level: unknown
+  findings:
+    - { check: C12, message: not-recognised, level: unknown, items: [0] }
+  reminders: []
+  notes: []

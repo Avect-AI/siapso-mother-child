@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO reference case",
+  "description": "One file of eval/cases: a situation and the exact output the engine must give for it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "context", "expect"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "title": { "type": "string", "pattern": "\\S" },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "pregnancy": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["weeks"],
+              "properties": { "weeks": { "type": "integer", "minimum": 0, "maximum": 45 } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["months"],
+              "properties": { "months": { "type": "integer", "minimum": 1, "maximum": 9 } }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["unknown"],
+              "properties": { "unknown": { "const": true } }
+            }
+          ]
+        },
+        "breastfeeding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baby-age-weeks": { "type": "integer", "minimum": 0 },
+            "premature": { "type": "boolean" }
+          }
+        },
+        "conditions": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+        "signs": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "expect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "findings", "reminders", "notes"],
+      "properties": {
+        "level": { "$ref": "#/$defs/level" },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "reminders": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "notes": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "level": { "enum": ["unknown", "next-contact", "before-next-dose", "danger"] },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "product": { "$ref": "#/$defs/id" },
+        "plant": { "$ref": "#/$defs/id" },
+        "unrecognised": { "type": "string", "pattern": "\\S" },
+        "units-per-day": { "type": "number", "exclusiveMinimum": 0 },
+        "long-term": { "type": "boolean" }
+      },
+      "oneOf": [
+        { "properties": { "product": true }, "required": ["product"] },
+        { "properties": { "plant": true }, "required": ["plant"] },
+        { "properties": { "unrecognised": true }, "required": ["unrecognised"] }
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "level", "items"],
+      "properties": {
+        "check": {
+          "enum": [
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5",
+            "C6",
+            "C7",
+            "C8",
+            "C9",
+            "C10",
+            "C11",
+            "C12",
+            "no-finding"
+          ]
+        },
+        "rule": { "$ref": "#/$defs/id" },
+        "message": { "$ref": "#/$defs/id" },
+        "level": { "$ref": "#/$defs/level" },
+        "evidence": { "enum": ["A", "B", "C", "D", "E", "0"] },
+        "items": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "sign": { "$ref": "#/$defs/id" },
+        "term": { "enum": ["exact", "estimated", "unknown"] }
+      },
+      "oneOf": [
+        { "properties": { "rule": true }, "required": ["rule"] },
+        { "properties": { "message": true }, "required": ["message"] }
+      ]
+    }
+  }
+}

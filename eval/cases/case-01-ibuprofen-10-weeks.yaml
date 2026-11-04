@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-01-ibuprofen-10-weeks
+title: '10 weeks, ibuprofen: not the rule from 20 weeks'
+context:
+  pregnancy: { weeks: 10 }
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: next-contact
+  findings:
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-before-20-weeks,
+        level: next-contact,
+        evidence: C,
+        items: [0],
+      }
+  reminders: []
+  notes: []

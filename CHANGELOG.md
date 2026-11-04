@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Starter clinical content (not clinically validated): 24 rules on medicines and traditional remedies in pregnancy and breastfeeding, the IPTp reminder and three contraception notes, each citing allowed sources with verbatim quotes; 21 danger signs with their sources and a fever message; messages in French and English.
 - Starter registry: 55 substances, the `nsaid`, `tetracycline`, `raas-blocker` and `valproate` classes, 14 traditional remedies, demo products written by hand and 300 medicines imported from the BDPM (brands most used in Senegal always kept).
 - `pnpm knowledge:import-bdpm <dir>`: imports medicines from the official BDPM files into `registry/products/bdpm.yaml`; a product file may hold a generated list of products.
+- Blocking reference cases (`eval/cases`, schema `eval/schema/case.schema.json`): the 14 cases of the dossier (17 files with the term variants of case 1), each with the exact expected level, findings, reminders and notes. Any change in the engine output for them fails the tests; message ids and wording are checked in both languages.
 
 ### Fixed
 

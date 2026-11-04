@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-09-castor-oil-uterine-scar
+title: '39 weeks, uterine scar, castor oil plus an unrecognised market tablet'
+context:
+  pregnancy: { weeks: 39 }
+  conditions: [uterine-scar]
+  items:
+    - { plant: castor-oil }
+    - { unrecognised: 'comprimés du marché' }
+expect:
+  level: danger
+  findings:
+    - { check: C5, rule: castor-oil-term-uterine-scar, level: danger, evidence: C, items: [0] }
+    - { check: C12, message: not-recognised, level: unknown, items: [1] }
+  reminders: [iptp-reminder]
+  notes: []

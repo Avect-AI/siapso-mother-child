@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-04-codeine-newborn
+title: 'Breastfeeding a 10-day-old baby, Neo-Codion style codeine product'
+context:
+  breastfeeding: { baby-age-weeks: 1, premature: false }
+  items:
+    - { product: neo-codion }
+expect:
+  level: before-next-dose
+  findings:
+    - { check: C2, rule: codeine-breastfeeding, level: before-next-dose, evidence: C, items: [0] }
+  reminders: []
+  notes: []
