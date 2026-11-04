@@ -3,12 +3,15 @@
 - id: fever
   group: pregnancy
   label: { fr: 'Fièvre', en: 'Fever' }
-  sources: []
+  sources:
+    - source: who
+      locator: 'Fixture danger sign'
+      accessed: 2026-11-04
 - id: bleeding
   group: postpartum
   label: { fr: 'Saignement', en: 'Bleeding' }
   message: bleeding-sign
   sources:
-    - source: fixture-source
+    - source: lactmed
       locator: 'Fixture danger sign'
       accessed: 2026-11-04

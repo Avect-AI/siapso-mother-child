@@ -11,7 +11,8 @@ when:
 level: next-contact
 evidence: D
 message: herb-drug-moringa
-sources: []
+sources:
+  - { source: lactmed, locator: 'Fixture record', accessed: 2026-11-04 }
 review:
   status: draft
   reviewers: []

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sources policy",
+  "description": "knowledge/sources.yaml: the allowed, fact-only and forbidden sources.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["allowed", "fact-only", "forbidden"],
+  "properties": {
+    "allowed": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "fact-only": { "type": "array", "items": { "$ref": "#/$defs/source" } },
+    "forbidden": { "type": "array", "items": { "$ref": "#/$defs/forbidden" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "text": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "publisher", "licence", "url", "notice"],
+      "anyOf": [
+        { "required": ["version"], "properties": { "version": true } },
+        { "required": ["accessed"], "properties": { "accessed": true } }
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "name": { "$ref": "#/$defs/text" },
+        "publisher": { "$ref": "#/$defs/text" },
+        "licence": { "$ref": "#/$defs/text" },
+        "url": { "type": "string", "format": "uri" },
+        "version": { "$ref": "#/$defs/text" },
+        "accessed": { "type": "string", "format": "date" },
+        "notice": { "$ref": "#/$defs/text" }
+      }
+    },
+    "forbidden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "reason", "domains"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "reason": { "$ref": "#/$defs/text" },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}$"
+          }
+        }
+      }
+    }
+  }
+}

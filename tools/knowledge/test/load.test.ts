@@ -49,6 +49,7 @@ describe('loadContent', () => {
       'plant',
       'product',
       'rule',
+      'sources',
       'substance',
     ]);
   });
@@ -56,7 +57,7 @@ describe('loadContent', () => {
   it('loads the schemas from the content root by default', async () => {
     const raw = await loadContent(REPO_ROOT);
     expect(raw.problems).toEqual([]);
-    expect(Object.keys(raw.schemas)).toHaveLength(8);
+    expect(Object.keys(raw.schemas)).toHaveLength(9);
   });
 
   it('reports YAML syntax errors with the file', async () => {

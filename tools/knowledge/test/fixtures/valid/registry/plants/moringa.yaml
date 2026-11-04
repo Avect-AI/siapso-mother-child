@@ -8,4 +8,5 @@ local-names:
 parts: [leaf]
 evidence: B
 message: evidence-0
-sources: []
+sources:
+  - { source: literature, locator: 'Fixture reference', accessed: 2026-11-04 }

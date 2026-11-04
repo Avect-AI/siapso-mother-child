@@ -31,6 +31,8 @@ export interface Problem {
 export interface RawFile {
   file: string;
   data: unknown;
+  /** The file text, when read from disk: lets the checks see comments. */
+  text?: string;
 }
 
 export const SCHEMA_NAMES = [
@@ -38,6 +40,7 @@ export const SCHEMA_NAMES = [
   'message',
   'danger-sign',
   'pack-meta',
+  'sources',
   'substance',
   'class',
   'product',
@@ -50,6 +53,12 @@ export type SchemaName = (typeof SCHEMA_NAMES)[number];
 export interface RawContent {
   schemas: Record<SchemaName, object>;
   pack?: RawFile;
+  /** knowledge/sources.yaml. */
+  sources?: RawFile;
+  /** Other content files to scan for forbidden sources (the YAML files below eval/). */
+  extra: RawFile[];
+  /** README.md, .md and .json files, whose data is their text: scanned, not parsed. */
+  texts: RawFile[];
   /** knowledge/rules/*.yaml, sorted by file name. */
   rules: RawFile[];
   /** knowledge/messages/*.yaml, sorted by file name. */
@@ -71,6 +80,31 @@ export interface AuthoredMeta {
   version: string;
   date: string;
   'clinically-validated': boolean;
+}
+
+/** One allowed or fact-only source of knowledge/sources.yaml. */
+export interface AuthoredSource {
+  id: string;
+  name: string;
+  publisher: string;
+  licence: string;
+  url: string;
+  version?: string;
+  accessed?: string;
+  /** The attribution line for NOTICE. */
+  notice: string;
+}
+
+export interface AuthoredForbiddenSource {
+  id: string;
+  reason: string;
+  domains: string[];
+}
+
+export interface AuthoredSources {
+  allowed: AuthoredSource[];
+  'fact-only': AuthoredSource[];
+  forbidden: AuthoredForbiddenSource[];
 }
 
 export interface AuthoredRule {
@@ -160,6 +194,7 @@ export interface Entry<T> {
 /** The schema-valid part of the content, typed. */
 export interface Content {
   meta?: Entry<AuthoredMeta>;
+  sources?: Entry<AuthoredSources>;
   rules: Entry<AuthoredRule>[];
   messages: Entry<AuthoredMessage>[];
   dangerSigns: Entry<AuthoredDangerSign>[];

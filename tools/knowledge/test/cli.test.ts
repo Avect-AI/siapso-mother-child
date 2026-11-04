@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { readdir, rm, writeFile } from 'node:fs/promises';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { main } from '../src/cli.js';
@@ -95,6 +95,100 @@ describe('siapso-pack check', () => {
   });
 });
 
+describe('NOTICE', () => {
+  it('is out of date when it differs from the generated one: check fails', async () => {
+    const copy = await tempCopy();
+    try {
+      const file = path.join(copy.root, 'NOTICE');
+      await writeFile(file, `${await readFile(file, 'utf8')}Extra line.\n`);
+      const result = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err).toContain(
+        'NOTICE: (file): out of date: run "pnpm knowledge:build" to regenerate it',
+      );
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('is required: check fails when it is missing', async () => {
+    const copy = await tempCopy();
+    try {
+      await rm(path.join(copy.root, 'NOTICE'));
+      const result = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/^NOTICE: \(file\): missing/m);
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('is out of date when a new source is cited', async () => {
+    const copy = await tempCopy();
+    try {
+      const file = path.join(copy.root, 'registry/plants/moringa.yaml');
+      const text = await readFile(file, 'utf8');
+      await writeFile(
+        file,
+        `${text}  - { source: bdpm, locator: 'Fixture', accessed: 2026-11-04 }\n`,
+      );
+      const result = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/NOTICE: \(file\): out of date/);
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('is written by build, which makes check pass again', async () => {
+    const copy = await tempCopy();
+    try {
+      const file = path.join(copy.root, 'NOTICE');
+      await writeFile(file, 'stale\n');
+      const built = await run(['build', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(built.err).toEqual([]);
+      expect(built.code).toBe(0);
+      const notice = await readFile(file, 'utf8');
+      expect(notice.startsWith('SIAPSO Mother-Child\n')).toBe(true);
+      const checked = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(checked.err).toEqual([]);
+      expect(checked.code).toBe(0);
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('is not written when the content has problems', async () => {
+    const copy = await tempCopy();
+    try {
+      const file = path.join(copy.root, 'NOTICE');
+      await writeFile(file, 'stale\n');
+      await rm(path.join(copy.root, 'knowledge/messages/danger-sign.yaml'));
+      const result = await run(['build', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(await readFile(file, 'utf8')).toBe('stale\n');
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('reports a forbidden source as a problem on the command line', async () => {
+    const copy = await tempCopy();
+    try {
+      const file = path.join(copy.root, 'registry/plants/moringa.yaml');
+      const text = await readFile(file, 'utf8');
+      await writeFile(file, text.replace('literature', 'ddinter'));
+      const result = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(
+        /registry\/plants\/moringa\.yaml: sources\[0\]\.source: .*forbidden/,
+      );
+    } finally {
+      await copy.remove();
+    }
+  });
+});
+
 describe('siapso-pack build', () => {
   it('writes the pack to --out and exits 0', async () => {
     const copy = await tempCopy();
@@ -154,7 +248,7 @@ describe('siapso-pack build', () => {
           'fr:',
           '  fact: "Fait."',
           '  risk: "Risque."',
-          `  risk-detail: "${randomBytes(4_200_000).toString('base64')}"`,
+          `  risk-detail: "${randomBytes(4_200_000).toString('hex')}"`,
           'en:',
           '  fact: "Fact."',
           '  risk: "Risk."',

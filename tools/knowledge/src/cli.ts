@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Pack } from '@siapso/engine';
 import { buildPack, PackBuildError } from './build.js';
 import { loadContent } from './load.js';
+import { generateNotice, NOTICE_FILE } from './notice.js';
+import type { Problem } from './types.js';
 import { formatProblem } from './validate.js';
 import { writePack } from './write.js';
 
@@ -17,8 +20,9 @@ const USAGE = [
   'usage: siapso-pack <command> [options]',
   '',
   'commands:',
-  '  check   validate knowledge/ and registry/ (problems are printed as file: path: message)',
-  '  build   validate, then write the pack fragments, pack.json and manifest.json',
+  '  check   validate knowledge/ and registry/ and that NOTICE is up to date',
+  '          (problems are printed as file: path: message)',
+  '  build   validate, then write the pack fragments, pack.json, manifest.json and NOTICE',
   '',
   'options:',
   '  --root <dir>      repository root holding knowledge/ and registry/ (default: current directory)',
@@ -58,6 +62,27 @@ function parseArguments(argv: string[], cwd: string): Options | string {
   };
 }
 
+/** The problem with the committed NOTICE, if it is missing or differs from the generated one. */
+async function noticeProblem(file: string, expected: string): Promise<Problem | null> {
+  let actual: string;
+  try {
+    actual = await readFile(file, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    return {
+      file: NOTICE_FILE,
+      path: '',
+      message: 'missing: run "pnpm knowledge:build" to generate it',
+    };
+  }
+  if (actual.replaceAll('\r\n', '\n') === expected) return null;
+  return {
+    file: NOTICE_FILE,
+    path: '',
+    message: 'out of date: run "pnpm knowledge:build" to regenerate it',
+  };
+}
+
 /** Runs the command line and returns the exit code: 0 ok, 1 problems found, 2 wrong usage. */
 export async function main(
   argv: string[],
@@ -89,7 +114,19 @@ export async function main(
       io.err(`${String(error.problems.length)} problem(s) found`);
       return 1;
     }
-    if (options.command === 'build') await writePack(pack, options.out);
+    const notice = generateNotice(raw);
+    const noticePath = path.join(options.root, NOTICE_FILE);
+    if (options.command === 'build') {
+      await writePack(pack, options.out);
+      await writeFile(noticePath, notice);
+    } else {
+      const problem = await noticeProblem(noticePath, notice);
+      if (problem) {
+        io.err(formatProblem(problem));
+        io.err('1 problem(s) found');
+        return 1;
+      }
+    }
     io.out(
       `${options.command === 'build' ? 'built' : 'ok'}: ${String(pack.rules.length)} rules, ` +
         `${String(pack.products.length)} products, ${String(pack.plants.length)} plants, ` +

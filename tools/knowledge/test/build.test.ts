@@ -22,7 +22,7 @@ describe('buildPack', () => {
       message: 'nsaid-pregnancy-from-20-weeks',
       sources: [
         {
-          source: 'fixture-source',
+          source: 'openfda',
           locator: 'Fixture label, section 8.1 Pregnancy',
           url: 'https://example.org/fixture',
           accessed: '2026-11-04',
@@ -65,7 +65,7 @@ describe('buildPack', () => {
         localNames: [{ text: 'nebeday', lang: 'wo', checked: false }],
         evidence: 'B',
         message: 'evidence-0',
-        sources: [],
+        sources: [{ source: 'literature', locator: 'Fixture reference', accessed: '2026-11-04' }],
       },
     ]);
     expect(pack.substances.find((s) => s.id === 'ibuprofen')).toStrictEqual({
@@ -79,7 +79,7 @@ describe('buildPack', () => {
     expect(pack.dangerSigns.map((s) => s.id)).toEqual(['bleeding', 'fever']);
     expect(pack.dangerSigns[0]?.message).toBe('bleeding-sign');
     expect(pack.dangerSigns[1]).not.toHaveProperty('message');
-    expect(pack.sources).toEqual([]);
+    expect(pack.sources.map((s) => s.id)).toEqual(['lactmed', 'literature', 'openfda', 'who']);
   });
 
   it('maps messages by language and id, with risk-detail as riskDetail', async () => {

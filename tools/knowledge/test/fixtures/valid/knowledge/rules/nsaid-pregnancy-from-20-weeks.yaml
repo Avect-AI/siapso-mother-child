@@ -9,7 +9,7 @@ level: before-next-dose
 evidence: A
 message: nsaid-pregnancy-from-20-weeks
 sources:
-  - source: fixture-source
+  - source: openfda
     locator: 'Fixture label, section 8.1 Pregnancy'
     url: 'https://example.org/fixture'
     accessed: 2026-11-04

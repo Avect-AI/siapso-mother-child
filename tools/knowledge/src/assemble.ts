@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-import type { Lang, Message, Pack, Plant, Product, Rule } from '@siapso/engine';
+import type { Lang, Message, Pack, Plant, Product, Rule, Source } from '@siapso/engine';
+import { citedSources } from './provenance.js';
 import type { AuthoredPlant, AuthoredProduct, Content, Entry } from './types.js';
 
 /** Code unit order: the same on every machine, whatever its locale. */
@@ -58,6 +59,18 @@ function plant({ data }: Entry<AuthoredPlant>): Plant {
   };
 }
 
+/** The sources actually cited (allowed and fact-only), sorted by id. */
+function sources(content: Content): Source[] {
+  const { allowed, factOnly } = citedSources(content);
+  return [...allowed, ...factOnly]
+    .sort((a, b) => compare(a.id, b.id))
+    .map((s) => {
+      const version = s.version ?? s.accessed;
+      const base = { id: s.id, name: s.name, licence: s.licence, url: s.url };
+      return version === undefined ? base : { ...base, version };
+    });
+}
+
 function messages(content: Content, lang: Lang): Record<string, Message> {
   const result: Record<string, Message> = {};
   for (const { data } of [...content.messages].sort((a, b) => byId(a.data, b.data))) {
@@ -89,7 +102,7 @@ export function assemble(content: Content): Pack {
     dangerSigns: sorted(content.dangerSigns).map(
       (sign) => camelKeys(sign) as Pack['dangerSigns'][number],
     ),
-    sources: [],
+    sources: sources(content),
     messages: { fr: messages(content, 'fr'), en: messages(content, 'en') },
   };
 }

@@ -78,7 +78,7 @@ describe('writePack', () => {
         plants: 1,
         rules: 5,
         dangerSigns: 2,
-        sources: 0,
+        sources: 4,
       },
     });
     expect(Object.keys(manifest)).toEqual([

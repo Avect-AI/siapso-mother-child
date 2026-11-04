@@ -2,6 +2,8 @@
 export { BUILTIN_MESSAGE_IDS } from './checks.js';
 export { buildPack, PackBuildError } from './build.js';
 export { LICENCE_LINE, loadContent, SCHEMA_FILES } from './load.js';
+export { generateNotice, NOTICE_FILE } from './notice.js';
+export { citedSourceIds, provenanceProblems } from './provenance.js';
 export { formatProblem, validateContent } from './validate.js';
 export { MAX_GZIP_BYTES, PACK_FRAGMENTS, writePack } from './write.js';
 export type { Manifest } from './write.js';

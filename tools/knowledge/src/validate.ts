@@ -2,6 +2,7 @@
 import { PackError, parsePack } from '@siapso/engine';
 import { assemble } from './assemble.js';
 import { checkContent } from './checks.js';
+import { provenanceProblems } from './provenance.js';
 import { schemaProblems } from './schemas.js';
 import type {
   AuthoredClass,
@@ -11,6 +12,7 @@ import type {
   AuthoredPlant,
   AuthoredProduct,
   AuthoredRule,
+  AuthoredSources,
   AuthoredSubstance,
   Content,
   Entry,
@@ -73,8 +75,13 @@ function collect(raw: RawContent): { content: Content; problems: Problem[] } {
   };
   const [meta] = raw.pack ? single<AuthoredMeta>(raw, 'pack-meta', raw.pack, problems) : [];
   if (meta) content.meta = meta;
+  const [sources] = raw.sources
+    ? single<AuthoredSources>(raw, 'sources', raw.sources, problems)
+    : [];
+  if (sources) content.sources = sources;
   const requiredFiles: [string, RawFile | undefined][] = [
     ['knowledge/pack.yaml', raw.pack],
+    ['knowledge/sources.yaml', raw.sources],
     ['knowledge/danger-signs.yaml', raw.dangerSigns],
     ['registry/substances.yaml', raw.substances],
     ['registry/classes.yaml', raw.classes],
@@ -131,7 +138,12 @@ function engineProblems(content: Content, raw: RawContent): Problem[] {
  */
 export function validateContent(raw: RawContent): Problem[] {
   const { content, problems } = collect(raw);
-  const all = [...raw.problems, ...problems, ...checkContent(content, raw)];
+  const all = [
+    ...raw.problems,
+    ...problems,
+    ...checkContent(content, raw),
+    ...provenanceProblems(content, raw),
+  ];
   if (all.length === 0) all.push(...engineProblems(content, raw));
   return all;
 }

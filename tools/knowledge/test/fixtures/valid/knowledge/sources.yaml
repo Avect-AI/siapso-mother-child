@@ -1,0 +1,79 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# The sources policy. Only `allowed` sources may support a rule. `fact-only`
+# sources may support a fact or a danger sign, their text is never copied, and
+# a rule always also cites an allowed source. `forbidden` sources are never
+# cited, copied or named in the content: `siapso-pack check` refuses them.
+# This file is the only place allowed to name the forbidden sources.
+allowed:
+  - id: lactmed
+    name: 'Drugs and Lactation Database (LactMed)'
+    publisher: 'US National Library of Medicine'
+    licence: 'Public domain'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501922/'
+    version: 'Record date or bulk archive date, given in each citation'
+    notice: 'LactMed, US National Library of Medicine, public domain. Facts summarised in our own words.'
+  - id: openfda
+    name: 'openFDA drug labels'
+    publisher: 'US Food and Drug Administration'
+    licence: 'CC0 1.0 / public domain'
+    url: 'https://open.fda.gov/'
+    version: 'Label version or access date, given in each citation'
+    notice: 'openFDA drug labels, US Food and Drug Administration, CC0 1.0 / public domain.'
+  - id: fda-dsc
+    name: 'FDA Drug Safety Communications'
+    publisher: 'US Food and Drug Administration'
+    licence: 'Public domain'
+    url: 'https://www.fda.gov/drugs/drug-safety-and-availability/drug-safety-communications'
+    version: 'Communication date, given in each citation'
+    notice: 'FDA Drug Safety Communications, US Food and Drug Administration, public domain.'
+  - id: bdpm
+    name: 'Base de données publique des médicaments (BDPM)'
+    publisher: 'Agence nationale de sécurité du médicament et des produits de santé (ANSM)'
+    licence: 'Licence Ouverte 2.0'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/'
+    version: 'Download date, given in each citation'
+    notice: 'Base de données publique des médicaments, ANSM, Licence Ouverte 2.0.'
+  - id: ansm-thesaurus
+    name: 'Thésaurus des interactions médicamenteuses'
+    publisher: 'Agence nationale de sécurité du médicament et des produits de santé (ANSM)'
+    licence: 'Reuse with citation of the source'
+    url: 'https://ansm.sante.fr/'
+    version: 'September 2023'
+    notice: 'Thésaurus des interactions médicamenteuses, ANSM, September 2023 version, reused with citation of the source.'
+  - id: literature
+    name: 'Peer-reviewed literature'
+    publisher: 'Journal publishers, cited by reference'
+    licence: 'Cited by reference; summarised in our own words'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/'
+    version: 'Reference given in each citation'
+    notice: 'Peer-reviewed literature, cited by reference and summarised in our own words.'
+fact-only:
+  - id: who
+    name: 'World Health Organization guidelines and lists'
+    publisher: 'World Health Organization'
+    licence: 'CC BY-NC-SA 3.0 IGO'
+    url: 'https://www.who.int/'
+    version: 'Edition given in each citation'
+    notice: 'World Health Organization guidelines and lists (CC BY-NC-SA 3.0 IGO). Used for facts only: no text is copied.'
+forbidden:
+  - id: ddinter
+    reason: 'Non-commercial licence: not compatible with an open knowledge base.'
+    domains: [ddinter.scbdd.com]
+  - id: lediam
+    reason: 'No licence: reuse is not permitted.'
+    domains: []
+  - id: e-lactancia
+    reason: 'Restricted terms of use: reuse is not permitted.'
+    domains: [e-lactancia.org]
+  - id: crat
+    reason: 'Restricted terms of use: reuse is not permitted.'
+    domains: [lecrat.fr]
+  - id: theriaque
+    reason: 'Restricted terms of use: reuse is not permitted.'
+    domains: [theriaque.org]
+  - id: vidal
+    reason: 'Commercial publisher: reuse is not permitted.'
+    domains: [vidal.fr]
+  - id: drugbank-full
+    reason: 'The full database is not open: it is not used.'
+    domains: [drugbank.com, go.drugbank.com]
