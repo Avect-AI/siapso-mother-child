@@ -29,8 +29,8 @@ export interface ExpectedFinding {
   check: CheckId;
   /** The rule id, for a finding produced by a rule. */
   rule?: string;
-  /** The message id, for a built-in finding (danger sign, not recognised, no finding). */
-  message?: string;
+  /** The message id, for every finding: the rule's message, or a built-in one. */
+  message: string;
   level: Level;
   evidence?: Evidence;
   items: number[];
@@ -228,9 +228,15 @@ export function projectOf(evaluation: Evaluation): ExpectedOutput {
   return {
     level: evaluation.level,
     findings: evaluation.findings.map((f) => {
-      const out: ExpectedFinding = { check: f.check, level: f.level, items: f.items };
+      // The message id is compared for rule findings too: a rule pointing to
+      // another message changes what the woman reads.
+      const out: ExpectedFinding = {
+        check: f.check,
+        message: f.message,
+        level: f.level,
+        items: f.items,
+      };
       if (f.ruleId !== undefined) out.rule = f.ruleId;
-      else out.message = f.message;
       if (f.evidence !== undefined) out.evidence = f.evidence;
       if (f.sign !== undefined) out.sign = f.sign;
       if (f.term !== undefined) out.term = f.term;

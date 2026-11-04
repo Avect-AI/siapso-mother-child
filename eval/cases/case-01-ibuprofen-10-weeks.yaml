@@ -11,6 +11,7 @@ expect:
     - {
         check: C1,
         rule: nsaid-pregnancy-before-20-weeks,
+        message: nsaid-pregnancy-before-20-weeks,
         level: next-contact,
         evidence: C,
         items: [0],

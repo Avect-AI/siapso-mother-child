@@ -32,7 +32,13 @@ allowed:
     licence: 'Licence Ouverte 2.0'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/'
     # The download date of CIS_bdpm.txt and CIS_COMPO_bdpm.txt, the files read by
-    # "pnpm knowledge:import-bdpm" to write registry/products/bdpm.yaml.
+    # "pnpm knowledge:import-bdpm" to write registry/products/bdpm.yaml. The
+    # import prints the size and sha256 of each file; the files of 2026-11-04
+    # that produced the committed registry/products/bdpm.yaml are:
+    # - CIS_bdpm.txt: 3167022 bytes, sha256
+    #   97dcd8fc406e1c0bfb969cad6f66bda489eeede1c9910e2813dd65e1ab71d752
+    # - CIS_COMPO_bdpm.txt: 2720142 bytes, sha256
+    #   18c2eb506602946b8a5010fd56a5339e6571ba8f76480b62dc751dd26c150716
     version: 'Product files CIS_bdpm.txt and CIS_COMPO_bdpm.txt downloaded on 2026-11-04; RCP update dates given in each citation'
     accessed: 2026-11-04
     notice: 'Base de données publique des médicaments, ANSM, Licence Ouverte 2.0.'

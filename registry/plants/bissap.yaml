@@ -2,8 +2,11 @@
 id: bissap
 latin-name: Hibiscus sabdariffa
 names: { fr: 'Bissap (oseille de Guinée)', en: 'Roselle (bissap)' }
+# bisaab is the same name in the standard Wolof orthography (long vowel
+# written doubled, final b).
 local-names:
   - { text: bissap, lang: wo, checked: false }
+  - { text: bisaab, lang: wo, checked: false }
 parts: [calyx]
 evidence: '0'
 message: evidence-0

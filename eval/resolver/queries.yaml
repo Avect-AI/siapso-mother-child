@@ -291,6 +291,15 @@
 - { query: asaq, type: brand, expect: { kind: product, id: asaq } }
 - { query: tld, type: brand, expect: { kind: product, id: tld } }
 - { query: 'SP', type: brand, expect: { kind: product, id: sp } }
+# Common brands recorded as brands of the generic (or manual) products.
+- { query: coartem, type: brand, expect: { kind: product, id: artemether-lumefantrine-generic } }
+- { query: fansidar, type: brand, expect: { kind: product, id: sp } }
+- { query: brufen, type: brand, expect: { kind: product, id: ibuprofen-generic } }
+- { query: feldene, type: brand, expect: { kind: product, id: piroxicam-generic } }
+- { query: ponstan, type: brand, expect: { kind: product, id: mefenamic-acid-generic } }
+- { query: indocid, type: brand, expect: { kind: product, id: indometacin-generic } }
+- { query: roaccutane, type: brand, expect: { kind: product, id: isotretinoin-generic } }
+- { query: cytotec, type: brand, expect: { kind: product, id: misoprostol-generic } }
 - { query: klipal, type: brand, expect: { kind: product, id: klipal-300-mg-25-mg-62094992 } }
 - {
     query: curacne,
@@ -686,6 +695,15 @@
         { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
       ],
   }
+- {
+    query: cotrim,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
 - { query: ibuprofen, type: inn, expect: { kind: product, id: ibuprofen-generic } }
 - {
     query: acid folic,
@@ -947,6 +965,7 @@
 - { query: gouro, type: local-wo, expect: { kind: plant, id: cola-nut } }
 - { query: nger, type: local-wo, expect: { kind: plant, id: guiera } }
 - { query: ngeur, type: local-wo, expect: { kind: plant, id: guiera } }
+- { query: ngeer, type: local-wo, expect: { kind: plant, id: guiera } }
 - { query: bisap, type: local-wo, expect: { kind: plant, id: bissap } }
 - { query: dakar, type: local-wo, expect: { kind: plant, id: tamarind } }
 - { query: daxar, type: local-wo, expect: { kind: plant, id: tamarind } }
@@ -1076,3 +1095,11 @@
 - { query: sp sulfadoxine, type: voice-like, expect: { kind: product, id: sp } }
 - { query: noixdecola, type: voice-like, expect: { kind: plant, id: cola-nut } }
 - { query: baktrim fort, type: voice-like, expect: { kind: product, id: bactrim-forte-64121235 } }
+# Noise: a form, a colour or a packaging word alone names no medicine. The
+# right answer is no candidate at all, so that the app offers "Produit
+# introuvable" instead of an unrelated product.
+- { query: 'comprimé blanc', type: noise, expect: none }
+- { query: sirop, type: noise, expect: none }
+- { query: 'comprimé', type: noise, expect: none }
+- { query: 'gélule', type: noise, expect: none }
+- { query: pommade, type: noise, expect: none }

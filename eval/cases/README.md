@@ -25,6 +25,7 @@ expect:
     - {
         check: C1,
         rule: nsaid-pregnancy-from-20-weeks,
+        message: nsaid-pregnancy-from-20-weeks,
         level: before-next-dose,
         evidence: A,
         items: [0],
@@ -36,7 +37,7 @@ expect:
 - `weeks` gives an exact term, `months` an estimated range, `unknown: true` the whole pregnancy with precision unknown. Leave `pregnancy` out when the woman is not pregnant.
 - An item is a `product` or `plant` id of the registry, or an `unrecognised` text. `units-per-day` and `long-term` are optional.
 - `signs` lists danger sign ids; a sign gives a finding with the sign set.
-- `expect.findings` is the full ordered list the engine returns. Each finding has `check`, `level`, `items` and either `rule` (finding from a rule) or `message` (built-in finding: danger sign, not recognised, no finding). `evidence`, `sign` and `term` are listed when the engine sets them.
+- `expect.findings` is the full ordered list the engine returns. Each finding has `check`, `message` (the message id the woman reads: the rule's message, or the built-in one of a danger sign, a name not recognised or a product without finding), `level` and `items`, plus `rule` for a finding from a rule. `evidence`, `sign` and `term` are listed when the engine sets them.
 - `expect.reminders` and `expect.notes` are the rule ids of the reminders and notes, sorted.
 - The test also checks that every message id of the output exists in French and English and that no message text contains forbidden wording.
 
@@ -58,3 +59,4 @@ expect:
 | 12 Artemether-lumefantrine at 8 weeks    | `case-12-artemether-lumefantrine`                                       |
 | 13 Aspirin 75 mg and 500 mg              | `case-13-aspirin-75-mg`, `case-13-aspirin-500-mg`                       |
 | 14 Not pregnant, not breastfeeding       | `case-14-ibuprofen-not-pregnant`                                        |
+| 15 Cotrimoxazole item, no HIV condition  | `case-15-cotrimoxazole-no-condition`                                    |

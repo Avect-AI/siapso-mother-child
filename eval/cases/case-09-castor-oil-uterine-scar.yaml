@@ -10,7 +10,14 @@ context:
 expect:
   level: danger
   findings:
-    - { check: C5, rule: castor-oil-term-uterine-scar, level: danger, evidence: C, items: [0] }
+    - {
+        check: C5,
+        rule: castor-oil-term-uterine-scar,
+        message: castor-oil-term-uterine-scar,
+        level: danger,
+        evidence: C,
+        items: [0],
+      }
     - { check: C12, message: not-recognised, level: unknown, items: [1] }
   reminders: [iptp-reminder]
   notes: []

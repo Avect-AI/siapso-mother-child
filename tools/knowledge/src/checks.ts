@@ -137,6 +137,9 @@ function checkReferences(content: Content, known: Known): Problem[] {
         problems.push(...unknownSubject(rule, where, requirement.with, known));
       }
     });
+    (when['unless-with'] ?? []).forEach((subject, index) => {
+      problems.push(...unknownSubject(rule, `when.unless-with[${String(index)}]`, subject, known));
+    });
     problems.push(...unknownMessage(rule, 'message', message, known));
   }
   for (const plant of content.plants) {

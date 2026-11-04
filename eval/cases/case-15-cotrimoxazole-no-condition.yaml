@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-15-cotrimoxazole-no-condition
+title: '18 weeks, long-term cotrimoxazole entered as an item, HIV condition not entered: no IPTp reminder'
+context:
+  pregnancy: { weeks: 18 }
+  conditions: []
+  items:
+    - { product: cotrimoxazole-generic, long-term: true }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-found, level: unknown, items: [0] }
+  reminders: []
+  notes: []

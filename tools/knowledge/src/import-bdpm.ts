@@ -19,6 +19,7 @@
 // used in Senegal (PRIORITY_BRANDS) are always kept, and the other products
 // fill the rest, at most 3 per brand, 15 per substance and 300 in total
 // (taken rank by rank across substances, see selectProducts).
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { LICENCE_LINE } from './load.js';
@@ -547,21 +548,35 @@ export function renderProducts(products: readonly AuthoredProduct[]): string {
   return `${lines.join('\n')}\n`;
 }
 
-/** The result of an import: the products and how many contain each substance. */
+/** An input file of the import, identified by its size and its sha256. */
+export interface BdpmInput {
+  file: string;
+  bytes: number;
+  sha256: string;
+}
+
+/**
+ * The result of an import: the products, how many contain each substance, and
+ * the input files (to record in the bdpm entry of knowledge/sources.yaml).
+ */
 export interface BdpmImport {
   products: AuthoredProduct[];
   perSubstance: Record<string, number>;
+  inputs: BdpmInput[];
 }
 
-async function readBdpm(dir: string, name: string): Promise<string> {
+async function readBdpm(dir: string, name: string): Promise<{ text: string; input: BdpmInput }> {
   const file = path.join(dir, name);
+  let bytes: Buffer;
   try {
-    return decodeBdpm(await readFile(file));
+    bytes = await readFile(file);
   } catch (error) {
     throw new Error(`Cannot read the BDPM file ${file}: download ${name} from the BDPM site`, {
       cause: error,
     });
   }
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  return { text: decodeBdpm(bytes), input: { file: name, bytes: bytes.length, sha256 } };
 }
 
 /** Reads CIS_bdpm.txt and CIS_COMPO_bdpm.txt in `dir` and selects the products to import. */
@@ -570,8 +585,10 @@ export async function importBdpm(
   substances: ReadonlySet<string>,
   options: Omit<SelectOptions, 'substances'> = {},
 ): Promise<BdpmImport> {
-  const specialities = parseSpecialities(await readBdpm(dir, BDPM_FILES.specialities));
-  const compositions = parseCompositions(await readBdpm(dir, BDPM_FILES.compositions));
+  const specialityFile = await readBdpm(dir, BDPM_FILES.specialities);
+  const compositionFile = await readBdpm(dir, BDPM_FILES.compositions);
+  const specialities = parseSpecialities(specialityFile.text);
+  const compositions = parseCompositions(compositionFile.text);
   const products = selectProducts(specialities, compositions, { ...options, substances });
   const counts = new Map<string, number>();
   for (const product of products) {
@@ -580,5 +597,5 @@ export async function importBdpm(
     }
   }
   const perSubstance = Object.fromEntries([...counts].sort(([a], [b]) => compare(a, b)));
-  return { products, perSubstance };
+  return { products, perSubstance, inputs: [specialityFile.input, compositionFile.input] };
 }

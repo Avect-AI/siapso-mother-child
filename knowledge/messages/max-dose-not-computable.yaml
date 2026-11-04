@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Builtin note of a max-dose rule (C7): units per day were given for a product
+# holding the substance, but its strength is unknown, so the daily total
+# cannot be computed. A note, never a level; it states no dose.
+id: max-dose-not-computable
+fr:
+  fact: 'La quantité totale ne peut pas être calculée sans le dosage.'
+  risk: 'Nous ne pouvons pas dire si la quantité maximale est dépassée.'
+  orientation: 'Montrez les boîtes à la sage-femme ou au pharmacien.'
+en:
+  fact: 'The total amount cannot be worked out without the strength.'
+  risk: 'We cannot tell whether the daily maximum is exceeded.'
+  orientation: 'Show the boxes to the midwife or the pharmacist.'

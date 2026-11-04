@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildIndex, entriesFromPack } from '@siapso/resolver';
@@ -7,13 +7,17 @@ import { describe, expect, it } from 'vitest';
 import {
   evaluate,
   expectedList,
+  failures,
+  main,
   measureP95,
+  parseBaseline,
   parseQueries,
   percentile95,
   QUERY_TYPES,
 } from '../src/eval-resolver.js';
 import { buildPack } from '../src/build.js';
 import { loadContent } from '../src/load.js';
+import { REPO_ROOT, tempCopy } from './helpers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const QUERIES_FILE = path.join(ROOT, 'eval', 'resolver', 'queries.yaml');
@@ -39,6 +43,105 @@ describe('parseQueries', () => {
     ).toThrow('"type"');
     expect(() => parseQueries('- { query: x, type: brand }')).toThrow('"expect"');
     expect(() => parseQueries('- { query: x, type: brand, expect: [] }')).toThrow('"expect"');
+  });
+
+  it('reads expect none for a noise query, and only for one', () => {
+    const [noise] = parseQueries('- { query: sirop, type: noise, expect: none }');
+    expect(noise?.expect).toBe('none');
+    expect(noise && expectedList(noise)).toEqual([]);
+    expect(() => parseQueries('- { query: sirop, type: brand, expect: none }')).toThrow(
+      '"expect: none"',
+    );
+    expect(() =>
+      parseQueries('- { query: sirop, type: noise, expect: { kind: plant, id: a } }'),
+    ).toThrow('"expect: none"');
+    expect(() => parseQueries('- { query: sirop, type: noise, expect: nothing }')).toThrow(
+      '"expect: none"',
+    );
+    expect(() => parseQueries('- { query: x, type: brand, expect: nothing }')).toThrow('"expect"');
+  });
+});
+
+describe('refusing input that would hide a failure', () => {
+  it('rejects a query file that holds no query', () => {
+    expect(() => parseQueries('[]')).toThrow('no query');
+    expect(() => parseQueries('# SPDX-License-Identifier: CC-BY-4.0\n')).toThrow('must be a list');
+  });
+
+  it('rejects a baseline with a missing or non-numeric key', () => {
+    expect(parseBaseline('{ "top3": 0.98, "p95Ms": 12 }')).toEqual({ top3: 0.98, p95Ms: 12 });
+    for (const [text, key] of [
+      ['{ "p95Ms": 12 }', 'top3'],
+      ['{ "top3": "0.98", "p95Ms": 12 }', 'top3'],
+      ['{ "top3": 0.98 }', 'p95Ms'],
+      ['{ "top3": 0.98, "p95Ms": null }', 'p95Ms'],
+      ['{ "top3": 1.5, "p95Ms": 12 }', 'top3'],
+      ['{ "top3": 0.98, "p95Ms": 0 }', 'p95Ms'],
+    ] as const) {
+      expect(() => parseBaseline(text), text).toThrow(`"${key}"`);
+    }
+    expect(() => parseBaseline('not json')).toThrow('baseline.json');
+    expect(() => parseBaseline('[0.98, 12]')).toThrow('baseline.json');
+  });
+
+  it('fails a metric that is not a number', () => {
+    const baseline = { top3: 0.9, p95Ms: 12 };
+    expect(failures(0.95, 1, baseline)).toEqual([]);
+    expect(failures(Number.NaN, 1, baseline)).toEqual(['top-3 accuracy is not a number (NaN)']);
+    expect(failures(0.95, Number.NaN, baseline)).toEqual(['p95 latency is not a number (NaN)']);
+    expect(failures(0.5, 20, baseline)).toHaveLength(2);
+  });
+});
+
+describe('main', () => {
+  const LICENCE = '# SPDX-License-Identifier: CC-BY-4.0\n';
+
+  async function runWith(
+    queries: string,
+    baseline: string,
+  ): Promise<{ code: number; text: string }> {
+    const copy = await tempCopy();
+    try {
+      await mkdir(path.join(copy.root, 'eval', 'resolver'), { recursive: true });
+      await writeFile(path.join(copy.root, 'eval', 'resolver', 'queries.yaml'), queries);
+      await writeFile(path.join(copy.root, 'eval', 'resolver', 'baseline.json'), baseline);
+      const lines: string[] = [];
+      const code = await main(copy.root, (line) => lines.push(line), REPO_ROOT);
+      return { code, text: lines.join('\n') };
+    } finally {
+      await copy.remove();
+    }
+  }
+
+  const ONE_QUERY = `${LICENCE}- { query: nebeday, type: local-wo, expect: { kind: plant, id: moringa } }\n`;
+
+  it('exits 0 when the bars are met', async () => {
+    const { code, text } = await runWith(ONE_QUERY, '{ "top3": 0.9, "p95Ms": 1000 }');
+    expect(text).toMatch(/overall\s+1\s+1\.000\s+1\.000/);
+    expect(code).toBe(0);
+  });
+
+  it('exits 1 on an empty query file', async () => {
+    for (const queries of [LICENCE, `${LICENCE}[]\n`]) {
+      const { code, text } = await runWith(queries, '{ "top3": 0.9, "p95Ms": 1000 }');
+      expect(code, queries).toBe(1);
+      expect(text).toMatch(/FAIL/);
+    }
+  });
+
+  it('exits 1 on a missing or non-numeric baseline key', async () => {
+    for (const baseline of ['{ "p95Ms": 1000 }', '{ "top3": "high", "p95Ms": 1000 }', '{}']) {
+      const { code, text } = await runWith(ONE_QUERY, baseline);
+      expect(code, baseline).toBe(1);
+      expect(text).toMatch(/FAIL: .*baseline/);
+    }
+  });
+
+  it('exits 1 when a bar is not met', async () => {
+    const miss = `${LICENCE}- { query: nebeday, type: local-wo, expect: { kind: plant, id: other } }\n`;
+    const { code, text } = await runWith(miss, '{ "top3": 0.9, "p95Ms": 1000 }');
+    expect(code).toBe(1);
+    expect(text).toMatch(/FAIL: top-3 accuracy 0\.000 is below the baseline 0\.9/);
   });
 });
 
@@ -80,6 +183,20 @@ describe('evaluate', () => {
     expect(report.misses).toEqual([{ query: 'nebeday', type: 'local-wo', got: ['moringa'] }]);
   });
 
+  it('counts a noise query as a hit only when there is no candidate', () => {
+    const report = evaluate(
+      index,
+      parseQueries(
+        [
+          '- { query: sirop, type: noise, expect: none }',
+          '- { query: nebeday, type: noise, expect: none }',
+        ].join('\n'),
+      ),
+    );
+    expect(report.perType.noise).toEqual({ count: 2, top1: 1, top3: 1 });
+    expect(report.misses).toEqual([{ query: 'nebeday', type: 'noise', got: ['moringa'] }]);
+  });
+
   it('measures a latency', () => {
     const queries = parseQueries(
       '- { query: nebeday, type: local-wo, expect: { kind: plant, id: moringa } }',
@@ -89,11 +206,14 @@ describe('evaluate', () => {
 });
 
 describe('the committed evaluation set', () => {
-  it('has at least 100 queries covering the six types and the required ones', async () => {
+  it('has at least 100 queries covering the types and the required ones', async () => {
     const queries = parseQueries(await readFile(QUERIES_FILE, 'utf8'));
     expect(queries.length).toBeGreaterThanOrEqual(100);
     for (const type of QUERY_TYPES) {
-      expect(queries.filter((item) => item.type === type).length).toBeGreaterThanOrEqual(10);
+      const least = type === 'noise' ? 2 : 10;
+      expect(queries.filter((item) => item.type === type).length, type).toBeGreaterThanOrEqual(
+        least,
+      );
     }
     const texts = queries.map((item) => item.query);
     for (const required of [
@@ -107,6 +227,11 @@ describe('the committed evaluation set', () => {
       'bactrim',
       'asaq',
       'neo codion',
+      'comprimé blanc',
+      'sirop',
+      'coartem',
+      'fansidar',
+      'cotrim',
     ]) {
       expect(texts).toContain(required);
     }

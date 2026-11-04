@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Demo product written by hand for a medicine common in Senegal that the
 # BDPM import does not cover. Its availability in Senegal is not verified.
+# The brand is a name people commonly use for this medicine: the resolver
+# indexes it as another name of the generic.
 id: ibuprofen-generic
 names: { fr: 'Ibuprofène (générique)', en: 'Ibuprofen (generic)' }
-brands: []
+brands: ['Brufen']
 local-names: []
 components:
   - { substance: ibuprofen }

@@ -103,8 +103,12 @@ async function importCommand(options: Options, bdpm: string, io: CliIo): Promise
     io.err('error: registry/substances.yaml lists no substance: nothing can be imported');
     return 1;
   }
-  const { products, perSubstance } = await importBdpm(bdpm, substances);
+  const { products, perSubstance, inputs } = await importBdpm(bdpm, substances);
   await writeFile(path.join(options.root, BDPM_PRODUCTS_FILE), renderProducts(products));
+  // Record these in the bdpm entry of knowledge/sources.yaml.
+  for (const input of inputs) {
+    io.out(`input: ${input.file}, ${String(input.bytes)} bytes, sha256 ${input.sha256}`);
+  }
   io.out(`imported: ${String(products.length)} products into ${BDPM_PRODUCTS_FILE}`);
   for (const [substance, count] of Object.entries(perSubstance)) {
     io.out(`  ${substance}: ${String(count)}`);

@@ -22,7 +22,7 @@ describe('loadContent', () => {
       'knowledge/rules/paracetamol-max-dose.yaml',
       'knowledge/rules/paracetamol-strong-pregnancy.yaml',
     ]);
-    expect(raw.messages).toHaveLength(8);
+    expect(raw.messages).toHaveLength(9);
     expect(raw.products.map((f) => f.file)).toEqual([
       'registry/products/ibuprofen-400.yaml',
       'registry/products/paracetamol-1000.yaml',

@@ -171,7 +171,12 @@ describe('parsePack', () => {
   });
 
   it('refuses a missing builtin message', () => {
-    for (const id of ['nothing-found', 'not-recognised', 'danger-sign']) {
+    for (const id of [
+      'nothing-found',
+      'not-recognised',
+      'danger-sign',
+      'max-dose-not-computable',
+    ]) {
       const error = errorOf(
         broken((p) => {
           Reflect.deleteProperty(p.messages.en, id);
@@ -657,5 +662,74 @@ describe('parsePack', () => {
         }),
       ).message,
     ).toMatch(/orientation/);
+  });
+});
+
+describe('parsePack references and formats', () => {
+  it('refuses a product without any component', () => {
+    const error = errorOf(
+      broken((p) => {
+        at(p.products, 0).components = [];
+      }),
+    );
+    expect(error.message).toMatch(/products "ibuprofen-400"\.components/);
+    expect(error.message).toMatch(/must not be empty/);
+  });
+
+  it('refuses a pack date that is not an ISO calendar date (YYYY-MM-DD)', () => {
+    for (const date of [
+      '2026-11-3',
+      '03/11/2026',
+      '2026-11-03T00:00:00Z',
+      '2026-02-30',
+      '2026-13-01',
+    ]) {
+      const error = errorOf(
+        broken((p) => {
+          p.date = date;
+        }),
+      );
+      expect(error.message, date).toMatch(/pack\.date/);
+      expect(error.message, date).toMatch(/YYYY-MM-DD/);
+    }
+    expect(() =>
+      parsePack(
+        broken((p) => {
+          p.date = '2028-02-29';
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('refuses a cited source id that pack.sources does not list', () => {
+    const changes: [(pack: Pack) => void, RegExp][] = [
+      [
+        (p) => {
+          at(rule(p, 'fixture-toxicity-clay').sources, 0).source = 'not-listed';
+        },
+        /rules "fixture-toxicity-clay".*unknown source "not-listed"/,
+      ],
+      [
+        (p) => {
+          at(at(p.plants, 0).sources, 0).source = 'not-listed';
+        },
+        /plants "moringa".*unknown source "not-listed"/,
+      ],
+      [
+        (p) => {
+          at(at(p.dangerSigns, 0).sources, 0).source = 'not-listed';
+        },
+        /dangerSigns "fever".*unknown source "not-listed"/,
+      ],
+      [
+        (p) => {
+          p.sources = [];
+        },
+        /unknown source "fixture-source"/,
+      ],
+    ];
+    for (const [change, pattern] of changes) {
+      expect(errorOf(broken(change)).message).toMatch(pattern);
+    }
   });
 });

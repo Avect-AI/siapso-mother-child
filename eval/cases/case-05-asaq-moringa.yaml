@@ -9,6 +9,13 @@ context:
 expect:
   level: next-contact
   findings:
-    - { check: C4, rule: moringa-with-amodiaquine, level: next-contact, evidence: B, items: [0, 1] }
+    - {
+        check: C4,
+        rule: moringa-with-amodiaquine,
+        message: moringa-with-amodiaquine,
+        level: next-contact,
+        evidence: B,
+        items: [0, 1],
+      }
   reminders: []
   notes: []

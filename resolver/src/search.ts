@@ -2,13 +2,15 @@
 import { damerauLevenshtein } from './distance.js';
 import { compiledOf, MIN_WORD_LENGTH } from './index-build.js';
 import type { CompiledName } from './index-build.js';
-import { normalize } from './normalize.js';
+import { normalize, withoutStopWords } from './normalize.js';
 import { parseStrength } from './strength.js';
 import { jaccard, trigrams } from './trigrams.js';
 import type { Candidate, ResolverIndex, SearchOptions } from './types.js';
 
 export const DEFAULT_LIMIT = 3;
-export const DEFAULT_MIN_SCORE = 0.45;
+export const DEFAULT_MIN_SCORE = 0.55;
+/** A candidate scoring below this share of the best candidate's score is dropped. */
+export const DEFAULT_RELATIVE_CUTOFF = 0.8;
 /** Score of a query equal to a whole word of a multi-word name. */
 const WORD_SCORE = 0.95;
 /** Score of a query that is a prefix of a name or of one of its words. */
@@ -64,6 +66,26 @@ function compare(a: Match, b: Match): number {
   );
 }
 
+/** The family prefix of generic products, grouped by their substances (see entriesFromPack). */
+const GENERIC_FAMILY = 'substances:';
+
+/**
+ * Order of the products of one family: as `compare`, except that in a family
+ * of generics, when the query gives no strength, the product without strength
+ * (the generic named by its substance only) stands for the family before its
+ * strengths, which are then offered as variants. In a brand family, a product
+ * without a strength in mg is a liquid or a cream, not the brand itself, so
+ * the usual order applies.
+ */
+function compareInFamily(a: Match, b: Match, strengthTyped: boolean): number {
+  if (!strengthTyped && a.score === b.score && a.name.entry.family.startsWith(GENERIC_FAMILY)) {
+    const strengthA = (a.name.entry.strengths ?? []).length > 0 ? 1 : 0;
+    const strengthB = (b.name.entry.strengths ?? []).length > 0 ? 1 : 0;
+    if (strengthA !== strengthB) return strengthA - strengthB;
+  }
+  return compare(a, b);
+}
+
 function scoreName(
   name: CompiledName,
   query: string,
@@ -102,8 +124,11 @@ function scoreName(
  * strength is typed in the query) with the other products of the family as
  * `variants`. Sorted by score, then strength match, then single-substance
  * before combination, then entry priority, then id. A strength in the query
- * ("1 g", "400", "0,5 g") is not part of the name matching. Never returns a
- * level: the user confirms and the engine decides.
+ * ("1 g", "400", "0,5 g") and form or packaging words ("comprimé", "sirop")
+ * are not part of the name matching; a query made only of them gets no
+ * candidate. Candidates below minScore, or below relativeCutoff times the
+ * best score, are dropped. Never returns a level: the user confirms and the
+ * engine decides.
  */
 export function search(
   index: ResolverIndex,
@@ -112,10 +137,13 @@ export function search(
 ): Candidate[] {
   const limit = options.limit ?? DEFAULT_LIMIT;
   const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
+  const relativeCutoff = options.relativeCutoff ?? DEFAULT_RELATIVE_CUTOFF;
   const kinds = options.kinds;
   const parsed = parseStrength(query);
   const wanted = parsed.strengthMg;
-  const normalized = normalize(parsed.text);
+  // Form and packaging words are ignored; a query made only of them ("sirop",
+  // "comprimé") names no medicine and gets no candidate.
+  const normalized = withoutStopWords(normalize(parsed.text));
   if (normalized === '' || limit <= 0) return [];
   const queryTri = trigrams(normalized);
   const compactQuery = normalized.replaceAll(' ', '');
@@ -139,11 +167,15 @@ export function search(
   const bestByFamily = new Map<string, Match>();
   for (const match of bestById.values()) {
     const known = bestByFamily.get(match.name.entry.family);
-    if (!known || compare(match, known) < 0) bestByFamily.set(match.name.entry.family, match);
+    if (!known || compareInFamily(match, known, wanted !== undefined) < 0) {
+      bestByFamily.set(match.name.entry.family, match);
+    }
   }
 
-  return [...bestByFamily.values()]
-    .sort(compare)
+  const ranked = [...bestByFamily.values()].sort(compare);
+  const floor = (ranked[0]?.score ?? 0) * relativeCutoff;
+  return ranked
+    .filter((match) => match.score >= floor)
     .slice(0, limit)
     .map(({ score, name }) => ({
       id: name.entry.id,

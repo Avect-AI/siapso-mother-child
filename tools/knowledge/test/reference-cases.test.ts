@@ -28,9 +28,9 @@ function textsOf(message: Message): string[] {
 }
 
 describe('reference cases', () => {
-  it('cover the 14 cases of the dossier, with the term variants of case 1', () => {
+  it('cover the 15 cases, with the term variants of case 1', () => {
     const numbers = new Set(cases.map((c) => /^case-(\d\d)-/.exec(c.id)?.[1]));
-    for (let n = 1; n <= 14; n += 1) expect(numbers.has(String(n).padStart(2, '0'))).toBe(true);
+    for (let n = 1; n <= 15; n += 1) expect(numbers.has(String(n).padStart(2, '0'))).toBe(true);
     expect(cases.filter((c) => c.id.startsWith('case-01-')).map((c) => c.id)).toEqual([
       'case-01-ibuprofen-10-weeks',
       'case-01-ibuprofen-30-weeks',
@@ -61,7 +61,7 @@ describe('reference cases', () => {
   });
 
   it('give exactly the expected output, findings in engine order', () => {
-    expect(cases.length).toBeGreaterThanOrEqual(14);
+    expect(cases.length).toBeGreaterThanOrEqual(15);
     for (const c of cases) {
       const evaluation = evaluate(pack, contextOf(c));
       expect(projectOf(evaluation), c.id).toStrictEqual(c.expect);

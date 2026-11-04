@@ -11,6 +11,7 @@ expect:
     - {
         check: C1,
         rule: nsaid-pregnancy-from-20-weeks,
+        message: nsaid-pregnancy-from-20-weeks,
         level: before-next-dose,
         evidence: A,
         items: [0],

@@ -14,6 +14,7 @@ expect:
     - {
         check: C6,
         rule: paracetamol-duplicate-products,
+        message: paracetamol-duplicate-products,
         level: before-next-dose,
         evidence: A,
         items: [0, 1],
@@ -21,6 +22,7 @@ expect:
     - {
         check: C7,
         rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
         level: before-next-dose,
         evidence: A,
         items: [0, 1],

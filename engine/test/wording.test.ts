@@ -177,7 +177,12 @@ describe('fixture builtin messages', () => {
   it('contain no forbidden wording', () => {
     const pack = fixturePack();
     for (const lang of ['fr', 'en'] as const) {
-      for (const id of ['nothing-found', 'not-recognised', 'danger-sign']) {
+      for (const id of [
+        'nothing-found',
+        'not-recognised',
+        'danger-sign',
+        'max-dose-not-computable',
+      ]) {
         const message = pack.messages[lang][id];
         const text = [message?.fact, message?.risk, message?.orientation].join(' ');
         expect(findForbiddenWording(text, lang), `${lang} ${id}`).toEqual([]);

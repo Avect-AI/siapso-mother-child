@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Preventive calendar (accompanied mode only): ask whether the preventive
 # malaria treatment of pregnancy (IPTp with SP) was given. Never shown to a
-# woman living with HIV on cotrimoxazole, who does not receive SP.
+# woman living with HIV on cotrimoxazole, who does not receive SP: neither
+# when the condition is entered nor when a checked item holds
+# sulfamethoxazole (co-trimoxazole entered as a medicine, reference case 15).
 id: iptp-reminder
 kind: reminder
 when:
   pregnancy-windows: [12-19, 20-29, 30-plus]
   unless-conditions: [hiv-cotrimoxazole]
+  unless-with: [{ substance: sulfamethoxazole }]
 level: next-contact
 evidence: A
 message: iptp-reminder

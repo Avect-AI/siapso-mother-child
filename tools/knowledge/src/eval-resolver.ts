@@ -15,6 +15,7 @@ export const QUERY_TYPES = [
   'local-fr',
   'local-wo',
   'voice-like',
+  'noise',
 ] as const;
 export type QueryType = (typeof QUERY_TYPES)[number];
 
@@ -23,10 +24,16 @@ export interface Expected {
   id: string;
 }
 
+/** The expectation of a noise query (a form or a colour alone): no candidate at all. */
+export const NO_CANDIDATE = 'none';
+
 export interface EvalQuery {
   query: string;
-  /** One acceptable answer, or a list when several products of a brand are equally right. */
-  expect: Expected | Expected[];
+  /**
+   * One acceptable answer, a list when several products of a brand are
+   * equally right, or "none" for a noise query, which must get no candidate.
+   */
+  expect: Expected | Expected[] | typeof NO_CANDIDATE;
   type: QueryType;
 }
 
@@ -50,7 +57,9 @@ export interface Report {
 /** Repetitions of the whole query set when measuring latency. */
 export const REPETITIONS = 20;
 
+/** The acceptable answers; none for a noise query. */
 export function expectedList(item: EvalQuery): Expected[] {
+  if (item.expect === NO_CANDIDATE) return [];
   return Array.isArray(item.expect) ? item.expect : [item.expect];
 }
 
@@ -58,6 +67,8 @@ export function expectedList(item: EvalQuery): Expected[] {
 export function parseQueries(text: string): EvalQuery[] {
   const data: unknown = parse(text);
   if (!Array.isArray(data)) throw new Error('The queries file must be a list');
+  // An empty set would measure nothing (0 / 0) and pass every bar.
+  if (data.length === 0) throw new Error('The queries file holds no query');
   return data.map((raw, position) => {
     const item = raw as Partial<EvalQuery> | null;
     const where = `query #${String(position + 1)}`;
@@ -67,12 +78,61 @@ export function parseQueries(text: string): EvalQuery[] {
     if (!QUERY_TYPES.includes(item.type as QueryType)) {
       throw new Error(`${where} (${item.query}): "type" must be one of ${QUERY_TYPES.join(', ')}`);
     }
+    if ((item.type === 'noise') !== (item.expect === NO_CANDIDATE)) {
+      throw new Error(
+        `${where} (${item.query}): a noise query, and only a noise query, has "expect: none"`,
+      );
+    }
+    if (item.expect === NO_CANDIDATE) return item as EvalQuery;
     const list = Array.isArray(item.expect) ? item.expect : [item.expect];
     if (list.length === 0 || list.some((e) => !e || typeof e.id !== 'string')) {
       throw new Error(`${where} (${item.query}): "expect" needs { kind, id } or a list of them`);
     }
     return item as EvalQuery;
   });
+}
+
+/**
+ * Parses baseline.json. Both bars must be numbers (top3 from 0 to 1, p95Ms
+ * greater than 0): a missing or misspelled key would make every comparison
+ * false and let any result pass.
+ */
+export function parseBaseline(text: string): Baseline {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('baseline.json is not valid JSON');
+  }
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    throw new Error('baseline.json must be an object with "top3" and "p95Ms"');
+  }
+  const { top3, p95Ms } = data as Record<string, unknown>;
+  if (typeof top3 !== 'number' || !Number.isFinite(top3) || top3 < 0 || top3 > 1) {
+    throw new Error('baseline.json: "top3" must be a number from 0 to 1');
+  }
+  if (typeof p95Ms !== 'number' || !Number.isFinite(p95Ms) || p95Ms <= 0) {
+    throw new Error('baseline.json: "p95Ms" must be a number greater than 0');
+  }
+  return { top3, p95Ms };
+}
+
+/** The bars that a measure does not meet; a measure that is not a number fails. */
+export function failures(top3: number, p95: number, baseline: Baseline): string[] {
+  const found: string[] = [];
+  if (!Number.isFinite(top3)) {
+    found.push(`top-3 accuracy is not a number (${String(top3)})`);
+  } else if (top3 < baseline.top3) {
+    found.push(`top-3 accuracy ${top3.toFixed(3)} is below the baseline ${String(baseline.top3)}`);
+  }
+  if (!Number.isFinite(p95)) {
+    found.push(`p95 latency is not a number (${String(p95)})`);
+  } else if (p95 > baseline.p95Ms) {
+    found.push(
+      `p95 latency ${p95.toFixed(3)} ms is above the baseline ${String(baseline.p95Ms)} ms`,
+    );
+  }
+  return found;
 }
 
 /** The 95th percentile (nearest rank) of a list of numbers. */
@@ -100,12 +160,15 @@ export function evaluate(index: ResolverIndex, queries: EvalQuery[]): Report {
     const hits = found.map((candidate) =>
       wanted.some((e) => e.kind === candidate.kind && e.id === candidate.id),
     );
+    // A noise query is right only when no candidate is proposed at all.
+    const top1 = item.expect === NO_CANDIDATE ? found.length === 0 : hits[0] === true;
+    const top3 = item.expect === NO_CANDIDATE ? found.length === 0 : hits.some(Boolean);
     for (const tally of [perType[item.type], overall]) {
       tally.count += 1;
-      if (hits[0]) tally.top1 += 1;
-      if (hits.some(Boolean)) tally.top3 += 1;
+      if (top1) tally.top1 += 1;
+      if (top3) tally.top3 += 1;
     }
-    if (!hits.some(Boolean)) {
+    if (!top3) {
       misses.push({
         query: item.query,
         type: item.type,
@@ -137,20 +200,34 @@ function row(label: string, tally: Tally): string {
   return `${label.padEnd(12)} ${String(tally.count).padStart(5)} ${ratio(tally.top1, tally.count).padStart(8)} ${ratio(tally.top3, tally.count).padStart(8)}`;
 }
 
-/** Runs the evaluation on the repository at root; returns the exit code. */
+/**
+ * Runs the evaluation on the repository at root (schemas read from
+ * `schemas`, the root by default); returns the exit code: 0 when every bar is
+ * met, 1 otherwise, and 1 for an unreadable or empty query file or baseline.
+ */
 export async function main(
   root: string,
   out: (line: string) => void = console.log,
+  schemas: string = root,
 ): Promise<number> {
-  const raw = await loadContent(root, root);
+  try {
+    return await run(root, out, schemas);
+  } catch (error) {
+    out(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+}
+
+async function run(root: string, out: (line: string) => void, schemas: string): Promise<number> {
+  const raw = await loadContent(root, schemas);
   const pack = buildPack(raw);
   const index = buildIndex(entriesFromPack(pack));
   const queries = parseQueries(
     await readFile(path.join(root, 'eval', 'resolver', 'queries.yaml'), 'utf8'),
   );
-  const baseline = JSON.parse(
+  const baseline = parseBaseline(
     await readFile(path.join(root, 'eval', 'resolver', 'baseline.json'), 'utf8'),
-  ) as Baseline;
+  );
 
   const report = evaluate(index, queries);
   const p95 = measureP95(index, queries);
@@ -166,18 +243,9 @@ export async function main(
   out(`p95 latency: ${p95.toFixed(3)} ms over ${String(REPETITIONS)} repetitions`);
   out(`baseline: top-3 >= ${String(baseline.top3)}, p95 <= ${String(baseline.p95Ms)} ms`);
 
-  let failed = false;
-  if (top3 < baseline.top3) {
-    out(`FAIL: top-3 accuracy ${top3.toFixed(3)} is below the baseline ${String(baseline.top3)}`);
-    failed = true;
-  }
-  if (p95 > baseline.p95Ms) {
-    out(
-      `FAIL: p95 latency ${p95.toFixed(3)} ms is above the baseline ${String(baseline.p95Ms)} ms`,
-    );
-    failed = true;
-  }
-  return failed ? 1 : 0;
+  const failed = failures(top3, p95, baseline);
+  for (const failure of failed) out(`FAIL: ${failure}`);
+  return failed.length > 0 ? 1 : 0;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

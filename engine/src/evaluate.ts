@@ -4,8 +4,9 @@
 import { copySources, dangerSignFindings, noFinding, unrecognisedFinding } from './builtins.js';
 import { capForEvidence, levelRank, maxLevel } from './levels.js';
 import { entryKey } from './match.js';
-import { applyRule, CHECK_OF_KIND } from './rules.js';
+import { applyRule, CHECK_OF_KIND, uncomputableDoseItems } from './rules.js';
 import type { RuleMatch, RuleScope } from './rules.js';
+import { BUILTIN_MESSAGES } from './types.js';
 import type { CheckId, Evaluation, EvaluationContext, Finding, Note, Pack, Rule } from './types.js';
 import { windowsCovered } from './windows.js';
 
@@ -58,8 +59,8 @@ function ruleFinding(rule: Rule, match: RuleMatch): Finding {
   return finding;
 }
 
-function noteOf(rule: Rule): Note {
-  return { ruleId: rule.id, message: rule.message, sources: copySources(rule.sources) };
+function noteOf(rule: Rule, message: string = rule.message): Note {
+  return { ruleId: rule.id, message, sources: copySources(rule.sources) };
 }
 
 function byRuleId(a: Note, b: Note): number {
@@ -103,6 +104,10 @@ export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
   const reminders: Note[] = [];
   const notes: Note[] = [];
   for (const rule of pack.rules) {
+    // C7 is a level check: a total it cannot compute gives a note, never a level.
+    if (uncomputableDoseItems(rule, scope).length > 0) {
+      notes.push(noteOf(rule, BUILTIN_MESSAGES.maxDoseNotComputable));
+    }
     const match = applyRule(rule, scope);
     if (!match) continue;
     if (rule.kind === 'reminder') reminders.push(noteOf(rule));

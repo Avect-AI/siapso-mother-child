@@ -40,6 +40,16 @@ function isoDayNumber(iso: string): number {
   return daysFromCivil(year, month, day);
 }
 
+/** Whether a text is a calendar date written YYYY-MM-DD (no time, no time zone). */
+export function isIsoDate(text: string): boolean {
+  try {
+    isoDayNumber(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Whole weeks of amenorrhoea between the last menstrual period and today,
  * rounded down. Accepts up to 45 whole weeks: 45 weeks and 6 days (321 days)

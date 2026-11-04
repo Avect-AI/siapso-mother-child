@@ -44,6 +44,11 @@
           "type": "array",
           "items": { "$ref": "#/$defs/condition" }
         },
+        "unless-with": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/subject" }
+        },
         "pregnancy-windows": {
           "type": "array",
           "minItems": 1,

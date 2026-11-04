@@ -45,6 +45,9 @@ export interface ResolverIndex {
 export interface SearchOptions {
   /** Maximum number of candidates, counted in families (default 3). */
   limit?: number;
+  /** Candidates below this score are dropped (default 0.55). */
   minScore?: number;
+  /** Candidates below this share of the best candidate's score are dropped (default 0.8). */
+  relativeCutoff?: number;
   kinds?: EntryKind[];
 }

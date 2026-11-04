@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand: the 1000 mg strength of the paracetamol
+# generic, so that the confirm screen can offer the strength and the daily
+# maximum (rule paracetamol-max-daily) can be computed. Same resolver family as
+# paracetamol-generic (no brand, same substance). Its availability in Senegal
+# is not verified.
+id: paracetamol-1000-generic
+names: { fr: 'Paracétamol 1000 mg (générique)', en: 'Paracetamol 1000 mg (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: paracetamol, strength-mg: 1000 }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

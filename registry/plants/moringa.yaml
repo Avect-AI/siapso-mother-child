@@ -2,8 +2,11 @@
 id: moringa
 latin-name: Moringa oleifera
 names: { fr: 'Moringa', en: 'Moringa' }
+# nebedaay is the same name in the standard Wolof orthography (long vowel
+# written doubled).
 local-names:
   - { text: nebeday, lang: wo, checked: false }
+  - { text: nebedaay, lang: wo, checked: false }
 parts: [leaf]
 evidence: B
 message: plant-poorly-known

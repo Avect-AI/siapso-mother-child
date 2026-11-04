@@ -18,18 +18,17 @@ export {
   strengthMgOf,
   SUBSTANCE_LABELS,
 } from './import-bdpm.js';
-export type { BdpmComponent, BdpmImport, BdpmSpeciality, SelectOptions } from './import-bdpm.js';
+export type {
+  BdpmComponent,
+  BdpmImport,
+  BdpmInput,
+  BdpmSpeciality,
+  SelectOptions,
+} from './import-bdpm.js';
 export { generateNotice, NOTICE_FILE } from './notice.js';
 export { citedSourceIds, provenanceProblems } from './provenance.js';
 export { formatProblem, validateContent } from './validate.js';
 export { MAX_GZIP_BYTES, PACK_FRAGMENTS, writePack } from './write.js';
 export type { Manifest } from './write.js';
 export { SCHEMA_NAMES } from './types.js';
-export type {
-  AuthoredProduct,
-  ContentTree,
-  Problem,
-  RawContent,
-  RawFile,
-  SchemaName,
-} from './types.js';
+export type { AuthoredProduct, Problem, RawContent, RawFile, SchemaName } from './types.js';

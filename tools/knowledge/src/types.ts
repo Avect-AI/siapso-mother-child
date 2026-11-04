@@ -13,11 +13,6 @@ import type {
   WindowId,
 } from '@siapso/engine';
 
-/** The repository root: `knowledge/` and `registry/` live below it. */
-export interface ContentTree {
-  root: string;
-}
-
 /** One thing wrong in the content: the file, the path inside the file, and what is wrong. */
 export interface Problem {
   /** File path relative to the content root, with forward slashes. */
@@ -114,6 +109,7 @@ export interface AuthoredRule {
     subject?: Subject;
     requires?: Requirement[];
     'unless-conditions'?: ConditionId[];
+    'unless-with'?: Subject[];
     'pregnancy-windows'?: WindowId[];
     breastfeeding?: { 'baby-age-weeks-max'?: number; premature?: boolean };
     'max-mg-per-day'?: number;

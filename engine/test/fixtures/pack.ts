@@ -94,6 +94,10 @@ function fixtureMessages(lang: 'fr' | 'en', ids: string[]): Record<string, Messa
       lang === 'fr'
         ? { fact: 'Signe de danger.', risk: 'Signe de danger.' }
         : { fact: 'Danger sign.', risk: 'Danger sign.' },
+    'max-dose-not-computable':
+      lang === 'fr'
+        ? { fact: 'Quantité totale inconnue (test).', risk: 'Risque de test.' }
+        : { fact: 'Total amount unknown (fixture).', risk: 'Fixture risk.' },
   };
   for (const id of ids) {
     messages[id] =
@@ -234,7 +238,11 @@ export function fixturePack(): Pack {
     rule(
       'fixture-reminder-iptp',
       'reminder',
-      { pregnancyWindows: ['12-19', '20-29', '30-plus'], unlessConditions: ['hiv-cotrimoxazole'] },
+      {
+        pregnancyWindows: ['12-19', '20-29', '30-plus'],
+        unlessConditions: ['hiv-cotrimoxazole'],
+        unlessWith: [{ substance: 'sulfamethoxazole' }],
+      },
       'next-contact',
       'A',
     ),

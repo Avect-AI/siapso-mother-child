@@ -8,6 +8,13 @@ context:
 expect:
   level: before-next-dose
   findings:
-    - { check: C2, rule: codeine-breastfeeding, level: before-next-dose, evidence: C, items: [0] }
+    - {
+        check: C2,
+        rule: codeine-breastfeeding,
+        message: codeine-breastfeeding,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
   reminders: []
   notes: []

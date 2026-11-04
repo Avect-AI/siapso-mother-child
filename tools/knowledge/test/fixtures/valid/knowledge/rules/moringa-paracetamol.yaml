@@ -8,6 +8,7 @@ when:
     - { with: { substance: paracetamol } }
     - { condition: hepatic-failure }
   unless-conditions: [sickle-cell]
+  unless-with: [{ substance: ibuprofen }]
 level: next-contact
 evidence: D
 message: herb-drug-moringa

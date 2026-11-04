@@ -9,7 +9,21 @@ context:
 expect:
   level: next-contact
   findings:
-    - { check: C4, rule: clay-with-iron, level: next-contact, evidence: D, items: [0, 1] }
-    - { check: C5, rule: clay-eating-toxicity, level: next-contact, evidence: C, items: [1] }
+    - {
+        check: C4,
+        rule: clay-with-iron,
+        message: clay-with-iron,
+        level: next-contact,
+        evidence: D,
+        items: [0, 1],
+      }
+    - {
+        check: C5,
+        rule: clay-eating-toxicity,
+        message: clay-eating-toxicity,
+        level: next-contact,
+        evidence: C,
+        items: [1],
+      }
   reminders: [iptp-reminder]
   notes: []

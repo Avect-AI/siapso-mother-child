@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+import { createHash } from 'node:crypto';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -275,8 +276,18 @@ describe('siapso-pack import-bdpm', () => {
       const result = await run(args);
       expect(result.err).toEqual([]);
       expect(result.code).toBe(0);
+      // The input files are identified by size and sha256, to be recorded in
+      // the bdpm entry of knowledge/sources.yaml.
+      const inputs = await Promise.all(
+        ['CIS_bdpm.txt', 'CIS_COMPO_bdpm.txt'].map(async (name) => {
+          const bytes = await readFile(path.join(BDPM, name));
+          const sha256 = createHash('sha256').update(bytes).digest('hex');
+          return `input: ${name}, ${String(bytes.length)} bytes, sha256 ${sha256}`;
+        }),
+      );
       // The fixture registry lists paracetamol and ibuprofen only.
       expect(result.out).toEqual([
+        ...inputs,
         'imported: 4 products into registry/products/bdpm.yaml',
         '  paracetamol: 4',
       ]);

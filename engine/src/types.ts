@@ -99,6 +99,11 @@ export interface RuleWhen {
   requires?: Requirement[];
   /** The rule does not apply when one of these conditions is present. */
   unlessConditions?: ConditionId[];
+  /**
+   * The rule does not apply when any item matches one of these subjects (for
+   * example a co-trimoxazole item, even without the matching condition).
+   */
+  unlessWith?: Subject[];
   /** The rule applies only to a pregnancy intersecting these windows. */
   pregnancyWindows?: WindowId[];
   /** The rule applies only when breastfeeding. */
@@ -213,4 +218,6 @@ export const BUILTIN_MESSAGES = {
   nothingFound: 'nothing-found',
   notRecognised: 'not-recognised',
   dangerSign: 'danger-sign',
+  /** Note of a max-dose rule when a unit count is given for an item of unknown strength. */
+  maxDoseNotComputable: 'max-dose-not-computable',
 } as const;

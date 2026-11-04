@@ -13,6 +13,7 @@ expect:
     - {
         check: C8,
         rule: sp-with-cotrimoxazole,
+        message: sp-with-cotrimoxazole,
         level: before-next-dose,
         evidence: A,
         items: [0, 1],

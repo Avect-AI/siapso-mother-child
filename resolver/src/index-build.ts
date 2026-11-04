@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { normalize } from './normalize.js';
+import { normalize, withoutStopWords } from './normalize.js';
 import { trigrams } from './trigrams.js';
 import type { IndexEntry, NameLang, ResolverIndex } from './types.js';
 
@@ -76,7 +76,9 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
   const names: CompiledName[] = [];
   for (const entry of entries) {
     for (const name of entry.names) {
-      const norm = normalize(name.text);
+      // Form and packaging words are not part of the matching; a name made
+      // only of them can never be matched (such a query gets no candidate).
+      const norm = withoutStopWords(normalize(name.text));
       if (norm === '') continue;
       const compact = norm.replaceAll(' ', '');
       const parts = norm.split(' ');

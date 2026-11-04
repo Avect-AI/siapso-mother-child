@@ -4,9 +4,19 @@
 // level outside the four levels, bypassing the evidence cap, or silently
 // never applying a rule.
 import { LEVELS } from './levels.js';
+import { isIsoDate } from './pregnancy.js';
 import { CHECK_OF_KIND } from './rules.js';
 import { BUILTIN_MESSAGES } from './types.js';
-import type { ConditionId, Evidence, Lang, Level, Pack, RuleKind, Subject } from './types.js';
+import type {
+  ConditionId,
+  Evidence,
+  Lang,
+  Level,
+  Pack,
+  RuleKind,
+  RuleWhen,
+  Subject,
+} from './types.js';
 import { WINDOWS } from './windows.js';
 
 export class PackError extends Error {
@@ -133,15 +143,19 @@ function onlyKeys(o: Json, allowed: readonly string[], where: string): void {
 
 const SUBJECT_KEYS = ['substance', 'class', 'plant'];
 const REQUIREMENT_KEYS = ['with', 'condition'];
-const WHEN_KEYS = [
-  'subject',
-  'requires',
-  'unlessConditions',
-  'pregnancyWindows',
-  'breastfeeding',
-  'maxMgPerDay',
-  'strengthAboveMg',
-];
+// Keyed by RuleWhen, so the compiler keeps this list complete.
+const WHEN: Record<keyof RuleWhen, true> = {
+  subject: true,
+  requires: true,
+  unlessConditions: true,
+  unlessWith: true,
+  pregnancyWindows: true,
+  breastfeeding: true,
+  maxMgPerDay: true,
+  strengthAboveMg: true,
+};
+/** The keys of a rule `when` (pack authoring tools check their schema against it). */
+export const RULE_WHEN_KEYS: readonly (keyof RuleWhen)[] = Object.keys(WHEN) as (keyof RuleWhen)[];
 const BREASTFEEDING_KEYS = ['babyAgeWeeksMax', 'premature'];
 
 function subject(value: unknown, where: string): Subject {
@@ -173,7 +187,7 @@ function dangerRationale(value: unknown, level: Level, where: string): void {
 /** Validates `when` and returns every subject it references. */
 function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
   const o = object(value, where);
-  onlyKeys(o, WHEN_KEYS, where);
+  onlyKeys(o, RULE_WHEN_KEYS, where);
   const subjects: Subject[] = [];
   if (o.subject !== undefined) subjects.push(subject(o.subject, `${where}.subject`));
   else if (kind !== 'reminder') fail(`${where}.subject`, `is required for a ${kind} rule`);
@@ -193,6 +207,12 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
   });
   optional(o.unlessConditions, (v) => {
     list(v, `${where}.unlessConditions`, (item, at) => oneOf(item, CONDITION_IDS, at));
+  });
+  optional(o.unlessWith, (v) => {
+    if (array(v, `${where}.unlessWith`).length === 0) {
+      fail(`${where}.unlessWith`, 'must not be empty (omit it for no exception)');
+    }
+    list(v, `${where}.unlessWith`, (item, at) => subjects.push(subject(item, at)));
   });
   optional(o.pregnancyWindows, (v) => {
     if (array(v, `${where}.pregnancyWindows`).length === 0) {
@@ -303,7 +323,9 @@ export function parsePack(json: unknown): Pack {
     fail('pack.schema', `unsupported schema ${String(pack.schema)}, expected 1`);
   }
   id(pack.version, 'pack.version');
-  id(pack.date, 'pack.date');
+  if (typeof pack.date !== 'string' || !isIsoDate(pack.date)) {
+    fail('pack.date', 'must be a calendar date written YYYY-MM-DD');
+  }
   boolean(pack.clinicallyValidated, 'pack.clinicallyValidated');
 
   const substances = collection(pack, 'substances', (o, where) => {
@@ -318,6 +340,10 @@ export function parsePack(json: unknown): Pack {
     localized(o.names, `${where}.names`);
     strings(o.brands, `${where}.brands`);
     localNames(o.localNames, `${where}.localNames`);
+    // A product without components would match no rule and always look harmless.
+    if (array(o.components, `${where}.components`).length === 0) {
+      fail(`${where}.components`, 'must not be empty');
+    }
     list(o.components, `${where}.components`, (item, at) => {
       const c = object(item, at);
       id(c.substance, `${at}.substance`);
@@ -364,7 +390,7 @@ export function parsePack(json: unknown): Pack {
     optional(o.message, (v) => id(v, `${where}.message`));
     sourceRefs(o.sources, `${where}.sources`);
   });
-  collection(pack, 'sources', (o, where) => {
+  const sources = collection(pack, 'sources', (o, where) => {
     string(o.name, `${where}.name`);
     string(o.licence, `${where}.licence`);
     string(o.url, `${where}.url`);
@@ -391,6 +417,12 @@ export function parsePack(json: unknown): Pack {
     if ('substance' in s) known(substances.ids, 'substance', where, s.substance);
     else if ('class' in s) known(classes.ids, 'class', where, s.class);
     else known(plants.ids, 'plant', where, s.plant);
+  }
+  // Every cited source is listed, so that the app can show its name and licence.
+  for (const { where, o } of [...rules.entries, ...plants.entries, ...dangerSigns.entries]) {
+    for (const ref of o.sources as { source: string }[]) {
+      known(sources.ids, 'source', `${where}.sources`, ref.source);
+    }
   }
 
   // Every message the engine can output exists in both languages.

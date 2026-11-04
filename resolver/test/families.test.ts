@@ -138,6 +138,52 @@ describe('families', () => {
   });
 });
 
+describe('a family holding a product without strength', () => {
+  const generic = (id: string, strengths: number[]): IndexEntry =>
+    product(
+      id,
+      'substances:paracetamol',
+      [
+        {
+          text: `Paracétamol ${strengths.map((mg) => `${String(mg)} mg `).join('')}(générique)`,
+          lang: 'fr',
+        },
+        { text: 'paracétamol', lang: 'inn' },
+      ],
+      { priority: 2, componentCount: 1, ...(strengths.length > 0 ? { strengths } : {}) },
+    );
+  const generics = buildIndex([
+    generic('paracetamol-1000-generic', [1000]),
+    generic('paracetamol-500-generic', [500]),
+    generic('paracetamol-generic', []),
+  ]);
+
+  it('is shown by that product when no strength is typed, the strengths as variants', () => {
+    const [first] = search(generics, 'paracetamol');
+    expect(first?.id).toBe('paracetamol-generic');
+    expect(first?.variants).toEqual(['paracetamol-500-generic', 'paracetamol-1000-generic']);
+  });
+
+  it('keeps the usual order in a brand family, where a product without strength is a liquid', () => {
+    const syrup = product(
+      'doliprane-syrup',
+      'brand:doliprane',
+      [{ text: 'DOLIPRANE', lang: 'brand' }],
+      { componentCount: 1 },
+    );
+    const brands = buildIndex([brand('doliprane-100', 'brand:doliprane', 'DOLIPRANE', 100), syrup]);
+    expect(search(brands, 'doliprane')[0]?.id).toBe('doliprane-100');
+  });
+
+  it('is shown by the product of the typed strength', () => {
+    expect(search(generics, 'paracetamol 1 g')[0]?.id).toBe('paracetamol-1000-generic');
+    expect(search(generics, 'paracetamol 500')[0]?.variants).toEqual([
+      'paracetamol-1000-generic',
+      'paracetamol-generic',
+    ]);
+  });
+});
+
 describe('scoring order: whole word above prefix', () => {
   it('ranks an exact whole word 0.95 above the prefix of another word 0.9', () => {
     const results = search(index, 'fer', { limit: 5 });

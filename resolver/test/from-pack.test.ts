@@ -116,6 +116,47 @@ describe('entriesFromPack', () => {
     expect(byKey('doliprane-1000', 1)).toMatchObject({ strengths: [1000], componentCount: 1 });
   });
 
+  it('keeps a generic whose brands are other names of it: one entry, family of its substances', () => {
+    const aliased = entriesFromPack({
+      ...PACK,
+      products: [
+        {
+          id: 'ibuprofen-generic',
+          names: { fr: 'Ibuprofène (générique)', en: 'Ibuprofen (generic)' },
+          brands: ['Brufen'],
+          localNames: [],
+          components: [{ substance: 'paracetamol' }],
+        },
+      ],
+      plants: [],
+    });
+    expect(aliased).toHaveLength(1);
+    expect(aliased[0]).toMatchObject({ priority: 2, family: 'substances:paracetamol' });
+    expect(aliased[0]?.names).toContainEqual({ text: 'Brufen', lang: 'brand' });
+    expect(aliased[0]?.names).toContainEqual({ text: 'paracétamol', lang: 'inn' });
+  });
+
+  it('treats a product whose name starts with its first brand as a brand product', () => {
+    const named = entriesFromPack({
+      ...PACK,
+      products: [
+        {
+          id: 'neo-codion',
+          names: { fr: 'Néo-Codion, comprimé enrobé', en: 'Néo-Codion, coated tablet' },
+          brands: ['Néo-Codion'],
+          localNames: [],
+          components: [{ substance: 'codeine', strengthMg: 15 }],
+        },
+      ],
+      plants: [],
+    });
+    expect(named.map((e) => [e.priority, e.family])).toEqual([
+      [3, 'brand:neo codion'],
+      [1, 'brand:neo codion'],
+    ]);
+    expect(byKey('combo', 3)?.family).toBe('brand:combo');
+  });
+
   it('skips an unknown substance instead of failing', () => {
     const odd = entriesFromPack({
       ...PACK,

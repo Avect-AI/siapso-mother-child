@@ -82,7 +82,7 @@
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["check", "level", "items"],
+      "required": ["check", "message", "level", "items"],
       "properties": {
         "check": {
           "enum": [
@@ -108,11 +108,7 @@
         "items": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
         "sign": { "$ref": "#/$defs/id" },
         "term": { "enum": ["exact", "estimated", "unknown"] }
-      },
-      "oneOf": [
-        { "properties": { "rule": true }, "required": ["rule"] },
-        { "properties": { "message": true }, "required": ["message"] }
-      ]
+      }
     }
   }
 }

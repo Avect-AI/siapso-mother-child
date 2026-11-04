@@ -190,7 +190,7 @@ describe('search options', () => {
     expect(search(many, 'brandname', { limit: 1 })).toHaveLength(1);
   });
 
-  it('returns nothing below minScore (0.45 by default)', () => {
+  it('returns nothing below minScore (0.55 by default)', () => {
     expect(search(index, 'xqzw')).toEqual([]);
     expect(search(index, 'paracet', { minScore: 0.95 })).toEqual([]);
     expect(search(index, 'paracet', { minScore: 0.9 })).not.toEqual([]);

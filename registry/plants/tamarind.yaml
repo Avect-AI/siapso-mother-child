@@ -2,8 +2,11 @@
 id: tamarind
 latin-name: Tamarindus indica
 names: { fr: 'Tamarin', en: 'Tamarind' }
+# daxar is the same name in the standard Wolof orthography, where x writes the
+# sound that French spelling writes kh (the resolver keeps kh and x apart).
 local-names:
   - { text: dakhar, lang: wo, checked: false }
+  - { text: daxar, lang: wo, checked: false }
 parts: [fruit]
 evidence: '0'
 message: evidence-0

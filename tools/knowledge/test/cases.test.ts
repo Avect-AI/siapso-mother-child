@@ -24,7 +24,7 @@ context:
 expect:
   level: danger
   findings:
-    - { check: C1, rule: nsaid-pregnancy-from-20-weeks, level: before-next-dose, evidence: A, items: [0] }
+    - { check: C1, rule: nsaid-pregnancy-from-20-weeks, message: nsaid-pregnancy-from-20-weeks, level: before-next-dose, evidence: A, items: [0] }
   reminders: []
   notes: []
 `;
@@ -64,10 +64,25 @@ describe('loadCases', () => {
     expect(cases[1]?.expect.findings[0]).toEqual({
       check: 'C1',
       rule: 'nsaid-pregnancy-from-20-weeks',
+      message: 'nsaid-pregnancy-from-20-weeks',
       level: 'before-next-dose',
       evidence: 'A',
       items: [0],
     });
+  });
+
+  it('requires the message id of every finding, rule findings included', async () => {
+    const root = await rootWith({
+      'case-99-sample.yaml': GOOD.replace(' message: nsaid-pregnancy-from-20-weeks,', ''),
+    });
+    const { problems } = await loadCases(root);
+    expect(problems).toEqual([
+      expect.objectContaining({
+        file: 'eval/cases/case-99-sample.yaml',
+        path: 'expect.findings[0].message',
+        message: 'missing required key "message"',
+      }),
+    ]);
   });
 
   it('reports a schema problem with its file and path', async () => {
@@ -198,7 +213,7 @@ describe('contextOf', () => {
 });
 
 describe('projectOf', () => {
-  it('keeps the compared fields only, rule or message, and drops absent ones', () => {
+  it('keeps the compared fields only, the message id always, and drops absent ones', () => {
     const evaluation = {
       level: 'danger',
       findings: [
@@ -234,6 +249,7 @@ describe('projectOf', () => {
         {
           check: 'C1',
           rule: 'r',
+          message: 'm',
           level: 'before-next-dose',
           evidence: 'A',
           items: [0],

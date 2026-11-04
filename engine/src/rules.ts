@@ -148,24 +148,36 @@ function populationApplies(kind: RuleKind, context: EvaluationContext): boolean 
   return true;
 }
 
-/** Applies one rule; undefined when it does not apply. */
-export function applyRule(rule: Rule, scope: RuleScope): RuleMatch | undefined {
+/**
+ * The conditions that do not depend on the subject: population, exceptions,
+ * pregnancy windows and breastfeeding bound. Returns the term precision to
+ * report (undefined for an exact term or no window), or false when the rule
+ * cannot apply to the context.
+ */
+function gate(rule: Rule, scope: RuleScope): { term?: TermPrecision } | false {
   const { when } = rule;
   const { context } = scope;
-  if (!populationApplies(rule.kind, context)) return undefined;
-  if (when.unlessConditions?.some((c) => context.conditions.includes(c))) return undefined;
+  if (!populationApplies(rule.kind, context)) return false;
+  if (when.unlessConditions?.some((c) => context.conditions.includes(c))) return false;
+  if (when.unlessWith?.some((s) => matchingItems(scope, s).length > 0)) return false;
 
   let term: TermPrecision | undefined;
   if (when.pregnancyWindows !== undefined) {
     const pregnancy = context.pregnancy;
-    if (!pregnancy || !when.pregnancyWindows.some((w) => scope.covered.includes(w))) {
-      return undefined;
-    }
+    if (!pregnancy || !when.pregnancyWindows.some((w) => scope.covered.includes(w))) return false;
     if (pregnancy.precision !== 'exact') term = pregnancy.precision;
   }
   if (when.breastfeeding && !breastfeedingApplies(when.breastfeeding, context.breastfeeding)) {
-    return undefined;
+    return false;
   }
+  return term ? { term } : {};
+}
+
+/** Applies one rule; undefined when it does not apply. */
+export function applyRule(rule: Rule, scope: RuleScope): RuleMatch | undefined {
+  const { when } = rule;
+  const gated = gate(rule, scope);
+  if (!gated) return undefined;
 
   const subjectItems = when.subject ? matchingItems(scope, when.subject, when.strengthAboveMg) : [];
   if (!subjectPresent(rule, subjectItems, scope)) return undefined;
@@ -173,5 +185,26 @@ export function applyRule(rule: Rule, scope: RuleScope): RuleMatch | undefined {
   if (!partners) return undefined;
 
   const items = [...new Set([...subjectItems, ...partners])].sort((a, b) => a - b);
-  return term ? { items, term } : { items };
+  return gated.term ? { items, term: gated.term } : { items };
+}
+
+/**
+ * The items for which a max-dose rule cannot compute the daily total: they
+ * hold the subject and have a unit count, but a component of the subject has
+ * no strength. Empty for another kind of rule, or when the rule cannot apply
+ * to the context (its conditions and requirements are checked as for C7).
+ */
+export function uncomputableDoseItems(rule: Rule, scope: RuleScope): number[] {
+  const { subject, requires } = rule.when;
+  if (rule.kind !== 'max-dose' || subject === undefined || !gate(rule, scope)) return [];
+  const subjectItems = matchingItems(scope, subject);
+  if (!requirementPartners(requires, subjectItems, scope)) return [];
+  return subjectItems.filter((index) => {
+    const item = scope.context.items[index];
+    if (item?.unitsPerDay === undefined) return false;
+    const components = productOf(scope.pack, item)?.components ?? [];
+    return components.some(
+      (c) => c.strengthMg === undefined && substanceMatches(scope.pack, c.substance, subject),
+    );
+  });
 }

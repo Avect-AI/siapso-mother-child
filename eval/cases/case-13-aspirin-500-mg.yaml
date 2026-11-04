@@ -11,6 +11,7 @@ expect:
     - {
         check: C1,
         rule: aspirin-analgesic-dose-pregnancy,
+        message: aspirin-analgesic-dose-pregnancy,
         level: before-next-dose,
         evidence: A,
         items: [0],

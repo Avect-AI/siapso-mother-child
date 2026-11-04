@@ -32,6 +32,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Local name resolver (`@siapso/resolver`): normalisation with French and Wolof spelling variants, trigram and Damerau-Levenshtein scoring, ranked candidates with brand, generic, plant and INN priorities; it never returns a level. `pnpm eval:resolver` runs the evaluation set `eval/resolver/queries.yaml` (top-1 and top-3 accuracy per query type, p95 latency) and fails below `eval/resolver/baseline.json`; CI runs it.
 
+- Engine: the `unlessWith` rule condition (a rule does not apply when an item matches one of its subjects) and the `max-dose-not-computable` note, given when units per day are entered for a product of unknown strength (never a level).
+- Registry: `paracetamol-500-generic` and `paracetamol-1000-generic`, offered as variants of the paracetamol generic, and the common brands Coartem, Fansidar, Brufen, Feldene, Ponstan, Indocid, Roaccutane and Cytotec on their generic products.
+- Resolver: stop-words for forms, packaging and age groups, a relative cutoff at 0.8 of the best score, and a minimum score of 0.55; the evaluation gains `noise` queries that must get no candidate.
+- `tools/github/merge-pr.test.sh`: the merge gate tested with a fake `gh`, after `shellcheck`, in CI.
+- Reference case 15: a co-trimoxazole item without the HIV condition gives no IPTp reminder.
+
 ### Fixed
 
 - `setup-repo.sh` now reads the auto-merge setting back instead of trusting the API response.
+- The IPTp reminder is no longer shown when co-trimoxazole is entered as a medicine without the HIV condition.
+- `merge-pr.sh` merges only when the four required checks are reported and passed; a skipped required check blocks the merge, except the Developer Certificate of Origin check of a Dependabot pull request.
+- `pnpm eval:resolver` fails on an empty query file, an invalid baseline or a measure that is not a number.
+- `parsePack` refuses an empty component list, a pack date not written `YYYY-MM-DD` and a cited source missing from the pack.
+- Reference cases compare the message id of rule findings; the app loader and the pack build share one fragment list (tested); CI runs `pnpm knowledge:check` and fails when the build changes a committed file.
+- The BDPM input files are identified by size and sha256 in `knowledge/sources.yaml`, and the import prints them.

@@ -35,11 +35,27 @@ const GENERIC_PRIORITY = 2;
 const INN_PRIORITY = 1;
 
 /**
- * Index entries of a pack. A product with brands is indexed at priority 3 by
- * its names, brands and local names, and a second time at priority 1 by the
- * INN of its substances, so that a plain INN query lists generics first. A
- * product without a brand is a generic: its INN names are part of its single
- * entry, at priority 2. A plant is indexed at priority 2.
+ * Whether a product is a brand product: its French name starts with its first
+ * brand (every BDPM product, Néo-Codion). A generic may also list brands, the
+ * names people use for its substance (Coartem for artemether-lumefantrine):
+ * they are other names of the generic, which stays a generic.
+ */
+function namedByItsBrand(product: PackNames['products'][number]): boolean {
+  const brand = product.brands[0];
+  if (brand === undefined) return false;
+  const name = normalize(product.names.fr);
+  const key = normalize(brand);
+  return key !== '' && (name === key || name.startsWith(`${key} `));
+}
+
+/**
+ * Index entries of a pack. A brand product is indexed at priority 3 by its
+ * names, brands and local names, and a second time at priority 1 by the INN
+ * of its substances, so that a plain INN query lists generics first; its
+ * family is its first brand. A generic (no brand, or brands that do not name
+ * it) has a single entry at priority 2 holding its names, brands, local names
+ * and INN names; its family is its sorted substances. A plant is indexed at
+ * priority 2.
  */
 export function entriesFromPack(pack: PackNames): IndexEntry[] {
   const substances = new Map(pack.substances.map((substance) => [substance.id, substance]));
@@ -67,10 +83,11 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
     const substanceIds = [
       ...new Set(product.components.map((component) => component.substance)),
     ].sort();
+    const brandProduct = namedByItsBrand(product);
     const family =
-      product.brands[0] === undefined
-        ? `substances:${substanceIds.join('+')}`
-        : `brand:${normalize(product.brands[0])}`;
+      brandProduct && product.brands[0] !== undefined
+        ? `brand:${normalize(product.brands[0])}`
+        : `substances:${substanceIds.join('+')}`;
     const base = {
       family,
       strengths: product.components.flatMap((component) =>
@@ -82,7 +99,7 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
       display: { fr: product.names.fr, en: product.names.en },
       detail: parts.join(', '),
     };
-    if (product.brands.length > 0) {
+    if (brandProduct) {
       entries.push({ ...base, names, priority: BRAND_PRIORITY });
       if (inn.length > 0) entries.push({ ...base, names: inn, priority: INN_PRIORITY });
     } else {

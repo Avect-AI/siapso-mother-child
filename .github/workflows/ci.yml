@@ -29,12 +29,19 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Merge gate script (shellcheck and fake gh test)
+        run: |
+          shellcheck tools/github/merge-pr.sh tools/github/merge-pr.test.sh
+          sh tools/github/merge-pr.test.sh
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test:coverage
+      - run: pnpm knowledge:check
       - run: pnpm eval:resolver
       - run: pnpm build
+      - name: The build changes no committed file (NOTICE included)
+        run: git diff --exit-code
       - run: pnpm budget:app
 
   e2e:

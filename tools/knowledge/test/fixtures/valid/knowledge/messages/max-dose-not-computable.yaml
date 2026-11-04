@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: max-dose-not-computable
+fr:
+  fact: 'La quantité totale ne peut pas être calculée sans le dosage.'
+  risk: 'Nous ne pouvons pas dire si la quantité maximale est dépassée.'
+en:
+  fact: 'The total amount cannot be worked out without the strength.'
+  risk: 'We cannot tell whether the daily maximum is exceeded.'

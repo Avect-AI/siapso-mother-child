@@ -32,3 +32,108 @@ export function normalize(text: string): string {
   if (plain === '') return '';
   return plain.split(' ').map(simplifyWord).join(' ');
 }
+
+/**
+ * Words of pharmaceutical forms, packaging and age groups: they say nothing
+ * about which medicine it is ("comprimé blanc" named every tablet). Accents
+ * and case do not matter: they are compared after normalize.
+ */
+export const STOP_WORDS: readonly string[] = [
+  // French forms and packaging.
+  'comprimé',
+  'comprimés',
+  'pelliculé',
+  'pelliculés',
+  'pelliculée',
+  'pelliculées',
+  'enrobé',
+  'enrobés',
+  'sécable',
+  'sécables',
+  'effervescent',
+  'effervescents',
+  'effervescente',
+  'effervescentes',
+  'orodispersible',
+  'orodispersibles',
+  'dispersible',
+  'dispersibles',
+  'gélule',
+  'gélules',
+  'capsule',
+  'capsules',
+  'sirop',
+  'sirops',
+  'solution',
+  'solutions',
+  'suspension',
+  'suspensions',
+  'buvable',
+  'buvables',
+  'poudre',
+  'poudres',
+  'sachet',
+  'sachets',
+  'granulé',
+  'granulés',
+  'crème',
+  'crèmes',
+  'pommade',
+  'pommades',
+  'gel',
+  'gels',
+  'collyre',
+  'collyres',
+  'suppositoire',
+  'suppositoires',
+  'injectable',
+  'injectables',
+  'ampoule',
+  'ampoules',
+  'flacon',
+  'flacons',
+  // French age groups.
+  'adulte',
+  'adultes',
+  'enfant',
+  'enfants',
+  'nourrisson',
+  'nourrissons',
+  // English forms, packaging and age groups.
+  'tablet',
+  'tablets',
+  'coated',
+  'syrup',
+  'syrups',
+  'cream',
+  'creams',
+  'ointment',
+  'ointments',
+  'powder',
+  'powders',
+  'granules',
+  'suppository',
+  'suppositories',
+  'injection',
+  'vial',
+  'vials',
+  'bottle',
+  'bottles',
+  'adult',
+  'adults',
+  'child',
+  'children',
+  'infant',
+  'infants',
+];
+
+const STOP_SET: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
+
+/** A normalised text without its stop-words (an empty string when it has only stop-words). */
+export function withoutStopWords(normalized: string): string {
+  if (normalized === '') return '';
+  return normalized
+    .split(' ')
+    .filter((word) => !STOP_SET.has(word))
+    .join(' ');
+}

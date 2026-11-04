@@ -38,6 +38,7 @@ describe('buildPack', () => {
 
     const herb = pack.rules.find((r) => r.id === 'moringa-paracetamol');
     expect(herb?.when.unlessConditions).toEqual(['sickle-cell']);
+    expect(herb?.when.unlessWith).toEqual([{ substance: 'ibuprofen' }]);
     const strong = pack.rules.find((r) => r.id === 'paracetamol-strong-pregnancy');
     expect(strong?.when.strengthAboveMg).toBe(500);
     const dose = pack.rules.find((r) => r.id === 'paracetamol-max-dose');

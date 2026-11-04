@@ -2,8 +2,12 @@
 id: guiera
 latin-name: Guiera senegalensis
 names: { fr: 'Guiera (nguer)', en: 'Guiera' }
+# ngeer is the same name in the standard Wolof orthography (a long vowel is
+# written doubled), nger the same name written with a short vowel.
 local-names:
   - { text: nguer, lang: wo, checked: false }
+  - { text: ngeer, lang: wo, checked: false }
+  - { text: nger, lang: wo, checked: false }
 parts: [leaf]
 evidence: '0'
 message: evidence-0

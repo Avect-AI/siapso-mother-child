@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { CONDITION_IDS, LEVELS, RULE_KINDS, WINDOWS } from '@siapso/engine';
+import { CONDITION_IDS, LEVELS, RULE_KINDS, RULE_WHEN_KEYS, WINDOWS } from '@siapso/engine';
 import { describe, expect, it } from 'vitest';
 import { validateContent } from '../src/index.js';
 import type { RawContent } from '../src/index.js';
@@ -42,6 +42,11 @@ describe('validateContent', () => {
     expect(enumOf(sub(rule, '$defs').condition)).toEqual(CONDITION_IDS);
     const windows = sub(sub(sub(properties, 'when'), 'properties'), 'pregnancy-windows');
     expect(enumOf(sub(windows, 'items'))).toEqual(WINDOWS.map((w) => w.id));
+    // Every authoring `when` key maps to an engine RuleWhen key, and back.
+    const camel = (key: string): string =>
+      key.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase());
+    const whenKeys = Object.keys(sub(sub(properties, 'when'), 'properties')).map(camel);
+    expect([...whenKeys].sort()).toEqual([...RULE_WHEN_KEYS].sort());
 
     const evidence = ['A', 'B', 'C', 'D', 'E', '0'];
     expect(enumOf(properties.evidence)).toEqual(evidence);
@@ -397,6 +402,26 @@ describe('validateContent', () => {
       expectProblem(problems, { file, path: 'message', message: /unknown message/ });
     });
 
+    it('rejects an unknown subject in unless-with, and an empty unless-with', async () => {
+      const raw = patch(await fresh(), 'rules', 'moringa-paracetamol', (d) => {
+        sub(d, 'when')['unless-with'] = [{ substance: 'ibuprofen' }, { class: 'nsaidz' }];
+      });
+      patch(raw, 'rules', NSAID, (d) => {
+        sub(d, 'when')['unless-with'] = [];
+      });
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: 'knowledge/rules/moringa-paracetamol.yaml',
+        path: 'when.unless-with[1].class',
+        message: /unknown class "nsaidz"/,
+      });
+      expectProblem(problems, { file: RULE, path: 'when.unless-with' });
+      expect(
+        problems.filter((p) => p.path === 'when.unless-with[0].substance'),
+        'a known substance is accepted',
+      ).toEqual([]);
+    });
+
     it('rejects an unknown condition and an unknown window', async () => {
       const raw = patch(await fresh(), 'rules', 'moringa-paracetamol', (d) => {
         sub(d, 'when').requires = [{ condition: 'asthma' }];
@@ -714,19 +739,22 @@ describe('validateContent', () => {
   });
 
   describe('8. builtin messages', () => {
-    it.each(['nothing-found', 'not-recognised', 'danger-sign', 'evidence-0'])(
-      'rejects a pack without the %s message',
-      async (id) => {
-        const raw = await fresh();
-        raw.messages = raw.messages.filter((f) => !f.file.endsWith(`/${id}.yaml`));
-        // The plant message reference to evidence-0 also fails, which is fine.
-        expectProblem(validateContent(raw), {
-          file: `knowledge/messages/${id}.yaml`,
-          path: '',
-          message: /builtin message/,
-        });
-      },
-    );
+    it.each([
+      'nothing-found',
+      'not-recognised',
+      'danger-sign',
+      'max-dose-not-computable',
+      'evidence-0',
+    ])('rejects a pack without the %s message', async (id) => {
+      const raw = await fresh();
+      raw.messages = raw.messages.filter((f) => !f.file.endsWith(`/${id}.yaml`));
+      // The plant message reference to evidence-0 also fails, which is fine.
+      expectProblem(validateContent(raw), {
+        file: `knowledge/messages/${id}.yaml`,
+        path: '',
+        message: /builtin message/,
+      });
+    });
   });
 
   describe('9. engine validation', () => {

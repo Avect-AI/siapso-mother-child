@@ -50,8 +50,8 @@ Work that needs people or accounts we do not have is delivered as far as code al
 | Breastfeeding | Baby age in weeks and a prematurity flag; rules may bound the age or require prematurity. | Dossier silent on bands. |
 | Danger signs | One fixed list for everyone: the dossier list (fever, bleeding, convulsions, severe headache, baby no longer moving), the case signs (very strong abdominal pain; baby sleeps much more than usual, feeds poorly, breathes with difficulty), completed with WHO danger signs cited as fact-only sources. Every item carries its source and stays "not clinically validated" until the committee aligns it with the national list. | Missing a danger sign is the worst failure. |
 | Current danger signs in a check | The check flow asks once "Has she one of these signs now?" before the result. | Cases 2 and 10 need the fever. |
-| Paracetamol maximum (C7) | Optional "units per day" for products that have a maximum-dose rule; the engine sums strength x units per day per substance and compares with the threshold stored in the rule with its source. The message never states a dose. | MVP check without giving doses. |
-| Preventive calendar (C10) | Reminders ("demandez si vous avez recu...") are separate from levels and shown in accompanied mode only; the IPTp reminder is never shown to a woman living with HIV on cotrimoxazole. | Dossier. |
+| Paracetamol maximum (C7) | Optional "units per day" for products that have a maximum-dose rule; the engine sums strength x units per day per substance and compares with the threshold stored in the rule with its source. The message never states a dose. The paracetamol generic has strength variants (`paracetamol-500-generic`, `paracetamol-1000-generic`) in its resolver family, so the confirm screen can offer the strength. When units per day are given for a product of unknown strength, the engine adds the note `max-dose-not-computable` ("La quantite totale ne peut pas etre calculee sans le dosage. Montrez les boites a la sage-femme ou au pharmacien."), shown in both modes, never a level. | MVP check without giving doses; the default path (typing "paracetamol") must not silently skip the check. |
+| Preventive calendar (C10) | Reminders ("demandez si vous avez recu...") are separate from levels and shown in accompanied mode only; the IPTp reminder is never shown to a woman living with HIV on cotrimoxazole: neither when the condition `hiv-cotrimoxazole` is entered nor when a checked item contains sulfamethoxazole (rule key `unless-with`, reference case 15). | Dossier; a woman may enter her cotrimoxazole as a medicine without the condition. |
 | Contraception (C9) | General information notes only (formulation 8), accompanied mode only, never a verdict. | Decree 2023-2419. |
 | Codes | Every profile has a 4 to 6 digit code. Five wrong attempts lock for 30 seconds, doubling each time. Auto-lock after 2 minutes without interaction. Quick exit locks immediately and shows a neutral screen. | Shared phones; mobile money users know 4-digit codes. |
 | App name on the home screen | Build-time setting, default "Carnet" (neutral) with a neutral icon. | Dossier asks for a neutral name. |
@@ -89,14 +89,14 @@ Toolchain (versions pinned exactly; every dependency at least 14 days old when a
 Registry:
 
 - `substances.yaml`: `id` (INN, kebab-case), `names` (`fr`, `en`), `classes` (class ids).
-- `classes.yaml`: `id`, `names`, optional `excludes` (substance ids, for example low-dose aspirin rules later).
-- `products/<id>.yaml`: `id`, `names` (`fr`, `en`), `brands` (list), `local-names` (list of `text`, `lang` in `fr|wo|en`, `checked` boolean: validated by a speaker), `components` (list of `substance`, `strength-mg` optional), `form`, `route`, `source` (`bdpm` with CIS code, or `demo-manual`), `demo` boolean.
+- `classes.yaml`: `id`, `names`, `excludes` (required, possibly empty: substance ids left out of the class, for example low-dose aspirin rules later).
+- `products/<id>.yaml`: `id`, `names` (`fr`, `en`), `brands` (list: the brand of a branded product, or the brands people use for a generic, such as Coartem for artemether-lumefantrine), `local-names` (list of `text`, `lang` in `fr|wo|en`, `checked` boolean: validated by a speaker), `components` (at least one; `substance`, `strength-mg` optional), `form`, `route`, `source` (`bdpm` with CIS code, or `demo-manual`), `demo` boolean. `registry/products/bdpm.yaml` is a generated list of products.
 - `plants/<id>.yaml`: `id`, `latin-name`, `names`, `local-names`, `parts`, `evidence` (overall), `message` (default message id for the grey state), `sources`.
 
 Knowledge:
 
-- `rules/<id>.yaml`: `id`, `kind` (`pregnancy`, `breastfeeding`, `interaction`, `herb-drug`, `toxicity`, `duplicate`, `max-dose`, `condition`, `reminder`, `contraception-info`), `when` (match, below), `level`, `evidence`, optional `danger-rationale`, `message` (message id), `sources` (list of `source` id from `sources.yaml`, `locator` (record title), `url`, `accessed` date, optional `quote`), `review` (`status` `draft|validated`, `reviewers` list of name and role, `reviewed-on`), `licence` (CC-BY-4.0).
-- `when` keys: `substance`, `class`, `plant` (exactly one subject), optional `with` (`substance`, `class` or `plant`: the second item, for interactions), `pregnancy-windows` (list of window ids), `breastfeeding` (`baby-age-weeks-max`, `premature`), `conditions-any` (condition ids), `with-or-condition` (an any-of of `with` and `conditions-any`), `max-mg-per-day` (for `max-dose`).
+- `rules/<id>.yaml`: `id`, `kind` (`pregnancy`, `breastfeeding`, `interaction`, `herb-drug`, `toxicity`, `duplicate`, `max-dose`, `condition`, `reminder`, `contraception-info`), `when` (match, below), `level`, `evidence`, optional `danger-rationale`, `message` (message id), `sources` (list of `source` id from `sources.yaml`, `locator` (record title), `url`, `accessed` date, optional `quote`), `review` (`status` `draft|validated`, `reviewers` list of name and role, `reviewed-on`). A rule has no `licence` field: every content file is CC BY 4.0 through its first line `# SPDX-License-Identifier: CC-BY-4.0`.
+- `when` keys (kebab-case, mapped to the engine `RuleWhen` of section 5.1): `subject` (`{ substance }`, `{ class }` or `{ plant }`, exactly one key; required except for `reminder`), `requires` (non-empty any-of list of `{ with: <subject> }`, another item, or `{ condition: <id> }`; an `interaction` or `herb-drug` rule needs a `with`), `unless-conditions` (the rule does not apply when one of these conditions is present), `unless-with` (non-empty list of subjects: the rule does not apply when any item matches one), `strength-above-mg` (substance subject only, not on `max-dose` or `duplicate`), `max-mg-per-day` (required for `max-dose`, only there), `pregnancy-windows` (non-empty list of window ids), `breastfeeding` (`baby-age-weeks-max`, `premature`).
 - `messages/<id>.yaml`: per language `fr` and `en`: `fact`, `risk` (no numbers), optional `risk-detail` (may hold numbers, accompanied mode), optional `orientation` (overrides the level default).
 - `danger-signs.yaml`: `id`, `group` (`pregnancy`, `postpartum`, `baby`), `label` (`fr`, `en`), `sources`.
 - `sources.yaml`: `allowed` (id, name, publisher, licence, version or download date, url, notice text), `fact-only` (WHO documents: may support a fact, never copied text), `forbidden` (DDInter, LEDIAM, e-lactancia, CRAT, Theriaque, Vidal, full DrugBank: with the reason).
@@ -109,7 +109,10 @@ Condition ids: `hiv-cotrimoxazole`, `tuberculosis-treatment`, `epilepsy-treatmen
 `pnpm knowledge:build` validates every file, checks provenance (every rule cites at least one `allowed` source, no `forbidden` id or domain appears anywhere), checks the evidence cap and the danger rationale, checks message ids and forbidden words, then writes `app/public/pack/`:
 
 - `manifest.json`: `schema` (integer), `version`, `date`, `clinicallyValidated`, `counts`, `fragments` (path, sha256, bytes);
-- fragments: `substances.json`, `products.json`, `plants.json`, `rules.json`, `messages.fr.json`, `messages.en.json`, `danger-signs.json`, `sources.json`, `resolver-index.json`.
+- fragments, in this order (`PACK_FRAGMENTS` of `@siapso/pack-tools`; a test of the app checks that its loader asks for exactly these): `substances.json`, `classes.json`, `products.json`, `plants.json`, `rules.json`, `danger-signs.json`, `sources.json`, `messages.fr.json`, `messages.en.json`;
+- `pack.json`: the whole pack in one file, for tools and tests (not listed in the manifest).
+
+There is no resolver index file: the app builds the resolver index on the device from the products, plants and substances of the pack.
 
 The runtime format is typed by `@siapso/engine` (`Pack`); the build script is typed against it, so a mismatch fails type checking. The build is deterministic (no clock: version and date come from `pack.yaml`); building twice gives identical bytes. Budget: under 3 MB gzip. The build also generates `NOTICE` from `sources.yaml`.
 
@@ -149,10 +152,22 @@ interface Evaluation {
   level: Level;              // highest finding level
   findings: Finding[];       // sorted: level (danger first), then check, then rule id
   reminders: Note[];         // C10, accompanied mode only
-  notes: Note[];             // C9, accompanied mode only
+  notes: Note[];             // C9 (accompanied mode only) and max-dose-not-computable (both modes)
   pack: { version: string; date: string; clinicallyValidated: boolean };
 }
 function evaluate(pack: Pack, context: EvaluationContext): Evaluation;
+
+type Subject = { substance: string } | { class: string } | { plant: string };
+interface RuleWhen {
+  subject?: Subject;                // required for every kind except reminder
+  requires?: ({ with: Subject } | { condition: ConditionId })[]; // any-of
+  unlessConditions?: ConditionId[]; // the rule does not apply when one is present
+  unlessWith?: Subject[];           // the rule does not apply when any item matches one
+  pregnancyWindows?: WindowId[];
+  breastfeeding?: { babyAgeWeeksMax?: number; premature?: boolean };
+  maxMgPerDay?: number;             // max-dose only
+  strengthAboveMg?: number;         // substance subject only
+}
 ```
 
 Level order: `danger` > `before-next-dose` > `next-contact` > `unknown`.
@@ -167,7 +182,7 @@ Level order: `danger` > `before-next-dose` > `next-contact` > `unknown`.
 | C4 herb-drug | Same as C3 with a plant subject and a medicine partner. |
 | C5 toxicity | Subject present, context conditions met; not capped by evidence. |
 | C6 duplicate | Two or more distinct items share a substance (or a class) that has a duplicate rule. |
-| C7 maximum dose | The known sum over items of strength-mg x units-per-day for the substance is greater than the rule threshold, even if some items lack a unit count or a strength (a known partial sum above the threshold is a certain excess); skipped only when the known sum is at or below the threshold. |
+| C7 maximum dose | The known sum over items of strength-mg x units-per-day for the substance is greater than the rule threshold, even if some items lack a unit count or a strength (a known partial sum above the threshold is a certain excess); skipped only when the known sum is at or below the threshold. When the rule could apply and an item holding the substance has units per day but no strength, a note `max-dose-not-computable` is added (one per rule), never a level. |
 | C8 condition | Subject present and one of the conditions (or the `with` item) present. |
 | C9 contraception | Produces a note, never a level. |
 | C10 calendar | Produces a reminder, never a level. |
@@ -188,12 +203,14 @@ A product or plant with no finding gives an `unknown` finding: plants use their 
 
 ## 6. Resolver
 
-- Normalisation: lowercase, NFD with diacritics removed, apostrophes and hyphens to spaces, collapse spaces, common French and Wolof spelling variants (`kh`/`x`, doubled letters).
-- Index: every brand, INN, French and English name, local name (with language) of products, substances and plants.
-- Scoring: exact normalised match, then prefix, then trigram similarity (Jaccard) combined with Damerau-Levenshtein (optimal string alignment) distance normalised by length; ties broken by entry priority (product brands before substances) and then by id for determinism.
-- Output: at most 3 candidates with kind, id, display name, matched name and its language, score. Below a threshold the resolver returns no candidate and the app offers "Produit introuvable".
+- Normalisation: lowercase, NFD with diacritics removed, every character that is not a letter or a digit (apostrophes, hyphens) to a space, collapse spaces, then per word: `ph` to `f`, `y` to `i`, a doubled consonant to one, a trailing `e` dropped in words of more than 4 letters. `kh` is not mapped to `x`: it would change the meaning of Wolof names (dakhar stays dakhar).
+- Stop-words: the words of pharmaceutical forms, packaging and age groups (comprime, pellicule, secable, effervescent, orodispersible, gelule, capsule, sirop, solution, suspension, buvable, poudre, sachet, granules, creme, pommade, gel, collyre, suppositoire, injectable, ampoule, flacon, adultes, enfants, nourrissons, and English tablet, capsule, syrup, cream and the like, accented or not) are removed from indexed names and from the query; a query made only of stop-words gets no candidate.
+- Index: every brand, INN, French and English name, local name (with language) of products, substances and plants. A strength in the query ("1 g", "500", "0,5 g") is read apart and not matched as a name.
+- Families: one candidate per family (the brand of a branded product, the sorted substances of a generic, the plant), with the other products of the family as `variants`, strength ascending, for the confirm screen. A product whose name starts with its first brand is a branded product; the brands of a generic are other names of it, so an INN query still lists the generic first. In a family of generics, the product without strength stands for the family when the query gives none (`paracetamol-generic`, with variants `paracetamol-500-generic` and `paracetamol-1000-generic`); a typed strength selects the matching product.
+- Scoring: exact normalised match, then whole word, then prefix, then trigram similarity (Jaccard) combined with Damerau-Levenshtein (optimal string alignment) distance normalised by length; ties broken by a matching strength, single-substance before combination, entry priority (product brands before substances) and then by id for determinism.
+- Output: at most 3 candidates with kind, id, family, variants, display name, detail, matched name and its language, score. Candidates below 0.55, or below 0.8 times the best candidate's score, are dropped; with no candidate left the app offers "Produit introuvable".
 - Never decides a level.
-- Evaluation: `eval/resolver/queries.yaml` (query, expected id, kind of query: brand, misspelling, local name, voice-like transcription); `pnpm eval:resolver` reports top-1 and top-3 accuracy and p95 latency; the CI fails below the recorded baseline.
+- Evaluation: `eval/resolver/queries.yaml` (query, expected ids, kind of query: brand, inn, misspelling, local-fr, local-wo, voice-like transcription, and noise, a form or colour alone that must get no candidate); `pnpm eval:resolver` reports top-1 and top-3 accuracy and p95 latency; the CI fails below the recorded baseline, or on an empty query file, an invalid baseline or a measure that is not a number.
 - Target: under 50 ms per query on an entry-level phone (measured in CI on the runner with a 4x CPU slowdown factor applied to the budget: 12 ms on the runner).
 
 ## 7. App
@@ -256,7 +273,7 @@ Navigation: hash routes, browser back works everywhere, one primary action per s
   - next-contact: "Dites-le a la sage-femme a la prochaine visite."
   - unknown: "Nous n'avons pas d'information fiable. Cela ne veut pas dire que c'est sans risque." then "Montrez-le a votre sage-femme ou au pharmacien."
 - Evidence wording (accompanied mode): A "peut provoquer", B "une etude chez des volontaires a montre", C "des cas graves ont ete rapportes", D "des tests en laboratoire suggerent, ce n'est pas prouve chez la femme", E "c'est possible, mais cela n'a pas ete etudie", 0 "pas d'information fiable".
-- The interface never names misoprostol, never gives a dose, never suggests an alternative product, never says a plant cures.
+- No message names misoprostol (its rule message speaks of "a substance that makes the womb contract"), and no message or interface string gives a dose, suggests an alternative product or says a plant cures. A product the user found and confirmed keeps its own name on the result screen, even when that name contains misoprostol or is one of its brands (Cytotec): the user must recognise what she entered.
 
 ## 11. Quality gates
 
@@ -265,7 +282,7 @@ Navigation: hash routes, browser back works everywhere, one primary action per s
 - Content gates: schema, provenance, forbidden sources, evidence cap, danger rationale, message completeness in both languages, forbidden words.
 - End-to-end (Playwright, Chromium, mobile viewport 360 x 800): woman journey, accompanied journey, danger signs from every screen, offline after first load (context offline and reload), language switch, axe accessibility scan with zero serious or critical violations.
 - Budgets: app size, pack size, resolver latency.
-- CI workflow `ci.yml`: install (frozen lockfile), lint, type check, unit tests with coverage, knowledge build and checks, app build and budgets, end-to-end. Existing `hygiene.yml` stays. All checks must pass before `tools/github/merge-pr.sh` merges.
+- CI workflow `ci.yml`: install (frozen lockfile), lint, type check, unit tests with coverage, `pnpm knowledge:check`, resolver evaluation, build, then `git diff --exit-code` (the build must not change a committed file such as `NOTICE`), app budget, end-to-end. Existing `hygiene.yml` stays. All checks must pass before `tools/github/merge-pr.sh` merges: it waits until the four required checks "Text hygiene", "Developer Certificate of Origin", "Build and test" and "End-to-end" are reported, and merges only when each of them passed (a skipped or missing required check blocks the merge, except the Developer Certificate of Origin check of a Dependabot pull request, which `hygiene.yml` skips by design; other checks must pass or be skipped). `tools/github/merge-pr.test.sh` tests the script with a fake `gh` in CI, after `shellcheck`.
 
 ## 12. Delivery process
 

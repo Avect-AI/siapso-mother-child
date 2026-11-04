@@ -8,6 +8,13 @@ context:
 expect:
   level: before-next-dose
   findings:
-    - { check: C1, rule: clobetasol-pregnancy, level: before-next-dose, evidence: C, items: [0] }
+    - {
+        check: C1,
+        rule: clobetasol-pregnancy,
+        message: clobetasol-pregnancy,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
   reminders: [iptp-reminder]
   notes: []

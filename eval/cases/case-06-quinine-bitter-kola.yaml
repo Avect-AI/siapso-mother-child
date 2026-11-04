@@ -12,6 +12,7 @@ expect:
     - {
         check: C4,
         rule: bitter-kola-with-quinine,
+        message: bitter-kola-with-quinine,
         level: before-next-dose,
         evidence: B,
         items: [0, 1],

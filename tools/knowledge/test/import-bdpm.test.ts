@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -356,6 +357,20 @@ describe('importBdpm', () => {
       misoprostol: 1,
       paracetamol: 5,
     });
+  });
+
+  it('identifies each input file by its size and sha256', async () => {
+    const result = await importBdpm(FIXTURE, ALL);
+    expect(result.inputs.map((input) => input.file)).toEqual([
+      'CIS_bdpm.txt',
+      'CIS_COMPO_bdpm.txt',
+    ]);
+    for (const input of result.inputs) {
+      const bytes = await readFile(path.join(FIXTURE, input.file));
+      expect(input.bytes).toBe(bytes.length);
+      expect(input.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+      expect(input.sha256).toMatch(/^[0-9a-f]{64}$/);
+    }
   });
 
   it('names the missing file', async () => {
