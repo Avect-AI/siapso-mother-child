@@ -100,7 +100,8 @@ function describeCase(c: Case): string {
   return JSON.stringify(c.context);
 }
 
-describe('guarantees', () => {
+// The exhaustive generation takes a few seconds, longer under coverage.
+describe('guarantees', { timeout: 60_000 }, () => {
   it('covers a large number of generated contexts', () => {
     // 378 item combinations x 7 pregnancies x 2 breastfeeding x 2 situations.
     expect(combinations(POOL, 3)).toHaveLength(378);
