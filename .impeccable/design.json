@@ -1,0 +1,563 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T09:06:26.625Z",
+  "title": "Design System: SIAPSO Mother-Child",
+  "extensions": {
+    "colorMeta": {
+      "glass-white": {
+        "role": "neutral",
+        "displayName": "Glass White",
+        "cssVar": "--color-bg",
+        "canonical": "oklch(97.0% 0.007 268.5)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242527",
+          "#414245",
+          "#606165",
+          "#818286",
+          "#a4a5a8",
+          "#c8c9cb",
+          "#eeeef0"
+        ]
+      },
+      "reserve-white": {
+        "role": "neutral",
+        "displayName": "Reserve White",
+        "cssVar": "--color-surface",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "cssVar": "--color-text",
+        "canonical": "oklch(21.5% 0.038 273.8)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#22252e",
+          "#3d4150",
+          "#5b6075",
+          "#7c8197",
+          "#a0a4b6",
+          "#c5c9d5",
+          "#eceef6"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "cssVar": "--color-text-muted",
+        "canonical": "oklch(42.1% 0.039 273.2)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#22252e",
+          "#3d4151",
+          "#5a6076",
+          "#7b8198",
+          "#9fa4b6",
+          "#c5c9d6",
+          "#eceef6"
+        ]
+      },
+      "control-contour": {
+        "role": "neutral",
+        "displayName": "Control Contour",
+        "cssVar": "--color-border",
+        "canonical": "oklch(52.1% 0.039 274.0)",
+        "tonalRamp": [
+          "#0a0b10",
+          "#22252e",
+          "#3d4150",
+          "#5b6075",
+          "#7c8198",
+          "#9fa4b6",
+          "#c5c9d6",
+          "#eceef6"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "cssVar": "--color-rule",
+        "canonical": "oklch(87.9% 0.016 270.0)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#242529",
+          "#404248",
+          "#5e616a",
+          "#7f828b",
+          "#a2a5ac",
+          "#c7c9ce",
+          "#edeef1"
+        ]
+      },
+      "focus-ultramarine": {
+        "role": "primary",
+        "displayName": "Focus Ultramarine",
+        "cssVar": "--color-focus",
+        "canonical": "oklch(47.9% 0.210 268.4)",
+        "tonalRamp": [
+          "#030823",
+          "#111e55",
+          "#23378d",
+          "#3652ca",
+          "#5477f1",
+          "#7fa0ff",
+          "#adc7ff",
+          "#deeeff"
+        ]
+      },
+      "selection-tint": {
+        "role": "neutral",
+        "displayName": "Selection Tint",
+        "cssVar": "--color-selection",
+        "canonical": "oklch(87.0% 0.050 272.8)",
+        "tonalRamp": [
+          "#090b11",
+          "#212431",
+          "#3c4155",
+          "#58607b",
+          "#79819e",
+          "#9da4bb",
+          "#c4c9d9",
+          "#ebeef8"
+        ]
+      },
+      "ultramarine": {
+        "role": "primary",
+        "displayName": "Ultramarine",
+        "cssVar": "--color-primary",
+        "canonical": "oklch(38.9% 0.163 268.3)",
+        "tonalRamp": [
+          "#05091e",
+          "#15214b",
+          "#293c7d",
+          "#3f59b3",
+          "#5d7cd9",
+          "#87a2ec",
+          "#b3c8fd",
+          "#e2eeff"
+        ]
+      },
+      "ultramarine-deep": {
+        "role": "primary",
+        "displayName": "Deep Ultramarine",
+        "cssVar": "--color-primary-hover",
+        "canonical": "oklch(32.8% 0.134 268.7)",
+        "tonalRamp": [
+          "#060a1a",
+          "#182344",
+          "#2e3e73",
+          "#455ca5",
+          "#647eca",
+          "#8da3e0",
+          "#b8c8f4",
+          "#e4eeff"
+        ]
+      },
+      "ultramarine-tint": {
+        "role": "primary",
+        "displayName": "Ultramarine Tint",
+        "cssVar": "--color-primary-tint",
+        "canonical": "oklch(93.3% 0.026 274.1)",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#23252b",
+          "#3f414c",
+          "#5d616f",
+          "#7e8291",
+          "#a1a4b1",
+          "#c6c9d2",
+          "#edeef3"
+        ]
+      },
+      "danger-crimson": {
+        "role": "level",
+        "displayName": "Danger Crimson",
+        "cssVar": "--level-danger-bg",
+        "canonical": "oklch(48.4% 0.187 26.5)",
+        "tonalRamp": [
+          "#1c0202",
+          "#470c0b",
+          "#781a19",
+          "#ac2a28",
+          "#d45149",
+          "#eb8379",
+          "#feb3aa",
+          "#ffe2dd"
+        ]
+      },
+      "danger-text": {
+        "role": "level",
+        "displayName": "Danger Text",
+        "cssVar": "--level-danger-fg",
+        "canonical": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "danger-contour": {
+        "role": "level",
+        "displayName": "Danger Contour",
+        "cssVar": "--level-danger-border",
+        "canonical": "oklch(34.6% 0.131 25.8)",
+        "tonalRamp": [
+          "#180504",
+          "#3e1714",
+          "#6a2c28",
+          "#99423d",
+          "#be645d",
+          "#d88f88",
+          "#f0bab4",
+          "#ffe6e2"
+        ]
+      },
+      "dose-orange": {
+        "role": "level",
+        "displayName": "Dose Orange",
+        "cssVar": "--level-before-next-dose-bg",
+        "canonical": "oklch(73.1% 0.165 59.0)",
+        "tonalRamp": [
+          "#180600",
+          "#401800",
+          "#6c2e00",
+          "#9b4500",
+          "#c16800",
+          "#da9359",
+          "#f1bd96",
+          "#ffe8d1"
+        ]
+      },
+      "dose-text": {
+        "role": "level",
+        "displayName": "Dose Text",
+        "cssVar": "--level-before-next-dose-fg",
+        "canonical": "oklch(18.9% 0.026 77.5)",
+        "tonalRamp": [
+          "#0d0b08",
+          "#28241e",
+          "#474137",
+          "#696053",
+          "#8a8173",
+          "#aba499",
+          "#cec8c0",
+          "#f1eee9"
+        ]
+      },
+      "dose-contour": {
+        "role": "level",
+        "displayName": "Dose Contour",
+        "cssVar": "--level-before-next-dose-border",
+        "canonical": "oklch(45.5% 0.122 49.3)",
+        "tonalRamp": [
+          "#160701",
+          "#3b1b08",
+          "#653214",
+          "#914c21",
+          "#b66d44",
+          "#d09676",
+          "#eabfa8",
+          "#ffe9db"
+        ]
+      },
+      "contact-yellow": {
+        "role": "level",
+        "displayName": "Contact Yellow",
+        "cssVar": "--level-next-contact-bg",
+        "canonical": "oklch(87.9% 0.164 91.3)",
+        "tonalRamp": [
+          "#120a00",
+          "#332200",
+          "#583d00",
+          "#805b00",
+          "#a37d00",
+          "#bfa249",
+          "#dcc88e",
+          "#f9eecd"
+        ]
+      },
+      "contact-text": {
+        "role": "level",
+        "displayName": "Contact Text",
+        "cssVar": "--level-next-contact-fg",
+        "canonical": "oklch(21.4% 0.037 96.6)",
+        "tonalRamp": [
+          "#0c0b07",
+          "#27251b",
+          "#464233",
+          "#66624c",
+          "#88836c",
+          "#a9a594",
+          "#ccc9bd",
+          "#f0efe7"
+        ]
+      },
+      "contact-contour": {
+        "role": "level",
+        "displayName": "Contact Contour",
+        "cssVar": "--level-next-contact-border",
+        "canonical": "oklch(47.9% 0.098 85.5)",
+        "tonalRamp": [
+          "#100a01",
+          "#2f2306",
+          "#523f10",
+          "#785d1c",
+          "#9a7e40",
+          "#b8a274",
+          "#d7c8a7",
+          "#f7eedb"
+        ]
+      },
+      "unknown-grey": {
+        "role": "level",
+        "displayName": "Unknown Grey",
+        "cssVar": "--level-unknown-bg",
+        "canonical": "oklch(74.8% 0.015 268.5)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232529",
+          "#404248",
+          "#5e6169",
+          "#7f828b",
+          "#a2a5ac",
+          "#c7c9ce",
+          "#edeef1"
+        ]
+      },
+      "unknown-hatch": {
+        "role": "level",
+        "displayName": "Unknown Hatch",
+        "cssVar": "--level-unknown-hatch",
+        "canonical": "oklch(81.7% 0.012 269.5)",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#242528",
+          "#404246",
+          "#5f6167",
+          "#808289",
+          "#a3a5aa",
+          "#c7c9cd",
+          "#edeef1"
+        ]
+      },
+      "unknown-text": {
+        "role": "level",
+        "displayName": "Unknown Text",
+        "cssVar": "--level-unknown-fg",
+        "canonical": "oklch(20.5% 0.012 270.8)",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#242528",
+          "#404247",
+          "#5f6168",
+          "#808289",
+          "#a3a5aa",
+          "#c7c9cd",
+          "#edeef1"
+        ]
+      },
+      "unknown-contour": {
+        "role": "level",
+        "displayName": "Unknown Contour",
+        "cssVar": "--level-unknown-border",
+        "canonical": "oklch(43.9% 0.020 270.9)",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#23252a",
+          "#3f424a",
+          "#5d616c",
+          "#7e828e",
+          "#a2a5ae",
+          "#c7c9d0",
+          "#edeef2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "A screen's single lead line, when one is needed."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Product names in a finding, the danger banner sentence."
+      },
+      "body": {
+        "displayName": "Reading",
+        "purpose": "Every sentence read aloud."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Level captions, buttons, field labels, screen titles."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Source, evidence and version lines, hints."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "press",
+        "value": "120ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Button press: background colour and a 1 px move. Removed under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "card-narrow (container)",
+        "value": "18rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action of a screen.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Voir le résultat</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 8px 24px; border: 2px solid transparent; border-radius: var(--radius-md); font: inherit; font-weight: 700; line-height: 1.2; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1); min-height: 56px; background: var(--color-primary); color: var(--color-primary-text); } .ds-btn-primary:hover { background: var(--color-primary-hover); } .ds-btn-primary:active { transform: translateY(1px); } .ds-btn-primary:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Every other action.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Ajouter un remède</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 8px 24px; border: 2px solid transparent; border-radius: var(--radius-md); font: inherit; font-weight: 700; line-height: 1.2; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1); background: var(--color-surface); color: var(--color-primary); border-color: var(--color-primary); } .ds-btn-secondary:hover { background: var(--color-primary-tint); } .ds-btn-secondary:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Low-emphasis action, still a 48 px target.",
+      "html": "<button class=\"ds-btn-quiet\" type=\"button\">Voir les sources</button>",
+      "css": ".ds-btn-quiet { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 8px 24px; border: 2px solid transparent; border-radius: var(--radius-md); font: inherit; font-weight: 700; line-height: 1.2; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1); padding-inline: 12px; background: transparent; color: var(--color-primary); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.2em; } .ds-btn-quiet:hover { background: var(--color-primary-tint); } .ds-btn-quiet:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field with error",
+      "kind": "input",
+      "refersTo": "text-field",
+      "description": "Label, hint, error, then the input; errors are ink with a triangle mark.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-code\">Code</label><p class=\"ds-field-hint\" id=\"ds-code-hint\">4 à 6 chiffres.</p><p class=\"ds-field-error\" id=\"ds-code-error\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" aria-hidden=\"true\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M12 2 23 21.5H1zM10.7 9.5a1.3 1.3 0 0 1 2.6 0v4.6a1.3 1.3 0 0 1-2.6 0zM12 16.4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 1 0 0-3z\"/></svg><span>Le code a 4 à 6 chiffres. Vous en avez écrit 3.</span></p><input class=\"ds-field-input\" id=\"ds-code\" value=\"123\" aria-invalid=\"true\" aria-describedby=\"ds-code-hint ds-code-error\"></div>",
+      "css": ".ds-field { display: grid; gap: 8px; max-width: 28rem; font-size: 1.125rem; color: var(--color-text); } .ds-field-label { font-weight: 700; } .ds-field-hint { margin: 0; color: var(--color-text-muted); font-size: 1rem; } .ds-field-error { display: flex; gap: 8px; margin: 0; font-weight: 700; } .ds-field-input { min-height: 48px; padding: 12px 16px; border: 2px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); font: inherit; } .ds-field-input[aria-invalid='true'] { border: 3px solid var(--color-text); } .ds-field-input:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Level Badge",
+      "kind": "chip",
+      "refersTo": "level-badge-danger",
+      "description": "The level as a tag: pictogram and name, never one without the other.",
+      "html": "<span class=\"ds-badge\"><svg viewBox=\"0 0 24 24\" width=\"24\" height=\"24\" aria-hidden=\"true\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M7.45 1h9.1L23 7.45v9.1L16.55 23h-9.1L1 16.55v-9.1zM10.6 6.5a1.4 1.4 0 0 1 2.8 0V13a1.4 1.4 0 0 1-2.8 0zM12 15.85a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 1 0 0-3.5z\"/></svg><span>Signe de danger</span></span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 8px; border: 2px solid var(--level-danger-border); border-radius: var(--radius-sm); background: var(--level-danger-bg); color: var(--level-danger-fg); font-weight: 700; line-height: 1.2; }"
+    },
+    {
+      "name": "Result Card",
+      "kind": "card",
+      "refersTo": "level-badge-before-next-dose",
+      "description": "One finding as a level pane: caption band, white reserve set into the field, fields on hairline rules.",
+      "html": "<article class=\"ds-card\"><p class=\"ds-card-level\"><svg viewBox=\"0 0 24 24\" width=\"32\" height=\"32\" aria-hidden=\"true\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M1 12c3-5.5 7-8 11-8s8 2.5 11 8c-3 5.5-7 8-11 8s-8-2.5-11-8zM12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 1 0 0-9.2zM12 9.9a2.1 2.1 0 1 1 0 4.2 2.1 2.1 0 1 1 0-4.2z\"/></svg><span>À montrer avant la prochaine prise</span></p><div class=\"ds-card-body\"><h2 class=\"ds-card-title\">Ibuprofène 400 mg</h2><p>Ce médicament peut abîmer les reins du bébé.</p><p class=\"ds-card-field ds-card-orientation\">Montrez ce produit à la sage-femme avant la prochaine prise.</p><p class=\"ds-card-field ds-card-meta\">Source : exemple fictif. Preuve A : peut provoquer.</p></div></article>",
+      "css": ".ds-card { max-width: 24rem; padding: 0 6px 6px; border: 3px solid var(--level-before-next-dose-border); border-radius: var(--radius-md); background: var(--level-before-next-dose-bg); font-size: 1.125rem; line-height: 1.5; } .ds-card-level { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 8px; color: var(--level-before-next-dose-fg); font-size: 1.375rem; font-weight: 800; line-height: 1.2; } .ds-card-body { display: grid; gap: 12px; padding: 16px; background: var(--color-surface); color: var(--color-text); } .ds-card-body p { margin: 0; } .ds-card-title { margin: 0; font-size: 1.125rem; font-weight: 800; line-height: 1.2; } .ds-card-field { padding-top: 12px; border-top: 1px solid var(--color-rule); } .ds-card-orientation { font-weight: 700; } .ds-card-meta { color: var(--color-text-muted); font-size: 1rem; }"
+    },
+    {
+      "name": "Danger Banner",
+      "kind": "custom",
+      "refersTo": "danger-banner",
+      "description": "A danger sign is present: the danger field, the sentence, the one primary action.",
+      "html": "<div class=\"ds-banner\" role=\"alert\"><div class=\"ds-banner-head\"><p class=\"ds-banner-level\"><svg viewBox=\"0 0 24 24\" width=\"48\" height=\"48\" aria-hidden=\"true\"><path fill=\"currentColor\" fill-rule=\"evenodd\" d=\"M7.45 1h9.1L23 7.45v9.1L16.55 23h-9.1L1 16.55v-9.1zM10.6 6.5a1.4 1.4 0 0 1 2.8 0V13a1.4 1.4 0 0 1-2.8 0zM12 15.85a1.75 1.75 0 1 0 0 3.5 1.75 1.75 0 1 0 0-3.5z\"/></svg><span>Signe de danger</span></p><h2 class=\"ds-banner-title\">Fièvre. Allez au poste de santé maintenant.</h2></div><button class=\"ds-banner-action\" type=\"button\">Appeler le poste de santé</button></div>",
+      "css": ".ds-banner { --color-focus: var(--level-danger-fg); display: flex; flex-wrap: wrap; align-items: center; gap: 16px; max-width: 24rem; padding: 16px; border: 3px solid var(--level-danger-border); border-radius: var(--radius-md); background: var(--level-danger-bg); color: var(--level-danger-fg); } .ds-banner-head { display: grid; flex: 999 1 18rem; gap: 8px; } .ds-banner-level { display: flex; align-items: center; gap: 12px; margin: 0; font-size: 1.375rem; font-weight: 800; line-height: 1.2; } .ds-banner-title { margin: 0; font-size: 1.125rem; font-weight: 800; line-height: 1.2; } .ds-banner-action { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; min-width: 48px; padding: 8px 24px; border: 2px solid transparent; border-radius: var(--radius-md); font: inherit; font-weight: 700; line-height: 1.2; cursor: pointer; transition: background-color 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1); flex: 1 1 auto; min-height: 56px; background: var(--color-surface); color: var(--level-danger-border); border-color: var(--level-danger-border); } .ds-banner-action:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Reverse-Glass Pane",
+    "overview": "**Creative North Star: \"The Reverse-Glass Pane\"**\n\nThe system borrows its grammar from the suwer, the Senegalese reverse-glass painting sold in every market: flat fields of strong colour, each held by a darker painted contour, framing a scene and named by a caption. Here each result level is such a pane. Its field is the level colour, its contour is a darker shade of the same hue, its top band is the caption (pictogram and level name), and a white reserve set into the field carries the words a health worker reads aloud. The world lends four things only: palette, type, density and that one signature move. Navigation and controls stay the plain web controls people already know.\n\nThe surface is calm and flat. A glass-white ground, white reserves, ink text, ultramarine for the shell and for actions, and level colour only where a level is being said. Light only: the app is read outdoors, in daylight and direct sun, on low-cost screens, so the scene forces dark text on a light ground. Density is low: one reading size, generous targets, one column from 360 px.",
+    "keyCharacteristics": [
+      "Level panes: flat field, darker contour, caption band, white reserve.",
+      "Four pictogram silhouettes on one 24-unit grid: octagon, eye, speech bubble, circle.",
+      "Hatched grey for \"we do not know\".",
+      "One reading size (18 px) for every sentence read aloud.",
+      "Ultramarine reserved for the shell and actions; never green anywhere.",
+      "Flat: no shadows, depth by tone and contour."
+    ],
+    "rules": [
+      {
+        "name": "The No Green Rule",
+        "body": "No colour token has a hue between 75 and 165 degrees with saturation above 0.2. A test reads every token in `tokens.css` and fails on green.",
+        "section": "colors"
+      },
+      {
+        "name": "The Red Is For Danger Rule",
+        "body": "Crimson exists only as the danger field and its contour. Form errors are ink with a triangle mark, never red: a typo is not a danger sign.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hatched Unknown Rule",
+        "body": "The unknown field is two grey stripes at 45 degrees, the map maker's mark for \"no data\". A flat grey reads as disabled or as nothing to worry about.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Reading Size Rule",
+        "body": "Everything read aloud is 18 px. Hierarchy comes from the pane, the caption band and weight, not from a ladder of sizes; nothing a reader must say is smaller than 16 px.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight For Sunlight Rule",
+        "body": "Body text is 450, not 400: a touch heavier holds up under glare.",
+        "section": "typography"
+      },
+      {
+        "name": "The Level First Rule",
+        "body": "The level name is always the strongest line: larger than the product name in a finding, bold before the product in a summary row, first in the danger banner.",
+        "section": "typography"
+      },
+      {
+        "name": "The Painted Not Lifted Rule",
+        "body": "A pane is held by its contour, never floated by a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One Shape One Level Rule",
+        "body": "A level pictogram appears only where that level is being said. The octagon never marks navigation: the header shortcut to the danger-sign list is its label and a chevron (an entry-point mark that no level uses), so it never reads as \"danger now\".",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** show every level as its pictogram and its name together, in the level's pane, with the name as the strongest line.",
+      "**Do** give every Button an explicit variant.",
+      "**Do** keep one primary action per screen; when a danger banner shows, its action is that one.",
+      "**Do** keep every sentence read aloud at 18 px and every reading pair at 7:1 or more.",
+      "**Do** end every finding with who to show and when, then source, evidence and version, in that order.",
+      "**Do** hatch the unknown field, and follow it with who to show it to.",
+      "**Do** keep targets at 48 px or more and check every screen at 360 px wide and at 200 percent text.",
+      "**Do** take colours from `tokens.css` only, and add every new text pair to `CONTRAST_PAIRS`."
+    ],
+    "donts": [
+      "**Don't** use green, anywhere, for anything.",
+      "**Don't** let colour carry meaning alone: no coloured dot, stripe or chip without the pictogram and the name.",
+      "**Don't** use crimson outside the danger level, not even for form errors.",
+      "**Don't** use a level pictogram for navigation or decoration; the octagon belongs to the danger level alone.",
+      "**Don't** hyphenate product names.",
+      "**Don't** use a flat grey for anything that could be read as a level; disabled is dashed.",
+      "**Don't** add shadows, gradients (other than the unknown hatch), glass or blur.",
+      "**Don't** nest a bordered, rounded box inside a level pane: the reserve is a hole in the field.",
+      "**Don't** show a check mark or any sign that could read as \"safe\", \"verified\" or \"no risk\".",
+      "**Don't** add a kicker or eyebrow label above a heading."
+    ]
+  }
+}

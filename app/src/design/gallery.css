@@ -1,0 +1,302 @@
+/* SPDX-License-Identifier: MIT */
+/* Development-only layout for the Gallery (#/design). Tokens only. */
+
+.gallery,
+.gallery__main,
+.gallery__section {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gallery {
+  display: grid;
+  gap: var(--space-7);
+  max-width: 76rem;
+  margin-inline: auto;
+  padding: var(--space-5) var(--space-4) var(--space-7);
+}
+
+.gallery__intro {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 40rem;
+}
+
+.gallery__intro h1 {
+  font-size: var(--font-size-headline);
+}
+
+.gallery__main {
+  display: grid;
+  gap: var(--space-7);
+}
+
+.gallery__section {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.gallery__section > h2 {
+  padding-bottom: var(--space-2);
+  border-bottom: var(--border-width) solid var(--color-text);
+  font-size: var(--font-size-title);
+}
+
+.gallery__samples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22.5rem), min(100%, 24rem)));
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.gallery__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gallery__fields {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 28rem;
+}
+
+/* Sample screens: phone-width, edge to edge on a phone. */
+
+/* The outline marks the edge of a phone viewport; in the app the screen is the viewport. */
+.screen {
+  outline: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+@media (max-width: 30rem) {
+  .screen {
+    margin-inline: calc(var(--space-4) * -1);
+    outline: 0;
+  }
+}
+
+.app-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 4rem;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.app-bar__name {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+}
+
+/*
+ * The label wraps inside the button first (basis 0, capped at its natural
+ * width); the bar wraps only when even the wrapped button cannot fit.
+ */
+.app-bar__danger {
+  --color-focus: var(--color-primary-text);
+
+  flex: 1 1 0;
+  min-width: min-content;
+  max-width: max-content;
+  padding-inline: var(--space-3);
+  border-color: var(--color-primary-text);
+  background: transparent;
+  color: var(--color-primary-text);
+}
+
+.app-bar__danger:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.screen__content {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
+
+.screen__heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* Context, not content: the screen title stays at reading size. */
+.screen__title {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-strong);
+}
+
+/* Overview of every finding, most urgent first: a level tile, the product, the level. */
+.result-summary {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--color-rule);
+  list-style: none;
+}
+
+.result-summary__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+}
+
+.result-summary__row + .result-summary__row {
+  border-top: 1px solid var(--color-rule);
+}
+
+.result-summary__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: var(--border-width) solid var(--level-border);
+  border-radius: var(--radius-sm);
+  background: var(--level-fill);
+  color: var(--level-fg);
+}
+
+.result-summary__text {
+  display: grid;
+  gap: var(--space-1);
+  line-height: var(--line-height-tight);
+}
+
+.screen__closing {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule);
+}
+
+.screen__closing strong {
+  color: var(--color-text);
+}
+
+.screen__action {
+  width: 100%;
+}
+
+/* Levels */
+
+.level-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.level-list__item {
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+
+.level-list__item + .level-list__item {
+  border-top: 1px solid var(--color-rule);
+}
+
+@media (min-width: 48rem) {
+  .level-list__item {
+    grid-template-columns: 9rem 1fr;
+    align-items: center;
+  }
+}
+
+.level-list__marks {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.level-list__text {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.level-list__names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Type */
+
+.type-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.type-list dd {
+  margin: 0;
+}
+
+.type-list__headline {
+  font-size: var(--font-size-headline);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+}
+
+.type-list__title {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+}
+
+.type-list__label {
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+}
+
+/* Contrast pairs */
+
+.pairs-scroll {
+  overflow-x: auto;
+}
+
+.pairs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-small);
+}
+
+.pairs th,
+.pairs td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-rule);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pairs__swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-heading);
+}
+
+.pairs__names {
+  overflow-wrap: anywhere;
+}
+
+.pairs__ratio {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-strong);
+}

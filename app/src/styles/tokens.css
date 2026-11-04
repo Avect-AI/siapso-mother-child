@@ -1,0 +1,77 @@
+/* SPDX-License-Identifier: MIT */
+/*
+ * Design tokens (DESIGN.md is the narrative). Colours are literal 6-digit hex
+ * so the token tests can read them: every value below is checked against the
+ * never-green rule, and every pair in contrast.ts against its minimum ratio.
+ * Light only: the app is used outdoors, in daylight and direct sun.
+ */
+:root {
+  color-scheme: light;
+
+  /* Ground and ink */
+  --color-bg: #f3f5fa;
+  --color-surface: #ffffff;
+  --color-text: #14182b;
+  --color-text-muted: #464c63;
+  --color-border: #626880;
+  --color-rule: #d3d7e2;
+  --color-focus: #2f49d1;
+  --color-selection: #c9d3f6;
+
+  /* Ultramarine: the shell and actions, never a level */
+  --color-primary: #22379a;
+  --color-primary-hover: #1a2a78;
+  --color-primary-tint: #e3e8fb;
+  --color-primary-text: #ffffff;
+
+  /* Levels: each one a flat field, its text and its darker contour */
+  --level-danger-bg: #b0141b;
+  --level-danger-fg: #ffffff;
+  --level-danger-border: #6e0b10;
+  --level-before-next-dose-bg: #f28a1e;
+  --level-before-next-dose-fg: #1a1206;
+  --level-before-next-dose-border: #8a3d00;
+  --level-next-contact-bg: #ffd23a;
+  --level-next-contact-fg: #1e1904;
+  --level-next-contact-border: #765800;
+  --level-unknown-bg: #a9adb7;
+  --level-unknown-hatch: #c0c3cb;
+  --level-unknown-fg: #15171d;
+  --level-unknown-border: #4e525e;
+
+  /* Type: one reading size for everything read aloud */
+  --font-family: 'Atkinson Hyperlegible Next', Roboto, 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+  --font-size-small: 1rem;
+  --font-size-body: 1.125rem;
+  --font-size-title: 1.375rem;
+  --font-size-headline: 1.75rem;
+  --font-weight-body: 450;
+  --font-weight-strong: 700;
+  --font-weight-heading: 800;
+  --line-height-body: 1.5;
+  --line-height-tight: 1.2;
+
+  /* Space: a 4 px base */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* Targets */
+  --touch-target: 48px;
+  --touch-target-large: 56px;
+
+  /* Shape: panes with barely softened corners, a painted contour, a level frame */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --border-width: 2px;
+  --contour-width: 3px;
+  --frame-width: 6px;
+
+  /* Motion: one short press response */
+  --duration-press: 120ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}

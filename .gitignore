@@ -19,9 +19,11 @@ venv/
 .env.*
 !.env.example
 .claude/settings.local.json
-.impeccable/config.local.json
-.impeccable/cache/
-.impeccable/live/
+**/.impeccable/config.local.json
+**/.impeccable/cache/
+**/.impeccable/live/
+**/.impeccable/questions/
+**/.impeccable/critique/
 
 # Secrets and keys, never committed
 *.pem
