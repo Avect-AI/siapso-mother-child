@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: mefenamic-acid-generic
+names: { fr: 'Acide méfénamique (générique)', en: 'Mefenamic acid (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: mefenamic-acid }
+form: 'gélule'
+route: oral
+source: { demo-manual: true }
+demo: true

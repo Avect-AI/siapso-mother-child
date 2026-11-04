@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: garlic
+latin-name: Allium sativum
+names: { fr: 'Ail', en: 'Garlic' }
+local-names:
+  - { text: ail, lang: fr, checked: false }
+parts: [bulb]
+evidence: '0'
+message: evidence-0
+sources: []

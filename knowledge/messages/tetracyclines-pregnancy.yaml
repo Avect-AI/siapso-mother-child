@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: tetracyclines-pregnancy
+fr:
+  fact: 'Ce produit contient un antibiotique de la famille des cyclines (tétracyclines), comme la doxycycline.'
+  risk: 'À partir du deuxième trimestre de la grossesse, il peut colorer les dents du bébé.'
+  risk-detail: "La notice française contre-indique les cyclines à partir du deuxième trimestre et préfère les éviter pendant le premier trimestre. La notice américaine parle d'une coloration qui peut être définitive."
+en:
+  fact: 'This product contains an antibiotic of the tetracycline family, such as doxycycline.'
+  risk: "From the second trimester of pregnancy, it can stain the baby's teeth."
+  risk-detail: 'The French label contraindicates tetracyclines from the second trimester and prefers to avoid them in the first trimester. The US label speaks of a staining that can be permanent.'

@@ -1,0 +1,21 @@
+99000001	comprimé	02202	PARACÉTAMOL	500 mg	un comprimé	SA	1
+99000002	comprimé	02202	PARACÉTAMOL	1 g	un comprimé	SA	1
+99000003	suspension	02202	PARACÉTAMOL	2,4 g	100 ml de suspension	SA	1
+99000004	comprimé	02202	PARACÉTAMOL	500 mg	un comprimé	SA	1
+99000004	comprimé	74765	PHOSPHATE DE CODÉINE HÉMIHYDRATÉ 	30 mg	un comprimé	SA	2
+99000005	comprimé	02092	IBUPROFÈNE	200 mg	un comprimé	SA	1
+99000006	solution	02092	IBUPROFÈNE	400 mg	un flacon	SA	1
+99000007	gel	11111	DICLOFÉNAC DE DIÉTHYLAMINE	1,16 g	100 g de gel	SA	1
+99000007	gel	11112	DICLOFÉNAC SODIQUE	1 g	100 g de gel	FT	1
+99000008	comprimé	02202	PARACÉTAMOL	500 mg	un comprimé	SA	1
+99000008	comprimé	22222	CAFÉINE	50 mg	un comprimé	SA	2
+99000009	comprimé	33333	SULFATE FERREUX DESSÉCHÉ	256,30 mg	un comprimé	SA	1
+99000009	comprimé	33334	FER	80 mg	un comprimé	FT	1
+99000010	granules	44444	ARNICA MONTANA POUR PRÉPARATIONS HOMÉOPATHIQUES	4CH à 30CH	un tube	SA	1
+99000011	capsule	55555	ISOTRÉTINOÏNE	20 mg	une capsule	SA	1
+99000012	gel	55555	ISOTRÉTINOÏNE	0,05 g	100 g de gel	SA	1
+99000013	suppositoire	02202	PARACÉTAMOL	300 mg	un suppositoire	SA	1
+99000014	comprimé	66666	MISOPROSTOL	200 microgrammes	un comprimé	SA	1
+99000015	gélule	77777	FUMARATE FERREUX	152 mg	une gélule	SA	1
+99000015	gélule	33334	FER	50 mg	une gélule	FT	1
+99000016	suppositoire	02202	PARACÉTAMOL	300 mg	un suppositoire	SA	1

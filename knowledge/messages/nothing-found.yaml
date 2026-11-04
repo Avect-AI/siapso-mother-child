@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: CC-BY-4.0
+# Spec section 2 wording; the app adds the version and date of the knowledge
+# base after the first sentence.
 id: nothing-found
 fr:
   fact: "Rien n'a été trouvé dans notre base."

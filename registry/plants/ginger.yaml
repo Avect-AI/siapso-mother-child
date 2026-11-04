@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: ginger
+latin-name: Zingiber officinale
+names: { fr: 'Gingembre', en: 'Ginger' }
+local-names:
+  - { text: gingembre, lang: fr, checked: false }
+parts: [rhizome]
+evidence: '0'
+message: evidence-0
+sources: []

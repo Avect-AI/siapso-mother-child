@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Grey message of the traditional remedies that have some data (evidence
+# other than 0) when no rule applies: moringa, bitter kola, clay, castor oil.
+# Based on the dossier formulation; "ce produit" so that it fits clay too.
+id: plant-poorly-known
+fr:
+  fact: 'Ce produit est utilisé traditionnellement.'
+  risk: "On connaît mal les effets de ce produit pendant la grossesse ou l'allaitement."
+  orientation: "Dites à votre sage-femme que vous l'utilisez : c'est pour votre sécurité, ce n'est pas un reproche."
+en:
+  fact: 'This product is used traditionally.'
+  risk: 'The effects of this product during pregnancy or breastfeeding are poorly known.'
+  orientation: 'Tell your midwife that you use it: this is to protect you, not to blame you.'

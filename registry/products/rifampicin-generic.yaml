@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: rifampicin-generic
+names: { fr: 'Rifampicine (générique)', en: 'Rifampicin (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: rifampicin }
+form: 'gélule'
+route: oral
+source: { demo-manual: true }
+demo: true

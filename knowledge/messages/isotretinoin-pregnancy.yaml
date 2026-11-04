@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: isotretinoin-pregnancy
+fr:
+  fact: "Ce produit contient de l'isotrétinoïne, un traitement de l'acné par la bouche."
+  risk: 'Pendant la grossesse, même en petite quantité ou peu de temps, ce médicament peut provoquer des malformations graves chez le bébé.'
+  risk-detail: 'La notice américaine indique un risque extrêmement élevé de malformations graves, qui peuvent menacer la vie du bébé, et un risque de fausse couche ; elle réserve ce médicament aux femmes qui ne sont pas enceintes et ne peuvent pas le devenir pendant le traitement.'
+en:
+  fact: 'This product contains isotretinoin, an acne treatment taken by mouth.'
+  risk: 'During pregnancy, even in a small amount or for a short time, this medicine can cause serious birth defects in the baby.'
+  risk-detail: "The US label states an extremely high risk of serious birth defects, which can threaten the baby's life, and a risk of miscarriage; it keeps this medicine for women who are not pregnant and cannot become pregnant during the treatment."

@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: paracetamol-duplicate-products
+fr:
+  fact: 'Plusieurs de ces produits contiennent du paracétamol, seul ou mélangé à un autre médicament.'
+  risk: 'En les prenant ensemble, on peut dépasser sans le savoir la quantité maximale par jour, ce qui peut abîmer gravement le foie.'
+  risk-detail: "Beaucoup de médicaments contre la douleur, la fièvre ou le rhume contiennent du paracétamol. Les signes d'une atteinte du foie n'apparaissent souvent qu'après un ou deux jours."
+en:
+  fact: 'Several of these products contain paracetamol, alone or mixed with another medicine.'
+  risk: 'By taking them together, one can go over the daily maximum without knowing it, which can seriously damage the liver.'
+  risk-detail: 'Many medicines for pain, fever or colds contain paracetamol. Signs of liver damage often appear only one or two days later.'

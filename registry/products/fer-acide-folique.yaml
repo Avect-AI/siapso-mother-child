@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: fer-acide-folique
+names: { fr: 'Fer et acide folique', en: 'Iron and folic acid' }
+brands: []
+local-names: []
+components:
+  - { substance: iron }
+  - { substance: folic-acid }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

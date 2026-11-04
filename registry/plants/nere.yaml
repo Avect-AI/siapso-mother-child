@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: nere
+latin-name: Parkia biglobosa
+names: { fr: 'Néré', en: 'African locust bean (néré)' }
+local-names:
+  - { text: néré, lang: fr, checked: false }
+parts: [seed]
+evidence: '0'
+message: evidence-0
+sources: []

@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Reference case 7. Medicinal clays (kaolin, diosmectite) lower the
+# absorption of medicines taken at the same time, iron included (ANSM
+# thesaurus). For clays eaten as such, only laboratory data exist (evidence
+# D): the step from medicinal clays to geophagic clays is an extrapolation.
+id: clay-with-iron
+kind: herb-drug
+when:
+  subject: { plant: clay }
+  requires:
+    - with: { substance: iron }
+level: next-contact
+evidence: D
+message: clay-with-iron
+sources:
+  - source: literature
+    locator: 'Seim GL, Ahn CI, Bodis MS, et al. Bioavailability of iron in geophagic earths and clay minerals, and their effect on dietary iron absorption using an in vitro digestion/Caco-2 cell model. Food Funct. 2013. doi:10.1039/c3fo30380b. PMID 23787405'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=23787405&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'some geophagic earth and clay mineral samples inhibit Fe absorption from foods'
+  - source: ansm-thesaurus
+    locator: 'Thésaurus des interactions médicamenteuses (ANSM, 15 septembre 2023), TOPIQUES GASTRO-INTESTINAUX, ANTIACIDES ET ADSORBANTS'
+    url: 'https://ansm.sante.fr/uploads/2024/06/07/20230915-thesaurus-interactions-medicamenteuses-septembre-2023.pdf'
+    accessed: 2026-11-03
+    quote: 'diminuent la résorption digestive de certains autres médicaments ingérés simultanément.'
+  - source: ansm-thesaurus
+    locator: 'Thésaurus des interactions médicamenteuses (ANSM, 15 septembre 2023), TOPIQUES GASTRO-INTESTINAUX, ANTIACIDES ET ADSORBANTS (substances of the class)'
+    url: 'https://ansm.sante.fr/uploads/2024/06/07/20230915-thesaurus-interactions-medicamenteuses-septembre-2023.pdf'
+    accessed: 2026-11-03
+    quote: 'hydrotalcite, kaolin lourd, lanthane'
+  - source: ansm-thesaurus
+    locator: "Thésaurus des interactions médicamenteuses (ANSM, 15 septembre 2023), SUBSTANCES À ABSORPTION RÉDUITE PAR LES TOPIQUES GASTRO-INTESTINAUX, ANTIACIDES ET ADSORBANTS, précaution d'emploi"
+    url: 'https://ansm.sante.fr/uploads/2024/06/07/20230915-thesaurus-interactions-medicamenteuses-septembre-2023.pdf'
+    accessed: 2026-11-03
+    quote: 'famotidine, fer, fexofenadine'
+  - source: bdpm
+    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP section 4.5 (ANSM, updated 22/04/2025), CIS 69584073'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=R'
+    accessed: 2026-11-03
+    quote: "Les propriétés adsorbantes de ce produit pouvant interférer avec les délais et/ou les taux d'absorption d'une autre substance"
+review:
+  status: draft
+  reviewers: []

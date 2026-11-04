@@ -82,6 +82,15 @@ describe('buildPack', () => {
     expect(pack.sources.map((s) => s.id)).toEqual(['lactmed', 'literature', 'openfda', 'who']);
   });
 
+  it('includes every product of a generated product list file, sorted with the others', async () => {
+    const raw = copyOf(await loadValid());
+    const one = dict(raw.products.find((f) => f.file.endsWith('/ibuprofen-400.yaml'))?.data);
+    const listed = ['zz-listed', 'aa-listed'].map((id) => ({ ...structuredClone(one), id }));
+    raw.products.push({ file: 'registry/products/bdpm.yaml', data: listed });
+    const ids = buildPack(raw).products.map((p) => p.id);
+    expect(ids).toEqual(['aa-listed', 'ibuprofen-400', 'paracetamol-1000', 'zz-listed']);
+  });
+
   it('maps messages by language and id, with risk-detail as riskDetail', async () => {
     const pack = buildPack(await loadValid());
     expect(Object.keys(pack.messages.fr)).toEqual(Object.keys(pack.messages.fr).sort());

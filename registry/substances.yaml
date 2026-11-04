@@ -1,2 +1,168 @@
 # SPDX-License-Identifier: CC-BY-4.0
-[]
+# Substances, by International Nonproprietary Name in kebab-case. Iron stands
+# for the ferrous salts given by mouth (sulfate, fumarate, gluconate).
+- id: aceclofenac
+  names: { fr: 'Acéclofénac', en: 'Aceclofenac' }
+  classes: [nsaid]
+- id: amodiaquine
+  names: { fr: 'Amodiaquine', en: 'Amodiaquine' }
+  classes: []
+- id: amoxicillin
+  names: { fr: 'Amoxicilline', en: 'Amoxicillin' }
+  classes: []
+- id: artemether
+  names: { fr: 'Artéméther', en: 'Artemether' }
+  classes: []
+- id: artesunate
+  names: { fr: 'Artésunate', en: 'Artesunate' }
+  classes: []
+- id: ascorbic-acid
+  names: { fr: 'Acide ascorbique (vitamine C)', en: 'Ascorbic acid (vitamin C)' }
+  classes: []
+- id: aspirin
+  names: { fr: 'Aspirine (acide acétylsalicylique)', en: 'Aspirin (acetylsalicylic acid)' }
+  classes: []
+- id: captopril
+  names: { fr: 'Captopril', en: 'Captopril' }
+  classes: [raas-blocker]
+- id: carbamazepine
+  names: { fr: 'Carbamazépine', en: 'Carbamazepine' }
+  classes: []
+- id: celecoxib
+  names: { fr: 'Célécoxib', en: 'Celecoxib' }
+  classes: [nsaid]
+- id: clobetasol
+  names: { fr: 'Clobétasol', en: 'Clobetasol' }
+  classes: []
+- id: codeine
+  names: { fr: 'Codéine', en: 'Codeine' }
+  classes: []
+- id: diclofenac
+  names: { fr: 'Diclofénac', en: 'Diclofenac' }
+  classes: [nsaid]
+- id: dolutegravir
+  names: { fr: 'Dolutégravir', en: 'Dolutegravir' }
+  classes: []
+- id: doxycycline
+  names: { fr: 'Doxycycline', en: 'Doxycycline' }
+  classes: [tetracycline]
+- id: efavirenz
+  names: { fr: 'Éfavirenz', en: 'Efavirenz' }
+  classes: []
+- id: enalapril
+  names: { fr: 'Énalapril', en: 'Enalapril' }
+  classes: [raas-blocker]
+- id: etoricoxib
+  names: { fr: 'Étoricoxib', en: 'Etoricoxib' }
+  classes: [nsaid]
+- id: folic-acid
+  names: { fr: 'Acide folique', en: 'Folic acid' }
+  classes: []
+- id: hydroquinone
+  names: { fr: 'Hydroquinone', en: 'Hydroquinone' }
+  classes: []
+- id: ibuprofen
+  names: { fr: 'Ibuprofène', en: 'Ibuprofen' }
+  classes: [nsaid]
+- id: indometacin
+  names: { fr: 'Indométacine', en: 'Indometacin' }
+  classes: [nsaid]
+- id: irbesartan
+  names: { fr: 'Irbésartan', en: 'Irbesartan' }
+  classes: [raas-blocker]
+- id: iron
+  names: { fr: 'Fer (sels ferreux)', en: 'Iron (ferrous salts)' }
+  classes: []
+- id: isotretinoin
+  names: { fr: 'Isotrétinoïne', en: 'Isotretinoin' }
+  classes: []
+- id: ketoprofen
+  names: { fr: 'Kétoprofène', en: 'Ketoprofen' }
+  classes: [nsaid]
+- id: ketorolac
+  names: { fr: 'Kétorolac', en: 'Ketorolac' }
+  classes: [nsaid]
+- id: lamivudine
+  names: { fr: 'Lamivudine', en: 'Lamivudine' }
+  classes: []
+- id: lisinopril
+  names: { fr: 'Lisinopril', en: 'Lisinopril' }
+  classes: [raas-blocker]
+- id: losartan
+  names: { fr: 'Losartan', en: 'Losartan' }
+  classes: [raas-blocker]
+- id: lumefantrine
+  names: { fr: 'Luméfantrine', en: 'Lumefantrine' }
+  classes: []
+- id: mefenamic-acid
+  names: { fr: 'Acide méfénamique', en: 'Mefenamic acid' }
+  classes: [nsaid]
+- id: metronidazole
+  names: { fr: 'Métronidazole', en: 'Metronidazole' }
+  classes: []
+- id: minocycline
+  names: { fr: 'Minocycline', en: 'Minocycline' }
+  classes: [tetracycline]
+- id: misoprostol
+  names: { fr: 'Misoprostol', en: 'Misoprostol' }
+  classes: []
+- id: naproxen
+  names: { fr: 'Naproxène', en: 'Naproxen' }
+  classes: [nsaid]
+- id: paracetamol
+  names: { fr: 'Paracétamol', en: 'Paracetamol' }
+  classes: []
+- id: perindopril
+  names: { fr: 'Périndopril', en: 'Perindopril' }
+  classes: [raas-blocker]
+- id: pheniramine
+  names: { fr: 'Phéniramine', en: 'Pheniramine' }
+  classes: []
+- id: piroxicam
+  names: { fr: 'Piroxicam', en: 'Piroxicam' }
+  classes: [nsaid]
+- id: pyrimethamine
+  names: { fr: 'Pyriméthamine', en: 'Pyrimethamine' }
+  classes: []
+- id: quinine
+  names: { fr: 'Quinine', en: 'Quinine' }
+  classes: []
+- id: ramipril
+  names: { fr: 'Ramipril', en: 'Ramipril' }
+  classes: [raas-blocker]
+- id: rifampicin
+  names: { fr: 'Rifampicine', en: 'Rifampicin' }
+  classes: []
+- id: sulfadoxine
+  names: { fr: 'Sulfadoxine', en: 'Sulfadoxine' }
+  classes: []
+- id: sulfamethoxazole
+  names: { fr: 'Sulfaméthoxazole', en: 'Sulfamethoxazole' }
+  classes: []
+- id: tenofovir
+  names: { fr: 'Ténofovir', en: 'Tenofovir' }
+  classes: []
+- id: tetracycline
+  names: { fr: 'Tétracycline', en: 'Tetracycline' }
+  classes: [tetracycline]
+- id: tramadol
+  names: { fr: 'Tramadol', en: 'Tramadol' }
+  classes: []
+- id: trimethoprim
+  names: { fr: 'Triméthoprime', en: 'Trimethoprim' }
+  classes: []
+- id: valproic-acid
+  names: { fr: 'Acide valproïque (valproate)', en: 'Valproic acid (valproate)' }
+  classes: [valproate]
+- id: valpromide
+  names: { fr: 'Valpromide', en: 'Valpromide' }
+  classes: [valproate]
+- id: valsartan
+  names: { fr: 'Valsartan', en: 'Valsartan' }
+  classes: [raas-blocker]
+- id: warfarin
+  names: { fr: 'Warfarine', en: 'Warfarin' }
+  classes: []
+- id: zidovudine
+  names: { fr: 'Zidovudine', en: 'Zidovudine' }
+  classes: []

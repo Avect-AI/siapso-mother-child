@@ -32,7 +32,11 @@ function problem(entry: Entry<unknown>, rest: string, message: string): Problem 
   return { file: entry.file, path: at(entry, rest), message };
 }
 
-/** Check 2: ids are unique per collection and equal to the file name in one-file-per-entry folders. */
+/**
+ * Check 2: ids are unique per collection and equal to the file name in
+ * one-file-per-entry folders. The entries of a list file (a generated product
+ * file) are named by their own ids, not by the file name.
+ */
 function checkIds(content: Content): Problem[] {
   const problems: Problem[] = [];
   const folders = [content.rules, content.messages, content.products, content.plants];
@@ -40,7 +44,7 @@ function checkIds(content: Content): Problem[] {
     const first = new Map<string, string>();
     for (const entry of entries) {
       const { id } = entry.data;
-      if (id !== stem(entry.file)) {
+      if (entry.at === '' && id !== stem(entry.file)) {
         problems.push(
           problem(entry, 'id', `id "${id}" must equal the file name "${stem(entry.file)}"`),
         );
@@ -243,8 +247,41 @@ const EMOJI = new RegExp(
 );
 const DIGIT = /\p{Nd}/u;
 
+/** Units and frequencies that make a number a dose (French and English). */
+const DOSE_UNITS: readonly string[] = [
+  'mg',
+  'g',
+  'ml',
+  '[µμ]g',
+  'mcg',
+  'ui',
+  'iu',
+  'comprimés?',
+  'tablets?',
+  'gélules?',
+  'capsules?',
+  'cuillères?',
+  'spoons?',
+  'sachets?',
+  'gouttes?',
+  'drops?',
+  'prises?',
+  'doses?',
+  'fois\\s+par\\s+jour',
+  'par\\s+jour',
+  'times\\s+a\\s+day',
+  'per\\s+day',
+];
+/** A number followed by a dose unit: "500 mg", "2 comprimés", "3 fois par jour", "100mg". */
+const DOSE = new RegExp(
+  `\\p{Nd}+(?:[.,]\\p{Nd}+)?\\s*(?:${DOSE_UNITS.join('|')})(?![\\p{L}\\p{N}])`,
+  'iu',
+);
+
 const LANGS: readonly Lang[] = ['fr', 'en'];
 const FIELDS = ['fact', 'risk', 'risk-detail', 'orientation'] as const;
+/** Fields that may hold a number (never a dose); the others hold no digit at all. */
+const NUMBER_FIELDS: ReadonlySet<string> = new Set(['fact', 'risk-detail']);
 
 /** Forbidden wording, em dash and emoji: the checks for any text the interface shows. */
 function checkWording(entry: Entry<unknown>, where: string, text: string, lang: Lang): Problem[] {
@@ -268,9 +305,19 @@ function checkMessageText(message: Entry<AuthoredMessage>): Problem[] {
       const text = message.data[lang][field];
       if (text === undefined) continue;
       const where = `${lang}.${field}`;
-      if (field === 'risk' && DIGIT.test(text)) {
+      if (!NUMBER_FIELDS.has(field) && DIGIT.test(text)) {
         problems.push(
           problem(message, where, 'must not contain digits (put numbers in risk-detail)'),
+        );
+      }
+      const dose = NUMBER_FIELDS.has(field) ? DOSE.exec(text) : null;
+      if (dose) {
+        problems.push(
+          problem(
+            message,
+            where,
+            `gives a dose ("${dose[0]}"): messages never state a dose (keep thresholds in the rule)`,
+          ),
         );
       }
       problems.push(...checkWording(message, where, text, lang));

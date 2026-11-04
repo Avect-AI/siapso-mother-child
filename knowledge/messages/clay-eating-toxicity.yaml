@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: clay-eating-toxicity
+fr:
+  fact: "Manger de l'argile, de la terre ou du kaolin pendant la grossesse est une pratique répandue."
+  risk: "On connaît mal ses effets sur la grossesse, mais des analyses ont trouvé du plomb dans des argiles vendues au marché, et manger de l'argile va souvent avec une anémie."
+  risk-detail: "Au Nigeria, toutes les argiles à manger achetées au marché et analysées dépassaient la limite de plomb. Une analyse de plusieurs études a lié la consommation d'argile ou de terre (pica) à plus d'anémie. La notice d'une argile médicale purifiée (diosmectite) ne la recommande pas pendant la grossesse et demande d'éviter un usage prolongé."
+en:
+  fact: 'Eating clay, earth or kaolin during pregnancy is a common practice.'
+  risk: 'Its effects on pregnancy are poorly known, but tests have found lead in clays sold at markets, and eating clay often goes with anaemia.'
+  risk-detail: 'In Nigeria, all the edible clays bought at markets and tested were above the lead limit. A review of several studies linked eating clay or earth (pica) with more anaemia. The label of a purified medicinal clay (diosmectite) does not recommend it during pregnancy and asks to avoid long use.'

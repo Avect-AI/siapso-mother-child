@@ -31,7 +31,10 @@ allowed:
     publisher: 'Agence nationale de sécurité du médicament et des produits de santé (ANSM)'
     licence: 'Licence Ouverte 2.0'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/'
-    version: 'Download date, given in each citation'
+    # The download date of CIS_bdpm.txt and CIS_COMPO_bdpm.txt, the files read by
+    # "pnpm knowledge:import-bdpm" to write registry/products/bdpm.yaml.
+    version: 'Product files CIS_bdpm.txt and CIS_COMPO_bdpm.txt downloaded on 2026-11-04; RCP update dates given in each citation'
+    accessed: 2026-11-04
     notice: 'Base de données publique des médicaments, ANSM, Licence Ouverte 2.0.'
   - id: ansm-thesaurus
     name: 'Thésaurus des interactions médicamenteuses'
@@ -51,10 +54,10 @@ fact-only:
   - id: who
     name: 'World Health Organization guidelines and lists'
     publisher: 'World Health Organization'
-    licence: 'CC BY-NC-SA 3.0 IGO'
+    licence: 'Varies by document: CC BY-NC-SA 3.0 IGO or all rights reserved'
     url: 'https://www.who.int/'
     version: 'Edition given in each citation'
-    notice: 'World Health Organization guidelines and lists (CC BY-NC-SA 3.0 IGO). Used for facts only: no text is copied.'
+    notice: 'World Health Organization guidelines and lists (licence varies by document: CC BY-NC-SA 3.0 IGO or all rights reserved). Used for facts only: no text is copied.'
 forbidden:
   - id: ddinter
     reason: 'Non-commercial licence: not compatible with an open knowledge base.'

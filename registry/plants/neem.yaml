@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: neem
+latin-name: Azadirachta indica
+names: { fr: 'Neem', en: 'Neem' }
+local-names:
+  - { text: nim, lang: wo, checked: false }
+parts: [leaf]
+evidence: '0'
+message: evidence-0
+sources: []

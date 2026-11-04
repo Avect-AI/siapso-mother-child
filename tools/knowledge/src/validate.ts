@@ -61,13 +61,23 @@ function list<T>(
   return entries;
 }
 
+/**
+ * A product file holds one product, or a list of products when it is
+ * generated (registry/products/bdpm.yaml, written by the BDPM import).
+ */
+function products(raw: RawContent, file: RawFile, problems: Problem[]): Entry<AuthoredProduct>[] {
+  return Array.isArray(file.data)
+    ? list<AuthoredProduct>(raw, 'product', file, problems)
+    : single<AuthoredProduct>(raw, 'product', file, problems);
+}
+
 /** Check 1: validates every file against its schema and keeps what is valid, typed. */
 function collect(raw: RawContent): { content: Content; problems: Problem[] } {
   const problems: Problem[] = [];
   const content: Content = {
     rules: raw.rules.flatMap((f) => single<AuthoredRule>(raw, 'rule', f, problems)),
     messages: raw.messages.flatMap((f) => single<AuthoredMessage>(raw, 'message', f, problems)),
-    products: raw.products.flatMap((f) => single<AuthoredProduct>(raw, 'product', f, problems)),
+    products: raw.products.flatMap((f) => products(raw, f, problems)),
     plants: raw.plants.flatMap((f) => single<AuthoredPlant>(raw, 'plant', f, problems)),
     dangerSigns: list<AuthoredDangerSign>(raw, 'danger-sign', raw.dangerSigns, problems),
     substances: list<AuthoredSubstance>(raw, 'substance', raw.substances, problems),
@@ -108,7 +118,11 @@ function fileOfEngineError(message: string, raw: RawContent): string {
   };
   const files = folders[collection];
   if (files) {
-    const found = files.find((f) => (f.data as { id?: unknown } | null)?.id === id);
+    const isIt = (data: unknown): boolean => (data as { id?: unknown } | null)?.id === id;
+    // A generated product file holds a list of products.
+    const found = files.find((f) =>
+      Array.isArray(f.data) ? (f.data as unknown[]).some(isIt) : isIt(f.data),
+    );
     return found?.file ?? 'knowledge/pack.yaml';
   }
   const lists: Record<string, RawFile | undefined> = {

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: sp
+names: { fr: 'SP (sulfadoxine-pyriméthamine)', en: 'SP (sulfadoxine-pyrimethamine)' }
+brands: []
+local-names: []
+components:
+  - { substance: sulfadoxine }
+  - { substance: pyrimethamine }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

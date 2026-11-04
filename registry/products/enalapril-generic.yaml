@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: enalapril-generic
+names: { fr: 'Énalapril (générique)', en: 'Enalapril (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: enalapril }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

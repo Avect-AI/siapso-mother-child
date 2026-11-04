@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Valproate during pregnancy: major birth defects and developmental
+# disorders. The labels insist that the woman must not end the treatment on
+# her own (seizures): the message says so and refers her. The class covers
+# valpromide, which the body turns into valproic acid (DEPAMIDE RCP).
+id: valproate-pregnancy
+kind: pregnancy
+when:
+  subject: { class: valproate }
+level: before-next-dose
+evidence: A
+message: valproate-pregnancy
+sources:
+  - source: bdpm
+    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice section 2 (ANSM, RCP updated 24/09/2026), CIS 60184188'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'il est établi que près de 11 bébés sur 100 nés de mères sous valproate présentent des malformations, contre 2 à 3 bébés sur 100 dans la population générale.'
+  - source: bdpm
+    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice section 2 (ANSM, RCP updated 24/09/2026), CIS 60184188'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'ne pas arrêter de prendre DEPAKINE sans que votre médecin ne vous l’ait demandé ; cela pourrait aggraver votre maladie.'
+  - source: openfda
+    locator: 'Depakote (divalproex sodium) drug label, AbbVie Inc., set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 20260331'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Depakote%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Valproate can cause major congenital malformations, particularly neural tube defects (e.g., spina bifida).'
+  - source: openfda
+    locator: 'Depakote (divalproex sodium) drug label, AbbVie Inc., set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 20260331'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Depakote%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'valproate can cause decreased IQ scores and neurodevelopmental disorders following in utero exposure.'
+  - source: bdpm
+    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP section 4.6 (ANSM, updated 01/10/2026), CIS 63737879'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63737879&typedoc=R'
+    accessed: 2026-11-04
+    quote: "Le principal métabolite du valpromide est l'acide valproïque."
+  - source: bdpm
+    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP section 4.4 (ANSM, updated 01/10/2026), CIS 63737879'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63737879&typedoc=R'
+    accessed: 2026-11-04
+    quote: 'Le valproate est un tératogène puissant entraînant un risque élevé de malformations congénitales et de troubles neuro-développementaux chez les enfants exposés in utero au valproate'
+review:
+  status: draft
+  reviewers: []

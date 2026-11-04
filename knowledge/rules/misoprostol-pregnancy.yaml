@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Misoprostol makes the womb contract. The message stays neutral: it names
+# neither the substance, nor a dose, nor any use; the risk of rupture of the
+# womb rises with the term and with a scar.
+id: misoprostol-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: misoprostol }
+level: before-next-dose
+evidence: A
+message: misoprostol-pregnancy
+sources:
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'CYTOTEC (MISOPROSTOL) ADMINISTRATION TO WOMEN WHO ARE PREGNANT CAN CAUSE BIRTH DEFECTS, ABORTION, PREMATURE BIRTH OR UTERINE RUPTURE.'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'THE RISK OF UTERINE RUPTURE INCREASES WITH ADVANCING GESTATIONAL AGES AND WITH PRIOR UTERINE SURGERY, INCLUDING CESAREAN DELIVERY'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, precautions (pregnancy, nonteratogenic effects)'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Cytotec may produce uterine contractions, uterine bleeding, and expulsion of the products of conception.'
+  - source: bdpm
+    locator: 'GYMISO 200 microgrammes, comprimé, RCP section 4.4 (ANSM, updated 23/12/2025), CIS 69981979'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69981979&typedoc=R'
+    accessed: 2026-11-03
+    quote: "GYMISO doit être utilisé avec prudence en cas de fragilité utérine, en particulier en cas de grande multiparité ou d'utérus cicatriciel."
+review:
+  status: draft
+  reviewers: []

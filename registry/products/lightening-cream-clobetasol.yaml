@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: lightening-cream-clobetasol
+names:
+  {
+    fr: "Crème éclaircissante au clobétasol et à l'hydroquinone",
+    en: 'Skin-lightening cream with clobetasol and hydroquinone',
+  }
+brands: []
+local-names: []
+components:
+  - { substance: clobetasol }
+  - { substance: hydroquinone }
+form: 'crème'
+route: cutaneous
+source: { demo-manual: true }
+demo: true

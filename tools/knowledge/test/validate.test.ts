@@ -3,7 +3,18 @@ import { CONDITION_IDS, LEVELS, RULE_KINDS, WINDOWS } from '@siapso/engine';
 import { describe, expect, it } from 'vitest';
 import { validateContent } from '../src/index.js';
 import type { RawContent } from '../src/index.js';
-import { copyOf, dict, expectProblem, list, loadValid, patch, patchEntry, sub } from './helpers.js';
+import {
+  copyOf,
+  dict,
+  expectProblem,
+  fileOf,
+  list,
+  loadValid,
+  patch,
+  patchEntry,
+  sub,
+} from './helpers.js';
+import type { Dict } from './helpers.js';
 
 const RULE = 'knowledge/rules/nsaid-pregnancy-from-20-weeks.yaml';
 const MESSAGE = 'knowledge/messages/nsaid-pregnancy-from-20-weeks.yaml';
@@ -301,6 +312,56 @@ describe('validateContent', () => {
         message: /duplicate id "moringa".*registry\/plants\/moringa\.yaml/,
       });
     });
+
+    const LIST_FILE = 'registry/products/bdpm.yaml';
+
+    /** A product like the ibuprofen fixture, with another id and substance. */
+    function productLike(raw: RawContent, id: string, substance = 'ibuprofen'): Dict {
+      const product = dict(structuredClone(fileOf(raw, 'products', 'ibuprofen-400').data));
+      product.id = id;
+      product.components = [{ substance, 'strength-mg': 200 }];
+      return product;
+    }
+
+    /** Adds a generated product list file, like registry/products/bdpm.yaml. */
+    function withProductList(raw: RawContent, items: Dict[]): RawContent {
+      raw.products.push({ file: LIST_FILE, data: items });
+      return raw;
+    }
+
+    it('accepts a product file holding a list of products named by their own ids', async () => {
+      const raw = await fresh();
+      withProductList(raw, [productLike(raw, 'advil-200-mg-68634000'), productLike(raw, 'other')]);
+      expect(validateContent(raw)).toEqual([]);
+    });
+
+    it('checks each product of a list file on its own, with its position', async () => {
+      const raw = await fresh();
+      const broken = productLike(raw, 'broken');
+      delete broken.route;
+      withProductList(raw, [
+        productLike(raw, 'fine'),
+        productLike(raw, 'bad-product', 'unknown-substance'),
+        broken,
+      ]);
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: LIST_FILE,
+        path: '[1].components[0].substance',
+        message: /unknown substance "unknown-substance"/,
+      });
+      expectProblem(problems, { file: LIST_FILE, path: '[2].route', message: /missing/ });
+    });
+
+    it('rejects a product id used both in a list file and in a one-product file', async () => {
+      const raw = await fresh();
+      withProductList(raw, [productLike(raw, 'ibuprofen-400')]);
+      expectProblem(validateContent(raw), {
+        file: LIST_FILE,
+        path: '[0].id',
+        message: /duplicate id "ibuprofen-400"/,
+      });
+    });
   });
 
   describe('3. references', () => {
@@ -549,12 +610,65 @@ describe('validateContent', () => {
       expect(problems.filter((p) => p.path === 'en.risk-detail')).toEqual([]);
     });
 
-    it('accepts a digit in fact, orientation and risk-detail', async () => {
+    it('rejects a digit in orientation, in both languages', async () => {
       const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
-        sub(d, 'fr').fact = 'Plus de 3 prises.';
         sub(d, 'fr').orientation = 'Appelez le 15.';
+        sub(d, 'en').orientation = 'Go within 2 days.';
+      });
+      const problems = validateContent(raw);
+      const file = 'knowledge/messages/herb-drug-moringa.yaml';
+      expectProblem(problems, { file, path: 'fr.orientation', message: /digit/ });
+      expectProblem(problems, { file, path: 'en.orientation', message: /digit/ });
+    });
+
+    it('accepts a number without a dose unit in fact and risk-detail', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr').fact = 'Une étude chez 20 adultes.';
+        sub(d, 'fr')['risk-detail'] = 'À partir de 24 semaines, près de 11 bébés sur 100.';
+        sub(d, 'en').fact = 'From the 2nd trimester.';
+        sub(d, 'en')['risk-detail'] = 'One or two days later, in 3 studies.';
       });
       expect(validateContent(raw)).toEqual([]);
+    });
+
+    it('rejects a dose (a number with a dose unit) in fact and risk-detail', async () => {
+      const cases: [string, string, string][] = [
+        ['fr', 'fact', 'Ce produit contient 500 mg de paracétamol.'],
+        ['fr', 'risk-detail', 'Au-delà de 3 g par jour.'],
+        ['en', 'fact', 'Take 2 tablets.'],
+        ['en', 'risk-detail', 'Up to 4 times a day, 1,5 mL or 200 µg.'],
+      ];
+      for (const [lang, field, text] of cases) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang)[field] = text;
+        });
+        expectProblem(validateContent(raw), {
+          file: 'knowledge/messages/herb-drug-moringa.yaml',
+          path: `${lang}.${field}`,
+          message: /dose/,
+        });
+      }
+      for (const text of [
+        '100mg',
+        '2 comprimés',
+        '1 gélule',
+        '3 fois par jour',
+        '2 cuillères',
+        '10 UI',
+        '5 ml',
+        '1 dose',
+        '2 per day',
+        '50 mcg',
+      ]) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, 'fr')['risk-detail'] = text;
+        });
+        const problems = validateContent(raw);
+        expect(
+          problems.some((p) => p.path === 'fr.risk-detail' && /dose/.test(p.message)),
+          text,
+        ).toBe(true);
+      }
     });
 
     it('rejects forbidden wording in any field and language', async () => {

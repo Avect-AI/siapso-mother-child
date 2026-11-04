@@ -4,3 +4,51 @@ Copyright 2026 AVECT AI SARL
 Licences
   Code: MIT (see LICENSE)
   Content (knowledge/ and registry/): CC BY 4.0
+
+Sources
+The knowledge pack draws on these sources.
+
+Thésaurus des interactions médicamenteuses
+  Publisher: Agence nationale de sécurité du médicament et des produits de santé (ANSM)
+  Licence: Reuse with citation of the source
+  Version: September 2023
+  Thésaurus des interactions médicamenteuses, ANSM, September 2023 version, reused with citation of the source.
+
+Base de données publique des médicaments (BDPM)
+  Publisher: Agence nationale de sécurité du médicament et des produits de santé (ANSM)
+  Licence: Licence Ouverte 2.0
+  Version: Product files CIS_bdpm.txt and CIS_COMPO_bdpm.txt downloaded on 2026-11-04; RCP update dates given in each citation
+  Base de données publique des médicaments, ANSM, Licence Ouverte 2.0.
+
+FDA Drug Safety Communications
+  Publisher: US Food and Drug Administration
+  Licence: Public domain
+  Version: Communication date, given in each citation
+  FDA Drug Safety Communications, US Food and Drug Administration, public domain.
+
+Drugs and Lactation Database (LactMed)
+  Publisher: US National Library of Medicine
+  Licence: Public domain
+  Version: Record date or bulk archive date, given in each citation
+  LactMed, US National Library of Medicine, public domain. Facts summarised in our own words.
+
+Peer-reviewed literature
+  Publisher: Journal publishers, cited by reference
+  Licence: Cited by reference; summarised in our own words
+  Version: Reference given in each citation
+  Peer-reviewed literature, cited by reference and summarised in our own words.
+
+openFDA drug labels
+  Publisher: US Food and Drug Administration
+  Licence: CC0 1.0 / public domain
+  Version: Label version or access date, given in each citation
+  openFDA drug labels, US Food and Drug Administration, CC0 1.0 / public domain.
+
+Facts only
+These sources support facts and danger signs. Their text is not copied.
+
+World Health Organization guidelines and lists
+  Publisher: World Health Organization
+  Licence: Varies by document: CC BY-NC-SA 3.0 IGO or all rights reserved
+  Version: Edition given in each citation
+  World Health Organization guidelines and lists (licence varies by document: CC BY-NC-SA 3.0 IGO or all rights reserved). Used for facts only: no text is copied.

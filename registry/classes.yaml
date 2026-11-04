@@ -1,2 +1,25 @@
 # SPDX-License-Identifier: CC-BY-4.0
-[]
+# Substance classes used by class rules. A substance belongs to a class
+# through its `classes` list in substances.yaml. Aspirin is not in the nsaid
+# class: it has its own rule, which uses the product strength.
+- id: nsaid
+  names:
+    fr: 'Anti-inflammatoires non stéroïdiens (AINS)'
+    en: 'Non-steroidal anti-inflammatory drugs (NSAIDs)'
+  excludes: []
+- id: raas-blocker
+  names:
+    fr: 'Médicaments du système rénine-angiotensine (IEC, sartans)'
+    en: 'Renin-angiotensin system blockers (ACE inhibitors, ARBs)'
+  excludes: []
+- id: tetracycline
+  names:
+    fr: 'Tétracyclines (cyclines)'
+    en: 'Tetracyclines'
+  excludes: []
+# Valpromide turns into valproic acid in the body (DEPAMIDE RCP section 4.6).
+- id: valproate
+  names:
+    fr: 'Valproate et dérivés (acide valproïque, valpromide)'
+    en: 'Valproate and derivatives (valproic acid, valpromide)'
+  excludes: []

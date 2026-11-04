@@ -1,0 +1,584 @@
+// SPDX-License-Identifier: MIT
+// Import of medicines from the official BDPM download files (Base de données
+// publique des médicaments, ANSM, Licence Ouverte 2.0):
+//
+// - CIS_bdpm.txt: one line per medicine (CIS code), tab-separated columns:
+//   CIS, denomination, form, routes (";"), authorisation status, procedure,
+//   marketing state, authorisation date, BdM status, EU number, holder,
+//   reinforced monitoring;
+// - CIS_COMPO_bdpm.txt: one line per active component, tab-separated columns:
+//   CIS, element, substance code, substance label, dosage, dosage reference,
+//   nature ("SA" active substance, "FT" therapeutic fraction), link number
+//   (joins a substance and its therapeutic fraction).
+//
+// Both files are encoded in Windows-1252 with CRLF line ends. The import
+// keeps marketed medicines taken by mouth, on the skin or rectally whose
+// active substances all map to registry substances, and writes them to
+// registry/products/bdpm.yaml. The selection is deterministic: sorted by
+// substance then denomination, one product per denomination; the brands most
+// used in Senegal (PRIORITY_BRANDS) are always kept, and the other products
+// fill the rest, at most 3 per brand, 15 per substance and 300 in total
+// (taken rank by rank across substances, see selectProducts).
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { LICENCE_LINE } from './load.js';
+import type { AuthoredProduct } from './types.js';
+
+/** The two official files read by the import. */
+export const BDPM_FILES = { specialities: 'CIS_bdpm.txt', compositions: 'CIS_COMPO_bdpm.txt' };
+
+/** One line of CIS_bdpm.txt. */
+export interface BdpmSpeciality {
+  cis: string;
+  denomination: string;
+  form: string;
+  routes: string[];
+  /** "Commercialisée" in the marketing state column. */
+  marketed: boolean;
+}
+
+/** One line of CIS_COMPO_bdpm.txt. */
+export interface BdpmComponent {
+  cis: string;
+  element: string;
+  label: string;
+  dosage: string;
+  reference: string;
+  nature: 'SA' | 'FT';
+  link: string;
+}
+
+/** Decodes a BDPM file: the official files are encoded in Windows-1252. */
+export function decodeBdpm(bytes: Uint8Array): string {
+  return new TextDecoder('windows-1252').decode(bytes);
+}
+
+/** Uppercase, without accents, with straight apostrophes and single spaces: the key of the label table. */
+function normalise(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/’/g, "'")
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rows(text: string, file: string, columns: number): string[][] {
+  return text
+    .split(/\r?\n/)
+    .map((line, index) => ({ line, number: index + 1 }))
+    .filter(({ line }) => line.trim() !== '')
+    .map(({ line, number }) => {
+      const cells = line.split('\t').map((cell) => cell.replace(/\s+/g, ' ').trim());
+      if (cells.length < columns) {
+        throw new Error(
+          `${file} line ${String(number)}: expected ${String(columns)} columns, found ${String(cells.length)}`,
+        );
+      }
+      return cells;
+    });
+}
+
+/** Parses CIS_bdpm.txt (already decoded). */
+export function parseSpecialities(text: string): BdpmSpeciality[] {
+  return rows(text, BDPM_FILES.specialities, 12).map((cells) => ({
+    cis: cells[0] ?? '',
+    denomination: cells[1] ?? '',
+    form: cells[2] ?? '',
+    routes: (cells[3] ?? '')
+      .split(';')
+      .map((route) => route.trim())
+      .filter((route) => route !== ''),
+    marketed: normalise(cells[6] ?? '') === 'COMMERCIALISEE',
+  }));
+}
+
+/** Parses CIS_COMPO_bdpm.txt (already decoded). */
+export function parseCompositions(text: string): BdpmComponent[] {
+  return rows(text, BDPM_FILES.compositions, 8).map((cells) => ({
+    cis: cells[0] ?? '',
+    element: cells[1] ?? '',
+    label: cells[3] ?? '',
+    dosage: cells[4] ?? '',
+    reference: cells[5] ?? '',
+    nature: cells[6] === 'FT' ? 'FT' : 'SA',
+    link: cells[7] ?? '',
+  }));
+}
+
+/**
+ * BDPM active substance labels (uppercase, without accents) and the
+ * registry substance (INN) each one stands for. A label missing from this
+ * table keeps its medicine out of the import. Homeopathic preparations,
+ * other salts and other molecules (dexketoprofen, chlortetracycline,
+ * oxytetracycline, tenofovir alafenamide, ferric iron) are left out on
+ * purpose.
+ */
+export const SUBSTANCE_LABELS: Readonly<Record<string, string>> = {
+  'ACETYLSALICYLATE DE DL-LYSINE': 'aspirin',
+  'ACETYLSALICYLIQUE (ACIDE)': 'aspirin',
+  'ACIDE ACETYLSALICYLIQUE': 'aspirin',
+  'DL-LYSINE (ACETYLSALICYLATE DE)': 'aspirin',
+  'ACIDE ASCORBIQUE': 'ascorbic-acid',
+  'ASCORBIQUE (ACIDE)': 'ascorbic-acid',
+  'ASCORBATE DE SODIUM': 'ascorbic-acid',
+  'SODIUM (ASCORBATE DE)': 'ascorbic-acid',
+  'ACIDE FOLIQUE': 'folic-acid',
+  'ACIDE FOLIQUE ANHYDRE': 'folic-acid',
+  'ACIDE FOLIQUE HYDRATE': 'folic-acid',
+  'ACIDE VALPROIQUE': 'valproic-acid',
+  'DIVALPROATE DE SODIUM': 'valproic-acid',
+  'SODIUM (VALPROATE DE)': 'valproic-acid',
+  'VALPROATE DE SODIUM': 'valproic-acid',
+  VALPROMIDE: 'valpromide',
+  AMOXICILLINE: 'amoxicillin',
+  'AMOXICILLINE TRIHYDRATEE': 'amoxicillin',
+  ARTEMETHER: 'artemether',
+  LUMEFANTRINE: 'lumefantrine',
+  CAPTOPRIL: 'captopril',
+  CARBAMAZEPINE: 'carbamazepine',
+  'CLOBETASOL (PROPIONATE DE)': 'clobetasol',
+  'PROPIONATE DE CLOBETASOL': 'clobetasol',
+  CODEINE: 'codeine',
+  'CODEINE (PHOSPHATE DE)': 'codeine',
+  'CODEINE (PHOSPHATE DE) HEMIHYDRATE': 'codeine',
+  'PHOSPHATE DE CODEINE HEMIHYDRATE': 'codeine',
+  'DICLOFENAC DE DIETHYLAMINE': 'diclofenac',
+  'DICLOFENAC SODIQUE': 'diclofenac',
+  'EPOLAMINE DE DICLOFENAC': 'diclofenac',
+  'DOLUTEGRAVIR SODIQUE': 'dolutegravir',
+  'DOXYCYCLINE (HYCLATE DE)': 'doxycycline',
+  'DOXYCYCLINE MONOHYDRATEE': 'doxycycline',
+  'HYCLATE DE DOXYCYCLINE': 'doxycycline',
+  EFAVIRENZ: 'efavirenz',
+  "ENALAPRIL (MALEATE D')": 'enalapril',
+  "MALEATE D'ENALAPRIL": 'enalapril',
+  'ASCORBATE FERREUX': 'iron',
+  'FERREUX (SULFATE) DESSECHE': 'iron',
+  'FUMARATE FERREUX': 'iron',
+  'GLUCONATE FERREUX': 'iron',
+  'GLUCONATE FERREUX DIHYDRATE': 'iron',
+  'GLUCONATE FERREUX HYDRATE': 'iron',
+  'SUCCINATE FERREUX': 'iron',
+  'SULFATE FERREUX': 'iron',
+  'SULFATE FERREUX DESSECHE': 'iron',
+  'SULFATE FERREUX HEPTAHYDRATE': 'iron',
+  IBUPROFENE: 'ibuprofen',
+  "IBUPROFENE (LYSINATE D')": 'ibuprofen',
+  'IBUPROFENE SODIQUE DIHYDRATE': 'ibuprofen',
+  "LYSINATE D'IBUPROFENE": 'ibuprofen',
+  "CHLORHYDRATE D'IRBESARTAN": 'irbesartan',
+  IRBESARTAN: 'irbesartan',
+  "IRBESARTAN (CHLORHYDRATE D')": 'irbesartan',
+  ISOTRETINOINE: 'isotretinoin',
+  KETOPROFENE: 'ketoprofen',
+  LAMIVUDINE: 'lamivudine',
+  LISINOPRIL: 'lisinopril',
+  'LISINOPRIL DIHYDRATE': 'lisinopril',
+  'LOSARTAN POTASSIQUE': 'losartan',
+  METRONIDAZOLE: 'metronidazole',
+  'METRONIDAZOLE (BENZOATE DE)': 'metronidazole',
+  'CHLORHYDRATE DE MINOCYCLINE': 'minocycline',
+  'MINOCYCLINE (CHLORHYDRATE DE)': 'minocycline',
+  MISOPROSTOL: 'misoprostol',
+  NAPROXENE: 'naproxen',
+  'NAPROXENE SODIQUE': 'naproxen',
+  PARACETAMOL: 'paracetamol',
+  ETORICOXIB: 'etoricoxib',
+  PIROXICAM: 'piroxicam',
+  'COMPLEXE PIROXICAM-BETACYCLODEXTRINE': 'piroxicam',
+  'PIROXICAM-BETACYCLODEXTRINE (COMPLEXE)': 'piroxicam',
+  'PERINDOPRIL ARGININE': 'perindopril',
+  'PERINDOPRIL ERBUMINE': 'perindopril',
+  'PERINDOPRIL TERT-BUTYLAMINE': 'perindopril',
+  'TERT-BUTYLAMINE DE PERINDOPRIL': 'perindopril',
+  'TOSILATE DE PERINDOPRIL': 'perindopril',
+  'MALEATE DE PHENIRAMINE': 'pheniramine',
+  PYRIMETHAMINE: 'pyrimethamine',
+  'CHLORHYDRATE DE QUININE': 'quinine',
+  'GLUCONATE DE QUININE': 'quinine',
+  RAMIPRIL: 'ramipril',
+  RIFAMPICINE: 'rifampicin',
+  SULFAMETHOXAZOLE: 'sulfamethoxazole',
+  'FUMARATE DE TENOFOVIR DISOPROXIL': 'tenofovir',
+  'MALEATE DE TENOFOVIR DISOPROXIL': 'tenofovir',
+  'PHOSPHATE DE TENOFOVIR DISOPROXIL': 'tenofovir',
+  'SUCCINATE DE TENOFOVIR DISOPROXIL': 'tenofovir',
+  'TENOFOVIR DISOPROXIL': 'tenofovir',
+  'TENOFOVIR DISOPROXIL (FUMARATE DE)': 'tenofovir',
+  'CHLORHYDRATE DE TETRACYCLINE': 'tetracycline',
+  'CHLORHYDRATE DE TRAMADOL': 'tramadol',
+  'TRAMADOL (CHLORHYDRATE DE)': 'tramadol',
+  TRIMETHOPRIME: 'trimethoprim',
+  VALSARTAN: 'valsartan',
+  'WARFARINE SODIQUE': 'warfarin',
+  ZIDOVUDINE: 'zidovudine',
+};
+
+/** BDPM routes kept by the import, and how products name them. */
+const ROUTES: Readonly<Record<string, string>> = {
+  ORALE: 'oral',
+  CUTANEE: 'cutaneous',
+  RECTALE: 'rectal',
+};
+
+/**
+ * Substances kept by mouth only: the rules about them rest on oral use
+ * (isotretinoin capsules; metronidazole, whose skin use is of little concern
+ * during breastfeeding).
+ */
+const ORAL_ONLY: ReadonlySet<string> = new Set(['isotretinoin', 'metronidazole']);
+
+/** A dosage reference that stands for one unit taken. */
+const ONE_UNIT = /^(un|une) (comprimé|gélule|capsule|sachet|suppositoire|lyophilisat|pastille)/i;
+const DOSAGE = /^(\d[\d ]*(?:,\d+)?) ?(mg|g|microgrammes?|µg)$/i;
+const UNIT_MG: Readonly<Record<string, number>> = {
+  mg: 1,
+  g: 1000,
+  microgramme: 0.001,
+  microgrammes: 0.001,
+  µg: 0.001,
+};
+
+/**
+ * The strength in mg of one unit (tablet, capsule, sachet, suppository), or
+ * undefined when the dosage is a percentage or refers to a volume or a weight
+ * of cream: the engine then treats the strength as unknown.
+ */
+export function strengthMgOf(dosage: string, reference: string): number | undefined {
+  if (!ONE_UNIT.test(reference.trim())) return undefined;
+  const match = DOSAGE.exec(dosage.trim());
+  const amount = match?.[1];
+  const unit = match?.[2]?.toLowerCase();
+  if (amount === undefined || unit === undefined) return undefined;
+  const value = Number(amount.replace(/ /g, '').replace(',', '.'));
+  const factor = UNIT_MG[unit] ?? 0;
+  // Rounded to remove binary noise: 200 microgrammes is 0.2 mg, not 0.20000000000000001.
+  return Math.round(value * factor * 1e6) / 1e6;
+}
+
+/** The part of a denomination before its pharmaceutical form (", comprimé"). */
+function nameOf(denomination: string): string {
+  const comma = denomination.indexOf(', ');
+  return (comma === -1 ? denomination : denomination.slice(0, comma)).trim();
+}
+
+/** The brand: the words of the denomination before the first one that starts with a digit. */
+export function brandOf(denomination: string): string {
+  const words = nameOf(denomination).split(' ');
+  const firstDigit = words.findIndex((word, index) => index > 0 && /^\d/.test(word));
+  return (firstDigit === -1 ? words : words.slice(0, firstDigit)).join(' ');
+}
+
+const MAX_SLUG = 40;
+
+/** A kebab-case product id: the denomination before its form, then the CIS code. */
+export function productIdOf(denomination: string, cis: string): string {
+  let slug = nameOf(denomination)
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  if (slug.length > MAX_SLUG) {
+    const cut = slug.slice(0, MAX_SLUG + 1);
+    slug = cut.slice(0, Math.max(cut.lastIndexOf('-'), 1)).replace(/-+$/, '');
+  }
+  return slug === '' ? `bdpm-${cis}` : `${slug}-${cis}`;
+}
+
+export interface SelectOptions {
+  /** Registry substance ids: a product is kept only if all its substances are listed. */
+  substances: ReadonlySet<string>;
+  /** At most this many products in total (300 by default). */
+  maxEntries?: number;
+  /** At most this many products per first substance (15 by default). */
+  maxPerSubstance?: number;
+  /**
+   * At most this many products per brand (3 by default), so that one brand
+   * with many forms does not fill the share of its substance.
+   */
+  maxPerBrand?: number;
+  /** Brands always kept, whatever the caps (PRIORITY_BRANDS by default). */
+  priorityBrands?: readonly string[];
+}
+
+/**
+ * Brands most used in Senegal (decision of the project, 2026-11-04): every
+ * marketed product of these brands that passes the filters is kept, whatever
+ * the caps. A brand matches the first whole words of the denomination,
+ * accents and case aside ("DOXY" matches "DOXY 100 mg", not "DOXYPALU").
+ */
+export const PRIORITY_BRANDS: readonly string[] = [
+  'DOLIPRANE',
+  'EFFERALGAN',
+  'DAFALGAN',
+  'CODOLIPRANE',
+  'ADVIL',
+  'NUROFEN',
+  'VOLTARENE',
+  'ASPEGIC',
+  'KARDEGIC',
+  'FLAGYL',
+  'BACTRIM',
+  'NEO-CODION',
+  'IXPRIM',
+  'CONTRAMAL',
+  'DEPAKINE',
+  'COUMADINE',
+  'DOXY',
+  'VIBRAMYCINE',
+  'TARDYFERON B9',
+  'DERMOVAL',
+  'FERVEX',
+  'CLAMOXYL',
+  'RIFADINE',
+  'TEGRETOL',
+];
+
+/** Whether a denomination starts with one of the brands, as whole words. */
+function isPriority(denomination: string, brands: readonly string[]): boolean {
+  const name = normalise(denomination);
+  return brands.some((brand) => {
+    const prefix = normalise(brand);
+    return name.startsWith(prefix) && /^($|[ ,])/.test(name.slice(prefix.length));
+  });
+}
+
+type Component = AuthoredProduct['components'][number];
+
+/**
+ * The components of one medicine: each active substance (SA) mapped to its
+ * registry id, with the strength of its therapeutic fraction (FT) when the
+ * BDPM gives one, otherwise its own. Undefined when a substance does not map.
+ */
+function componentsOf(
+  lines: readonly BdpmComponent[],
+  substances: ReadonlySet<string>,
+): Component[] | undefined {
+  const groups = new Map<string, BdpmComponent[]>();
+  for (const line of lines) {
+    const key = `${line.element}\n${line.link}`;
+    groups.set(key, [...(groups.get(key) ?? []), line]);
+  }
+  const byId = new Map<string, number | undefined>();
+  const order: string[] = [];
+  for (const group of groups.values()) {
+    for (const active of group.filter((line) => line.nature === 'SA')) {
+      const id = SUBSTANCE_LABELS[normalise(active.label)];
+      if (id === undefined || !substances.has(id)) return undefined;
+      const fraction = group.find((line) => line.nature === 'FT');
+      const strength = strengthMgOf((fraction ?? active).dosage, (fraction ?? active).reference);
+      if (!byId.has(id)) {
+        order.push(id);
+        byId.set(id, strength);
+      } else if (byId.get(id) !== strength) {
+        // The same substance with two strengths (two elements): unknown.
+        byId.set(id, undefined);
+      }
+    }
+  }
+  if (order.length === 0) return undefined;
+  return order.map((substance) => {
+    const strength = byId.get(substance);
+    return strength === undefined ? { substance } : { substance, 'strength-mg': strength };
+  });
+}
+
+/** The product routes, or undefined when one route is not oral, cutaneous or rectal. */
+function routeOf(routes: readonly string[]): string | undefined {
+  const mapped = routes.map((route) => ROUTES[normalise(route)]);
+  if (mapped.length === 0 || mapped.some((route) => route === undefined)) return undefined;
+  return [...new Set(mapped)].join(', ');
+}
+
+function compare(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
+/**
+ * The products to import, in their final order: marketed, by mouth, on the
+ * skin or rectally, every active substance in the registry. Sorted by first
+ * substance id (alphabetical), then denomination, then CIS code; one product
+ * per denomination. Every product of a priority brand is kept; the others
+ * fill the rest, at most `maxPerBrand` per brand, `maxPerSubstance` per first
+ * substance (priority products included) and `maxEntries` in total, the
+ * total cap taking them rank by rank across substances.
+ */
+export function selectProducts(
+  specialities: readonly BdpmSpeciality[],
+  compositions: readonly BdpmComponent[],
+  options: SelectOptions,
+): AuthoredProduct[] {
+  const maxEntries = options.maxEntries ?? 300;
+  const maxPerSubstance = options.maxPerSubstance ?? 15;
+  const maxPerBrand = options.maxPerBrand ?? 3;
+  const priorityBrands = options.priorityBrands ?? PRIORITY_BRANDS;
+  const linesOf = new Map<string, BdpmComponent[]>();
+  for (const line of compositions) {
+    linesOf.set(line.cis, [...(linesOf.get(line.cis) ?? []), line]);
+  }
+  const candidates: { key: string; sort: string; product: AuthoredProduct }[] = [];
+  for (const speciality of specialities) {
+    if (!speciality.marketed) continue;
+    const route = routeOf(speciality.routes);
+    if (route === undefined) continue;
+    const lines = [...(linesOf.get(speciality.cis) ?? [])].sort(
+      (a, b) =>
+        compare(a.element, b.element) ||
+        Number(a.link) - Number(b.link) ||
+        compare(a.nature, b.nature) ||
+        compare(a.label, b.label),
+    );
+    const components = componentsOf(lines, options.substances);
+    if (components === undefined) continue;
+    if (route !== 'oral' && components.some((c) => ORAL_ONLY.has(c.substance))) continue;
+    const key = components.map((c) => c.substance).sort(compare)[0] ?? '';
+    candidates.push({
+      key,
+      sort: `${normalise(speciality.denomination)}\n${speciality.cis}`,
+      product: {
+        id: productIdOf(speciality.denomination, speciality.cis),
+        names: { fr: speciality.denomination, en: speciality.denomination },
+        brands: [brandOf(speciality.denomination)],
+        'local-names': [],
+        components,
+        form: speciality.form,
+        route,
+        source: { bdpm: speciality.cis },
+        demo: false,
+      },
+    });
+  }
+  candidates.sort((a, b) => compare(a.key, b.key) || compare(a.sort, b.sort));
+  // One product per denomination (the lowest CIS code); outside the priority
+  // brands, at most maxPerBrand per brand.
+  const denominations = new Set<string>();
+  const perBrand = new Map<string, number>();
+  const distinct = candidates.flatMap((candidate, position) => {
+    const { product } = candidate;
+    const denomination = normalise(product.names.fr);
+    if (denominations.has(denomination)) return [];
+    const priority = isPriority(product.names.fr, priorityBrands);
+    const brand = normalise(product.brands[0] ?? '');
+    const count = perBrand.get(brand) ?? 0;
+    if (!priority && count >= maxPerBrand) return [];
+    denominations.add(denomination);
+    perBrand.set(brand, count + 1);
+    return [{ ...candidate, position, priority }];
+  });
+  // Rank within the first substance, priority products first: they are always
+  // kept and fill the share of their substance before the other products,
+  // which are left out past maxPerSubstance.
+  const perKey = new Map<string, number>();
+  const ranked = [...distinct]
+    .sort(
+      (a, b) =>
+        compare(a.key, b.key) || Number(b.priority) - Number(a.priority) || a.position - b.position,
+    )
+    .flatMap((candidate) => {
+      const rank = perKey.get(candidate.key) ?? 0;
+      if (!candidate.priority && rank >= maxPerSubstance) return [];
+      perKey.set(candidate.key, rank + 1);
+      return [{ ...candidate, rank }];
+    });
+  // The priority products come first; the total cap is then applied rank by
+  // rank (the first product of every substance, then the second...), so that
+  // substances late in the alphabet are not left out. The result keeps the
+  // sorted order.
+  return ranked
+    .sort(
+      (a, b) =>
+        Number(b.priority) - Number(a.priority) || a.rank - b.rank || a.position - b.position,
+    )
+    .slice(0, maxEntries)
+    .sort((a, b) => a.position - b.position)
+    .map((entry) => entry.product);
+}
+
+function count(text: string, character: string): number {
+  return text.split(character).length - 1;
+}
+
+/**
+ * A quoted YAML scalar, always read as a string: single quotes, or double
+ * quotes when the text holds more apostrophes than double quotes (the choice
+ * Prettier makes, so that the generated file passes the format check).
+ */
+function quoted(text: string): string {
+  if (count(text, "'") > count(text, '"')) {
+    return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+  return `'${text.replace(/'/g, "''")}'`;
+}
+
+const HEADER = [
+  LICENCE_LINE,
+  '# Generated by "pnpm knowledge:import-bdpm" from the BDPM files CIS_bdpm.txt and',
+  '# CIS_COMPO_bdpm.txt (download date: see the bdpm entry of knowledge/sources.yaml).',
+  '# Do not edit by hand: run the import again.',
+];
+
+/** The YAML text of registry/products/bdpm.yaml: a list of products, block style. */
+export function renderProducts(products: readonly AuthoredProduct[]): string {
+  const lines = [...HEADER];
+  for (const product of products) {
+    lines.push(`- id: ${product.id}`);
+    lines.push('  names:');
+    lines.push(`    fr: ${quoted(product.names.fr)}`);
+    lines.push(`    en: ${quoted(product.names.en)}`);
+    lines.push(`  brands: [${product.brands.map(quoted).join(', ')}]`);
+    lines.push('  local-names: []');
+    lines.push('  components:');
+    for (const component of product.components) {
+      lines.push(`    - substance: ${component.substance}`);
+      const strength = component['strength-mg'];
+      if (strength !== undefined) lines.push(`      strength-mg: ${String(strength)}`);
+    }
+    lines.push(`  form: ${quoted(product.form)}`);
+    lines.push(`  route: ${quoted(product.route)}`);
+    const source = product.source;
+    lines.push('  source:');
+    lines.push('bdpm' in source ? `    bdpm: ${quoted(source.bdpm)}` : '    demo-manual: true');
+    lines.push(`  demo: ${String(product.demo)}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+/** The result of an import: the products and how many contain each substance. */
+export interface BdpmImport {
+  products: AuthoredProduct[];
+  perSubstance: Record<string, number>;
+}
+
+async function readBdpm(dir: string, name: string): Promise<string> {
+  const file = path.join(dir, name);
+  try {
+    return decodeBdpm(await readFile(file));
+  } catch (error) {
+    throw new Error(`Cannot read the BDPM file ${file}: download ${name} from the BDPM site`, {
+      cause: error,
+    });
+  }
+}
+
+/** Reads CIS_bdpm.txt and CIS_COMPO_bdpm.txt in `dir` and selects the products to import. */
+export async function importBdpm(
+  dir: string,
+  substances: ReadonlySet<string>,
+  options: Omit<SelectOptions, 'substances'> = {},
+): Promise<BdpmImport> {
+  const specialities = parseSpecialities(await readBdpm(dir, BDPM_FILES.specialities));
+  const compositions = parseCompositions(await readBdpm(dir, BDPM_FILES.compositions));
+  const products = selectProducts(specialities, compositions, { ...options, substances });
+  const counts = new Map<string, number>();
+  for (const product of products) {
+    for (const substance of new Set(product.components.map((c) => c.substance))) {
+      counts.set(substance, (counts.get(substance) ?? 0) + 1);
+    }
+  }
+  const perSubstance = Object.fromEntries([...counts].sort(([a], [b]) => compare(a, b)));
+  return { products, perSubstance };
+}

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: misoprostol-pregnancy
+fr:
+  fact: "Ce produit contient une substance qui fait contracter l'utérus."
+  risk: 'Pendant la grossesse, il peut provoquer des contractions, des saignements et la perte de la grossesse.'
+  risk-detail: "Il peut aussi provoquer une naissance trop tôt, des malformations ou une rupture de l'utérus. Le risque de rupture augmente avec l'avancée de la grossesse et après une césarienne ou une autre opération de l'utérus."
+  orientation: "Montrez ce produit à la sage-femme aujourd'hui."
+en:
+  fact: 'This product contains a substance that makes the womb contract.'
+  risk: 'During pregnancy it can cause contractions, bleeding and the loss of the pregnancy.'
+  risk-detail: 'It can also cause a birth that comes too early, birth defects or a rupture of the womb. The risk of rupture rises as the pregnancy advances and after a caesarean section or other surgery on the womb.'
+  orientation: 'Show this product to the midwife today.'

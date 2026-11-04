@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: raas-blockers-pregnancy
+fr:
+  fact: "Ce produit contient un médicament contre la tension qui agit sur le système rénine-angiotensine (un IEC comme l'énalapril, ou un sartan comme le losartan)."
+  risk: 'Pendant la grossesse, surtout à partir du deuxième trimestre, il peut abîmer les reins du bébé et mettre sa vie en danger.'
+  risk-detail: "Pris au deuxième et au troisième trimestre, ces médicaments font baisser le travail des reins du bébé : cela peut entraîner peu de liquide autour de lui, des poumons et des os du crâne mal développés, et la mort du bébé ou du nouveau-né. La tension élevée pendant la grossesse a aussi besoin d'un suivi attentif."
+  orientation: 'Parlez-en rapidement à la sage-femme ou au médecin, sans rien changer à votre traitement en attendant.'
+en:
+  fact: 'This product contains a blood pressure medicine that acts on the renin-angiotensin system (an ACE inhibitor such as enalapril, or an ARB such as losartan).'
+  risk: "During pregnancy, mostly from the second trimester, it can harm the baby's kidneys and put the baby's life in danger."
+  risk-detail: "Taken in the second and third trimesters, these medicines lower the work of the baby's kidneys: this can lead to little fluid around the baby, poorly developed lungs and skull bones, and death of the baby or the newborn. High blood pressure in pregnancy also needs careful follow-up."
+  orientation: 'Talk to the midwife or the doctor soon, and change nothing in your treatment until then.'

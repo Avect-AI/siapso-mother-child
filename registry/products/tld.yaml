@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: tld
+names:
+  {
+    fr: 'TLD (ténofovir, lamivudine, dolutégravir)',
+    en: 'TLD (tenofovir, lamivudine, dolutegravir)',
+  }
+brands: []
+local-names: []
+components:
+  - { substance: tenofovir }
+  - { substance: lamivudine }
+  - { substance: dolutegravir }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

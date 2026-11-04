@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Preventive calendar (accompanied mode only): ask whether the preventive
+# malaria treatment of pregnancy (IPTp with SP) was given. Never shown to a
+# woman living with HIV on cotrimoxazole, who does not receive SP.
+id: iptp-reminder
+kind: reminder
+when:
+  pregnancy-windows: [12-19, 20-29, 30-plus]
+  unless-conditions: [hiv-cotrimoxazole]
+level: next-contact
+evidence: A
+message: iptp-reminder
+sources:
+  - source: literature
+    locator: 'Pons-Duran C, Wassenaar MJ, Yovo KE, et al. Intermittent preventive treatment regimens for malaria in HIV-positive pregnant women. Cochrane Database Syst Rev. 2024. doi:10.1002/14651858.CD006689.pub3. PMID 39324693'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=39324693&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'The World Health Organization (WHO) recommends intermittent preventive treatment in pregnancy (IPTp) with sulphadoxine-pyrimethamine (SP) for pregnant women living in areas of stable malaria transmission.'
+  - source: literature
+    locator: 'Desai M, ter Kuile FO, Nosten F, et al. Epidemiology and burden of malaria in pregnancy. Lancet Infect Dis. 2007. doi:10.1016/S1473-3099(07)70021-X. PMID 17251080'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17251080&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'successful prevention of these infections reduces the risk of severe maternal anaemia by 38%, low birthweight by 43%, and perinatal mortality by 27% among paucigravidae'
+  - source: who
+    locator: 'WHO guidelines for malaria, 13 August 2025: intermittent preventive treatment of malaria in pregnancy (fact only)'
+    url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+    accessed: 2026-11-03
+review:
+  status: draft
+  reviewers: []

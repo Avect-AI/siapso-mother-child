@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Clay or earth eaten during pregnancy (geophagy). It is not a plant, but it
+# is checked like a traditional remedy.
+id: clay
+latin-name: Kaolinum
+names: { fr: 'Argile (kaolin)', en: 'Clay (kaolin)' }
+local-names:
+  - { text: argile, lang: fr, checked: false }
+  - { text: kaolin, lang: fr, checked: false }
+parts: []
+evidence: C
+message: plant-poorly-known
+sources:
+  - source: literature
+    locator: 'Miao D, Young SL, Golden CD. A meta-analysis of pica and micronutrient status. Am J Hum Biol. 2015. doi:10.1002/ajhb.22598. PMID 25156147'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=25156147&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'Pica was associated with 2.35 times greater odds of anemia (95% CI: 1.94-2.85, P < 0.001)'
+  - source: literature
+    locator: 'Orisakwe OE, Udowelle NA, Azuonwu O, et al. Cadmium and lead in geophagic clay consumed in Southern Nigeria: health risk from such traditional nutraceutical. Environ Geochem Health. 2020. doi:10.1007/s10653-020-00632-0. PMID 32607698'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=32607698&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'The Pb levels in all samples exceeded the WHO/FAO maximum permissible limit'

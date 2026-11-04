@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# No study in pregnant women was found (PubMed search of 2026-11-03).
+id: kinkeliba
+latin-name: Combretum micranthum
+names: { fr: 'Kinkéliba', en: 'Kinkeliba' }
+local-names:
+  - { text: kinkéliba, lang: fr, checked: false }
+parts: [leaf]
+evidence: '0'
+message: kinkeliba
+sources:
+  - source: literature
+    locator: 'Tine Y, Sene M, Gaye C, et al. Combretum micranthum G. Don (Combretaceae): A Review on Traditional Uses, Phytochemistry, Pharmacology and Toxicology. Chem Biodivers. 2024. doi:10.1002/cbdv.202301606. PMID 38353648'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=38353648&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'used in Africa to treat a variety of conditions such as diabetes, fever, coughs, bronchitis, diarrhea, pain, malaria and liver disorders'

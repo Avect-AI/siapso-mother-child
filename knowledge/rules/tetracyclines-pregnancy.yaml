@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Tetracyclines from the second trimester stain the child's teeth; the
+# French label contraindicates them from the second trimester (and prefers
+# to avoid them in the first). Window 12-19 starts at 12 weeks.
+id: tetracyclines-pregnancy
+kind: pregnancy
+when:
+  subject: { class: tetracycline }
+  pregnancy-windows: [12-19, 20-29, 30-plus]
+level: before-next-dose
+evidence: A
+message: tetracyclines-pregnancy
+sources:
+  - source: bdpm
+    locator: 'DOXY 100 mg, comprimé pelliculé, RCP section 4.6 (ANSM, updated 25/03/2024), CIS 61722191'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61722191&typedoc=R'
+    accessed: 2026-11-03
+    quote: "A partir du deuxième trimestre de la grossesse, l'administration de cyclines est contre-indiquée."
+  - source: bdpm
+    locator: 'DOXY 100 mg, comprimé pelliculé, RCP section 4.6 (ANSM, updated 25/03/2024), CIS 61722191'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61722191&typedoc=R'
+    accessed: 2026-11-03
+    quote: "L'administration de cyclines au cours des deuxième et troisième trimestres expose le fœtus au risque de coloration des dents de lait."
+  - source: openfda
+    locator: 'Doxycycline hyclate drug label, NuCare Pharmaceuticals, Inc., set_id 0106a3d3-db4d-f6ee-e063-6294a90a25e9, effective 20260826'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22doxycycline+hyclate%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'The use of drugs of the tetracycline class during tooth development (last half of pregnancy, infancy and childhood to the age of 8 years) may cause permanent discoloration'
+review:
+  status: draft
+  reviewers: []

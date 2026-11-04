@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# The US and French labels advise against tramadol while breastfeeding;
+# LactMed finds low milk levels with usual doses but recalls that newborns
+# are very sensitive to opioids.
+id: tramadol-breastfeeding
+kind: breastfeeding
+when:
+  subject: { substance: tramadol }
+level: next-contact
+evidence: C
+message: tramadol-breastfeeding
+sources:
+  - source: openfda
+    locator: 'Tramadol hydrochloride extended-release tablets drug label, Sun Pharmaceutical Industries, set_id 004de5a4-80f8-4040-a6ea-be5e99352a36, effective 20251120'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22tramadol+hydrochloride%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Women who are ultra-rapid metabolizers of tramadol may have higher than expected serum levels of M1'
+  - source: bdpm
+    locator: 'CONTRAMAL 50 mg, gélule, RCP section 4.6 (ANSM, updated 30/10/2025), CIS 68655884'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'il convient soit de ne pas utiliser le tramadol pendant la lactation, soit d’interrompre l’allaitement lors d’un traitement par tramadol.'
+  - source: bdpm
+    locator: 'CONTRAMAL 50 mg, gélule, RCP section 4.6 (ANSM, updated 30/10/2025), CIS 68655884'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'L’interruption de l’allaitement n’est généralement pas nécessaire à la suite d’une prise unique de tramadol.'
+  - source: lactmed
+    locator: 'Tramadol (LactMed record LM391, revised 2026-04-15, Bookshelf NBK501260), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'Newborn infants seem to be particularly sensitive to the effects of even small dosages of narcotic analgesics.'
+  - source: lactmed
+    locator: 'Tramadol (LactMed record LM391, revised 2026-04-15, Bookshelf NBK501260), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'If tramadol is used, monitor infants for increased sleepiness (more than usual), difficulty breastfeeding, breathing difficulties or limpness'
+review:
+  status: draft
+  reviewers: []

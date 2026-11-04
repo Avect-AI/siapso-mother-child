@@ -7,3 +7,5 @@
 *.jpg binary
 *.onnx binary
 *.exe binary
+# BDPM import test fixture: Windows-1252 and CRLF, as the official files
+tools/knowledge/test/fixtures/bdpm/*.txt -text

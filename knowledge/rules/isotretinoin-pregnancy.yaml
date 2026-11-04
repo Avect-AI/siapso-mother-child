@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Oral isotretinoin: extremely high risk of severe birth defects if a
+# pregnancy occurs during treatment. Only oral products are imported with
+# this substance. US label only (the French RCP was not read).
+id: isotretinoin-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: isotretinoin }
+level: before-next-dose
+evidence: A
+message: isotretinoin-pregnancy
+sources:
+  - source: openfda
+    locator: 'Isotretinoin capsules drug label, Mayne Pharma, set_id 0114567b-3bac-490d-b9eb-03a6c5d90935, effective 20240626, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22isotretinoin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Isotretinoin capsules must not be used by patients who are or may become pregnant.'
+  - source: openfda
+    locator: 'Isotretinoin capsules drug label, Mayne Pharma, set_id 0114567b-3bac-490d-b9eb-03a6c5d90935, effective 20240626, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22isotretinoin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'There is an extremely high risk that life-threatening birth defects will result if pregnancy occurs while taking isotretinoin capsules in any amount, even for short periods of time.'
+  - source: openfda
+    locator: 'Isotretinoin capsules drug label, Mayne Pharma, set_id 0114567b-3bac-490d-b9eb-03a6c5d90935, effective 20240626, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22isotretinoin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'There is an increased risk of spontaneous abortion, and premature births have been reported.'
+review:
+  status: draft
+  reviewers: []

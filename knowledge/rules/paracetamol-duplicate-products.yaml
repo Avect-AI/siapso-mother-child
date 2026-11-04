@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Reference case 2. Two or more products that contain paracetamol, alone or
+# in a combination, matched on their ingredients and not on brand names.
+id: paracetamol-duplicate-products
+kind: duplicate
+when:
+  subject: { substance: paracetamol }
+level: before-next-dose
+evidence: A
+message: paracetamol-duplicate-products
+sources:
+  - source: openfda
+    locator: 'TYLENOL Extra Strength (acetaminophen) drug label, Kenvue Brands LLC, set_id 015a6179-bacb-452d-b594-4de628ddc11d, effective 20241107'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Tylenol+Extra+Strength%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Do not use with any other drug containing acetaminophen (prescription or nonprescription).'
+  - source: openfda
+    locator: 'TYLENOL Extra Strength (acetaminophen) drug label, Kenvue Brands LLC, set_id 015a6179-bacb-452d-b594-4de628ddc11d, effective 20241107'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Tylenol+Extra+Strength%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Liver warning This product contains acetaminophen. Severe liver damage may occur'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.4 (ANSM, updated 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'Les patients doivent être informés qu’ils ne doivent pas prendre d’autres médicaments contenant du paracétamol.'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.9 (ANSM, updated 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-03
+    quote: "Les symptômes cliniques de l'atteinte hépatique sont généralement observés après 1 à 2 jours, et atteignent un maximum après 3 à 4 jours."
+  - source: bdpm
+    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, RCP section 4.4 (ANSM, updated 17/08/2026), CIS 60904643'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=R'
+    accessed: 2026-11-03
+    quote: "Vérifier l'absence de codéine et de paracétamol dans la composition d'autres médicaments, y compris si ce sont des médicaments obtenus sans prescription."
+review:
+  status: draft
+  reviewers: []

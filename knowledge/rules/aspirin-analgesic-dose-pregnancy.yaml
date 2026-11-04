@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Reference case 13. Aspirin above 100 mg per unit from 20 weeks (pain and
+# fever products, but also Kardegic 160 mg and 300 mg). The French
+# contraindication from 24 weeks applies above 100 mg per day; low-dose
+# aspirin prescribed for some pregnancy conditions (100 mg or less) is not
+# flagged. A product of unknown strength is flagged. The 100 mg threshold
+# lives only in strength-above-mg and in the quotes: the message gives no
+# dose figure. The orientation does not push skipping a prescribed treatment.
+id: aspirin-analgesic-dose-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: aspirin }
+  strength-above-mg: 100
+  pregnancy-windows: [20-29, 30-plus]
+level: before-next-dose
+evidence: A
+message: aspirin-analgesic-dose-pregnancy
+sources:
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.4 (ANSM, updated 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'expose à un risque de mort fœtale même après une seule prise en raison de sa toxicité cardio-pulmonaire'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.4 (ANSM, updated 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'expose également le nouveau-né à un risque d’atteinte rénale (insuffisance rénale), de fermeture prématurée du canal artériel et d’hypertension pulmonaire'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.3 (ANSM, updated 22/07/2026), CIS 61162942: the threshold of the rule'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'grossesse, à partir du début du 6ème mois (24 semaines d’aménorrhée) pour des doses d’aspirine supérieures à 100 mg par jour'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, notice section 2 (ANSM, RCP updated 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-03
+    quote: 'Dès le début du 5 ème mois de grossesse (20 semaines d’aménorrhée), un rétrécissement des vaisseaux sanguins au niveau du cœur de votre bébé'
+  - source: openfda
+    locator: 'Bayer Genuine Aspirin drug label, R J General Corporation, set_id 23daa359-d40f-4f64-81be-6d154f41df9f, effective 20251117'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name.exact%3A%22ASPIRIN%22+AND+openfda.brand_name%3A%22Genuine%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'It is especially important not to use aspirin during the last 3 months of pregnancy unless definitely directed to do so by a doctor'
+review:
+  status: draft
+  reviewers: []

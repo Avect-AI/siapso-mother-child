@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Warfarin is contraindicated in pregnancy, except with a mechanical heart
+# valve where specialists weigh the risks. Ending the treatment alone can be
+# dangerous: the message says so and refers. US label only.
+id: warfarin-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: warfarin }
+level: before-next-dose
+evidence: A
+message: warfarin-pregnancy
+sources:
+  - source: openfda
+    locator: 'Warfarin sodium tablets drug label, Teva Pharmaceuticals USA, Inc., set_id 0cbce382-9c88-4f58-ae0f-532a841e8f95, effective 20250617, section 4'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22warfarin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Warfarin sodium is contraindicated in women who are pregnant except in pregnant women with mechanical heart valves, who are at high risk of thromboembolism'
+  - source: openfda
+    locator: 'Warfarin sodium tablets drug label, Teva Pharmaceuticals USA, Inc., set_id 0cbce382-9c88-4f58-ae0f-532a841e8f95, effective 20250617, section 8.1'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22warfarin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'Exposure to warfarin during the first trimester of pregnancy caused a pattern of congenital malformations'
+  - source: openfda
+    locator: 'Warfarin sodium tablets drug label, Teva Pharmaceuticals USA, Inc., set_id 0cbce382-9c88-4f58-ae0f-532a841e8f95, effective 20250617, section 4'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22warfarin%22&limit=1'
+    accessed: 2026-11-03
+    quote: 'fatal fetal hemorrhage, and an increased risk of spontaneous abortion and fetal mortality'
+review:
+  status: draft
+  reviewers: []

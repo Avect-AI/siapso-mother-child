@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: tamarind
+latin-name: Tamarindus indica
+names: { fr: 'Tamarin', en: 'Tamarind' }
+local-names:
+  - { text: dakhar, lang: wo, checked: false }
+parts: [fruit]
+evidence: '0'
+message: evidence-0
+sources: []

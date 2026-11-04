@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: cola-nut
+latin-name: Cola nitida
+names: { fr: 'Noix de cola', en: 'Kola nut' }
+local-names:
+  - { text: guro, lang: wo, checked: false }
+parts: [seed]
+evidence: '0'
+message: evidence-0
+sources: []

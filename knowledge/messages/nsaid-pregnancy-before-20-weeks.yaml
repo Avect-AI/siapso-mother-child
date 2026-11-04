@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: nsaid-pregnancy-before-20-weeks
+fr:
+  fact: "Ce produit contient un anti-inflammatoire non stéroïdien (AINS), comme l'ibuprofène ou le diclofénac."
+  risk: 'Des études ont observé plus de fausses couches quand ce type de médicament est pris au début de la grossesse.'
+  risk-detail: "La notice française indique qu'avant le sixième mois, ce médicament ne doit être prescrit qu'en cas de nécessité absolue. À partir de 12 semaines d'aménorrhée, il peut aussi gêner le travail des reins du bébé."
+en:
+  fact: 'This product contains a non-steroidal anti-inflammatory drug (NSAID), such as ibuprofen or diclofenac.'
+  risk: 'Studies have seen more miscarriages when this type of medicine is taken early in pregnancy.'
+  risk-detail: "The French label says that before the sixth month this medicine should be prescribed only when absolutely necessary. From 12 weeks of amenorrhoea, it can also disturb the work of the baby's kidneys."

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: sp-with-cotrimoxazole
+fr:
+  fact: 'Ce produit contient de la sulfadoxine et de la pyriméthamine (SP), données pour prévenir le paludisme pendant la grossesse, et la femme prend du cotrimoxazole (Bactrim).'
+  risk: 'Avec le cotrimoxazole, ce médicament peut provoquer des effets indésirables, comme une anémie.'
+  risk-detail: "La SP et le cotrimoxazole agissent tous les deux contre l'acide folique. Les recommandations sur le paludisme pendant la grossesse ne prévoient pas la SP pour une femme qui prend du cotrimoxazole chaque jour : la sage-femme choisit la protection contre le paludisme."
+  orientation: 'Dites à la sage-femme que vous prenez du cotrimoxazole, par exemple le Bactrim, avant de recevoir la SP, sans rien changer à votre traitement.'
+en:
+  fact: 'This product contains sulfadoxine and pyrimethamine (SP), given to prevent malaria during pregnancy, and the woman takes co-trimoxazole (Bactrim).'
+  risk: 'With co-trimoxazole, this medicine can cause side effects, such as anaemia.'
+  risk-detail: 'SP and co-trimoxazole both act against folic acid. Guidance on malaria in pregnancy does not plan SP for a woman who takes co-trimoxazole every day: the midwife chooses the malaria protection.'
+  orientation: 'Tell the midwife that you take co-trimoxazole, for example Bactrim, before you receive SP, and change nothing in your treatment.'

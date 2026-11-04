@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: guiera
+latin-name: Guiera senegalensis
+names: { fr: 'Guiera (nguer)', en: 'Guiera' }
+local-names:
+  - { text: nguer, lang: wo, checked: false }
+parts: [leaf]
+evidence: '0'
+message: evidence-0
+sources: []

@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: iptp-reminder
+fr:
+  fact: 'Demandez à la sage-femme si vous avez reçu le traitement préventif du paludisme de la grossesse (SP).'
+  risk: 'Le paludisme pendant la grossesse peut provoquer une anémie chez la mère et un bébé de petit poids.'
+en:
+  fact: 'Ask the midwife whether you have received the preventive malaria treatment of pregnancy (SP).'
+  risk: 'Malaria during pregnancy can cause anaemia in the mother and a low birth weight baby.'

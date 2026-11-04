@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: moringa-with-amodiaquine
+fr:
+  fact: "Le moringa (nebeday) est pris avec un traitement du paludisme qui contient de l'amodiaquine, comme l'ASAQ."
+  risk: 'Une étude chez des volontaires a montré que le moringa change la quantité de ce médicament dans le sang ; on ne sait pas si cela change son effet.'
+  risk-detail: "L'étude a été faite chez 20 adultes en bonne santé, avec une seule prise d'amodiaquine. Avec le moringa, la forme active du médicament dans le sang a augmenté, jusqu'à près de trois fois après une semaine de moringa. Il n'y a pas de données sur le traitement complet, ni pendant la grossesse ou l'allaitement. Le moringa est aussi un aliment courant."
+en:
+  fact: 'Moringa (nebeday) is taken with a malaria treatment that contains amodiaquine, such as ASAQ.'
+  risk: 'A study in volunteers showed that moringa changes the amount of this medicine in the blood; it is not known whether this changes its effect.'
+  risk-detail: 'The study included 20 healthy adults, with a single dose of amodiaquine. With moringa, the active form of the medicine in the blood went up, to nearly three times after a week of moringa. There are no data on the full treatment, nor during pregnancy or breastfeeding. Moringa is also a common food.'

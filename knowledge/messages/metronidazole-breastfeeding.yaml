@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: metronidazole-breastfeeding
+fr:
+  fact: 'Ce produit contient du métronidazole, un médicament contre certaines infections.'
+  risk: 'Le métronidazole passe dans le lait, et des diarrhées et des mycoses ont été rapportées chez des bébés allaités.'
+  risk-detail: "Par la bouche, il atteint dans le lait un niveau proche de celui du sang de la mère. Les avis des spécialistes diffèrent sur ce médicament pendant l'allaitement, surtout pour les traitements longs."
+en:
+  fact: 'This product contains metronidazole, a medicine for some infections.'
+  risk: 'Metronidazole passes into breast milk, and diarrhoea and thrush have been reported in breastfed babies.'
+  risk-detail: "Taken by mouth, it reaches a level in the milk close to the level in the mother's blood. Experts disagree about this medicine during breastfeeding, mostly for long treatments."

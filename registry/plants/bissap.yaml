@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: bissap
+latin-name: Hibiscus sabdariffa
+names: { fr: 'Bissap (oseille de Guinée)', en: 'Roselle (bissap)' }
+local-names:
+  - { text: bissap, lang: wo, checked: false }
+parts: [calyx]
+evidence: '0'
+message: evidence-0
+sources: []

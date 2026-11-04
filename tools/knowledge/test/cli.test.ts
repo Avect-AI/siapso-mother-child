@@ -263,3 +263,67 @@ describe('siapso-pack build', () => {
     }
   });
 });
+
+describe('siapso-pack import-bdpm', () => {
+  /** Synthetic BDPM-format lines (test data, see fixtures/bdpm/README.md). */
+  const BDPM = path.join(path.dirname(FIXTURE_ROOT), 'bdpm');
+
+  it('writes registry/products/bdpm.yaml from the BDPM files, and the content stays valid', async () => {
+    const copy = await tempCopy();
+    try {
+      const args = ['import-bdpm', BDPM, '--root', copy.root, '--schemas', REPO_ROOT];
+      const result = await run(args);
+      expect(result.err).toEqual([]);
+      expect(result.code).toBe(0);
+      // The fixture registry lists paracetamol and ibuprofen only.
+      expect(result.out).toEqual([
+        'imported: 4 products into registry/products/bdpm.yaml',
+        '  paracetamol: 4',
+      ]);
+      const text = await readFile(path.join(copy.root, 'registry/products/bdpm.yaml'), 'utf8');
+      expect(text).toMatch(/^# SPDX-License-Identifier: CC-BY-4\.0\n/);
+      expect(text).toMatch(/bdpm: '99000001'/);
+      const check = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(check.err).toEqual([]);
+      expect(check.out.join('\n')).toMatch(/6 products/);
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('needs the folder of the BDPM files', async () => {
+    for (const args of [['import-bdpm'], ['import-bdpm', '--root', REPO_ROOT]]) {
+      const result = await run(args);
+      expect(result.code, args.join(' ')).toBe(2);
+      expect(result.err.join('\n')).toMatch(/import-bdpm needs the folder/);
+    }
+  });
+
+  it('exits 1 and names the file when a BDPM file is missing', async () => {
+    const copy = await tempCopy();
+    try {
+      const args = ['import-bdpm', copy.root, '--root', copy.root, '--schemas', REPO_ROOT];
+      const result = await run(args);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/CIS_bdpm\.txt/);
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('exits 1 when the registry lists no substance', async () => {
+    const copy = await tempCopy();
+    try {
+      await writeFile(
+        path.join(copy.root, 'registry/substances.yaml'),
+        '# SPDX-License-Identifier: CC-BY-4.0\n[]\n',
+      );
+      const args = ['import-bdpm', BDPM, '--root', copy.root, '--schemas', REPO_ROOT];
+      const result = await run(args);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/no substance/);
+    } finally {
+      await copy.remove();
+    }
+  });
+});

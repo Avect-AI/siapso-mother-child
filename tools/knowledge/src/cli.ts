@@ -3,9 +3,10 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Pack } from '@siapso/engine';
 import { buildPack, PackBuildError } from './build.js';
+import { importBdpm, renderProducts } from './import-bdpm.js';
 import { loadContent } from './load.js';
 import { generateNotice, NOTICE_FILE } from './notice.js';
-import type { Problem } from './types.js';
+import type { Problem, RawContent } from './types.js';
 import { formatProblem } from './validate.js';
 import { writePack } from './write.js';
 
@@ -20,9 +21,11 @@ const USAGE = [
   'usage: siapso-pack <command> [options]',
   '',
   'commands:',
-  '  check   validate knowledge/ and registry/ and that NOTICE is up to date',
-  '          (problems are printed as file: path: message)',
-  '  build   validate, then write the pack fragments, pack.json, manifest.json and NOTICE',
+  '  check              validate knowledge/ and registry/ and that NOTICE is up to date',
+  '                     (problems are printed as file: path: message)',
+  '  build              validate, then write the pack fragments, pack.json, manifest.json and NOTICE',
+  '  import-bdpm <dir>  read CIS_bdpm.txt and CIS_COMPO_bdpm.txt in <dir> and write',
+  '                     registry/products/bdpm.yaml',
   '',
   'options:',
   '  --root <dir>      repository root holding knowledge/ and registry/ (default: current directory)',
@@ -30,18 +33,33 @@ const USAGE = [
   '  --out <dir>       build output directory (default: <root>/app/public/pack)',
 ];
 
+/** The generated product file written by import-bdpm, relative to the root. */
+export const BDPM_PRODUCTS_FILE = 'registry/products/bdpm.yaml';
+
 interface Options {
-  command: 'check' | 'build';
+  command: 'check' | 'build' | 'import-bdpm';
   root: string;
   schemas: string;
   out: string;
+  /** import-bdpm: the folder holding the BDPM files. */
+  bdpm?: string;
 }
 
 /** Parses the arguments; a string is a usage error message. */
 function parseArguments(argv: string[], cwd: string): Options | string {
-  const [command, ...rest] = argv;
-  if (command !== 'check' && command !== 'build') {
+  const [command, ...given] = argv;
+  if (command !== 'check' && command !== 'build' && command !== 'import-bdpm') {
     return command === undefined ? 'missing command' : `unknown command "${command}"`;
+  }
+  let rest = given;
+  let bdpm: string | undefined;
+  if (command === 'import-bdpm') {
+    const [dir, ...after] = given;
+    if (dir === undefined || dir.startsWith('--')) {
+      return 'import-bdpm needs the folder holding the BDPM files';
+    }
+    bdpm = path.resolve(cwd, dir);
+    rest = after;
   }
   const values: Record<string, string> = {};
   for (let index = 0; index < rest.length; index += 2) {
@@ -54,12 +72,44 @@ function parseArguments(argv: string[], cwd: string): Options | string {
     values[flag] = path.resolve(cwd, value);
   }
   const root = values['--root'] ?? cwd;
-  return {
+  const options: Options = {
     command,
     root,
     schemas: values['--schemas'] ?? root,
     out: values['--out'] ?? path.join(root, 'app', 'public', 'pack'),
   };
+  if (bdpm !== undefined) options.bdpm = bdpm;
+  return options;
+}
+
+/** The ids of registry/substances.yaml, as read. */
+function substanceIds(raw: RawContent): Set<string> {
+  const ids = new Set<string>();
+  const data: unknown = raw.substances?.data;
+  if (Array.isArray(data)) {
+    for (const item of data as unknown[]) {
+      const id = (item as { id?: unknown } | null)?.id;
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  return ids;
+}
+
+/** import-bdpm: writes registry/products/bdpm.yaml and prints a summary. */
+async function importCommand(options: Options, bdpm: string, io: CliIo): Promise<number> {
+  const raw = await loadContent(options.root, options.schemas);
+  const substances = substanceIds(raw);
+  if (substances.size === 0) {
+    io.err('error: registry/substances.yaml lists no substance: nothing can be imported');
+    return 1;
+  }
+  const { products, perSubstance } = await importBdpm(bdpm, substances);
+  await writeFile(path.join(options.root, BDPM_PRODUCTS_FILE), renderProducts(products));
+  io.out(`imported: ${String(products.length)} products into ${BDPM_PRODUCTS_FILE}`);
+  for (const [substance, count] of Object.entries(perSubstance)) {
+    io.out(`  ${substance}: ${String(count)}`);
+  }
+  return 0;
 }
 
 /** The problem with the committed NOTICE, if it is missing or differs from the generated one. */
@@ -103,6 +153,9 @@ export async function main(
     return 2;
   }
   try {
+    if (options.command === 'import-bdpm' && options.bdpm !== undefined) {
+      return await importCommand(options, options.bdpm, io);
+    }
     const raw = await loadContent(options.root, options.schemas);
     // buildPack validates the content; its error carries the problems.
     let pack: Pack;

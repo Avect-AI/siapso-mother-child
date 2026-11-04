@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Amodiaquine (ASAQ) with efavirenz (liver toxicity), zidovudine or
+# cotrimoxazole (severe neutropenia). No data in pregnant women: the
+# pregnancy use is an extrapolation. The malaria treatment matters: nothing
+# changes without a professional.
+id: amodiaquine-with-antiretrovirals
+kind: interaction
+when:
+  subject: { substance: amodiaquine }
+  requires:
+    - with: { substance: efavirenz }
+    - with: { substance: zidovudine }
+    - with: { substance: sulfamethoxazole }
+    - condition: hiv-cotrimoxazole
+level: before-next-dose
+evidence: C
+message: amodiaquine-with-antiretrovirals
+sources:
+  - source: literature
+    locator: 'German P, Greenhouse B, Coates C, et al. Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz. Clin Infect Dis. 2007 (letter, no abstract). doi:10.1086/511882. PMID 17304470'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17304470&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz.'
+  - source: literature
+    locator: 'Gasasira AF, Kamya MR, Achan J, et al. High risk of neutropenia in HIV-infected children following treatment with artesunate plus amodiaquine for uncomplicated malaria in Uganda. Clin Infect Dis. 2008. doi:10.1086/529192. PMID 18444813'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=18444813&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'Artesunate plus amodiaquine was highly efficacious for malaria treatment in HIV-infected children but was associated with a high risk of neutropenia, especially in the context of concurrent antiretroviral use.'
+  - source: who
+    locator: 'WHO guidelines for malaria, 13 August 2025: artesunate-amodiaquine in people living with HIV (fact only)'
+    url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+    accessed: 2026-11-03
+review:
+  status: draft
+  reviewers: []

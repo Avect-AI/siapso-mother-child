@@ -1,2 +1,165 @@
 # SPDX-License-Identifier: CC-BY-4.0
-[]
+# One fixed list of danger signs for everyone. WHO documents support the
+# facts only: the labels are our own words. To be aligned with the national
+# list of Senegal by the clinical committee (see knowledge/README.md).
+- id: fever
+  group: pregnancy
+  label: { fr: 'Fièvre', en: 'Fever' }
+  message: danger-sign-fever
+  sources:
+    - source: who
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      accessed: 2026-11-04
+    - source: who
+      locator: 'WHO guidelines for malaria, 13 August 2025: diagnosis of suspected malaria and malaria in pregnancy (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+      accessed: 2026-11-03
+    - source: literature
+      locator: 'Desai M, ter Kuile FO, Nosten F, et al. Epidemiology and burden of malaria in pregnancy. Lancet Infect Dis. 2007. doi:10.1016/S1473-3099(07)70021-X. PMID 17251080'
+      url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17251080&retmode=xml'
+      accessed: 2026-11-03
+      quote: 'successful prevention of these infections reduces the risk of severe maternal anaemia by 38%, low birthweight by 43%, and perinatal mortality by 27% among paucigravidae'
+- id: vaginal-bleeding
+  group: pregnancy
+  label: { fr: 'Saignement par le vagin', en: 'Bleeding from the vagina' }
+  sources:
+    - &pcpnc-c15
+      source: who
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      accessed: 2026-11-04
+- id: convulsions
+  group: pregnancy
+  label: { fr: 'Convulsions (crises)', en: 'Convulsions (fits)' }
+  sources: [*pcpnc-c15]
+- id: severe-headache
+  group: pregnancy
+  label: { fr: 'Fort mal de tête avec vue trouble', en: 'Severe headache with blurred vision' }
+  sources: [*pcpnc-c15]
+- id: baby-not-moving
+  group: pregnancy
+  label:
+    { fr: 'Le bébé bouge moins ou ne bouge plus', en: 'The baby moves less or no longer moves' }
+  sources:
+    - &pcpnc-c7
+      source: who
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C7, no fetal movement and ruptured membranes (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      accessed: 2026-11-04
+- id: severe-abdominal-pain
+  group: pregnancy
+  label: { fr: 'Très forte douleur au ventre', en: 'Very strong pain in the belly' }
+  sources: [*pcpnc-c15]
+- id: waters-breaking
+  group: pregnancy
+  label:
+    { fr: 'Perte des eaux avant le début du travail', en: 'Waters breaking before labour starts' }
+  sources: [*pcpnc-c7, *pcpnc-c15]
+- id: breathing-difficulty
+  group: pregnancy
+  label: { fr: 'Respiration rapide ou difficile', en: 'Fast or difficult breathing' }
+  sources: [*pcpnc-c15]
+- id: swelling-face-hands
+  group: pregnancy
+  label: { fr: 'Visage ou mains gonflés', en: 'Swollen face or hands' }
+  sources: [*pcpnc-c15]
+- id: heavy-bleeding-after-birth
+  group: postpartum
+  label: { fr: "Saignement abondant après l'accouchement", en: 'Heavy bleeding after the birth' }
+  sources:
+    - &pcpnc-d28
+      source: who
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages D28 and M4, postpartum danger signs (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      accessed: 2026-11-04
+- id: fever-after-birth
+  group: postpartum
+  label: { fr: "Fièvre après l'accouchement", en: 'Fever after the birth' }
+  sources: [*pcpnc-d28]
+- id: convulsions-after-birth
+  group: postpartum
+  label:
+    { fr: "Convulsions (crises) après l'accouchement", en: 'Convulsions (fits) after the birth' }
+  sources: [*pcpnc-d28]
+- id: severe-headache-after-birth
+  group: postpartum
+  label:
+    fr: "Fort mal de tête avec vue trouble après l'accouchement"
+    en: 'Severe headache with blurred vision after the birth'
+  sources: [*pcpnc-d28]
+- id: breathing-difficulty-after-birth
+  group: postpartum
+  label:
+    fr: "Respiration rapide ou difficile après l'accouchement"
+    en: 'Fast or difficult breathing after the birth'
+  sources: [*pcpnc-d28]
+- id: severe-abdominal-pain-after-birth
+  group: postpartum
+  label:
+    fr: "Très forte douleur au ventre après l'accouchement"
+    en: 'Very strong pain in the belly after the birth'
+  sources: [*pcpnc-d28]
+- id: calf-or-chest-pain-after-birth
+  group: postpartum
+  label:
+    fr: "Mollet douloureux, rouge ou gonflé, ou douleur dans la poitrine après l'accouchement"
+    en: 'Painful, red or swollen calf, or chest pain, after the birth'
+  sources: [*pcpnc-d28]
+- id: baby-not-feeding
+  group: baby
+  label: { fr: 'Le bébé ne tète pas ou tète mal', en: 'The baby does not feed or feeds poorly' }
+  sources:
+    - &pcpnc-k14
+      source: who
+      locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages J7 and K14, newborn danger signs (fact only)'
+      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      accessed: 2026-11-04
+    - source: literature
+      locator: &yics 'Young Infants Clinical Signs Study Group. Clinical signs that predict severe illness in children under age 2 months: a multicentre study. Lancet. 2008. doi:10.1016/S0140-6736(08)60106-3. PMID 18191685'
+      url: &yics-url 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=18191685&retmode=xml'
+      accessed: 2026-11-04
+      quote: 'history of difficulty feeding'
+- id: baby-very-sleepy
+  group: baby
+  label:
+    fr: "Le bébé dort beaucoup plus que d'habitude et se réveille difficilement"
+    en: 'The baby sleeps much more than usual and is hard to wake'
+  sources:
+    - *pcpnc-k14
+    - source: literature
+      locator: *yics
+      url: *yics-url
+      accessed: 2026-11-04
+      quote: 'movement only when stimulated'
+- id: baby-breathing-difficulty
+  group: baby
+  label:
+    { fr: 'Le bébé respire vite ou difficilement', en: 'The baby breathes fast or with difficulty' }
+  sources:
+    - *pcpnc-k14
+    - source: literature
+      locator: *yics
+      url: *yics-url
+      accessed: 2026-11-04
+      quote: 'respiratory rate of 60 breaths per minute or more'
+- id: baby-convulsions
+  group: baby
+  label: { fr: 'Le bébé a des convulsions (crises)', en: 'The baby has convulsions (fits)' }
+  sources:
+    - *pcpnc-k14
+    - source: literature
+      locator: *yics
+      url: *yics-url
+      accessed: 2026-11-04
+      quote: 'history of convulsions'
+- id: baby-fever-or-cold
+  group: baby
+  label: { fr: 'Le bébé a de la fièvre ou est froid', en: 'The baby has a fever or feels cold' }
+  sources:
+    - *pcpnc-k14
+    - source: literature
+      locator: *yics
+      url: *yics-url
+      accessed: 2026-11-04
+      quote: 'temperature of 37.5 degrees C or more or below 35.5 degrees C'

@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: moringa
+latin-name: Moringa oleifera
+names: { fr: 'Moringa', en: 'Moringa' }
+local-names:
+  - { text: nebeday, lang: wo, checked: false }
+parts: [leaf]
+evidence: B
+message: plant-poorly-known
+sources:
+  - source: literature
+    locator: 'Olawoye OS, Adeagbo BA, Bolaji OO. Moringa oleifera leaf powder alters the pharmacokinetics of amodiaquine in healthy human volunteers. J Clin Pharm Ther. 2018. doi:10.1111/jcpt.12725. PMID 29920710'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=29920710&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'The study established pharmacokinetic interaction between AQ and MO when given together or following a long period of ingestion of MO.'
+  - source: literature
+    locator: 'Faye B, Bucheton B, Bañuls AL, et al. Seroprevalence of Leishmania infantum in a rural area of Senegal: analysis of risk factors involved in transmission to humans. Trans R Soc Trop Med Hyg. 2011. doi:10.1016/j.trstmh.2011.02.009. PMID 21543098 (local name)'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=21543098&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'the presence of Nebedaye trees (Moringa oleifera)'
+  - source: lactmed
+    locator: 'Moringa (LactMed record LM979, revised 2026-07-15, Bookshelf NBK501899), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'studies have found no serious short-term adverse effects in nursing mothers who ingested Moringa leaves or in their breastfed infants'

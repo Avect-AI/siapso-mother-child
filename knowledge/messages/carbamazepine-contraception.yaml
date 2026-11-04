@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: carbamazepine-contraception
+fr:
+  fact: "Certains médicaments, comme la carbamazépine, peuvent réduire l'efficacité de certaines contraceptions."
+  risk: "Une contraception hormonale, comme la pilule ou l'implant, peut alors moins bien protéger d'une grossesse."
+  orientation: 'Demandez à la sage-femme ou au planning familial.'
+en:
+  fact: 'Some medicines, such as carbamazepine, can make some contraceptive methods work less well.'
+  risk: 'A hormonal method, such as the pill or the implant, may then protect less well against pregnancy.'
+  orientation: 'Ask the midwife or the family planning service.'

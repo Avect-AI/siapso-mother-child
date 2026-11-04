@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: bitter-leaf
+latin-name: Vernonia amygdalina
+names: { fr: 'Feuille amère', en: 'Bitter leaf' }
+local-names:
+  - { text: feuille amère, lang: fr, checked: false }
+parts: [leaf]
+evidence: '0'
+message: evidence-0
+sources: []

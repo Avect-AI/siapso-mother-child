@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Short use on a small area is possible while breastfeeding (French label);
+# the concern is the breast and nipple, where the baby can swallow the
+# product, and large treated areas in contact with the baby.
+id: clobetasol-breastfeeding
+kind: breastfeeding
+when:
+  subject: { substance: clobetasol }
+level: next-contact
+evidence: C
+message: clobetasol-breastfeeding
+sources:
+  - source: lactmed
+    locator: 'Clobetasol (LactMed record LM72, revised 2021-01-18, Bookshelf NBK501617), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'clobetasol should be avoided on the nipple'
+  - source: lactmed
+    locator: 'Clobetasol (LactMed record LM72, revised 2021-01-18, Bookshelf NBK501617), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'Since only extensive application of the most potent corticosteroids may cause systemic effects in the mother'
+  - source: bdpm
+    locator: 'DERMOVAL 0,05 %, crème, notice section 2 (ANSM, updated 25/07/2022), CIS 61777782'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
+    accessed: 2026-11-03
+    quote: "Ne pas appliquer sur les seins lors de l'allaitement, en raison du risque d'ingestion du produit par l'enfant."
+  - source: bdpm
+    locator: 'DERMOVAL 0,05 %, crème, RCP section 4.6 (ANSM, updated 25/07/2022), CIS 61777782'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
+    accessed: 2026-11-03
+    quote: "le risque d'excrétion du corticoïde dans le lait sera fonction de la surface traitée"
+review:
+  status: draft
+  reviewers: []

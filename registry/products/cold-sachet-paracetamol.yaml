@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: cold-sachet-paracetamol
+names:
+  {
+    fr: 'Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
+    en: 'Cold remedy sachet (paracetamol, pheniramine, vitamin C)',
+  }
+brands: []
+local-names: []
+components:
+  - { substance: paracetamol, strength-mg: 500 }
+  - { substance: pheniramine }
+  - { substance: ascorbic-acid }
+form: 'poudre pour solution buvable en sachet'
+route: oral
+source: { demo-manual: true }
+demo: true

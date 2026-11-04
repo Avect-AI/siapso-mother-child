@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: cotrimoxazole-generic
+names: { fr: 'Cotrimoxazole (générique)', en: 'Co-trimoxazole (generic)' }
+brands: ['Bactrim']
+local-names: []
+components:
+  - { substance: sulfamethoxazole }
+  - { substance: trimethoprim }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

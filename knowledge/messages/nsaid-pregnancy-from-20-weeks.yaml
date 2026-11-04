@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: nsaid-pregnancy-from-20-weeks
+fr:
+  fact: "Ce produit contient un anti-inflammatoire non stéroïdien (AINS), comme l'ibuprofène ou le diclofénac."
+  risk: 'À partir du cinquième mois de grossesse, ce médicament peut abîmer les reins et le cœur du bébé.'
+  risk-detail: "À partir de 20 semaines d'aménorrhée, les AINS peuvent atteindre les reins du bébé et faire baisser le liquide autour de lui. À partir de 24 semaines (début du sixième mois), la notice française les contre-indique, même en une seule prise, à cause d'un risque grave pour la vie du bébé."
+en:
+  fact: 'This product contains a non-steroidal anti-inflammatory drug (NSAID), such as ibuprofen or diclofenac.'
+  risk: "From the fifth month of pregnancy, this medicine can harm the baby's kidneys and heart."
+  risk-detail: "From 20 weeks of amenorrhoea, NSAIDs can affect the baby's kidneys and lower the fluid around the baby. From 24 weeks (start of the sixth month), the French label contraindicates them, even as a single dose, because of a serious risk to the baby's life."

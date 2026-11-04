@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Reference case 9. The evidence is weak (one published case of scar
+# rupture; one small trial without harm, too small for a rare event), but
+# the outcome is catastrophic and immediate: the committee made this the one
+# exception to "red for danger signs only".
+id: castor-oil-term-uterine-scar
+kind: toxicity
+when:
+  subject: { plant: castor-oil }
+  pregnancy-windows: [30-plus]
+  requires:
+    - condition: uterine-scar
+level: danger
+evidence: C
+danger-rationale: 'Committee exception of reference case 9: risk of uterine rupture with a scarred uterus at term (immediate vital risk).'
+message: castor-oil-term-uterine-scar
+sources:
+  - source: literature
+    locator: 'Sicuranza GB, Figueroa R. Uterine rupture associated with castor oil ingestion. J Matern Fetal Neonatal Med. 2003. doi:10.1080/jmf.13.2.133.134. PMID 12735415'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=12735415&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'a portion of the umbilical cord was protruding from a 2-cm rupture of the lower transverse scar'
+  - source: literature
+    locator: 'Bayoumi YA, Alalfy M, Sharkawy M, et al. Castor oil for labor initiation in women with a previous cesarean section: a double-blind randomized study. J Matern Fetal Neonatal Med. 2022. doi:10.1080/14767058.2021.2008350. PMID 34886746 (no harm seen in 70 women; too small for a rare rupture)'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=34886746&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'Castor oil appears to be an effective, low-cost, and non-harmful method for the initiation of labor in patients with a previous cesarean section.'
+  - source: literature
+    locator: 'Kelly AJ, Kavanagh J, Thomas J. Castor oil, bath and/or enema for cervical priming and induction of labour. Cochrane Database Syst Rev. 2013. doi:10.1002/14651858.CD003099.pub2. PMID 23881775'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=23881775&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'There were no data presented on neonatal or maternal mortality or morbidity.'
+  - source: lactmed
+    locator: 'Castor (LactMed record LM957, revised 2024-12-15, Bookshelf NBK501875), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'Castor oil is a strong stimulant laxative.'
+  - source: openfda
+    locator: 'Foster and Thrive Castor Oil (OTC) drug label, Strategic Sourcing Services, LLC, set_id 004d1dc2-47c1-84d1-e063-6394a90a2471, effective 20241230'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22castor+oil%22&limit=2'
+    accessed: 2026-11-03
+    quote: 'If pregnant or breast feeding ask a health professional before use'
+review:
+  status: draft
+  reviewers: []

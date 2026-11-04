@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: clay-with-iron
+fr:
+  fact: "L'argile (kaolin, terre) est prise avec du fer."
+  risk: "Des tests en laboratoire suggèrent que l'argile empêche le corps d'absorber une partie du fer, mais ce n'est pas prouvé chez la femme."
+  risk-detail: "Pour les argiles médicales comme le kaolin, les références françaises sur les interactions indiquent qu'elles diminuent l'absorption des médicaments pris en même temps, dont le fer. Pour l'argile mangée telle quelle, seules des études en laboratoire existent."
+en:
+  fact: 'Clay (kaolin, earth) is taken with iron.'
+  risk: 'Laboratory tests suggest that clay keeps the body from absorbing part of the iron, but this is not proven in women.'
+  risk-detail: 'For medicinal clays such as kaolin, the French interaction references say that they lower the absorption of medicines taken at the same time, iron included. For clay eaten as such, only laboratory studies exist.'

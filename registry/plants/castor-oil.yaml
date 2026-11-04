@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: castor-oil
+latin-name: Ricinus communis
+names: { fr: 'Huile de ricin', en: 'Castor oil' }
+local-names:
+  - { text: huile de ricin, lang: fr, checked: false }
+parts: [seed-oil]
+evidence: C
+message: plant-poorly-known
+sources:
+  - source: lactmed
+    locator: 'Castor (LactMed record LM957, revised 2024-12-15, Bookshelf NBK501875), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    accessed: 2026-11-03
+    quote: 'Castor oil is a strong stimulant laxative.'
+  - source: literature
+    locator: 'Sicuranza GB, Figueroa R. Uterine rupture associated with castor oil ingestion. J Matern Fetal Neonatal Med. 2003. doi:10.1080/jmf.13.2.133.134. PMID 12735415'
+    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=12735415&retmode=xml'
+    accessed: 2026-11-03
+    quote: 'a portion of the umbilical cord was protruding from a 2-cm rupture of the lower transverse scar'

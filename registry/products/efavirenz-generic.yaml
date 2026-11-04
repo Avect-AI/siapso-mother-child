@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover. Its availability in Senegal is not verified.
+id: efavirenz-generic
+names: { fr: 'Éfavirenz (générique)', en: 'Efavirenz (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: efavirenz }
+form: 'comprimé'
+route: oral
+source: { demo-manual: true }
+demo: true

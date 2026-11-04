@@ -1,0 +1,16 @@
+99000001	TESTDOL 500 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000002	TESTDOL 1 g, comprimé effervescent	comprimé effervescent	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000003	TESTDOL ENFANTS 2,4 %, suspension buvable	suspension buvable	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000004	TESTCODO 500 mg/30 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000005	TESTIBU 200 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Non commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000006	TESTIBU 400 mg, solution injectable	solution injectable	intraveineuse	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000007	TESTGEL 1 %, gel	gel	cutanée	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000008	TESTMIX 500 mg/50 mg, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000009	TESTFER 80 mg, comprimé pelliculé	comprimé pelliculé	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000010	TESTHOMEO, granules	granules	orale;sublinguale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000011	TESTISO 20 mg, capsule molle	capsule molle	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000012	TESTISO 0,05 %, gel	gel	cutanée	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000013	TESTSUPPO 300 mg, suppositoire	suppositoire	orale;rectale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000014	TEST’MISO 200 microgrammes, comprimé	comprimé	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000015	TESTFER 50 mg, gélule	gélule	orale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
+99000016	TESTSUPPO 300 mg, suppositoire	suppositoire	orale;rectale	Autorisation active	Procédure nationale	Commercialisée	01/01/2000			 DONNEES DE TEST	Non
