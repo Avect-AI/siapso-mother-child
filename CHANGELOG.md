@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `tools/github/merge-pr.sh`: squash-merges a pull request only once every check is green.
 - pnpm workspace with engine, resolver, speech and app packages; CI for lint, types, tests, build and end-to-end tests.
 - Deterministic evaluation engine (`@siapso/engine`): checks C1 to C12 with the evidence cap, term windows and helpers, pack validation (`parsePack`), forbidden wording check, and guarantee tests over generated contexts.
+- Knowledge pack tooling (`@siapso/pack-tools`, `siapso-pack`): JSON Schemas, validation (ids, references, evidence cap, message wording), deterministic build with manifest and size budget; content skeleton with the builtin messages.
+- Engine: `strengthAboveMg` rule condition and per-sign danger messages.
 
 ### Fixed
 

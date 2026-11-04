@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: nothing-found
+fr:
+  fact: "Rien n'a été trouvé dans notre base."
+  risk: "Cela ne veut pas dire que c'est sans risque."
+en:
+  fact: 'Nothing was found in our knowledge base.'
+  risk: 'This does not mean it is risk-free.'

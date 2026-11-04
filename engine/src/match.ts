@@ -37,13 +37,27 @@ export function substanceMatches(pack: Pack, substanceId: string, subject: Subje
  * - class: a component substance belongs to the class and is not in its excludes;
  * - plant: the item is that plant.
  * An unrecognised item, or an id missing from the pack, matches nothing.
+ *
+ * With strengthAboveMg and a substance subject, the component must also be
+ * stronger than that value; a component of unknown strength still matches.
  */
-export function itemMatches(pack: Pack, item: CheckedItem, subject: Subject): boolean {
+export function itemMatches(
+  pack: Pack,
+  item: CheckedItem,
+  subject: Subject,
+  strengthAboveMg?: number,
+): boolean {
   if ('plant' in subject) {
     return item.ref.kind === 'plant' && entryKey(pack, item) === `plant:${subject.plant}`;
   }
   const components = productOf(pack, item)?.components ?? [];
-  return components.some((c) => substanceMatches(pack, c.substance, subject));
+  return components.some(
+    (c) =>
+      substanceMatches(pack, c.substance, subject) &&
+      (strengthAboveMg === undefined ||
+        c.strengthMg === undefined ||
+        c.strengthMg > strengthAboveMg),
+  );
 }
 
 /** Substances of a product item, in component order; none for any other item. */

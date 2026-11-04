@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO message",
+  "description": "One message in French and English, one file in knowledge/messages/ named after its id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "fr", "en"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "fr": { "$ref": "#/$defs/text" },
+    "en": { "$ref": "#/$defs/text" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "text": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact", "risk"],
+      "properties": {
+        "fact": { "type": "string", "pattern": "\\S" },
+        "risk": { "type": "string", "pattern": "\\S" },
+        "risk-detail": { "type": "string", "pattern": "\\S" },
+        "orientation": { "type": "string", "pattern": "\\S" }
+      }
+    }
+  }
+}

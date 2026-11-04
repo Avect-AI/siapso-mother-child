@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: moringa-toxic
+kind: toxicity
+when:
+  subject: { plant: moringa }
+  breastfeeding: { baby-age-weeks-max: 6, premature: true }
+level: danger
+danger-rationale: 'Fixture rationale: immediate risk to the life of the baby.'
+evidence: D
+message: herb-drug-moringa
+sources: []
+review:
+  status: draft
+  reviewers: []

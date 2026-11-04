@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: bleeding-sign
+fr:
+  fact: "Un saignement abondant après l'accouchement est un signe de danger."
+  risk: 'Il peut mettre la vie de la mère en danger.'
+  orientation: 'Allez au poste de santé maintenant.'
+en:
+  fact: 'Heavy bleeding after the birth is a danger sign.'
+  risk: 'It can put the life of the mother in danger.'
+  orientation: 'Go to the health post now.'

@@ -1,0 +1,23 @@
+{
+  "name": "@siapso/pack-tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoring schema, validation and build of the SIAPSO knowledge pack.",
+  "bin": {
+    "siapso-pack": "./bin/siapso-pack.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@siapso/engine": "workspace:*",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "tsx": "4.23.15",
+    "yaml": "2.9.1"
+  }
+}

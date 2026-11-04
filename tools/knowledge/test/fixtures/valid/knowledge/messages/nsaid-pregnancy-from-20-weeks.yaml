@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: nsaid-pregnancy-from-20-weeks
+fr:
+  fact: 'Ce médicament contient un anti-inflammatoire (AINS).'
+  risk: 'À partir du cinquième mois, il peut abîmer les reins et le cœur du bébé.'
+  risk-detail: 'Dès la 20e semaine, la fonction rénale du bébé peut être atteinte.'
+  orientation: 'Parlez-en à votre sage-femme avant la prochaine prise.'
+en:
+  fact: 'This medicine contains an anti-inflammatory (NSAID).'
+  risk: "From the fifth month, it can harm the baby's kidneys and heart."

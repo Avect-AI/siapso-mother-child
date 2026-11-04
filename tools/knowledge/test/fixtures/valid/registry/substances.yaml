@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+- id: paracetamol
+  names: { fr: 'Paracétamol', en: 'Paracetamol' }
+  classes: []
+- id: ibuprofen
+  names: { fr: 'Ibuprofène', en: 'Ibuprofen' }
+  classes: [nsaid]

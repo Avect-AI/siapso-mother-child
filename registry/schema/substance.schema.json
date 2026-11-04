@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO substance",
+  "description": "One entry of the list in registry/substances.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "names", "classes"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "names": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fr", "en"],
+      "properties": {
+        "fr": { "type": "string", "pattern": "\\S" },
+        "en": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "classes": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }
+  }
+}

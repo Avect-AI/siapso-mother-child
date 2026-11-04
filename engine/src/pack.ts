@@ -28,10 +28,12 @@ const CONDITIONS: Record<ConditionId, true> = {
 const EVIDENCE: Record<Evidence, true> = { A: true, B: true, C: true, D: true, E: true, '0': true };
 const LANGS: Record<Lang, true> = { fr: true, en: true };
 
-const CONDITION_IDS = Object.keys(CONDITIONS);
+/** The condition ids a rule may name (pack authoring tools check their schema against it). */
+export const CONDITION_IDS: readonly string[] = Object.keys(CONDITIONS);
 const EVIDENCE_LEVELS = Object.keys(EVIDENCE);
 const LANG_IDS = Object.keys(LANGS) as Lang[];
-const RULE_KINDS = Object.keys(CHECK_OF_KIND) as RuleKind[];
+/** The rule kinds (pack authoring tools check their schema against it). */
+export const RULE_KINDS = Object.keys(CHECK_OF_KIND) as readonly RuleKind[];
 const WINDOW_IDS = WINDOWS.map((w) => w.id);
 
 function fail(where: string, problem: string): never {
@@ -138,6 +140,7 @@ const WHEN_KEYS = [
   'pregnancyWindows',
   'breastfeeding',
   'maxMgPerDay',
+  'strengthAboveMg',
 ];
 const BREASTFEEDING_KEYS = ['babyAgeWeeksMax', 'premature'];
 
@@ -210,6 +213,17 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
   if (o.maxMgPerDay !== undefined || kind === 'max-dose') {
     number(o.maxMgPerDay, `${where}.maxMgPerDay`, 0, false);
   }
+  optional(o.strengthAboveMg, (n) => {
+    number(n, `${where}.strengthAboveMg`, 0, false);
+    // It filters the subject items, which would silently drop items from a
+    // max-dose sum or a duplicate count.
+    if (kind === 'max-dose' || kind === 'duplicate') {
+      fail(`${where}.strengthAboveMg`, `is not allowed for a ${kind} rule`);
+    }
+    if (o.subject === undefined || !Object.hasOwn(o.subject as Json, 'substance')) {
+      fail(`${where}.strengthAboveMg`, 'is only allowed with a substance subject');
+    }
+  });
   if (kind === 'interaction' || kind === 'herb-drug') partners(o, kind, where);
   return subjects;
 }
@@ -344,9 +358,10 @@ export function parsePack(json: unknown): Pack {
     });
     optional(review.reviewedOn, (v) => string(v, `${where}.review.reviewedOn`));
   });
-  collection(pack, 'dangerSigns', (o, where) => {
+  const dangerSigns = collection(pack, 'dangerSigns', (o, where) => {
     oneOf(o.group, ['pregnancy', 'postpartum', 'baby'], `${where}.group`);
     localized(o.label, `${where}.label`);
+    optional(o.message, (v) => id(v, `${where}.message`));
     sourceRefs(o.sources, `${where}.sources`);
   });
   collection(pack, 'sources', (o, where) => {
@@ -382,6 +397,9 @@ export function parsePack(json: unknown): Pack {
   const needed = [
     ...rules.entries.map(({ where, o }) => ({ where, message: o.message as string })),
     ...plants.entries.map(({ where, o }) => ({ where, message: o.message as string })),
+    ...dangerSigns.entries.flatMap(({ where, o }) =>
+      o.message === undefined ? [] : [{ where, message: o.message as string }],
+    ),
   ];
   for (const lang of LANG_IDS) {
     for (const { where, message } of needed) {

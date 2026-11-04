@@ -44,6 +44,12 @@ secrets*.yaml
 .DS_Store
 Thumbs.db
 
+# Knowledge pack built from knowledge/ and registry/
+app/public/pack/
+
 # Test and build output
 playwright-report/
 test-results/
+
+# Local agent workflow notes
+.superpowers/

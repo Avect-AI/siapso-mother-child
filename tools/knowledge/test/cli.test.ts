@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: MIT
+import { readdir, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { main } from '../src/cli.js';
+import { formatProblem } from '../src/index.js';
+import { FIXTURE_ROOT, REPO_ROOT, tempCopy } from './helpers.js';
+
+interface Result {
+  code: number;
+  out: string[];
+  err: string[];
+}
+
+async function run(args: string[], cwd = REPO_ROOT): Promise<Result> {
+  const out: string[] = [];
+  const err: string[] = [];
+  const code = await main(args, {
+    cwd,
+    out: (line) => out.push(line),
+    err: (line) => err.push(line),
+  });
+  return { code, out, err };
+}
+
+describe('formatProblem', () => {
+  it('prints file: path: message', () => {
+    expect(formatProblem({ file: 'a/b.yaml', path: 'when.subject', message: 'bad' })).toBe(
+      'a/b.yaml: when.subject: bad',
+    );
+  });
+
+  it('prints (file) for a problem about the whole file', () => {
+    expect(formatProblem({ file: 'a/b.yaml', path: '', message: 'bad' })).toBe(
+      'a/b.yaml: (file): bad',
+    );
+  });
+});
+
+describe('siapso-pack check', () => {
+  it('exits 0 on valid content and summarises it', async () => {
+    const result = await run(['check', '--root', FIXTURE_ROOT, '--schemas', REPO_ROOT]);
+    expect(result.err).toEqual([]);
+    expect(result.code).toBe(0);
+    expect(result.out.join('\n')).toMatch(/5 rules/);
+  });
+
+  it('checks the repository content by default', async () => {
+    const result = await run(['check']);
+    expect(result.err).toEqual([]);
+    expect(result.code).toBe(0);
+  });
+
+  it('prints one problem per line as file: path: message and exits 1', async () => {
+    const copy = await tempCopy();
+    try {
+      await writeFile(
+        path.join(copy.root, 'knowledge/rules/moringa-toxic.yaml'),
+        [
+          '# SPDX-License-Identifier: CC-BY-4.0',
+          'id: moringa-toxic',
+          'kind: toxicity',
+          'when: { subject: { plant: moringa } }',
+          'level: danger',
+          'evidence: D',
+          'message: herb-drug-moringa',
+          'sources: []',
+          'review: { status: draft, reviewers: [] }',
+          'extra: 1',
+          '',
+        ].join('\n'),
+      );
+      const result = await run(['check', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err).toContain(
+        'knowledge/rules/moringa-toxic.yaml: extra: unknown key "extra"',
+      );
+      expect(
+        result.err.some((l) => l.startsWith('knowledge/rules/moringa-toxic.yaml: level:')),
+      ).toBe(false);
+      // The file with the schema fault gets no further check: one problem, then the count.
+      expect(result.err).toHaveLength(2);
+      expect(result.err[1]).toBe('1 problem(s) found');
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('exits 2 with a usage message for an unknown command or option', async () => {
+    for (const args of [[], ['frobnicate'], ['check', '--nope'], ['check', '--root']]) {
+      const result = await run(args);
+      expect(result.code, args.join(' ')).toBe(2);
+      expect(result.err.join('\n')).toMatch(/usage/i);
+    }
+  });
+});
+
+describe('siapso-pack build', () => {
+  it('writes the pack to --out and exits 0', async () => {
+    const copy = await tempCopy();
+    try {
+      const out = path.join(copy.root, 'out');
+      const result = await run([
+        'build',
+        '--root',
+        copy.root,
+        '--schemas',
+        REPO_ROOT,
+        '--out',
+        out,
+      ]);
+      expect(result.err).toEqual([]);
+      expect(result.code).toBe(0);
+      expect(await readdir(out)).toContain('manifest.json');
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('writes to app/public/pack of the root by default', async () => {
+    const copy = await tempCopy();
+    try {
+      const result = await run(['build', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(0);
+      expect(await readdir(path.join(copy.root, 'app/public/pack'))).toContain('pack.json');
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('prints the problems, writes nothing and exits 1 on invalid content', async () => {
+    const copy = await tempCopy();
+    try {
+      await rm(path.join(copy.root, 'knowledge/messages/danger-sign.yaml'));
+      const result = await run(['build', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/danger-sign\.yaml: \(file\): builtin message/);
+      await expect(readdir(path.join(copy.root, 'app/public/pack'))).rejects.toThrow();
+    } finally {
+      await copy.remove();
+    }
+  });
+
+  it('exits 1 with the message when the pack is over the size budget', async () => {
+    // Covered through writePack; here a content tree whose message is huge.
+    const copy = await tempCopy();
+    try {
+      const { randomBytes } = await import('node:crypto');
+      await writeFile(
+        path.join(copy.root, 'knowledge/messages/herb-drug-moringa.yaml'),
+        [
+          '# SPDX-License-Identifier: CC-BY-4.0',
+          'id: herb-drug-moringa',
+          'fr:',
+          '  fact: "Fait."',
+          '  risk: "Risque."',
+          `  risk-detail: "${randomBytes(4_200_000).toString('base64')}"`,
+          'en:',
+          '  fact: "Fact."',
+          '  risk: "Risk."',
+          '',
+        ].join('\n'),
+      );
+      const result = await run(['build', '--root', copy.root, '--schemas', REPO_ROOT]);
+      expect(result.code).toBe(1);
+      expect(result.err.join('\n')).toMatch(/size budget/);
+    } finally {
+      await copy.remove();
+    }
+  });
+});

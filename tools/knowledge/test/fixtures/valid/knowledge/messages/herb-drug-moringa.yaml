@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: herb-drug-moringa
+fr:
+  fact: 'Cette plante est prise avec un médicament.'
+  risk: "Elle peut changer l'effet du médicament."
+en:
+  fact: 'This plant is taken with a medicine.'
+  risk: 'It can change the effect of the medicine.'

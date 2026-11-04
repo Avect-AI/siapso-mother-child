@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+- id: fever
+  group: pregnancy
+  label: { fr: 'Fièvre', en: 'Fever' }
+  sources: []
+- id: bleeding
+  group: postpartum
+  label: { fr: 'Saignement', en: 'Bleeding' }
+  message: bleeding-sign
+  sources:
+    - source: fixture-source
+      locator: 'Fixture danger sign'
+      accessed: 2026-11-04

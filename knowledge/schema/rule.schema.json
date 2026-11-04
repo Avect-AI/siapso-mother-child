@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO rule",
+  "description": "One rule of the knowledge pack, one file in knowledge/rules/ named after its id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "when", "level", "evidence", "message", "sources", "review"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "kind": {
+      "enum": [
+        "pregnancy",
+        "breastfeeding",
+        "interaction",
+        "herb-drug",
+        "toxicity",
+        "duplicate",
+        "max-dose",
+        "condition",
+        "contraception-info",
+        "reminder"
+      ]
+    },
+    "when": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": { "$ref": "#/$defs/subject" },
+        "requires": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "maxProperties": 1,
+            "properties": {
+              "with": { "$ref": "#/$defs/subject" },
+              "condition": { "$ref": "#/$defs/condition" }
+            }
+          }
+        },
+        "unless-conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "pregnancy-windows": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["lt12", "12-19", "20-29", "30-plus"] }
+        },
+        "breastfeeding": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baby-age-weeks-max": { "type": "number", "minimum": 0 },
+            "premature": { "type": "boolean" }
+          }
+        },
+        "max-mg-per-day": { "type": "number", "exclusiveMinimum": 0 },
+        "strength-above-mg": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "level": { "enum": ["unknown", "next-contact", "before-next-dose", "danger"] },
+    "evidence": { "enum": ["A", "B", "C", "D", "E", "0"] },
+    "danger-rationale": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "message": { "$ref": "#/$defs/id" },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source-ref" } },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewers"],
+      "properties": {
+        "status": { "enum": ["draft", "validated"] },
+        "reviewers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "role"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "role": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "reviewed-on": { "type": "string", "format": "date" }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "condition": {
+      "enum": [
+        "hiv-cotrimoxazole",
+        "tuberculosis-treatment",
+        "epilepsy-treatment",
+        "uterine-scar",
+        "renal-failure",
+        "hepatic-failure",
+        "sickle-cell"
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "substance": { "$ref": "#/$defs/id" },
+        "class": { "$ref": "#/$defs/id" },
+        "plant": { "$ref": "#/$defs/id" }
+      }
+    },
+    "source-ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "locator", "accessed"],
+      "properties": {
+        "source": { "$ref": "#/$defs/id" },
+        "locator": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "accessed": { "type": "string", "format": "date" },
+        "quote": { "type": "string" }
+      }
+    }
+  }
+}

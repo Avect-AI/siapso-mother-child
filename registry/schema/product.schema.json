@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO product",
+  "description": "One medicine, one file in registry/products/ named after its id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "names",
+    "brands",
+    "local-names",
+    "components",
+    "form",
+    "route",
+    "source",
+    "demo"
+  ],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "names": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fr", "en"],
+      "properties": {
+        "fr": { "type": "string", "pattern": "\\S" },
+        "en": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "brands": { "type": "array", "items": { "type": "string", "pattern": "\\S" } },
+    "local-names": { "type": "array", "items": { "$ref": "#/$defs/local-name" } },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["substance"],
+        "properties": {
+          "substance": { "$ref": "#/$defs/id" },
+          "strength-mg": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "form": { "type": "string", "pattern": "\\S" },
+    "route": { "type": "string", "pattern": "\\S" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "bdpm": { "type": "string", "pattern": "^[0-9]+$" },
+        "demo-manual": { "const": true }
+      }
+    },
+    "demo": { "type": "boolean" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "local-name": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "lang", "checked"],
+      "properties": {
+        "text": { "type": "string", "pattern": "\\S" },
+        "lang": { "enum": ["fr", "wo", "en"] },
+        "checked": { "type": "boolean" }
+      }
+    }
+  }
+}

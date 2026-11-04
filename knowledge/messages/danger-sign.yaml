@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: danger-sign
+fr:
+  fact: 'Ces signes sont des signes de danger.'
+  risk: 'Ils peuvent mettre la vie de la mère ou du bébé en danger.'
+  orientation: 'Allez au poste de santé maintenant.'
+en:
+  fact: 'These are danger signs.'
+  risk: 'They can put the life of the mother or the baby in danger.'
+  orientation: 'Go to the health post now.'

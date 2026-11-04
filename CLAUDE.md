@@ -38,7 +38,9 @@ Run from the repository root (Node 24, pnpm 12):
 - `pnpm format:check` / `pnpm format`: Prettier check / write.
 - `pnpm typecheck`: `tsc --noEmit` in every package.
 - `pnpm test` / `pnpm test:coverage`: Vitest (coverage floor of 90 percent on `engine/src`).
-- `pnpm build`: build every package that has a build script.
+- `pnpm knowledge:check`: validate `knowledge/` and `registry/` (see `knowledge/README.md`).
+- `pnpm knowledge:build`: write the pack to `app/public/pack/` (git-ignored).
+- `pnpm build`: build the knowledge pack, then every package that has a build script.
 - `pnpm e2e`: Playwright smoke tests with axe (build the app first).
 
 Dependencies are pinned to exact versions, each published at least 14 days before use.

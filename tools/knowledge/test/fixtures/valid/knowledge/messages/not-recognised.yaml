@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: not-recognised
+fr:
+  fact: "Ce produit n'a pas été reconnu."
+  risk: "Nous n'avons pas d'information fiable sur ce produit."
+en:
+  fact: 'This product was not recognised.'
+  risk: 'We have no reliable information on this product.'

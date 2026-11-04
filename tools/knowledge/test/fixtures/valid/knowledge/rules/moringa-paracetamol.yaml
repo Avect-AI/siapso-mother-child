@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: moringa-paracetamol
+kind: herb-drug
+when:
+  subject: { plant: moringa }
+  requires:
+    - { with: { substance: paracetamol } }
+    - { condition: hepatic-failure }
+  unless-conditions: [sickle-cell]
+level: next-contact
+evidence: D
+message: herb-drug-moringa
+sources: []
+review:
+  status: draft
+  reviewers: []

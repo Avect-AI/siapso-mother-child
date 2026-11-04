@@ -115,7 +115,7 @@ export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
     if (scope.keys[index] === undefined) findings.push(unrecognisedFinding(index));
     else if (!withFinding.has(index)) findings.push(noFinding(pack, item, index));
   });
-  findings.push(...dangerSignFindings(context.signs));
+  findings.push(...dangerSignFindings(pack, context.signs));
   findings.sort(compareFindings);
 
   return {

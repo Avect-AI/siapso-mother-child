@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: paracetamol-strong-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: paracetamol }
+  strength-above-mg: 500
+level: next-contact
+evidence: B
+message: max-dose-paracetamol
+sources: []
+review:
+  status: draft
+  reviewers: []

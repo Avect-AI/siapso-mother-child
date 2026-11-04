@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO danger sign",
+  "description": "One entry of the list in knowledge/danger-signs.yaml.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "group", "label", "sources"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "group": { "enum": ["pregnancy", "postpartum", "baby"] },
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fr", "en"],
+      "properties": {
+        "fr": { "type": "string", "pattern": "\\S" },
+        "en": { "type": "string", "pattern": "\\S" }
+      }
+    },
+    "message": { "$ref": "#/$defs/id" },
+    "sources": { "type": "array", "items": { "$ref": "#/$defs/source-ref" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "source-ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "locator", "accessed"],
+      "properties": {
+        "source": { "$ref": "#/$defs/id" },
+        "locator": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "accessed": { "type": "string", "format": "date" },
+        "quote": { "type": "string" }
+      }
+    }
+  }
+}

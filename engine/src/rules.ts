@@ -45,10 +45,10 @@ export interface RuleMatch {
   term?: TermPrecision;
 }
 
-function matchingItems(scope: RuleScope, subject: Subject): number[] {
+function matchingItems(scope: RuleScope, subject: Subject, strengthAboveMg?: number): number[] {
   const indexes: number[] = [];
   scope.context.items.forEach((item, index) => {
-    if (itemMatches(scope.pack, item, subject)) indexes.push(index);
+    if (itemMatches(scope.pack, item, subject, strengthAboveMg)) indexes.push(index);
   });
   return indexes;
 }
@@ -167,7 +167,7 @@ export function applyRule(rule: Rule, scope: RuleScope): RuleMatch | undefined {
     return undefined;
   }
 
-  const subjectItems = when.subject ? matchingItems(scope, when.subject) : [];
+  const subjectItems = when.subject ? matchingItems(scope, when.subject, when.strengthAboveMg) : [];
   if (!subjectPresent(rule, subjectItems, scope)) return undefined;
   const partners = requirementPartners(when.requires, subjectItems, scope);
   if (!partners) return undefined;

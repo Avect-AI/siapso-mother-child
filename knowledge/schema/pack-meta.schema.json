@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIAPSO pack metadata",
+  "description": "knowledge/pack.yaml: the version and date of the pack.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "date", "clinically-validated"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+    },
+    "date": { "type": "string", "format": "date" },
+    "clinically-validated": { "type": "boolean" }
+  }
+}

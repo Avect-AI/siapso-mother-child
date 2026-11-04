@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: paracetamol-1000
+names: { fr: 'Paracétamol 1000 mg, comprimé', en: 'Paracetamol 1000 mg tablet' }
+brands: [Fixture]
+local-names: []
+components: [{ substance: paracetamol, strength-mg: 1000 }]
+form: tablet
+route: oral
+source: { demo-manual: true }
+demo: true

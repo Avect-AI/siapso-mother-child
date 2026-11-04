@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: moringa
+latin-name: Moringa oleifera
+names: { fr: 'Moringa', en: 'Moringa' }
+local-names:
+  - { text: nebeday, lang: wo, checked: false }
+parts: [leaf]
+evidence: B
+message: evidence-0
+sources: []

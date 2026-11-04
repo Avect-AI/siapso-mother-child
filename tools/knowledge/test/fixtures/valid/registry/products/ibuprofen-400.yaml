@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: ibuprofen-400
+names: { fr: 'Ibuprofène 400 mg, comprimé', en: 'Ibuprofen 400 mg tablet' }
+brands: [Fixture]
+local-names: []
+components: [{ substance: ibuprofen, strength-mg: 400 }]
+form: tablet
+route: oral
+source: { bdpm: '60000001' }
+demo: false

@@ -13,11 +13,14 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "build": "pnpm -r --if-present build",
+    "knowledge:check": "siapso-pack check",
+    "knowledge:build": "siapso-pack build",
+    "build": "pnpm knowledge:build && pnpm -r --if-present build",
     "e2e": "pnpm --filter @siapso/app e2e"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@siapso/pack-tools": "workspace:*",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.0.5",
     "eslint": "10.13.0",

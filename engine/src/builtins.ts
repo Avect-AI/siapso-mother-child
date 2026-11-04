@@ -8,13 +8,16 @@ export function copySources(sources: readonly SourceRef[]): SourceRef[] {
   return sources.map((s) => ({ ...s }));
 }
 
-/** One danger finding per distinct sign present now, with the standard danger message. */
-export function dangerSignFindings(signs: readonly string[]): Finding[] {
+/**
+ * One danger finding per distinct sign present now, with the message of the
+ * sign when the pack gives it one, otherwise the standard danger message.
+ */
+export function dangerSignFindings(pack: Pack, signs: readonly string[]): Finding[] {
   return [...new Set(signs)].map((sign) => ({
     level: 'danger',
     check: 'C11',
     items: [],
-    message: BUILTIN_MESSAGES.dangerSign,
+    message: pack.dangerSigns.find((d) => d.id === sign)?.message ?? BUILTIN_MESSAGES.dangerSign,
     sign,
     capped: false,
     sources: [],

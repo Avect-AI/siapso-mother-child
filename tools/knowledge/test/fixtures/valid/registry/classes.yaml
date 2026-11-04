@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+- id: nsaid
+  names: { fr: 'AINS', en: 'NSAID' }
+  excludes: []

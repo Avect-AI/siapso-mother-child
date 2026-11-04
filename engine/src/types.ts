@@ -105,6 +105,11 @@ export interface RuleWhen {
   breastfeeding?: { babyAgeWeeksMax?: number; premature?: boolean };
   /** 'max-dose' only. */
   maxMgPerDay?: number;
+  /**
+   * Substance subject only: the subject item matches only if its component for
+   * that substance is stronger than this many mg. An unknown strength matches.
+   */
+  strengthAboveMg?: number;
 }
 export interface Reviewer {
   name: string;
@@ -125,6 +130,8 @@ export interface DangerSign {
   id: string;
   group: 'pregnancy' | 'postpartum' | 'baby';
   label: Localized;
+  /** Message id of its C11 finding; the standard danger-sign message when absent. */
+  message?: string;
   sources: SourceRef[];
 }
 export interface Source {

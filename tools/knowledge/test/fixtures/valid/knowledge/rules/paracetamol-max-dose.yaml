@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: paracetamol-max-dose
+kind: max-dose
+when:
+  subject: { substance: paracetamol }
+  max-mg-per-day: 4000
+level: before-next-dose
+evidence: A
+message: max-dose-paracetamol
+sources: []
+review:
+  status: validated
+  reviewers:
+    - { name: 'Fixture Reviewer', role: pharmacist }
+  reviewed-on: 2026-11-04

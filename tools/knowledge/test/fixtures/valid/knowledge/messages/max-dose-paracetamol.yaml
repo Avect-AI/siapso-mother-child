@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Test data, not clinical content.
+id: max-dose-paracetamol
+fr:
+  fact: 'La quantité de paracétamol par jour est élevée.'
+  risk: 'Trop de paracétamol peut abîmer le foie.'
+en:
+  fact: 'The amount of paracetamol per day is high.'
+  risk: 'Too much paracetamol can harm the liver.'

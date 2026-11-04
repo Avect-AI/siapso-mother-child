@@ -50,7 +50,7 @@ All types (`Pack`, `EvaluationContext`, `Evaluation`, `Finding`, `Rule` and the 
 | C1 to C8   | Rules of kind pregnancy, breastfeeding, interaction, herb-drug, toxicity, duplicate, max-dose, condition | One finding per triggered rule, listing every item involved                                    |
 | C9         | Rules of kind contraception-info                                                                         | A note (accompanied mode), never a level                                                       |
 | C10        | Rules of kind reminder                                                                                   | A reminder (accompanied mode), never a level                                                   |
-| C11        | Danger signs present now                                                                                 | One `danger` finding per sign                                                                  |
+| C11        | Danger signs present now                                                                                 | One `danger` finding per sign, with the sign's own `message` when the pack gives one           |
 | C12        | Unrecognised items, and ids missing from the pack                                                        | One `unknown` finding per item                                                                 |
 | no-finding | Known items without any finding                                                                          | `unknown` with "nothing found" for a product, the plant's own message and evidence for a plant |
 
@@ -61,6 +61,7 @@ Rule conditions (`when`):
 - `pregnancyWindows`: the rule applies only during a pregnancy whose range of weeks intersects one of the windows. With an estimated or unknown term, every intersecting rule triggers and the finding carries `term`.
 - `breastfeeding`: the rule applies only when breastfeeding; an unknown baby age or prematurity keeps the rule.
 - `requires`: any-of conditions or `with` items. A `with` item must be another item, and another product or plant, than the subject item: an item never interacts with itself, even when entered twice. An interaction or herb-drug rule must have a `with` partner; a herb-drug rule is a plant subject with substance or class partners.
+- `strengthAboveMg`: with a substance subject only, the subject item matches only when its component for that substance is stronger than the value; an unknown strength matches (cautious).
 - `unlessConditions`: the rule does not apply when one of these conditions is present.
 - Duplicate: at least two items match the subject. Max-dose: the known sum of strength x units per day over the items holding the substance is greater than `maxMgPerDay`. An item without a unit count or a strength adds nothing to the sum but does not cancel it, and the finding lists every item holding the substance; the rule is skipped only when the known sum is at or below the threshold.
 

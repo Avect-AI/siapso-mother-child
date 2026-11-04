@@ -8,3 +8,8 @@ packages:
 minimumReleaseAge: 20160
 # No dependency needs an install script (checked with pnpm install on 2026-11-03),
 # so none is allowed. Add an allowBuilds entry only with a recorded reason.
+# esbuild (pulled in by tsx, which runs the pack tools) only has an optional
+# post-install optimisation; its platform binary comes from an optional
+# dependency, so the script stays denied (checked on 2026-11-04).
+allowBuilds:
+  esbuild: false
