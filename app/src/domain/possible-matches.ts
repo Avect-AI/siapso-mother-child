@@ -18,7 +18,7 @@ import { productFamilyOf, searchIndexOf, strengthChoiceOf } from './search-index
  * How clearly a name names its possible match: `very-strong` (the whole name,
  * a whole word of it, its name inside a longer text, or a score of 0.9 or
  * more), `strong` (a score of 0.8 or more, or the whole name of 6 letters or
- * more spelt within one edit: "cytotek"), `weak` otherwise. A prefix of
+ * more spelt within one edit: "misopristol"), `weak` otherwise. A prefix of
  * fewer than 6 letters ("Anta", a first name), a spelling close to one word
  * of a longer name ("vitamines") and a whole word that names none of its
  * products alone (one the names of several families share, a laboratory,
@@ -68,7 +68,7 @@ export function strengthOf(candidate: Candidate): MatchStrength {
   if (candidate.match === 'contained' || candidate.score >= VERY_STRONG_SCORE) {
     return 'very-strong';
   }
-  // The whole name of 6 letters or more spelt within one edit ("cytotek"): it says which name.
+  // The whole name of 6 letters or more spelt within one edit ("misopristol"): it says which name.
   if (candidate.match === 'near') return 'strong';
   return candidate.score >= STRONG_SCORE ? 'strong' : 'weak';
 }

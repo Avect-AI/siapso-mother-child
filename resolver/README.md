@@ -14,18 +14,24 @@ search(index, 'nebeday', { limit: 5, minScore: 0.6, kinds: ['plant'] });
 
 ## Normalisation
 
-`normalize` lowercases, strips accents, turns every non-letter into a space, then applies to each word, on both sides of a match:
+`plainText` lowercases, strips accents and turns every non-letter into a space: the text as written, used to sort names and to file them by first letter. `normalize` then applies to each word of two letters or more, in this order and on both sides of a match, the spelling variants that make a name written as it sounds read as the name it writes (live test round 2, SCRUM-51: "sitotek" for Cytotec, "huile de rissin" for castor oil, "kodeyin" for codeine, from a woman, a relay or the Wolof voice, which writes French names phonetically):
 
-| Rule                                      | Example                       |
-| ----------------------------------------- | ----------------------------- |
-| `ph` becomes `f`                          | phenytoine, fenitoin          |
-| `qu` becomes `k`                          | quinqueliba, kinkeliba        |
-| `y` becomes `i`                           | nebeday, nebedai              |
-| doubled consonant becomes single          | doliprann, dolipran           |
-| trailing `e` dropped (words over 4 chars) | ibuprofene, ibuprofen         |
-| `kh` is NOT mapped to `x`                 | dakhar stays dakhar (meaning) |
+| Rule                                                                   | Example                                          |
+| ---------------------------------------------------------------------- | ------------------------------------------------ |
+| `ph` becomes `f`                                                       | phenytoine, fenitoin                             |
+| `ck` and `qu` become `k`                                               | cytoteck, cytotek; quinqueliba, kinkeliba        |
+| `c` before `e`, `i`, `y` becomes `s`; any other `c` (not `ch`) is `k`  | Cytotec, sitotek; ricin, risin; codéine, kodéine |
+| silent `h` dropped: at the start, and after a consonant but c, s, p, k | huile, uile; thé, té                             |
+| `y` becomes `i`                                                        | nebeday, nebedai; kodeyin, kodeiin               |
+| `ou` becomes `u` (the Wolof spelling)                                  | Nourofen, Nurofen                                |
+| doubled letter becomes single, vowels included (not digits)            | doliprann, dolipran; rissin; kodeiin, kodein     |
+| trailing `e` dropped (words over 4 chars), so `-que` reads as `-k`     | ibuprofene, ibuprofen; méfénamique, mefenamik    |
+| `ch`, `sh`, `kh` kept; `kh` is NOT mapped to `x`                       | chloroquine; dakhar stays dakhar (meaning)       |
+| a word of one letter kept as it is                                     | vitamine C stays "vitamin c"                     |
 
-The spellings of the standard Wolof orthography (`x` for the sound written `kh` in French spelling, long vowels written doubled) are not produced by normalisation: they are registered as local names of the plant, next to the French-style spelling (`daxar` next to `dakhar`, `ngeer` next to `nguer`), so that each one is checked as a name.
+So "sitotek", "cytotek", "cytoteck" and "sitotec" are Cytotec itself (an `exact` match), "huile de rissin", "huille de rissin" and "uile de risin" are "huile de ricin", and "kodeyin" is codeine. Over the repository registry (1073 names), these variants make no two whole names of different families read alike; the words they newly read alike are spellings of one substance in French and English ("acétylsalicylique" and "acetylsalicylic", "ascorbique" and "ascorbic", "folique" and "folic", "valproïque" and "valproic", "vitaminée" and "vitamin") and "cola" with "kola", which the English names "Kola nut" and "Bitter kola" already shared.
+
+The spellings of the standard Wolof orthography (`x` for the sound written `kh` in French spelling) are not produced by normalisation: they are registered as local names of the plant, next to the French-style spelling (`daxar` next to `dakhar`), so that each one is checked as a name. Long vowels written doubled (`ngeer`, `nebedaay`) now read as the single vowel.
 
 ## Stop-words
 
@@ -57,7 +63,7 @@ A box or a sale says more than the name: "Advil 400 mg boîte de 20", "Advil pou
 
 ## How a candidate matched
 
-Every candidate says how its best name matched (`match`): `exact` (the whole name), `word` (a whole word of it), `prefix`, `near` (the whole name of 6 letters or more spelt within one edit: "cytotek", "misopristol"), `fuzzy` (a spelling close to the whole name), `fuzzy-word` (close to one word of a longer name, at most 0.85), `substances` (a query made only of substance names) or `contained`, and `queryLength`, the length of the cleaned query without spaces. A `word` match also says when the word alone names none of the products (`weakWord`): `shared` when the names of several families have it (a laboratory such as "biogaran", "gastro" of "gastro-résistant"), `inner` when it leads none of the names of the product, coming after its brand word (a qualifier such as "chrono" of "DEPAKINE CHRONO" or "emulgel" of "VOLTARENE EMULGEL", a word of a description such as "cutanée"); a word after only substance names or a prefix of 3 letters or fewer is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of "Néo-Codion", "profenid" of "BI PROFENID LP"), and the first word of a name in brackets leads it ("oseille" of "Bissap (oseille de Guinée)"); the score and the order stay the same. The resolver never decides with them; the app weighs a resemblance by them (a prefix of 4 letters such as a first name, a close word such as "vitamines" for "VITAMINEE C", or a weak word, is weak).
+Every candidate says how its best name matched (`match`): `exact` (the whole name), `word` (a whole word of it), `prefix`, `near` (the whole name of 6 letters or more spelt within one edit: "cytotel", "misopristol"), `fuzzy` (a spelling close to the whole name), `fuzzy-word` (close to one word of a longer name, at most 0.85), `substances` (a query made only of substance names) or `contained`, and `queryLength`, the length of the cleaned query without spaces. A `word` match also says when the word alone names none of the products (`weakWord`): `shared` when the names of several families have it (a laboratory such as "biogaran", "gastro" of "gastro-résistant"), `inner` when it leads none of the names of the product, coming after its brand word (a qualifier such as "chrono" of "DEPAKINE CHRONO" or "emulgel" of "VOLTARENE EMULGEL", a word of a description such as "cutanée"); a word after only substance names or a prefix of 3 letters or fewer is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of "Néo-Codion", "profenid" of "BI PROFENID LP"), and the first word of a name in brackets leads it ("oseille" of "Bissap (oseille de Guinée)"); the score and the order stay the same. The resolver never decides with them; the app weighs a resemblance by them (a prefix of 4 letters such as a first name, a close word such as "vitamines" for "VITAMINEE C", or a weak word, is weak).
 
 ## Families and variants
 

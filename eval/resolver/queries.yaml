@@ -1354,3 +1354,36 @@
 - { query: racine, type: noise, expect: none }
 - { query: sirop toux, type: noise, expect: none }
 - { query: sirop contre la toux, type: noise, expect: none }
+# Live test round 2 (SCRUM-51): names written as they sound, by hand or by the
+# Wolof voice, which writes French names phonetically.
+- { query: sitotek, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: sitoteck, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: 'sitotèk', type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: sitotec, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: cytoteck, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: cytotec 200, type: brand, expect: { kind: product, id: misoprostol-generic } }
+- { query: cyto tec 200, type: voice-like, expect: { kind: product, id: misoprostol-generic } }
+- { query: misoprostole, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: kodeyin, type: voice-like, expect: { kind: product, id: codeine-generic } }
+- {
+    query: kotrimoksasol,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
+- { query: ibufen, type: misspelling, expect: { kind: product, id: ibuprofen-generic } }
+- { query: huile de rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: huille de rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: uile de risin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: huile ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: huile de castor, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: 'méfénamique', type: inn, expect: { kind: product, id: mefenamic-acid-generic } }
+# A carrier or generic word alone names no remedy: the search lists the
+# remedies that have it in their name instead (app), the resolver none.
+- { query: feuille, type: noise, expect: none }
+- { query: tisane, type: noise, expect: none }

@@ -13,6 +13,7 @@ import {
   namedSubstances,
   normalize,
   parseStrength,
+  plainText,
   withoutStopWords,
   type Candidate,
   type ResolverIndex,
@@ -65,13 +66,13 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * Strength ascending, then French name (normalised: the plainest form first),
+ * Strength ascending, then French name (as written: the plainest form first),
  * then id: the order of the resolver's variants, the same for every brand.
  */
 function byStrengthThenName(a: Product, b: Product): number {
   return (
     firstStrength(a) - firstStrength(b) ||
-    compareText(normalize(a.names.fr), normalize(b.names.fr)) ||
+    compareText(plainText(a.names.fr), plainText(b.names.fr)) ||
     compareText(a.id, b.id)
   );
 }
@@ -426,7 +427,7 @@ export function browseGroupsOf(
 ): { letter: string; entries: BrowseEntry[] }[] {
   const groups: { letter: string; entries: BrowseEntry[] }[] = [];
   for (const entry of entries) {
-    const first = normalize(entry.name).charAt(0).toUpperCase();
+    const first = plainText(entry.name).charAt(0).toUpperCase();
     const letter = /^[A-Z]$/.test(first) ? first : '#';
     const group = groups.find((candidate) => candidate.letter === letter);
     if (group === undefined) groups.push({ letter, entries: [entry] });

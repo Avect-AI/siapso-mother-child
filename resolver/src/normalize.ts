@@ -1,36 +1,64 @@
 // SPDX-License-Identifier: MIT
 /**
- * Spelling variants applied to each word, in this order:
+ * Spelling variants applied to each word, in this order, so that a name
+ * written as it sounds is read as the name it writes ("sitotek" is Cytotec,
+ * "huile de rissin" is castor oil, "kodeyin" is codeine):
  * - `ph` becomes `f` (phenytoine, fenitoine);
- * - `qu` becomes `k` (quinquéliba, kinkéliba; nivaquine, nivakine);
- * - `y` becomes `i` (nebeday, nebedai);
- * - a doubled consonant becomes single (doliprann, dolipran); vowels and
- *   digits are kept as they are;
+ * - `ck` and `qu` become `k` (cytoteck; quinquéliba, kinkéliba);
+ * - `c` before `e`, `i` or `y` becomes `s` (ricin, risin; Cytotec, sitotek),
+ *   any other `c` becomes `k` (codéine, kodéine; a final `c`, cytotek), except
+ *   in `ch`, a sound of its own (chloroquine);
+ * - a silent `h` is dropped: at the start of a word (huile, uile) and after a
+ *   consonant other than `c`, `s`, `p` and `k` (thé, té): `ch`, `sh`, `ph`
+ *   and `kh` are sounds of their own (`kh` writes a Wolof sound, dakhar);
+ * - `y` becomes `i` (nebeday, nebedai; kodeyin, kodeiin);
+ * - `ou` becomes `u`, the Wolof spelling of the sound (Nourofen, Nurofen);
+ * - a doubled letter becomes single, vowels included (doliprann, dolipran;
+ *   rissin, risin; nebedaay, kodeiin, kodein); digits are kept as they are;
  * - a trailing `e` is dropped in words of more than 4 letters (ibuprofene,
- *   ibuprofen), so that a missing or added final `e` does not matter.
- * `kh` is NOT mapped to `x`: it would change the meaning of Wolof names.
+ *   ibuprofen), so that a missing or added final `e` does not matter, and a
+ *   final `-que` reads as the final `-c` or `-k` (méfénamique, mefenamik).
+ * `kh` is NOT mapped to `x`: it would change the meaning of Wolof names. A
+ * word of one letter is kept as it is ("vitamine C").
  */
 function simplifyWord(word: string): string {
+  // A letter alone is a name ("vitamine C", "vitamine K"), not a sound.
+  if (word.length < 2) return word;
   const spelled = word
     .replaceAll('ph', 'f')
+    .replaceAll('ck', 'k')
     .replaceAll('qu', 'k')
+    .replace(/c(?=[eiy])/g, 's')
+    .replace(/c(?!h)/g, 'k')
+    .replace(/^h/, '')
+    .replace(/([bdfgjlmnqrtvwxz])h/g, '$1')
     .replaceAll('y', 'i')
-    .replace(/([b-df-hj-np-tv-z])\1+/g, '$1');
+    .replaceAll('ou', 'u')
+    .replace(/([a-z])\1+/g, '$1');
   return spelled.length > 4 && spelled.endsWith('e') ? spelled.slice(0, -1) : spelled;
 }
 
 /**
  * Lowercase, strip accents, turn apostrophes, hyphens and any other character
- * that is not a letter or a digit into spaces, collapse spaces and trim, then
- * apply the spelling variants to each word. Used on both sides of a match.
+ * that is not a letter or a digit into spaces, collapse spaces and trim. The
+ * text as written, every spelling kept: the order of names and their first
+ * letter are read on it ("Cytotec" under C, "comprimé" before "gélule").
  */
-export function normalize(text: string): string {
-  const plain = text
+export function plainText(text: string): string {
+  return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
+}
+
+/**
+ * The plain text (plainText) with the spelling variants applied to each word,
+ * so that a name is read as it sounds. Used on both sides of a match.
+ */
+export function normalize(text: string): string {
+  const plain = plainText(text);
   if (plain === '') return '';
   return plain.split(' ').map(simplifyWord).join(' ');
 }

@@ -196,7 +196,7 @@ function scoreName(name: CompiledName, query: ScoredQuery, floor: number): Score
   if (name.containable && ` ${text} `.includes(` ${name.norm} `)) {
     better(CONTAINED_SCORE, 'contained');
   }
-  // A spelling of the whole name within one edit ("cytotek") says which name it is.
+  // A spelling of the whole name within one edit ("misopristol") says which name it is.
   // (Only for a spelling already close enough to be scored: cheap checks first.)
   const whole = fuzzy(text, query.tri, name.norm, name.tri, floor);
   const near =

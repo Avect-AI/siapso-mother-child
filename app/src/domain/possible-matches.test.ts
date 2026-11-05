@@ -154,14 +154,52 @@ describe('the brand words and local names of the pack', () => {
 });
 
 describe('withPossibleMatches: a brand spelt within one edit', () => {
+  it.each([['misopristol', 'misoprostol-generic']])(
+    'keeps %s after "none of these", strong but not very strong',
+    (text, id) => {
+      const net = withPossibleMatches(pack, [typed(text)], { declined: () => true });
+      expect(net.items[1]?.ref).toMatchObject({ id });
+      expect(net.possible.get(1)?.strength).toBe('strong');
+    },
+  );
+});
+
+// Live test round 2 (SCRUM-51): a name written as it sounds is the name itself,
+// so its danger is never held below the danger of the name written right.
+describe('withPossibleMatches: a name written as it sounds', () => {
   it.each([
     ['cytotek', 'misoprostol-generic'],
     ['cytoteck', 'misoprostol-generic'],
-    ['misopristol', 'misoprostol-generic'],
-  ])('keeps %s after "none of these", strong but not very strong', (text, id) => {
+    ['sitotek', 'misoprostol-generic'],
+    ['sitotec', 'misoprostol-generic'],
+    ['kodeyin', 'codeine-generic'],
+    ['huile de rissin', 'castor-oil'],
+    ['huille de rissin', 'castor-oil'],
+    ['uile de risin', 'castor-oil'],
+  ])('keeps %s after "none of these", very strong', (text, id) => {
     const net = withPossibleMatches(pack, [typed(text)], { declined: () => true });
     expect(net.items[1]?.ref).toMatchObject({ id });
-    expect(net.possible.get(1)?.strength).toBe('strong');
+    expect(net.possible.get(1)?.strength).toBe('very-strong');
+  });
+
+  it('gives "sitotek" at 37 weeks the danger of Cytotec, and "huile de rissin" with a scar the danger of castor oil', () => {
+    const profile = profileOf({
+      term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-05' },
+      conditions: ['uterine-scar'],
+    });
+    for (const text of ['sitotek', 'cytotek', 'huile de rissin', 'uile de risin']) {
+      const context = contextFromProfile(
+        profile,
+        { items: [typed(text)], signs: [] },
+        '2026-11-05',
+      );
+      const net = withPossibleMatches(pack, context.items, { declined: () => true });
+      const evaluation = cappedEvaluation(
+        evaluate(pack, { ...context, items: net.items }),
+        net.possible,
+      );
+      expect(evaluation.level, text).toBe('danger');
+    }
   });
 });
 

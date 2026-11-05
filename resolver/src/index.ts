@@ -7,6 +7,7 @@ export {
   AGE_WORDS,
   formWords,
   normalize,
+  plainText,
   SALT_WORDS,
   splitAgeWords,
   STOP_WORDS,

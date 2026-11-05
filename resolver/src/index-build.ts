@@ -5,6 +5,7 @@ import {
   isFormWord,
   isSaltWord,
   normalize,
+  plainText,
   splitAgeWords,
   withoutStopWords,
 } from './normalize.js';
@@ -20,7 +21,10 @@ export interface CompiledWord {
 
 /** What the ranking reads of a product, shared by all its names. */
 export interface EntryInfo {
-  /** Its French name, normalised: the plainest name of a family sorts first. */
+  /**
+   * Its French name as written (plainText, no spelling variant): the plainest
+   * name of a family sorts first ("comprimé" before "gélule").
+   */
   sortName: string;
   /** The form words of its French name ("comprim", "efervescent"). */
   forms: ReadonlySet<string>;
@@ -41,7 +45,7 @@ export function infoOf(entry: IndexEntry): EntryInfo {
     const strength =
       (entry.strengths ?? []).length === 0 ? parseStrength(entry.display.fr).strengthMg : undefined;
     info = {
-      sortName: normalize(entry.display.fr),
+      sortName: plainText(entry.display.fr),
       forms: new Set(formWords(entry.display.fr)),
       ...(strength === undefined ? {} : { nameStrength: strength }),
     };

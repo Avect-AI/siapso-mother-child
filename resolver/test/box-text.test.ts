@@ -178,19 +178,34 @@ describe('a name contained in a longer text', () => {
     expect(search(index, 'advil')[0]?.match).toBe('exact');
     expect(search(index, 'kola')[0]?.match).toBe('word');
     expect(search(index, 'misopro')[0]?.match).toBe('prefix');
-    expect(search(index, 'misoproostool')[0]?.match).toBe('fuzzy');
+    expect(search(index, 'misoprotal')[0]?.match).toBe('fuzzy');
   });
 
   it('says when the whole name is spelt within one edit of a name of 6 letters or more', () => {
     for (const [query, id] of [
-      ['cytotek', 'misoprostol-generic'],
-      ['cytoteck', 'misoprostol-generic'],
       ['misopristol', 'misoprostol-generic'],
+      ['cytotel', 'misoprostol-generic'],
     ] as const) {
       expect(search(index, query)[0], query).toMatchObject({ id, match: 'near' });
     }
-    // A name of 5 letters: one edit is too much of the name ("rissin").
-    expect(search(index, 'rissin')[0]?.match ?? 'none').not.toBe('near');
+    // A name of 5 letters: one edit is too much of the name ("ricen").
+    expect(search(index, 'ricen')[0]?.match ?? 'none').not.toBe('near');
+  });
+
+  it('reads a name written as it sounds as the name itself', () => {
+    for (const [query, id] of [
+      ['cytotek', 'misoprostol-generic'],
+      ['cytoteck', 'misoprostol-generic'],
+      ['sitotek', 'misoprostol-generic'],
+      ['sitoteck', 'misoprostol-generic'],
+      ['sitotèk', 'misoprostol-generic'],
+      ['huile de rissin', 'castor-oil'],
+      ['huille de rissin', 'castor-oil'],
+      ['uile de risin', 'castor-oil'],
+      ['rissin', 'castor-oil'],
+    ] as const) {
+      expect(search(index, query)[0], query).toMatchObject({ id, score: 1, match: 'exact' });
+    }
   });
 
   it('needs a word of 4 characters or more, and never the word "générique" alone', () => {

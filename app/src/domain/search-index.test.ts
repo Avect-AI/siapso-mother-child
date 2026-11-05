@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Pack, Rule } from '@siapso/engine';
-import { normalize, search } from '@siapso/resolver';
+import { plainText, search } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
@@ -547,10 +547,23 @@ describe('browseGroupsOf', () => {
     expect(letters).toEqual([...letters].sort());
     for (const group of groups) {
       for (const entry of group.entries) {
-        expect(normalize(entry.name).charAt(0).toUpperCase()).toBe(group.letter);
+        expect(plainText(entry.name).charAt(0).toUpperCase()).toBe(group.letter);
       }
     }
     expect(groups.flatMap((group) => group.entries)).toHaveLength(pack.plants.length);
+  });
+
+  it('files a name under the letter it is written with, not the sound the search reads', () => {
+    const groups = browseGroupsOf(browseEntriesOf(pack, 'plant', 'fr'));
+    const letterOf = (name: string) =>
+      groups.find((group) => group.entries.some((entry) => entry.name === name))?.letter;
+    expect(letterOf('Huile de ricin')).toBe('H');
+    expect(letterOf('Kinkéliba')).toBe('K');
+    const products = browseGroupsOf(browseEntriesOf(pack, 'product', 'fr'));
+    const codoliprane = products.find((group) =>
+      group.entries.some((entry) => entry.name.startsWith('CODOLIPRANE')),
+    );
+    expect(codoliprane?.letter).toBe('C');
   });
 
   it('puts a name that starts with a digit or a sign under #', () => {

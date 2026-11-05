@@ -1177,7 +1177,7 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
   });
 
   it('gives a card held below danger an instruction that branches on intake: go now if already taken', () => {
-    // "cytotek" is a near spelling of Cytotec: strong, so its danger (misoprostol
+    // "misopristol" is a near spelling of misoprostol: strong, so its danger (misoprostol
     // with a scar at 36 weeks) is held at "before the next dose"
     // (possible-matches.ts, committee question N-3). Held down, the card must not
     // lower the urgency when the product may already have been taken.
@@ -1203,7 +1203,7 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
         'If she has already taken some, she must go to the health post now and show this product. If not, show it to the midwife or the nurse before she takes any, to find out whether it is this product.',
       ],
     ] as const) {
-      const net = withPossibleMatches(pack, [typed('cytotek')]);
+      const net = withPossibleMatches(pack, [typed('misopristol')]);
       expect([...net.possible.values()].map((p) => p.strength)).toEqual(['strong']);
       const context = contextOf({
         pregnancy: weeks(36),

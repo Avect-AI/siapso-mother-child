@@ -112,7 +112,7 @@ describe('search scoring', () => {
   });
 
   it('finds a misspelling with an edit through trigrams and distance', () => {
-    const [first] = search(index, 'baktrim');
+    const [first] = search(index, 'baktrin');
     expect(first?.id).toBe('bactrim');
     expect(first?.score).toBeGreaterThan(0.6);
     expect(first?.score).toBeLessThan(1);

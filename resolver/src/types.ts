@@ -32,7 +32,7 @@ export interface IndexEntry {
 /**
  * How a candidate's best name matched the query: the whole name (`exact`), a
  * whole word of it (`word`), its start (`prefix`), a spelling of the whole
- * name within one edit when it has 6 letters or more (`near`: "cytotek"), a
+ * name within one edit when it has 6 letters or more (`near`: "misopristol"), a
  * spelling close to the whole name (`fuzzy`) or to one of its words
  * (`fuzzy-word`), the substances
  * of a query made only of substance names (`substances`), or the name inside
