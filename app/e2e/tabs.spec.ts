@@ -133,8 +133,12 @@ test('a frozen tab that missed a deletion takes the quick exit when it comes bac
   await frozen.getByRole('link', { name: 'Mon profil' }).click();
   await expect(frozen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Aminata');
 
-  // The other tab (which heard only a new token from it, and took the quick exit) deletes her profile.
+  // The other tab heard only the new tokens of the frozen tab's start and
+  // unlock (it has no channel to say them): it took the quick exit, a moment
+  // after each (it waits for a message first). It then deletes her profile.
   await page.bringToFront();
+  await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await page.waitForTimeout(1_000);
   await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
   await page.getByRole('button', { name: 'Ouvrir' }).click();
   await unlock(page);

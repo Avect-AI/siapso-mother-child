@@ -140,6 +140,10 @@ async function expectShortcutInOnePlace(
   await page.getByRole('link', { name: 'Réglages' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Réglages' })).toBeVisible();
   await expect(page.getByRole('banner').getByRole('button', { name: 'Quitter' })).toBeVisible();
+  // Measured at the top of the page, as in the other states.
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
   expect(await shortcutBox(page)).toEqual(place);
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
