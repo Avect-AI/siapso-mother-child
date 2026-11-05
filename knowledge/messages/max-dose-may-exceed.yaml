@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Builtin finding of a max-dose rule (C7), held at before the next dose: the
+# strength on the box is not known, and the daily total is above the rule only
+# with the highest strength of the product's family. It states no dose.
+id: max-dose-may-exceed
+fr:
+  fact: "Le dosage écrit sur la boîte n'est pas connu : la quantité totale dépend de ce dosage."
+  risk: 'Selon le dosage de la boîte, cette quantité peut dépasser le maximum par jour.'
+  orientation: "Montrez les boîtes à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise."
+  orientation-accompanied: "Montrez les boîtes à la sage-femme ou à l'infirmier avant qu'elle en reprenne."
+en:
+  fact: 'The strength written on the box is not known: the total amount depends on it.'
+  risk: 'Depending on the strength of the box, this amount may be above the daily maximum.'
+  orientation: 'Show the boxes to the midwife, the nurse or the pharmacist before the next dose.'
+  orientation-accompanied: 'Show the boxes to the midwife or the nurse before she takes any more.'

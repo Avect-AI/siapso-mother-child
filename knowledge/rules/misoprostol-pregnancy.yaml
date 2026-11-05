@@ -12,17 +12,17 @@ message: misoprostol-pregnancy
 sources:
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-03
     quote: 'CYTOTEC (MISOPROSTOL) ADMINISTRATION TO WOMEN WHO ARE PREGNANT CAN CAUSE BIRTH DEFECTS, ABORTION, PREMATURE BIRTH OR UTERINE RUPTURE.'
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-03
     quote: 'THE RISK OF UTERINE RUPTURE INCREASES WITH ADVANCING GESTATIONAL AGES AND WITH PRIOR UTERINE SURGERY, INCLUDING CESAREAN DELIVERY'
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, precautions (pregnancy, nonteratogenic effects)'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-03
     quote: 'Cytotec may produce uterine contractions, uterine bleeding, and expulsion of the products of conception.'
   - source: bdpm

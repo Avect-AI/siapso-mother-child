@@ -18,17 +18,17 @@ message: misoprostol-late-pregnancy
 sources:
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-05
     quote: 'UTERINE RUPTURE HAS BEEN REPORTED WHEN CYTOTEC WAS ADMINISTERED IN PREGNANT WOMEN TO INDUCE LABOR OR TO INDUCE ABORTION.'
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-05
     quote: 'THE RISK OF UTERINE RUPTURE INCREASES WITH ADVANCING GESTATIONAL AGES AND WITH PRIOR UTERINE SURGERY, INCLUDING CESAREAN DELIVERY'
   - source: openfda
     locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, labor and delivery'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=4ab12da7-5731-4e06-bf1c-bc3f2e711f12'
     accessed: 2026-11-05
     quote: 'A major adverse effect of the obstetrical use of Cytotec is uterine tachysystole which may progress to uterine tetany with marked impairment of uteroplacental blood flow, uterine rupture (requiring surgical repair, hysterectomy, and/or salpingo-oophorectomy), or amniotic fluid embolism and lead to adverse fetal heart changes.'
   - source: bdpm

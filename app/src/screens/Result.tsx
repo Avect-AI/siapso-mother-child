@@ -291,10 +291,19 @@ function Names({
 
 /**
  * Under a card whose orientation says to go now if something happens: who to
- * call, one tap away, quiet (the screen keeps its one primary action).
+ * call, one tap away, quiet (the screen keeps its one primary action). Under a
+ * product danger card, the same way as the danger banner's action (`onCall`),
+ * which tells who to call the instruction, the signs and what she takes.
  */
-function CallNow() {
+function CallNow({ onCall }: { onCall?: (() => void) | undefined }) {
   const t = useT();
+  if (onCall !== undefined) {
+    return (
+      <Button variant="quiet" onClick={onCall}>
+        {t('result.callNow')}
+      </Button>
+    );
+  }
   return (
     <a className="button button--quiet" href={`#${CALL_PATH}`}>
       {t('result.callNow')}
@@ -302,7 +311,23 @@ function CallNow() {
   );
 }
 
-function Finding({ finding }: { finding: FindingView }) {
+/**
+ * What a name typed looks like ("Ce nom ressemble à Huile de ricin (Ricinus
+ * communis). Si c'est ce remède :"), its Latin name read in Latin.
+ */
+function Possible({ text, latin }: { text: string; latin: string | undefined }) {
+  const at = latin === undefined ? -1 : text.indexOf(latin);
+  if (latin === undefined || at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <span lang="la">{latin}</span>
+      {text.slice(at + latin.length)}
+    </>
+  );
+}
+
+function Finding({ finding, onCall }: { finding: FindingView; onCall?: () => void }) {
   const t = useT();
   // Accompanied mode: the fact, then each risk's detailed risk with its own
   // evidence level and capped note, after who to show and when, so both modes
@@ -333,7 +358,9 @@ function Finding({ finding }: { finding: FindingView }) {
       title={<Names names={finding.names} typed={finding.typed} said={finding.said} labelled />}
       headingLevel={2}
       orientation={typeof finding.orientation === 'string' ? finding.orientation : null}
-      {...(finding.callNow === true ? { action: <CallNow /> } : {})}
+      {...(finding.callNow === true
+        ? { action: <CallNow onCall={finding.level === 'danger' ? onCall : undefined} /> }
+        : {})}
       {...(details === undefined ? {} : { details })}
       {...(hasMeta(finding) ? { meta: <FindingMeta finding={finding} /> } : {})}
       whyLabel={t('result.why')}
@@ -344,13 +371,16 @@ function Finding({ finding }: { finding: FindingView }) {
         </p>
       ))}
       {finding.possible === undefined ? null : (
-        <p className="result-card__possible">{finding.possible}</p>
+        <p className="result-card__possible">
+          <Possible text={finding.possible} latin={finding.possibleLatin} />
+        </p>
       )}
       {finding.lead === undefined ? null : <p>{finding.lead}</p>}
       {texts.map((text) => (
         <p key={text}>{text}</p>
       ))}
       {finding.termNote === undefined ? null : <p className="meta">{finding.termNote}</p>}
+      {finding.ahead === undefined ? null : <p className="meta">{finding.ahead}</p>}
     </ResultCard>
   );
 }
@@ -392,19 +422,22 @@ function Summary({ view }: { view: ResultView }) {
  * Notes or reminders under their heading: never a level, so never a level
  * colour. A note on contraception shows only at an explicit tap. With
  * `concealAll`, the whole section is one button whatever it holds (the
- * situations, one of which could say HIV; the reminders, whose absence could
- * say it), and with `empty` it shows even with nothing in it, so that its
- * presence says nothing either.
+ * reminders, whose absence could say HIV; the situations, should one of them
+ * say it), labelled `concealLabel` ("Rappels : touchez pour les afficher"),
+ * and with `empty` it shows even with nothing in it, so that its presence
+ * says nothing either.
  */
 function Notes({
   heading,
   notes,
   concealAll = false,
+  concealLabel = 'conceal.note',
   empty,
 }: {
   heading: MessageKey;
   notes: ResultView['notes'];
   concealAll?: boolean;
+  concealLabel?: MessageKey;
   /** Said when there is no note; the section then shows anyway. */
   empty?: string;
 }) {
@@ -436,7 +469,7 @@ function Notes({
   return (
     <section className="result__notes" aria-labelledby={id}>
       <h2 id={id}>{t(heading)}</h2>
-      {concealAll ? <Concealed label={t('conceal.note')}>{items}</Concealed> : items}
+      {concealAll ? <Concealed label={t(concealLabel)}>{items}</Concealed> : items}
     </section>
   );
 }
@@ -658,6 +691,34 @@ export function Result() {
     isStale(pack.date, loaded.today);
   const staleNotice = stale ? <Notice>{t('status.stale')}</Notice> : null;
 
+  // Who to call from a danger: the banner's action and a product danger card's
+  // link say the same instruction (which message says it, so it is worded in
+  // the language of the moment), the signs, and the products of the danger.
+  const callFromDanger =
+    ready?.danger === true && evaluated?.status === 'ready'
+      ? () => {
+          const products = ready.dangerItems.flatMap((index) => {
+            const item = evaluated.items[index];
+            if (item === undefined || item.ref.kind === 'unrecognised') return [];
+            return [
+              {
+                kind: item.ref.kind,
+                id: item.ref.id,
+                ...(item.strengthUnknown === true ? { strengthUnknown: true } : {}),
+              },
+            ];
+          });
+          navigate(CALL_PATH, {
+            state: inSession({
+              instruction: ready.headlineSource,
+              signs,
+              products,
+              productDanger: ready.productDanger,
+            }),
+          });
+        }
+      : undefined;
+
   return (
     <main className="screen result">
       <div className="result__intro">
@@ -684,11 +745,7 @@ export function Result() {
               action={t('result.dangerAction')}
               headingLevel={2}
               onAction={() => {
-                // Who to call says the same instruction (which message says it, so it
-                // is worded in the language of the moment), and the signs to say.
-                navigate(CALL_PATH, {
-                  state: inSession({ instruction: ready.headlineSource, signs }),
-                });
+                callFromDanger?.();
               }}
             />
           ) : null}
@@ -696,21 +753,32 @@ export function Result() {
           {ready.danger ? staleNotice : null}
           {ready.findings.length > 1 ? <Summary view={ready} /> : null}
           <Basis view={ready} />
-          {/* The situations the result leaves out, said before any card. */}
-          <Notes heading="result.situations" notes={ready.situations} concealAll />
+          {/* The situations the result leaves out, said before any card, in
+              clear: hidden only if one could say HIV (the pack always reads it). */}
+          <Notes
+            heading="result.situations"
+            notes={ready.situations}
+            concealAll={ready.situationsConcealed}
+          />
           <div className="result__findings">
             {ready.findings.map((finding) => (
-              <Finding key={finding.key} finding={finding} />
+              <Finding
+                key={finding.key}
+                finding={finding}
+                {...(callFromDanger === undefined ? {} : { onCall: callFromDanger })}
+              />
             ))}
           </div>
           <Notes heading="result.notes" notes={ready.notes} />
           {/* Accompanied mode: always there, always hidden, so that a reminder
-              left out (the IPTp one, for HIV with cotrimoxazole) says nothing. */}
+              left out (the IPTp one, for HIV with cotrimoxazole) says nothing;
+              the button says what it holds (docs/privacy.md). */}
           {mode === 'accompanied' ? (
             <Notes
               heading="result.reminders"
               notes={ready.reminders}
               concealAll
+              concealLabel="conceal.reminders"
               empty={t('result.noReminder')}
             />
           ) : null}

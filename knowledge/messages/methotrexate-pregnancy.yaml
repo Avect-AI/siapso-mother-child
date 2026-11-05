@@ -5,8 +5,10 @@ fr:
   risk: "Pendant la grossesse, il peut provoquer une fausse couche ou des malformations graves chez l'enfant."
   risk-detail: 'La notice française le contre-indique pendant la grossesse quand il ne traite pas un cancer. Chez les femmes exposées à de faibles doses, des fausses couches ont été rapportées dans 42,5 % des grossesses, contre 22,5 % chez des femmes traitées autrement, et des malformations majeures dans 6,6 % des naissances, contre environ 4 %.'
   orientation: 'Montrez ce produit à la sage-femme ou au médecin avant la prochaine prise, sans rien changer au traitement en attendant.'
+  orientation-accompanied: 'Montrez ce produit à la sage-femme ou au médecin avant sa prochaine prise, sans rien changer au traitement en attendant.'
 en:
   fact: 'This product contains methotrexate, a long-term treatment of some joint or skin diseases, and of some cancers.'
   risk: 'During pregnancy it can cause a miscarriage or serious birth defects in the child.'
   risk-detail: 'The French label contraindicates it during pregnancy when it does not treat a cancer. In women exposed to low doses, miscarriages were reported in 42.5 % of pregnancies, against 22.5 % in women treated otherwise, and major birth defects in 6.6 % of births, against about 4 %.'
   orientation: 'Show this product to the midwife or the doctor before the next dose, and change nothing in the treatment until then.'
+  orientation-accompanied: 'Show this product to the midwife or the doctor before her next dose, and change nothing in the treatment until then.'

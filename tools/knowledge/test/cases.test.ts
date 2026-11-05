@@ -210,6 +210,19 @@ describe('contextOf', () => {
     expect(defaulted.conditions).toEqual([]);
     expect(defaulted.signs).toEqual([]);
   });
+
+  it('maps strength-unknown, the box whose strength is not known', async () => {
+    const unknown = contextOf(
+      await sample((t) =>
+        t.replace('units-per-day: 3, long-term: true', 'units-per-day: 3, strength-unknown: true'),
+      ),
+    );
+    expect(unknown.items[0]).toStrictEqual({
+      ref: { kind: 'product', id: 'advil-400-mg-63646874' },
+      unitsPerDay: 3,
+      strengthUnknown: true,
+    });
+  });
 });
 
 describe('projectOf', () => {
@@ -234,6 +247,7 @@ describe('projectOf', () => {
           items: [0],
           message: 'm',
           term: 'unknown',
+          windowStart: 20,
           capped: false,
           sources: [],
         },
@@ -254,6 +268,7 @@ describe('projectOf', () => {
           evidence: 'A',
           items: [0],
           term: 'unknown',
+          'window-start': 20,
         },
       ],
       reminders: ['iptp-reminder'],

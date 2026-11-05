@@ -68,6 +68,26 @@ describe('openapi.yaml', () => {
     expect(check({ level: 'x' })).toBe(false);
   });
 
+  it('documents every field of a Finding, the window start of the look-ahead included', async () => {
+    const doc = await committed();
+    const finding = doc.components.schemas.Finding as { properties: Record<string, unknown> };
+    expect(Object.keys(finding.properties).sort()).toEqual(
+      [
+        'capped',
+        'check',
+        'evidence',
+        'items',
+        'level',
+        'message',
+        'ruleId',
+        'sign',
+        'sources',
+        'term',
+        'windowStart',
+      ].sort(),
+    );
+  });
+
   it('has no inline discriminator in the request schema', async () => {
     const text = await readFile(path.join(REPO_ROOT, 'server', 'openapi.yaml'), 'utf8');
     expect(text).not.toContain('discriminator');

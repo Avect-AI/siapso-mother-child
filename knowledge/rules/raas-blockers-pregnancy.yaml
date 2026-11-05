@@ -12,17 +12,17 @@ message: raas-blockers-pregnancy
 sources:
   - source: openfda
     locator: 'Zestril (lisinopril) drug label, Upsher-Smith Laboratories, LLC, set_id 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8, effective 20250102, boxed warning'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Zestril%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8'
     accessed: 2026-11-03
     quote: 'Drugs that act directly on the renin-angiotensin system can cause injury and death to the developing fetus'
   - source: openfda
     locator: 'Zestril (lisinopril) drug label, Upsher-Smith Laboratories, LLC, set_id 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8, effective 20250102, section 8.1'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Zestril%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8'
     accessed: 2026-11-03
     quote: 'Use of drugs that act on the renin-angiotensin system during the second and third trimesters of pregnancy reduces fetal renal function and increases fetal and neonatal morbidity and death.'
   - source: openfda
     locator: 'Zestril (lisinopril) drug label, Upsher-Smith Laboratories, LLC, set_id 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8, effective 20250102, section 8.1'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Zestril%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8'
     accessed: 2026-11-03
     quote: 'Pregnant women with hypertension should be carefully monitored and managed accordingly.'
 review:

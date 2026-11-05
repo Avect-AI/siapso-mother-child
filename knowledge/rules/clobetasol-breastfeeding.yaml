@@ -12,12 +12,12 @@ message: clobetasol-breastfeeding
 sources:
   - source: lactmed
     locator: 'Clobetasol (LactMed record LM72, revised 2021-01-18, Bookshelf NBK501617), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501617/'
     accessed: 2026-11-03
     quote: 'clobetasol should be avoided on the nipple'
   - source: lactmed
     locator: 'Clobetasol (LactMed record LM72, revised 2021-01-18, Bookshelf NBK501617), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501617/'
     accessed: 2026-11-03
     quote: 'Since only extensive application of the most potent corticosteroids may cause systemic effects in the mother'
   - source: bdpm

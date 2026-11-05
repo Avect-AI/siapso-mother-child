@@ -1,13 +1,22 @@
 # SPDX-License-Identifier: CC-BY-4.0
 id: case-22-doxycycline-8-weeks
-title: '8 weeks, doxycycline: the French label prefers to avoid tetracyclines in the first trimester'
+title: '8 weeks, doxycycline: the French label prefers to avoid tetracyclines in the first trimester, and the rule from 12 weeks is reached within the 28-day look-ahead'
 context:
   pregnancy: { weeks: 8 }
   items:
     - { product: doxy-100-mg-61722191 }
 expect:
-  level: next-contact
+  level: before-next-dose
   findings:
+    - {
+        check: C1,
+        rule: tetracyclines-pregnancy,
+        message: tetracyclines-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+        window-start: 12,
+      }
     - {
         check: C1,
         rule: tetracyclines-pregnancy-first-trimester,

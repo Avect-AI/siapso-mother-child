@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 2 (SCRUM-52): 8 or 24 grams of paracetamol a day gave the
+# same "before the next dose" as 3.5 grams. A daily amount of at least twice
+# the maximum of paracetamol-max-daily (3 g, so 6 g) is read as a danger: the
+# label describes liver damage that can be fatal, signs that appear only after
+# one or two days, and asks for immediate transfer to hospital even without
+# early symptoms, with an antidote given as early as possible. 6 g a day
+# (twice the maximum) is an engineering default, not a figure of the label:
+# the label names no daily toxic threshold, and warns that the risk of a
+# serious intoxication is higher with liver or kidney disease, malnutrition,
+# fasting or recent weight loss (the quote below). The clinical review of the
+# pull request kept 6 g as defensible and more cautious than 8 g; the clinical
+# committee must confirm it (knowledge/README.md, R-1). With the strength
+# unknown, the engine counts the lowest adult strength of the family as
+# certain (a danger when it reaches 6 g) and the highest as possible: a
+# possible toxic amount is held at before the next dose with its own message,
+# paracetamol-overdose-possible (R-2). A product of the family with no
+# strength (a suspension) chosen with "Je ne sais pas" is read with the
+# strengths of the family's tablets: this can only over-alert.
+id: paracetamol-overdose
+kind: max-dose
+when:
+  subject: { substance: paracetamol }
+  from-mg-per-day: 6000
+level: danger
+possible-message: paracetamol-overdose-possible
+danger-rationale: 'At twice the daily maximum or more, paracetamol can cause severe liver damage that can be fatal. The signs of liver damage often appear only one or two days later, while the antidote protects the liver best when given early: the label asks for immediate transfer to hospital even without early symptoms. Waiting for signs loses the time the treatment needs.'
+evidence: A
+message: paracetamol-overdose
+sources:
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Un surdosage peut provoquer une cytolyse hépatique susceptible d'entraîner une insuffisance hépatocellulaire pouvant nécessiter une greffe hépatique, un saignement gastro-intestinal, une acidose métabolique, une encéphalopathie pouvant aller jusqu’au coma et à la mort."
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Les symptômes cliniques de l’atteinte hépatique sont généralement observés après 1 à 2 jours, et atteignent un maximum après 3 à 4 jours.'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Transfert immédiat en milieu hospitalier, pour des soins médicaux d’urgence, malgré l’absence de symptômes précoces significatifs.'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Le traitement du surdosage comprend classiquement l'administration aussi précoce que possible de l'antidote N-acétylcystéine par voie I.V. ou voie orale si possible avant la dixième heure."
+  - source: bdpm
+    # The risk factors of a serious intoxication: provenance of the committee question R-1.
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Le risque d'une intoxication grave (surdosage thérapeutique ou intoxication accidentelle) peut être particulièrement élevé chez les sujets âgés, chez les jeunes enfants, chez les patients avec une atteinte hépatique ou rénale, en cas d'alcoolisme chronique, chez les patients souffrant de malnutrition chronique (voir rubrique 4.2), jeûne, amaigrissement récent, cholémie familiale (syndrome de Gilbert) ainsi que les patients recevant des médicaments inducteurs enzymatiques."
+  - source: bdpm
+    # The maximum the threshold doubles (paracetamol-max-daily).
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.2, "Adulte et enfant à partir de 50 kg" (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Adulte et enfant à partir de 50 kg (environ 15 ans) 1000 mg soit 1 g (1 comprimé) 4 heures minimum 3000 mg par jour'
+review:
+  status: draft
+  reviewers: []

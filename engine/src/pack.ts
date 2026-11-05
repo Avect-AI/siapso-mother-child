@@ -142,7 +142,7 @@ function onlyKeys(o: Json, allowed: readonly string[], where: string): void {
 }
 
 const SUBJECT_KEYS = ['substance', 'class', 'plant'];
-const REQUIREMENT_KEYS = ['with', 'condition'];
+const REQUIREMENT_KEYS = ['with', 'condition', 'sign'];
 // Keyed by RuleWhen, so the compiler keeps this list complete.
 const WHEN: Record<keyof RuleWhen, true> = {
   subject: true,
@@ -152,6 +152,7 @@ const WHEN: Record<keyof RuleWhen, true> = {
   pregnancyWindows: true,
   breastfeeding: true,
   maxMgPerDay: true,
+  fromMgPerDay: true,
   strengthAboveMg: true,
 };
 /** The keys of a rule `when` (pack authoring tools check their schema against it). */
@@ -184,11 +185,19 @@ function dangerRationale(value: unknown, level: Level, where: string): void {
   }
 }
 
-/** Validates `when` and returns every subject it references. */
-function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
+/** What a rule's `when` references, for the checks between collections. */
+interface WhenRefs {
+  subjects: Subject[];
+  /** Danger sign ids of `sign` requirements. */
+  signs: string[];
+}
+
+/** Validates `when` and returns every subject and danger sign it references. */
+function ruleWhen(value: unknown, kind: RuleKind, where: string): WhenRefs {
   const o = object(value, where);
   onlyKeys(o, RULE_WHEN_KEYS, where);
   const subjects: Subject[] = [];
+  const signs: string[] = [];
   if (o.subject !== undefined) subjects.push(subject(o.subject, `${where}.subject`));
   else if (kind !== 'reminder') fail(`${where}.subject`, `is required for a ${kind} rule`);
   optional(o.requires, (v) => {
@@ -198,10 +207,11 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
     list(v, `${where}.requires`, (item, at) => {
       const r = object(item, at);
       onlyKeys(r, REQUIREMENT_KEYS, at);
-      if (Object.hasOwn(r, 'with') === Object.hasOwn(r, 'condition')) {
-        fail(at, 'must have exactly one of with or condition');
+      if (REQUIREMENT_KEYS.filter((key) => Object.hasOwn(r, key)).length !== 1) {
+        fail(at, 'must have exactly one of with, condition or sign');
       }
       if (Object.hasOwn(r, 'with')) subjects.push(subject(r.with, `${at}.with`));
+      else if (Object.hasOwn(r, 'sign')) signs.push(id(r.sign, `${at}.sign`));
       else oneOf(r.condition, CONDITION_IDS, `${at}.condition`);
     });
   });
@@ -238,8 +248,14 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
       boolean(p, `${where}.breastfeeding.premature`);
     });
   });
-  if (o.maxMgPerDay !== undefined || kind === 'max-dose') {
-    number(o.maxMgPerDay, `${where}.maxMgPerDay`, 0, false);
+  // A max-dose rule has exactly one threshold; no other rule has any.
+  const thresholds = (['maxMgPerDay', 'fromMgPerDay'] as const).filter((k) => o[k] !== undefined);
+  if (kind === 'max-dose' && thresholds.length !== 1) {
+    fail(where, 'must have exactly one of maxMgPerDay or fromMgPerDay for a max-dose rule');
+  }
+  for (const key of thresholds) {
+    if (kind !== 'max-dose') fail(`${where}.${key}`, `is only allowed for a max-dose rule`);
+    number(o[key], `${where}.${key}`, 0, false);
   }
   optional(o.strengthAboveMg, (n) => {
     number(n, `${where}.strengthAboveMg`, 0, false);
@@ -253,7 +269,7 @@ function ruleWhen(value: unknown, kind: RuleKind, where: string): Subject[] {
     }
   });
   if (kind === 'interaction' || kind === 'herb-drug') partners(o, kind, where);
-  return subjects;
+  return { subjects, signs };
 }
 
 /**
@@ -314,6 +330,13 @@ function messages(value: unknown): Record<Lang, Json> {
       string(m.risk, `${where}.risk`);
       optional(m.riskDetail, (v) => string(v, `${where}.riskDetail`));
       optional(m.orientation, (v) => string(v, `${where}.orientation`));
+      optional(m.orientationAccompanied, (v) => {
+        string(v, `${where}.orientationAccompanied`);
+        // It replaces the orientation in accompanied mode: never one without the other.
+        if (m.orientation === undefined) {
+          fail(`${where}.orientationAccompanied`, 'is only allowed with an orientation');
+        }
+      });
     }
     result[lang] = byId;
   }
@@ -339,6 +362,9 @@ export function parsePack(json: unknown): Pack {
   const substances = collection(pack, 'substances', (o, where) => {
     localized(o.names, `${where}.names`);
     strings(o.classes, `${where}.classes`);
+    optional(o.adultMinStrengthMg, (v) => {
+      number(v, `${where}.adultMinStrengthMg`, 0, false);
+    });
   });
   const classes = collection(pack, 'classes', (o, where) => {
     localized(o.names, `${where}.names`);
@@ -362,6 +388,7 @@ export function parsePack(json: unknown): Pack {
     string(o.form, `${where}.form`);
     string(o.route, `${where}.route`);
     boolean(o.demo, `${where}.demo`);
+    optional(o.family, (v) => id(v, `${where}.family`));
   });
   const plants = collection(pack, 'plants', (o, where) => {
     string(o.latinName, `${where}.latinName`);
@@ -372,16 +399,26 @@ export function parsePack(json: unknown): Pack {
     sourceRefs(o.sources, `${where}.sources`);
   });
   const ruleSubjects: { where: string; subject: Subject }[] = [];
+  const ruleSigns: { where: string; sign: string }[] = [];
   const rules = collection(pack, 'rules', (o, where) => {
     const kind = oneOf(o.kind, RULE_KINDS, `${where}.kind`);
-    for (const s of ruleWhen(o.when, kind, `${where}.when`)) {
-      ruleSubjects.push({ where, subject: s });
-    }
+    const refs = ruleWhen(o.when, kind, `${where}.when`);
+    for (const s of refs.subjects) ruleSubjects.push({ where, subject: s });
+    for (const sign of refs.signs) ruleSigns.push({ where, sign });
     const level = oneOf(o.level, LEVELS, `${where}.level`);
     oneOf(o.evidence, EVIDENCE_LEVELS, `${where}.evidence`);
     optional(o.dangerRationale, (v) => string(v, `${where}.dangerRationale`));
     dangerRationale(o.dangerRationale, level, `${where}.dangerRationale`);
     id(o.message, `${where}.message`);
+    optional(o.possibleMessage, (v) => {
+      id(v, `${where}.possibleMessage`);
+      if (kind !== 'max-dose') {
+        fail(
+          `${where}.possibleMessage`,
+          `is only allowed for a max-dose rule, not for a ${kind} rule`,
+        );
+      }
+    });
     sourceRefs(o.sources, `${where}.sources`);
     const review = object(o.review, `${where}.review`);
     oneOf(review.status, ['draft', 'validated'], `${where}.review.status`);
@@ -433,6 +470,8 @@ export function parsePack(json: unknown): Pack {
     else if ('class' in s) known(classes.ids, 'class', where, s.class);
     else known(plants.ids, 'plant', where, s.plant);
   }
+  // A sign the pack does not list could never be ticked: the rule would never apply.
+  for (const { where, sign } of ruleSigns) known(dangerSigns.ids, 'danger sign', where, sign);
   // Every cited source is listed, so that the app can show its name and licence.
   for (const { where, o } of [...rules.entries, ...plants.entries, ...dangerSigns.entries]) {
     for (const ref of o.sources as { source: string }[]) {
@@ -443,6 +482,9 @@ export function parsePack(json: unknown): Pack {
   // Every message the engine can output exists in both languages.
   const needed = [
     ...rules.entries.map(({ where, o }) => ({ where, message: o.message as string })),
+    ...rules.entries.flatMap(({ where, o }) =>
+      o.possibleMessage === undefined ? [] : [{ where, message: o.possibleMessage as string }],
+    ),
     ...plants.entries.map(({ where, o }) => ({ where, message: o.message as string })),
     ...dangerSigns.entries.flatMap(({ where, o }) =>
       o.message === undefined ? [] : [{ where, message: o.message as string }],

@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-38-doliprane-1000-mg-6-units
+title: '30 weeks, Doliprane 1000 mg, 6 a day: twice the daily maximum, a danger (from the threshold included)'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: doliprane-1000-mg-60234100, units-per-day: 6 }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-overdose,
+        message: paracetamol-overdose,
+        level: danger,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

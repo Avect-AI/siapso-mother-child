@@ -119,7 +119,7 @@ test('kinkeliba without a danger sign: we do not know, and who to show it to', a
   await expect(card).toContainText('On ne sait pas si le kinkéliba peut faire du mal');
   await expect(card).not.toContainText('sans risque');
   await expect(card.locator('.result-card__orientation')).toHaveText(
-    'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
+    'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.',
   );
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expectNoSeriousViolation(page);

@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# As codeine-breastfeeding-baby-signs: a breastfed baby very sleepy, feeding
+# poorly or breathing with difficulty while the mother takes tramadol shows
+# the very effect the tramadol card warns about (excess sedation and slowed
+# breathing from the milk): with one of these signs ticked, the tramadol card
+# itself is a danger, and who to call names what she takes.
+id: tramadol-breastfeeding-baby-signs
+kind: breastfeeding
+when:
+  subject: { substance: tramadol }
+  requires:
+    - sign: baby-very-sleepy
+    - sign: baby-not-feeding
+    - sign: baby-breathing-difficulty
+level: danger
+danger-rationale: 'A breastfed baby who is very sleepy, feeds poorly or breathes with difficulty while the mother takes tramadol may have excess sedation or slowed breathing from the milk, which the US label calls a serious adverse reaction. Breathing can stop: the baby needs care now, and the product must be named, since it explains the signs.'
+evidence: C
+message: tramadol-breastfeeding-baby-signs
+sources:
+  - source: openfda
+    locator: 'Tramadol hydrochloride extended-release tablets drug label, Sun Pharmaceutical Industries, set_id 004de5a4-80f8-4040-a6ea-be5e99352a36, effective 20251120'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=004de5a4-80f8-4040-a6ea-be5e99352a36'
+    accessed: 2026-11-05
+    quote: 'Because of the potential for serious adverse reactions, including excess sedation and respiratory depression in a breastfed infant, advise patients that breastfeeding is not recommended during treatment with tramadol hydrochloride extended-release tablets.'
+  - source: lactmed
+    locator: 'Tramadol (LactMed record LM391, revised 2026-04-15, Bookshelf NBK501260), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501260/'
+    accessed: 2026-11-05
+    quote: 'If tramadol is used, monitor infants for increased sleepiness (more than usual), difficulty breastfeeding, breathing difficulties or limpness'
+review:
+  status: draft
+  reviewers: []

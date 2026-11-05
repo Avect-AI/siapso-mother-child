@@ -126,8 +126,9 @@ describe('result wording over the reference cases', () => {
       const date = formatDate(pack.date, lang);
       for (const [at, text] of shown(view)) {
         // A product keeps the name she confirmed, strength included (spec section 10),
-        // and text she typed stays as typed.
-        if (/\.(title|names\[\d+\]|typed\[\d+\]|written\[\d+\])$/.test(at)) continue;
+        // and text she typed stays as typed. A window reached through the
+        // look-ahead says its week, as the term line under the title does.
+        if (/\.(title|names\[\d+\]|typed\[\d+\]|written\[\d+\]|ahead)$/.test(at)) continue;
         const rest = text.replaceAll(version, '').replaceAll(date, '');
         expect(rest, `${label} ${at}: ${text}`).not.toMatch(/\d/);
       }
@@ -137,13 +138,17 @@ describe('result wording over the reference cases', () => {
 
   it('always names the level in text, for the result and for every card', () => {
     let products = 0;
-    eachView((view, label, _mode, lang) => {
-      // A danger card of a danger sign (check C11), or of a product rule, never called a sign.
+    eachView((view, label, mode, lang) => {
+      // A danger card of a danger sign (check C11), or of a product rule, never
+      // called a sign; in accompanied mode, the next visit is hers.
       const fromSign = (key: string) => key.startsWith('C11|');
-      const nameOf = (level: Level, sign: boolean) =>
-        level === 'danger' && !sign
-          ? translate(lang, 'result.dangerProductLevel')
-          : translate(lang, `level.${level}`);
+      const nameOf = (level: Level, sign: boolean) => {
+        if (level === 'danger' && !sign) return translate(lang, 'result.dangerProductLevel');
+        if (level === 'next-contact' && mode === 'accompanied') {
+          return translate(lang, 'result.levelAccompanied.next-contact');
+        }
+        return translate(lang, `level.${level}`);
+      };
       const signShown = view.findings.some((f) => f.level === 'danger' && fromSign(f.key));
       expect(view.levelLabel, label).toBe(nameOf(view.level, signShown));
       expect(view.findings.length, label).toBeGreaterThan(0);
@@ -200,6 +205,40 @@ describe('result wording over the reference cases', () => {
     });
     // Not vacuous: the danger cases leave their instruction to the banner.
     expect(inBanner).toBeGreaterThan(0);
+  });
+
+  it('speaks of her in accompanied mode (a profile, or a passer-by nothing keeps)', () => {
+    // Never "your treatment", "this screen" (gone once the next one starts) or
+    // "the next visit" (whose?): her treatment, this product, her next visit.
+    const notAboutHer = {
+      fr: /(?<![\p{L}])(?:vous|votre|vos)(?![\p{L}])|cet écran|la prochaine visite/iu,
+      en: /(?<![\p{L}])(?:you|your)(?![\p{L}])|this screen|the next visit/iu,
+    };
+    let checked = 0;
+    eachView((view, label, mode, lang) => {
+      if (mode !== 'accompanied') return;
+      for (const [at, text] of shown(view)) {
+        if (/\.(title|names\[\d+\]|typed\[\d+\]|written\[\d+\])$/.test(at)) continue;
+        checked += 1;
+        expect(text, `${label} ${at}`).not.toMatch(notAboutHer[lang]);
+      }
+    });
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('never tells to change nothing beside a daily maximum or a product danger', () => {
+    let seen = 0;
+    eachView((view, label, _mode, lang) => {
+      const dose = view.findings.some((f) => f.key.startsWith('C7|'));
+      const product = view.findings.some((f) => f.level === 'danger' && !f.key.startsWith('C11|'));
+      if (!dose && !product) return;
+      seen += 1;
+      const said = view.fixedLines.join(' ');
+      expect(said, label).not.toMatch(
+        lang === 'fr' ? /changez rien|changer à son/ : /change anything/,
+      );
+    });
+    expect(seen).toBeGreaterThan(0);
   });
 
   it('shows in woman mode only what the woman reads', () => {
@@ -277,10 +316,13 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
     const clashes = mergeClashes(clashing);
     expect(clashes.length).toBeGreaterThan(0);
     for (const clash of clashes) {
-      expect(clash).toMatch(
-        /^product:\S+.*: C1 before-next-dose: nsaid-pregnancy-from-20-weeks, nsaid-twin$/,
-      );
+      // The twin and the rules it clashes with: the NSAID rule, or another rule
+      // of the card (codeine late in pregnancy, for ibuprofen with codeine).
+      expect(clash).toMatch(/^product:\S+.*: C1 before-next-dose: (?:[a-z0-9-]+, )+nsaid-twin$/);
     }
+    expect(
+      clashes.some((clash) => clash.endsWith('nsaid-pregnancy-from-20-weeks, nsaid-twin')),
+    ).toBe(true);
   });
 });
 
@@ -365,13 +407,21 @@ function seenBy(of: Pack, item: CheckedItem): string | null {
   // A daily maximum adds up strengths: the components count only for an item it sees.
   const summed = of.rules.some((rule, index) => rule.kind === 'max-dose' && reads[index]?.[0]);
   const product = ref.kind === 'product' ? of.products.find((p) => p.id === ref.id) : undefined;
-  // A box of unknown strength adds nothing to a daily total: another way of being seen.
+  // A box of unknown strength adds the strengths of its family to a daily
+  // total (lowest certain, highest possible): another way of being seen.
   return JSON.stringify([
     ref.kind,
     item.strengthUnknown === true,
     reads,
     summed ? (product?.components ?? []) : [],
+    summed && item.strengthUnknown === true ? (product?.family ?? null) : null,
   ]);
+}
+
+/** A daily maximum of a danger rule held below the danger level: a possible toxic amount. */
+function possibleOverdoseIn(of: Pack, finding: Finding): boolean {
+  const declared = of.rules.find((rule) => rule.id === finding.ruleId)?.level;
+  return finding.check === 'C7' && declared === 'danger' && finding.level !== 'danger';
 }
 
 /** Every subset of a few conditions, the empty one first. */
@@ -448,6 +498,9 @@ function mergeClashes(of: Pack): string[] {
         for (const level of new Set(group.map((f) => f.level))) {
           const same = group.filter((f) => f.level === level);
           if (new Set(same.map(orientationOf)).size < 2) continue;
+          // A possible toxic amount (a danger daily maximum held at a lower level)
+          // leads its card on purpose: its orientation says more than the others.
+          if (same.some((f) => possibleOverdoseIn(of, f))) continue;
           const [first] = same;
           const names = items.map((item) =>
             'id' in item.ref

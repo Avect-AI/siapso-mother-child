@@ -37,43 +37,74 @@ function ruleIds(result: Evaluation): string[] {
 }
 
 describe('TERM_LOOKAHEAD_DAYS', () => {
-  it('is 14 days: two whole weeks, so whole-week terms stay whole weeks', () => {
-    expect(TERM_LOOKAHEAD_DAYS).toBe(14);
+  it('is 28 days: four whole weeks (the gap to the next visit), so whole-week terms stay whole weeks', () => {
+    expect(TERM_LOOKAHEAD_DAYS).toBe(28);
     expect(TERM_LOOKAHEAD_DAYS % 7).toBe(0);
   });
 });
 
 describe('the look-ahead on findings', () => {
-  it('flags an NSAID at 18 weeks with the rule from 20 weeks (20 is reached within 14 days)', () => {
-    const result = run({ pregnancy: exact(18), items: [ibuprofen] });
+  it('flags an NSAID at 16 weeks with the rule from 20 weeks (20 is reached within 28 days)', () => {
+    const result = run({ pregnancy: exact(16), items: [ibuprofen] });
     expect(ruleIds(result)).toEqual([NSAID_RULE]);
     expect(result.level).toBe('before-next-dose');
   });
 
-  it('does not reach a window more than 14 days away', () => {
-    const result = run({ pregnancy: exact(17), items: [ibuprofen] });
+  it('does not reach a window more than 28 days away', () => {
+    const result = run({ pregnancy: exact(15), items: [ibuprofen] });
     expect(ruleIds(result)).toEqual([]);
     expect(result.level).toBe('unknown');
   });
 
-  it('gives danger for castor oil with a uterine scar at 28 and 29 weeks, not at 27', () => {
-    for (const weeks of [28, 29]) {
+  it('holds castor oil with a uterine scar at before the next dose from 26 weeks, a danger from 30', () => {
+    // A window still ahead is never a danger "go now" (fix round 1 of SCRUM-52).
+    for (const weeks of [26, 27, 28, 29]) {
       const result = run({ pregnancy: exact(weeks), conditions: scar, items: [castorOil] });
-      expect(result.level, `${String(weeks)} weeks`).toBe('danger');
-      expect(ruleIds(result), `${String(weeks)} weeks`).toEqual([CASTOR_RULE]);
+      expect(result.level, `${String(weeks)} weeks`).toBe('before-next-dose');
+      expect(result.findings, `${String(weeks)} weeks`).toMatchObject([
+        { ruleId: CASTOR_RULE, level: 'before-next-dose', windowStart: 30 },
+      ]);
     }
-    const before = run({ pregnancy: exact(27), conditions: scar, items: [castorOil] });
+    const now = run({ pregnancy: exact(30), conditions: scar, items: [castorOil] });
+    expect(now.findings).toMatchObject([{ ruleId: CASTOR_RULE, level: 'danger' }]);
+    expect(now.findings[0]).not.toHaveProperty('windowStart');
+    const before = run({ pregnancy: exact(25), conditions: scar, items: [castorOil] });
     expect(ruleIds(before)).not.toContain(CASTOR_RULE);
   });
 
   it('extends a range at its upper end only, keeping its precision flag', () => {
     const result = run({
-      pregnancy: { weeksMin: 14, weeksMax: 18, precision: 'estimated' },
+      pregnancy: { weeksMin: 12, weeksMax: 16, precision: 'estimated' },
       items: [ibuprofen],
     });
     expect(result.findings).toMatchObject([
       { ruleId: NSAID_RULE, level: 'before-next-dose', term: 'estimated' },
     ]);
+  });
+
+  it('says where the window starts when a finding is reached only through the look-ahead', () => {
+    const ahead = run({ pregnancy: exact(17), items: [ibuprofen] });
+    expect(ahead.findings).toMatchObject([{ ruleId: NSAID_RULE, windowStart: 20 }]);
+    const castor = run({ pregnancy: exact(27), conditions: scar, items: [castorOil] });
+    expect(castor.findings).toMatchObject([{ ruleId: CASTOR_RULE, windowStart: 30 }]);
+  });
+
+  it('says no window start when the window applies today, for a range or an unknown term', () => {
+    const today = run({ pregnancy: exact(20), items: [ibuprofen] });
+    expect(today.findings[0]).not.toHaveProperty('windowStart');
+    const range = run({
+      pregnancy: { weeksMin: 18, weeksMax: 22, precision: 'estimated' },
+      items: [ibuprofen],
+    });
+    expect(range.findings[0]).not.toHaveProperty('windowStart');
+    const unknown = run({
+      pregnancy: { weeksMin: 0, weeksMax: 42, precision: 'unknown' },
+      items: [ibuprofen],
+    });
+    expect(unknown.findings[0]).not.toHaveProperty('windowStart');
+    // A finding without pregnancy windows has none either.
+    const plain = run({ pregnancy: exact(17), items: [castorOil] });
+    for (const finding of plain.findings) expect(finding).not.toHaveProperty('windowStart');
   });
 
   it('never removes a window that applies today, for any whole-week term', () => {
@@ -106,9 +137,10 @@ describe('the look-ahead on findings', () => {
 });
 
 describe('reminders keep the term as it is today', () => {
-  it('gives no IPTp reminder at 11 weeks, though the look-ahead reaches 12', () => {
-    expect(run({ pregnancy: exact(11) }).reminders).toEqual([]);
-    expect(run({ pregnancy: exact(10) }).reminders).toEqual([]);
+  it('gives no IPTp reminder at 8 to 11 weeks, though the look-ahead reaches 12', () => {
+    for (const weeks of [8, 9, 10, 11]) {
+      expect(run({ pregnancy: exact(weeks) }).reminders, `${String(weeks)} weeks`).toEqual([]);
+    }
   });
 
   it('gives it from 12 weeks', () => {

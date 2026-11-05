@@ -12,12 +12,12 @@ message: codeine-breastfeeding
 sources:
   - source: openfda
     locator: 'Codeine sulfate tablets drug label, Hikma Pharmaceuticals USA Inc., set_id 010905f9-3bcb-4b50-9fe8-a3ad0010f14c, effective 20251222'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22codeine+sulfate%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=010905f9-3bcb-4b50-9fe8-a3ad0010f14c'
     accessed: 2026-11-03
     quote: 'There are published studies and cases that have reported excessive sedation, respiratory depression, and death in infants exposed to codeine via breast milk.'
   - source: openfda
     locator: 'Codeine sulfate tablets drug label, Hikma Pharmaceuticals USA Inc., set_id 010905f9-3bcb-4b50-9fe8-a3ad0010f14c, effective 20251222'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22codeine+sulfate%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=010905f9-3bcb-4b50-9fe8-a3ad0010f14c'
     accessed: 2026-11-03
     quote: 'Women who are ultra-rapid metabolizers of codeine achieve higher than expected serum levels of morphine, potentially leading to higher levels of morphine in breast milk'
   - source: bdpm
@@ -27,12 +27,12 @@ sources:
     quote: "Ce médicament est contre-indiqué pendant l'allaitement (voir rubrique 4.3)"
   - source: lactmed
     locator: 'Codeine (LactMed record LM347, revised 2026-10-15, Bookshelf NBK501212), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501212/'
     accessed: 2026-11-03
     quote: 'these recommendations appear to be based on one case report that has since been discredited'
   - source: lactmed
     locator: 'Codeine (LactMed record LM347, revised 2026-10-15, Bookshelf NBK501212), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501212/'
     accessed: 2026-11-03
     quote: 'If the baby shows signs of increased sleepiness (more than usual), difficulty breastfeeding, breathing difficulties, or limpness, a physician should be contacted immediately.'
 review:

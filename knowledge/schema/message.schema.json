@@ -20,7 +20,8 @@
         "fact": { "type": "string", "pattern": "\\S" },
         "risk": { "type": "string", "pattern": "\\S" },
         "risk-detail": { "type": "string", "pattern": "\\S" },
-        "orientation": { "type": "string", "pattern": "\\S" }
+        "orientation": { "type": "string", "pattern": "\\S" },
+        "orientation-accompanied": { "type": "string", "pattern": "\\S" }
       }
     }
   }

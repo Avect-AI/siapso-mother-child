@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-41-codeine-34-weeks
+title: '34 weeks, Codoliprane: codeine late in pregnancy, withdrawal of the newborn'
+context:
+  pregnancy: { weeks: 34 }
+  items:
+    - { product: codoliprane-500-mg-30-mg-60904643 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: codeine-late-pregnancy,
+        message: codeine-late-pregnancy,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

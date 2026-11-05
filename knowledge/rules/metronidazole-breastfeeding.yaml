@@ -13,17 +13,17 @@ message: metronidazole-breastfeeding
 sources:
   - source: openfda
     locator: 'Metronidazole tablets drug label, A-S Medication Solutions, set_id 02046a22-a5eb-4bb7-bec7-e5a2aa55e142, effective 20260318'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22metronidazole%22+AND+openfda.route%3A%22ORAL%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=02046a22-a5eb-4bb7-bec7-e5a2aa55e142'
     accessed: 2026-11-03
     quote: 'Metronidazole is present in human milk at concentrations similar to maternal serum levels, and infant serum levels can be close to or comparable to infant therapeutic levels.'
   - source: lactmed
     locator: 'Metronidazole (LactMed record LM440, revised 2026-03-15, Bookshelf NBK501315), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501315/'
     accessed: 2026-11-03
     quote: 'Opinions vary among experts on the advisability of using metronidazole during longer-term therapy while breastfeeding'
   - source: lactmed
     locator: 'Metronidazole (LactMed record LM440, revised 2026-03-15, Bookshelf NBK501315), read from the NLM LactMed bulk archive of 2026-10-22'
-    url: 'https://ftp.ncbi.nlm.nih.gov/pub/litarch/90/6c/lactmed_NBK501922.tar.gz'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501315/'
     accessed: 2026-11-03
     quote: 'Case reports of Candida infections and diarrhea have been reported'
 review:

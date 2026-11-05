@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 2 (SCRUM-52): Efferalgan codéine at 37 weeks gave "nothing
+# applies". The French label of CODOLIPRANE asks, at the end of pregnancy, to
+# take into account a withdrawal syndrome of the newborn after a chronic use,
+# and a theoretical slowed breathing of the newborn after high doses before
+# the birth (the breathing risk alone would be evidence E; the rule rests on
+# the withdrawal risk, evidence C). Late pregnancy is read as the window from
+# 30 weeks (with the term look-ahead it applies from 26 weeks).
+id: codeine-late-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: codeine }
+  pregnancy-windows: [30-plus]
+level: before-next-dose
+evidence: C
+message: codeine-late-pregnancy
+sources:
+  - source: bdpm
+    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, RCP 4.6 (ANSM, 17/08/2026), CIS 60904643'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=R'
+    accessed: 2026-11-05
+    quote: "En cas d'administration pendant la grossesse, il conviendra de tenir compte des propriétés morphino-mimétiques de ce médicament et en particulier en fin de terme (risque théorique de dépression respiratoire chez le nouveau-né après de fortes doses avant l'accouchement, risque de syndrome de sevrage en cas d'administration chronique en fin de grossesse)."
+review:
+  status: draft
+  reviewers: []

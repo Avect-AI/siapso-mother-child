@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: max-dose-may-exceed
+fr:
+  fact: 'La quantité totale dépend du dosage de la boîte.'
+  risk: 'Selon le dosage de la boîte, cette quantité peut dépasser le maximum.'
+  orientation: 'Montrez les boîtes avant la prochaine prise.'
+en:
+  fact: 'The total amount depends on the strength of the box.'
+  risk: 'Depending on the strength of the box, this amount may be above the maximum.'
+  orientation: 'Show the boxes before the next dose.'

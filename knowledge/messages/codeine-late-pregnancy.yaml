@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: codeine-late-pregnancy
+fr:
+  fact: 'Ce produit contient de la codéine, un médicament contre la douleur ou la toux.'
+  risk: 'Prise souvent en fin de grossesse, la codéine peut provoquer un syndrome de manque chez le nouveau-né après la naissance.'
+  risk-detail: "La notice française demande d'en tenir compte en fin de grossesse : risque de syndrome de sevrage chez le nouveau-né quand la codéine est prise de façon chronique, et risque théorique de respiration ralentie chez le nouveau-né après de fortes doses avant l'accouchement."
+en:
+  fact: 'This product contains codeine, a medicine for pain or cough.'
+  risk: 'Taken often at the end of pregnancy, codeine can cause withdrawal in the newborn after the birth.'
+  risk-detail: 'The French label asks to take it into account at the end of pregnancy: a risk of withdrawal syndrome in the newborn when codeine is taken over time, and a theoretical risk of slowed breathing in the newborn after high doses before the birth.'

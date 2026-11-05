@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-45-castor-oil-27-weeks-uterine-scar
+title: '27 weeks, uterine scar, castor oil: 30 weeks is reached within the 28-day look-ahead, held at before the next dose with the week its window starts'
+context:
+  pregnancy: { weeks: 27 }
+  conditions: [uterine-scar]
+  items:
+    - { plant: castor-oil }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C5,
+        rule: castor-oil-term-uterine-scar,
+        message: castor-oil-term-uterine-scar,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+        window-start: 30,
+      }
+  reminders: [iptp-reminder]
+  notes: []

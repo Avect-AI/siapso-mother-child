@@ -71,7 +71,8 @@
         "plant": { "$ref": "#/$defs/id" },
         "unrecognised": { "type": "string", "pattern": "\\S" },
         "units-per-day": { "type": "number", "exclusiveMinimum": 0 },
-        "long-term": { "type": "boolean" }
+        "long-term": { "type": "boolean" },
+        "strength-unknown": { "type": "boolean" }
       },
       "oneOf": [
         { "properties": { "product": true }, "required": ["product"] },
@@ -107,7 +108,8 @@
         "evidence": { "enum": ["A", "B", "C", "D", "E", "0"] },
         "items": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
         "sign": { "$ref": "#/$defs/id" },
-        "term": { "enum": ["exact", "estimated", "unknown"] }
+        "term": { "enum": ["exact", "estimated", "unknown"] },
+        "window-start": { "type": "integer", "minimum": 0 }
       }
     }
   }

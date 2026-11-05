@@ -4,7 +4,7 @@
 // and a unit count on a product of unknown strength gives a note.
 import { BUILTIN_MESSAGES, evaluate } from '@siapso/engine';
 import type { CheckedItem, Evaluation, Pack } from '@siapso/engine';
-import { buildIndex, entriesFromPack, search } from '@siapso/resolver';
+import { buildIndex, entriesFromPack, productFamily, search } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildPack, loadContent } from '../src/index.js';
 import { REPO_ROOT } from './helpers.js';
@@ -72,13 +72,38 @@ describe('the paracetamol generic and its strengths', () => {
     expect(result.notes).toEqual([]);
   });
 
-  it('give a note, never a level, for units per day of the generic of unknown strength', () => {
+  it('give a note, never a level, for units per day of a product without a strength', () => {
     const result = run([product('paracetamol-generic', 8)]);
     expect(result.level).toBe('unknown');
     expect(result.findings.map((f) => f.check)).toEqual(['no-finding']);
     expect(result.notes.map((n) => [n.ruleId, n.message])).toEqual([
       ['paracetamol-max-daily', BUILTIN_MESSAGES.maxDoseNotComputable],
+      ['paracetamol-overdose', BUILTIN_MESSAGES.maxDoseNotComputable],
     ]);
     expect(run([product('paracetamol-generic')]).notes).toEqual([]);
+  });
+
+  it('carry the resolver family in the pack, for every product', () => {
+    for (const item of pack.products) expect(item.family, item.id).toBe(productFamily(item));
+  });
+
+  it('give the daily maximum from the strengths of the family when the box is not known', () => {
+    const unknown = (unitsPerDay: number): CheckedItem => ({
+      ...product('paracetamol-generic', unitsPerDay),
+      strengthUnknown: true,
+    });
+    // 7 x 500 mg is certain: the maximum is exceeded whatever the box; 7 x 1000 mg
+    // would be a toxic amount: said apart, held at before the next dose.
+    expect(run([unknown(7)]).findings.map((f) => [f.ruleId, f.message, f.level])).toEqual([
+      ['paracetamol-max-daily', 'paracetamol-max-daily', 'before-next-dose'],
+      ['paracetamol-overdose', 'paracetamol-overdose-possible', 'before-next-dose'],
+    ]);
+    // 5 x 500 mg is not, 5 x 1000 mg is: it depends on the box.
+    expect(run([unknown(5)]).findings.map((f) => [f.ruleId, f.message, f.level])).toEqual([
+      ['paracetamol-max-daily', BUILTIN_MESSAGES.maxDoseMayExceed, 'before-next-dose'],
+    ]);
+    // 12 x 500 mg is twice the maximum whatever the box: a danger.
+    expect(run([unknown(12)]).level).toBe('danger');
+    expect(run([unknown(12)]).notes).toEqual([]);
   });
 });

@@ -10,16 +10,16 @@
     - source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs'
-      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      url: 'https://iris.who.int/handle/10665/249580'
       accessed: 2026-11-04
     - source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'WHO guidelines for malaria, 13 August 2025: diagnosis of suspected malaria and malaria in pregnancy'
-      url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+      url: 'https://iris.who.int/handle/10665/382254'
       accessed: 2026-11-03
     - source: literature
       locator: 'Desai M, ter Kuile FO, Nosten F, et al. Epidemiology and burden of malaria in pregnancy. Lancet Infect Dis. 2007. doi:10.1016/S1473-3099(07)70021-X. PMID 17251080'
-      url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17251080&retmode=xml'
+      url: 'https://pubmed.ncbi.nlm.nih.gov/17251080/'
       accessed: 2026-11-03
       quote: 'successful prevention of these infections reduces the risk of severe maternal anaemia by 38%, low birthweight by 43%, and perinatal mortality by 27% among paucigravidae'
 - id: vaginal-bleeding
@@ -30,7 +30,7 @@
       source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C15, advice on danger signs'
-      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      url: 'https://iris.who.int/handle/10665/249580'
       accessed: 2026-11-04
 - id: convulsions
   group: pregnancy
@@ -49,7 +49,7 @@
       source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), page C7, no fetal movement and ruptured membranes'
-      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      url: 'https://iris.who.int/handle/10665/249580'
       accessed: 2026-11-04
 - id: severe-abdominal-pain
   group: pregnancy
@@ -76,7 +76,7 @@
       source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages D28 and M4, postpartum danger signs'
-      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      url: 'https://iris.who.int/handle/10665/249580'
       accessed: 2026-11-04
 - id: fever-after-birth
   group: postpartum
@@ -119,11 +119,11 @@
       source: who
       # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
       locator: 'Pregnancy, childbirth, postpartum and newborn care: a guide for essential practice, 3rd edition (WHO, 2015), pages J7 and K14, newborn danger signs'
-      url: 'https://iris.who.int/server/api/core/bitstreams/e9f751fd-6eab-42cb-9e0c-0eb86a0365bb/content'
+      url: 'https://iris.who.int/handle/10665/249580'
       accessed: 2026-11-04
     - source: literature
       locator: &yics 'Young Infants Clinical Signs Study Group. Clinical signs that predict severe illness in children under age 2 months: a multicentre study. Lancet. 2008. doi:10.1016/S0140-6736(08)60106-3. PMID 18191685'
-      url: &yics-url 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=18191685&retmode=xml'
+      url: &yics-url 'https://pubmed.ncbi.nlm.nih.gov/18191685/'
       accessed: 2026-11-04
       quote: 'history of difficulty feeding'
 - id: baby-very-sleepy

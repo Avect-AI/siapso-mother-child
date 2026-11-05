@@ -58,6 +58,9 @@ describe('buildPack', () => {
       form: 'tablet',
       route: 'oral',
       demo: false,
+      // The resolver's family: a brand product named after its brand would be
+      // "brand:", this one is named by its substance, so a generic.
+      family: 'substances:ibuprofen',
     });
     expect(pack.plants).toStrictEqual([
       {

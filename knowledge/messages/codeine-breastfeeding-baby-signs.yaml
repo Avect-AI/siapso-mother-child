@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: codeine-breastfeeding-baby-signs
+fr:
+  fact: 'Ce produit contient de la codéine, et le bébé allaité a maintenant un signe que la codéine du lait peut provoquer.'
+  risk: 'Un bébé qui dort beaucoup, tète mal ou respire difficilement pendant que sa mère prend de la codéine peut avoir reçu trop de codéine par le lait : sa respiration peut ralentir et sa vie peut être en danger.'
+  risk-detail: "Le corps transforme la codéine en morphine, qui passe dans le lait. La notice française décrit chez l'enfant allaité une somnolence, une difficulté à téter et des pauses de la respiration, qui peuvent être mortelles."
+  orientation: 'Allez au poste de santé maintenant avec le bébé, et montrez ce produit.'
+en:
+  fact: 'This product contains codeine, and the breastfed baby now has a sign that codeine in the milk can cause.'
+  risk: 'A baby who sleeps a lot, feeds poorly or breathes with difficulty while the mother takes codeine may have had too much codeine through the milk: the breathing can slow down and the life of the baby can be in danger.'
+  risk-detail: 'The body turns codeine into morphine, which passes into the milk. The French label describes sleepiness, difficulty feeding and pauses in breathing in the breastfed child, which can be fatal.'
+  orientation: 'Go to the health post now with the baby, and show this product.'

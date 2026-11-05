@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-48-doliprane-strength-unknown-8-units
+title: '30 weeks, Doliprane, strength not known, 8 a day: above the daily maximum whatever the box, and possibly toxic, said apart'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: doliprane-1000-mg-60234100, units-per-day: 8, strength-unknown: true }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-overdose,
+        message: paracetamol-overdose-possible,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

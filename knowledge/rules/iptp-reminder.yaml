@@ -16,18 +16,18 @@ message: iptp-reminder
 sources:
   - source: literature
     locator: 'Pons-Duran C, Wassenaar MJ, Yovo KE, et al. Intermittent preventive treatment regimens for malaria in HIV-positive pregnant women. Cochrane Database Syst Rev. 2024. doi:10.1002/14651858.CD006689.pub3. PMID 39324693'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=39324693&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/39324693/'
     accessed: 2026-11-03
     quote: 'The World Health Organization (WHO) recommends intermittent preventive treatment in pregnancy (IPTp) with sulphadoxine-pyrimethamine (SP) for pregnant women living in areas of stable malaria transmission.'
   - source: literature
     locator: 'Desai M, ter Kuile FO, Nosten F, et al. Epidemiology and burden of malaria in pregnancy. Lancet Infect Dis. 2007. doi:10.1016/S1473-3099(07)70021-X. PMID 17251080'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17251080&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/17251080/'
     accessed: 2026-11-03
     quote: 'successful prevention of these infections reduces the risk of severe maternal anaemia by 38%, low birthweight by 43%, and perinatal mortality by 27% among paucigravidae'
   - source: who
     # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
     locator: 'WHO guidelines for malaria, 13 August 2025: intermittent preventive treatment of malaria in pregnancy'
-    url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+    url: 'https://iris.who.int/handle/10665/382254'
     accessed: 2026-11-03
 review:
   status: draft

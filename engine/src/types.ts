@@ -64,6 +64,13 @@ export interface Substance {
   id: string;
   names: Localized;
   classes: string[];
+  /**
+   * The lowest strength in mg of an adult form: with the box of unknown
+   * strength, the certain amount of a daily maximum leaves out the family's
+   * strengths below it (children's powders and suspensions), unless the family
+   * has no other.
+   */
+  adultMinStrengthMg?: number;
 }
 export interface SubstanceClass {
   id: string;
@@ -83,6 +90,14 @@ export interface Product {
   form: string;
   route: string;
   demo: boolean;
+  /**
+   * The family of the product (the resolver's: its brand, or the substances of
+   * a generic), the products the confirm screen offers as its strengths. With
+   * the strength on the box unknown, a daily maximum reads the strengths of the
+   * family taken by the same route. Absent: the product is its own family, and
+   * an unknown strength stays unknown.
+   */
+  family?: string;
 }
 export interface Plant {
   id: string;
@@ -94,7 +109,11 @@ export interface Plant {
   sources: SourceRef[];
 }
 export type Subject = { substance: string } | { class: string } | { plant: string };
-export type Requirement = { with: Subject } | { condition: ConditionId };
+/**
+ * Another item (`with`), a situation of the profile (`condition`), or a danger
+ * sign present now (`sign`, a danger sign id of the pack).
+ */
+export type Requirement = { with: Subject } | { condition: ConditionId } | { sign: string };
 export interface RuleWhen {
   /** Required for every kind except 'reminder'. */
   subject?: Subject;
@@ -111,8 +130,13 @@ export interface RuleWhen {
   pregnancyWindows?: WindowId[];
   /** The rule applies only when breastfeeding. */
   breastfeeding?: { babyAgeWeeksMax?: number; premature?: boolean };
-  /** 'max-dose' only. */
+  /** 'max-dose' only: the rule applies when the daily total is above this many mg. */
   maxMgPerDay?: number;
+  /**
+   * 'max-dose' only, instead of maxMgPerDay: the rule applies when the daily
+   * total is this many mg or more (a toxic amount, for example).
+   */
+  fromMgPerDay?: number;
   /**
    * Substance subject only: the subject item matches only if its component for
    * that substance is stronger than this many mg. An unknown strength matches.
@@ -131,6 +155,12 @@ export interface Rule {
   evidence: Evidence;
   dangerRationale?: string;
   message: string;
+  /**
+   * Max-dose only: the message of a finding reached only with the highest
+   * strength of a family (the excess depends on the box), instead of the
+   * builtin max-dose-may-exceed. A possible toxic amount says its own risk.
+   */
+  possibleMessage?: string;
   sources: SourceRef[];
   review: { status: 'draft' | 'validated'; reviewers: Reviewer[]; reviewedOn?: string };
 }
@@ -164,6 +194,11 @@ export interface Message {
   risk: string;
   riskDetail?: string;
   orientation?: string;
+  /**
+   * The orientation said to the person helping, about the woman ("elle"), in
+   * accompanied mode; `orientation` otherwise. Only with an orientation.
+   */
+  orientationAccompanied?: string;
 }
 export interface Pack {
   schema: 1;
@@ -196,8 +231,10 @@ export interface CheckedItem {
   longTerm?: boolean;
   /**
    * The product is confirmed but the strength on its box is not known: its
-   * component strengths are read as unknown (a strengthAboveMg rule applies,
-   * the max-dose sum skips the item, the max-dose-not-computable note can apply).
+   * component strengths are read as unknown (a strengthAboveMg rule applies).
+   * A daily maximum counts the lowest strength of its family taken by the same
+   * route as certain and the highest as possible (Product.family); without
+   * such strengths, the max-dose-not-computable note can apply.
    */
   strengthUnknown?: boolean;
 }
@@ -217,6 +254,11 @@ export interface Finding {
   message: string;
   sign?: string;
   term?: TermPrecision;
+  /**
+   * Set when the finding is reached only through the term look-ahead: the
+   * week of amenorrhoea at which the first window it reaches starts.
+   */
+  windowStart?: number;
   capped: boolean;
   sources: SourceRef[];
 }
@@ -251,4 +293,9 @@ export const BUILTIN_MESSAGES = {
   dangerSign: 'danger-sign',
   /** Note of a max-dose rule when a unit count is given for an item of unknown strength. */
   maxDoseNotComputable: 'max-dose-not-computable',
+  /**
+   * Finding of a max-dose rule exceeded only with the highest strength the
+   * family of an item of unknown strength has: the excess depends on the box.
+   */
+  maxDoseMayExceed: 'max-dose-may-exceed',
 } as const;

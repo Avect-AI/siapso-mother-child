@@ -39,7 +39,7 @@ sources:
     quote: 'Dès le début du 5 ème mois de grossesse (20 semaines d’aménorrhée), un rétrécissement des vaisseaux sanguins au niveau du cœur de votre bébé'
   - source: openfda
     locator: 'Bayer Genuine Aspirin drug label, R J General Corporation, set_id 23daa359-d40f-4f64-81be-6d154f41df9f, effective 20251117'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name.exact%3A%22ASPIRIN%22+AND+openfda.brand_name%3A%22Genuine%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=23daa359-d40f-4f64-81be-6d154f41df9f'
     accessed: 2026-11-03
     quote: 'It is especially important not to use aspirin during the last 3 months of pregnancy unless definitely directed to do so by a doctor'
 review:

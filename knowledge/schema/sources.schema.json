@@ -36,6 +36,15 @@
         "version": { "$ref": "#/$defs/text" },
         "accessed": { "type": "string", "format": "date" },
         "notice": { "$ref": "#/$defs/text" },
+        "link-hosts": {
+          "description": "The hosts the citation links of this source must open: a readable page of the same documents (DailyMed for the openFDA labels).",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*\\.[a-z]{2,}$"
+          }
+        },
         "documents": {
           "description": "The language the documents of the source are written in, said beside a citation in the other language.",
           "enum": ["fr", "en"]

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-39-doliprane-1000-mg-4-units
+title: '30 weeks, Doliprane 1000 mg, 4 a day: above the daily maximum, below twice it, before the next dose'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: doliprane-1000-mg-60234100, units-per-day: 4 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Built-in message of a product that a rule of the base reads, when no rule
 # applies to the situation (another term, not pregnant, no partner). It says a
-# gap in the base, never an all-clear, and never "nothing found": the base
-# does hold something on this product, but not for this situation. The app
-# reads the fact, then the risk, as for nothing-found.
+# gap in the base, never an all-clear. The app reads the fact, then the risk.
+# The same words as nothing-found: one grey wording for a product the app has
+# recognised (live test round 2, SCRUM-52).
 id: nothing-applies
 fr:
   fact: 'Notre base ne contient rien sur ce produit pour cette situation.'
   risk: 'Notre base ne dit pas si ce produit peut faire du mal dans cette situation.'
-  orientation: 'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.'
+  orientation: 'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.'
+  orientation-accompanied: "Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite."
 en:
   fact: 'Our knowledge base holds nothing on this product for this situation.'
   risk: 'Our knowledge base does not say whether this product can cause harm in this situation.'
-  orientation: 'Show this screen to the midwife or the pharmacist at the next visit.'
+  orientation: 'Show this product to the midwife or the pharmacist at the next visit.'
+  orientation-accompanied: 'Show this product to the midwife or the nurse at her next visit.'

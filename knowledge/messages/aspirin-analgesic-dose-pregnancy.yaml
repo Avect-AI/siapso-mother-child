@@ -6,8 +6,11 @@ fr:
   risk: "À partir du cinquième mois de grossesse, l'aspirine à forte dose peut abîmer le cœur et les reins du bébé."
   risk-detail: "La notice française la contre-indique à forte dose à partir du sixième mois, même prise une seule fois, à cause d'un risque grave pour la vie du bébé. L'aspirine à petite dose prescrite par un médecin pour certaines grossesses est un cas différent."
   orientation: "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise. S'il a été prescrit, ne changez rien sans l'avis du médecin."
+  # The same people and timing as the interface's accompanied default (live test round 2, SCRUM-52).
+  orientation-accompanied: "Montrez ce produit à la sage-femme ou à l'infirmier avant qu'elle en reprenne. S'il a été prescrit, elle ne doit rien changer sans l'avis du médecin."
 en:
   fact: 'This product contains aspirin at a higher dose than the small dose sometimes prescribed during pregnancy, or at an unknown dose.'
   risk: "From the fifth month of pregnancy, high-dose aspirin can harm the baby's heart and kidneys."
   risk-detail: "The French label contraindicates high-dose aspirin from the sixth month, even taken once, because of a serious risk to the baby's life. Low-dose aspirin prescribed by a doctor for some pregnancies is a different case."
   orientation: "Show this product to the midwife, the nurse or the pharmacist before the next dose. If it was prescribed, change nothing without the doctor's advice."
+  orientation-accompanied: "Show this product to the midwife or the nurse before she takes any more. If it was prescribed, she changes nothing without the doctor's advice."

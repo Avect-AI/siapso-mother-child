@@ -6,8 +6,10 @@ fr:
   risk-detail: "Les études sur l'huile de ricin pour faire venir l'accouchement ne donnent pas de données sur les complications graves pour la mère ou le bébé. Si la femme a déjà eu une césarienne ou une autre opération de l'utérus, le risque est plus grand."
   # The scar a profile may not say: its instruction is read in both modes, never behind "Pourquoi ?".
   orientation: "Dites-le à la sage-femme à la prochaine visite. Après une césarienne ou une autre opération de l'utérus, allez au poste de santé maintenant."
+  orientation-accompanied: "Dites-le à la sage-femme à sa prochaine visite. Après une césarienne ou une autre opération de l'utérus, allez au poste de santé maintenant."
 en:
   fact: 'Castor oil is a strong laxative, traditionally used to bring on labour.'
   risk: 'Late in pregnancy it can start contractions, and its effects on the mother and the baby are poorly known.'
   risk-detail: 'Studies of castor oil to bring on labour give no data on serious complications for the mother or the baby. If the woman has had a caesarean section or other surgery on the womb, the risk is greater.'
   orientation: 'Tell the midwife at the next visit. After a caesarean section or other surgery on the womb, go to the health post now.'
+  orientation-accompanied: 'Tell the midwife at her next visit. After a caesarean section or other surgery on the womb, go to the health post now.'

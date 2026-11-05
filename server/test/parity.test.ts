@@ -115,7 +115,7 @@ describe('parity with the library', () => {
     expect(tried).toBeGreaterThan(200);
   });
 
-  it('gives the same result at every exact week, across the 14-day look-ahead', async () => {
+  it('gives the same result at every exact week, across the 28-day look-ahead', async () => {
     const ibuprofen = pack.products.find((p) =>
       p.components.some((c) => c.substance === 'ibuprofen'),
     );
@@ -139,9 +139,43 @@ describe('parity with the library', () => {
       );
       levels.add(`${String(weeks)}:${overHttp.level}`);
     }
-    // The look-ahead reaches 30 weeks from 28: castor oil with a scar is a danger there.
-    expect(levels.has('28:danger')).toBe(true);
-    expect(levels.has('27:danger')).toBe(false);
+    // The look-ahead reaches 30 weeks from 26: castor oil with a scar is held at
+    // before the next dose there (a window still ahead), and a danger from 30.
+    expect(levels.has('26:before-next-dose')).toBe(true);
+    expect(levels.has('29:danger')).toBe(false);
+    expect(levels.has('30:danger')).toBe(true);
+  });
+
+  it('gives the same result with the strength unknown, a family to read, and a baby sign', async () => {
+    const generic = pack.products.find((p) => p.id === 'paracetamol-generic');
+    expect(generic?.family).toBeDefined();
+    const contexts = [
+      {
+        conditions: [],
+        signs: [],
+        pregnancy: { weeksMin: 24, weeksMax: 24, precision: 'exact' as const },
+        items: [
+          {
+            ref: { kind: 'product' as const, id: 'paracetamol-generic' },
+            unitsPerDay: 12,
+            strengthUnknown: true,
+          },
+        ],
+      },
+      {
+        conditions: [],
+        signs: ['baby-very-sleepy'],
+        breastfeeding: { babyAgeWeeks: 12 },
+        items: [{ ref: { kind: 'product' as const, id: 'codoliprane-500-mg-30-mg-60904643' } }],
+      },
+    ];
+    for (const context of contexts) {
+      const response = await post(running, { pack_version: pack.version, context });
+      expect(response.status).toBe(200);
+      const overHttp = (await response.json()) as { level: string };
+      expect(overHttp).toStrictEqual(JSON.parse(JSON.stringify(evaluate(pack, context))));
+      expect(overHttp.level).toBe('danger');
+    }
   });
 
   it('gives the same result with the strength unknown and the unit count set', async () => {

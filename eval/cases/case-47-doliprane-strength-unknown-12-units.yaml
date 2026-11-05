@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-47-doliprane-strength-unknown-12-units
+title: "30 weeks, Doliprane, strength not known, 12 a day: even the lowest adult strength of the family gives twice the daily maximum, a danger (its children's powders are left out)"
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: doliprane-1000-mg-60234100, units-per-day: 12, strength-unknown: true }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-overdose,
+        message: paracetamol-overdose,
+        level: danger,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

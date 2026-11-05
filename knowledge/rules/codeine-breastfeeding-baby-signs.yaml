@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 2 (SCRUM-52): a breastfed baby very sleepy, feeding poorly
+# or breathing with difficulty, ticked as a danger sign while the mother takes
+# codeine, left the codeine card at "before the next dose" and the call screen
+# did not name the product. These signs are the very effect the codeine card
+# warns about (opioid toxicity in the baby): with one of them ticked, the
+# codeine card itself is a danger, and who to call names what she takes.
+id: codeine-breastfeeding-baby-signs
+kind: breastfeeding
+when:
+  subject: { substance: codeine }
+  requires:
+    - sign: baby-very-sleepy
+    - sign: baby-not-feeding
+    - sign: baby-breathing-difficulty
+level: danger
+danger-rationale: 'A breastfed baby who is very sleepy, feeds poorly or breathes with difficulty while the mother takes codeine may have opioid toxicity from the milk, which can slow and stop the breathing and has been fatal. The labels and LactMed ask for immediate medical care, and the product must be named, since it explains the signs.'
+evidence: C
+message: codeine-breastfeeding-baby-signs
+sources:
+  - source: bdpm
+    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, RCP 4.6 (ANSM, 17/08/2026), CIS 60904643'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Dans de très rares cas, ces taux élevés peuvent entraîner des symptômes de toxicité opioïde chez l'enfant (somnolence, difficulté de succion, pauses voire dépressions respiratoires et hypotonie) qui peuvent être fatals."
+  - source: lactmed
+    locator: 'Codeine (LactMed record LM347, revised 2026-10-15, Bookshelf NBK501212), read from the NLM LactMed bulk archive of 2026-10-22'
+    url: 'https://www.ncbi.nlm.nih.gov/books/NBK501212/'
+    accessed: 2026-11-05
+    quote: 'If the baby shows signs of increased sleepiness (more than usual), difficulty breastfeeding, breathing difficulties, or limpness, a physician should be contacted immediately.'
+  - source: openfda
+    locator: 'Codeine sulfate tablets drug label, Hikma Pharmaceuticals USA Inc., set_id 010905f9-3bcb-4b50-9fe8-a3ad0010f14c, effective 20251222'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=010905f9-3bcb-4b50-9fe8-a3ad0010f14c'
+    accessed: 2026-11-05
+    quote: 'There are published studies and cases that have reported excessive sedation, respiratory depression, and death in infants exposed to codeine via breast milk.'
+review:
+  status: draft
+  reviewers: []

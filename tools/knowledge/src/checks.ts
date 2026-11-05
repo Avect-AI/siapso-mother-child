@@ -73,6 +73,7 @@ interface Known {
   classes: Set<string>;
   plants: Set<string>;
   messages: Set<string>;
+  dangerSigns: Set<string>;
 }
 
 /**
@@ -96,6 +97,7 @@ function knownIds(raw: RawContent): Known {
     classes: listIds(raw.classes?.data),
     plants: stems(raw.plants),
     messages: stems(raw.messages),
+    dangerSigns: listIds(raw.dangerSigns?.data),
   };
 }
 
@@ -135,12 +137,25 @@ function checkReferences(content: Content, known: Known): Problem[] {
       if ('with' in requirement) {
         const where = `when.requires[${String(index)}].with`;
         problems.push(...unknownSubject(rule, where, requirement.with, known));
+      } else if ('sign' in requirement && !known.dangerSigns.has(requirement.sign)) {
+        // A sign the list does not have could never be ticked: the rule would never apply.
+        problems.push(
+          problem(
+            rule,
+            `when.requires[${String(index)}].sign`,
+            `unknown danger sign "${requirement.sign}" (not in knowledge/danger-signs.yaml)`,
+          ),
+        );
       }
     });
     (when['unless-with'] ?? []).forEach((subject, index) => {
       problems.push(...unknownSubject(rule, `when.unless-with[${String(index)}]`, subject, known));
     });
     problems.push(...unknownMessage(rule, 'message', message, known));
+    const possible = rule.data['possible-message'];
+    if (possible !== undefined) {
+      problems.push(...unknownMessage(rule, 'possible-message', possible, known));
+    }
   }
   for (const plant of content.plants) {
     problems.push(...unknownMessage(plant, 'message', plant.data.message, known));
@@ -235,17 +250,44 @@ function checkRules(content: Content): Problem[] {
         ),
       );
     }
-    if (when['max-mg-per-day'] !== undefined && kind !== 'max-dose') {
+    // A max-dose rule has one threshold: above max-mg-per-day, or from
+    // from-mg-per-day included (a toxic amount); no other rule has any.
+    const thresholds = (['max-mg-per-day', 'from-mg-per-day'] as const).filter(
+      (key) => when[key] !== undefined,
+    );
+    for (const key of thresholds) {
+      if (kind !== 'max-dose') {
+        problems.push(
+          problem(
+            rule,
+            `when.${key}`,
+            `is only allowed for a max-dose rule, not for a ${kind} rule`,
+          ),
+        );
+      }
+    }
+    if (kind === 'max-dose' && thresholds.length === 0) {
       problems.push(
         problem(
           rule,
           'when.max-mg-per-day',
-          `is only allowed for a max-dose rule, not for a ${kind} rule`,
+          'is required for a max-dose rule (or from-mg-per-day, for an amount from which it applies)',
         ),
       );
     }
-    if (kind === 'max-dose' && when['max-mg-per-day'] === undefined) {
-      problems.push(problem(rule, 'when.max-mg-per-day', 'is required for a max-dose rule'));
+    if (kind === 'max-dose' && thresholds.length > 1) {
+      problems.push(
+        problem(rule, 'when', 'must have one of max-mg-per-day or from-mg-per-day, not both'),
+      );
+    }
+    if (rule.data['possible-message'] !== undefined && kind !== 'max-dose') {
+      problems.push(
+        problem(
+          rule,
+          'possible-message',
+          `is only allowed for a max-dose rule, not for a ${kind} rule (it says an excess that depends on the box)`,
+        ),
+      );
     }
     if (kind !== 'reminder' && when.subject === undefined) {
       problems.push(problem(rule, 'when.subject', `is required for a ${kind} rule`));
@@ -287,11 +329,11 @@ const DOSE_UNITS: readonly string[] = [
   'drops?',
   'prises?',
   'doses?',
-  'fois\\s+par\\s+jour',
-  'par\\s+jour',
-  'times\\s+(?:a|per)\\s+day',
-  'times\\s+daily',
-  'per\\s+day',
+  'fois\\s+par\\s+(?:jour|semaine)',
+  'par\\s+(?:jour|semaine)',
+  'times\\s+(?:a|per)\\s+(?:day|week)',
+  'times\\s+(?:daily|weekly)',
+  'per\\s+(?:day|week)',
 ];
 /**
  * A number followed by a dose unit: "500 mg", "2 comprimés", "3 fois par jour",
@@ -320,7 +362,7 @@ function plain(text: string): string {
 /** What a drink is measured in: a cup, a glass, a bowl (unaccented). */
 const DRINK_UNITS = 'tasses?|verres?|bols?|cups?|glass(?:es)?|bowls?|mugs?';
 /** Units a count in words makes an amount of (unaccented). */
-const AMOUNT_UNITS = `prises?|doses?|comprimes?|tablets?|gelules?|capsules?|cuillerees?|cuilleres?|spoons?|spoonfuls?|teaspoons?|sachets?|gouttes?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par jour|times (?:(?:a|per) day|daily)|par jour|per day`;
+const AMOUNT_UNITS = `prises?|doses?|comprimes?|tablets?|gelules?|capsules?|cuillerees?|cuilleres?|spoons?|spoonfuls?|teaspoons?|sachets?|gouttes?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par (?:jour|semaine)|times (?:(?:a|per) (?:day|week)|daily|weekly)|par (?:jour|semaine)|per (?:day|week)`;
 /**
  * An amount unit, but not "prises de sang" (blood tests): "deux prises de
  * sang" and "une seule prise de sang" are not doses.
@@ -331,10 +373,18 @@ const AMOUNT = `(?!prises? de sang)(?:${AMOUNT_UNITS})`;
  * "a tablet", "un verre", "a cup"), unlike "une dose" or "une prise" ("à une
  * dose plus forte").
  */
-const UNIT_OBJECTS = `comprimes?|gelules?|sachets?|cuillerees?|cuilleres?|gouttes?|tablets?|capsules?|spoons?|spoonfuls?|teaspoons?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par jour`;
-/** The times of day a dose is taken at: "matin et soir", "morning and evening". */
+const UNIT_OBJECTS = `comprimes?|gelules?|sachets?|cuillerees?|cuilleres?|gouttes?|tablets?|capsules?|spoons?|spoonfuls?|teaspoons?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par (?:jour|semaine)`;
+/**
+ * The times of day a dose is taken at: "matin et soir", "morning and
+ * evening". Read sentence by sentence: in a sentence that describes a study
+ * ("des volontaires en prenaient matin et soir") they say how it was given,
+ * not a dose to take (`timesOfDayDose`).
+ */
 const TIMES_OF_DAY =
-  '(?:le )?matin(?:,? (?:le )?midi)? et (?:le )?soir|morning and (?:evening|night)|(?:evening|night) and morning';
+  /(?<![\p{L}\p{N}])(?:(?:le )?matin(?:,? (?:le )?midi)? et (?:le )?soir|morning and (?:evening|night)|(?:evening|night) and morning)(?![\p{L}\p{N}])/u;
+/** The words of a sentence that describes a study (plain text). */
+const STUDY =
+  /(?<![\p{L}\p{N}])(?:etudes?|essais?|volontaires|studies|study|trials?|volunteers)(?![\p{L}\p{N}])/u;
 /**
  * Number words from two up (unaccented), and "one". "Un" and "une" are
  * articles too ("une dose plus forte"), so they only count inside a number.
@@ -365,19 +415,22 @@ const INTERVAL = `(?:toutes les|every) ${INTERVAL_NUMBER}(?:(?: (?:a|ou|to|or) |
 const NOT_AN_AMOUNT =
   `a drop in (?:(?:the|her|his|their) )?(?:blood|pressure|heart|sugar|glucose|levels?|rate|count|temperature|weight|milk|amount|volume|number|fluid)${WORD_END}` +
   `|(?:un|une|a|an) sachets? (?:de |d'|of )(?:poudres?|granules?|powders?)${WORD_END}` +
-  `|(?:un|une) pilules? (?:contraceptives?|du lendemain)${WORD_END}`;
+  `|(?:un|une) pilules? (?:contraceptives?|du lendemain)${WORD_END}` +
+  // A dish the remedy is mixed into, not a measure of the remedy.
+  `|(?:un|une|a|an) (?:bols?|bowls?) (?:de |d'|of )(?:sauces?|soupes?|riz|soups?|rice)${WORD_END}`;
 /**
  * A dose in words, read on the plain text: "une seule prise", "a single dose";
  * a single dose with "unique" ("une prise unique", "en prise unique", "à dose
  * unique"); a number in words and a unit ("deux comprimés", "vingt et une
  * gouttes", "twelve tablets"); an article and a unit that is always an amount
- * ("un comprimé", "une fois par jour", "a drop"); "once a day", "twice daily";
- * half a unit ("un demi-comprimé", "half a tablet"); the time between doses
- * ("toutes les six heures", "every 6 hours"); a drink measured in cups,
- * glasses or bowls ("deux tasses par jour", "un verre", "a cup of tea");
- * the times of day ("matin et soir"). The digit check cannot see them. "Une
- * dose plus forte", "une seule fois", "deux à trois fois plus" and "deux
- * prises de sang" are not doses.
+ * ("un comprimé", "une fois par jour", "a drop"); "once a day", "twice daily",
+ * "trois fois par semaine", "once a week"; half a unit ("un demi-comprimé",
+ * "half a tablet"); the time between doses ("toutes les six heures", "every 6
+ * hours"); a drink measured in cups, glasses or bowls ("deux tasses par jour",
+ * "un verre", "a cup of tea"); a dose at bedtime ("le soir au coucher", "at
+ * bedtime"); the times of day are read apart (`timesOfDayDose`). The digit
+ * check cannot see them. "Une dose plus forte", "une seule fois", "deux à
+ * trois fois plus", "deux prises de sang" and "un bol de sauce" are not doses.
  */
 const WORD_DOSE = new RegExp(
   WORD_START +
@@ -387,10 +440,11 @@ const WORD_DOSE = new RegExp(
       `(?:un|une|des|le|la|les|en|a) ${AMOUNT} uniques?`,
       `${NUMBER} ${AMOUNT}`,
       `(?!${NOT_AN_AMOUNT})(?:un|une|a|an) (?:${UNIT_OBJECTS})`,
-      '(?:once|twice) (?:(?:a|per) day|daily)',
+      '(?:once|twice) (?:(?:a|per) (?:day|week)|daily|weekly)',
       `(?:demi|half)(?:[ -](?:a|an|une?))?[ -]${AMOUNT}`,
       INTERVAL,
-      TIMES_OF_DAY,
+      // A dose taken at bedtime: "le soir au coucher", "at bedtime".
+      '(?:le soir )?au coucher|at bedtime',
     ].join('|') +
     ')' +
     WORD_END,
@@ -406,10 +460,100 @@ const REMINDER_SCHEDULE = new RegExp(
   'giu',
 );
 
+/**
+ * The times of day of a dose ("matin et soir", "morning and evening") in a
+ * plain text, unless their sentence describes a study, where they say how it
+ * was given ("des volontaires en prenaient matin et soir").
+ */
+function timesOfDayDose(text: string): RegExpExecArray | null {
+  for (const sentence of text.split(/[.!?;]/)) {
+    const found = TIMES_OF_DAY.exec(sentence);
+    if (found !== null && !STUDY.test(sentence)) return found;
+  }
+  return null;
+}
+
 const LANGS: readonly Lang[] = ['fr', 'en'];
-const FIELDS = ['fact', 'risk', 'risk-detail', 'orientation'] as const;
+const FIELDS = ['fact', 'risk', 'risk-detail', 'orientation', 'orientation-accompanied'] as const;
+/** The fields a result reads as who to show and when. */
+const ORIENTATIONS = ['orientation', 'orientation-accompanied'] as const;
 /** Fields that may hold a number (never a dose); the others hold no digit at all. */
 const NUMBER_FIELDS: ReadonlySet<string> = new Set(['fact', 'risk-detail']);
+
+/**
+ * The words an accompanied orientation never says (plain text): it speaks to
+ * the person helping, about the woman ("elle", "sa prochaine visite"), never
+ * as if the reader were the patient.
+ */
+const NOT_ABOUT_HER: Readonly<Record<Lang, { pattern: RegExp; say: string }[]>> = {
+  fr: [
+    {
+      pattern: /(?<![\p{L}\p{N}])(?:vous|votre|vos)(?![\p{L}\p{N}])/u,
+      say: 'speaks of her in accompanied mode: no "vous", "votre" or "vos"',
+    },
+    {
+      pattern: /(?<![\p{L}\p{N}])la prochaine visite(?![\p{L}\p{N}])/u,
+      say: 'speaks of her in accompanied mode: write "à sa prochaine visite" (her next visit, never another\'s)',
+    },
+  ],
+  en: [
+    {
+      pattern: /(?<![\p{L}\p{N}])(?:you|your|yours)(?![\p{L}\p{N}])/u,
+      say: 'speaks of her in accompanied mode: no "you" or "your"',
+    },
+    {
+      pattern: /(?<![\p{L}\p{N}])the next visit(?![\p{L}\p{N}])/u,
+      say: 'speaks of her in accompanied mode: write "at her next visit"',
+    },
+  ],
+};
+
+/** "This screen": a result nobody keeps (a passer-by) cannot be shown later (plain text). */
+const THIS_SCREEN: Readonly<Record<Lang, RegExp>> = {
+  fr: /(?<![\p{L}\p{N}])cet ecran(?![\p{L}\p{N}])/u,
+  en: /(?<![\p{L}\p{N}])this screen(?![\p{L}\p{N}])/u,
+};
+
+/**
+ * The orientation checks: an accompanied orientation only beside an
+ * orientation, speaking of her, and no orientation that points to "this
+ * screen" (the screen of a passer-by is gone once the next one starts).
+ */
+function checkOrientations(message: Entry<AuthoredMessage>): Problem[] {
+  const problems: Problem[] = [];
+  for (const lang of LANGS) {
+    const text = message.data[lang];
+    const accompanied = text['orientation-accompanied'];
+    const where = `${lang}.orientation-accompanied`;
+    if (accompanied !== undefined && text.orientation === undefined) {
+      problems.push(
+        problem(
+          message,
+          where,
+          'is only allowed with an orientation (it replaces it in accompanied mode)',
+        ),
+      );
+    }
+    if (accompanied !== undefined) {
+      for (const { pattern, say } of NOT_ABOUT_HER[lang]) {
+        if (pattern.test(plain(accompanied))) problems.push(problem(message, where, say));
+      }
+    }
+    for (const field of ORIENTATIONS) {
+      const written = text[field];
+      if (written !== undefined && THIS_SCREEN[lang].test(plain(written))) {
+        problems.push(
+          problem(
+            message,
+            `${lang}.${field}`,
+            'points to this screen ("cet écran"): nothing is kept for a passer-by, name the product instead',
+          ),
+        );
+      }
+    }
+  }
+  return problems;
+}
 
 /** Forbidden wording, em dash and emoji: the checks for any text the interface shows. */
 function checkWording(entry: Entry<unknown>, where: string, text: string, lang: Lang): Problem[] {
@@ -455,7 +599,7 @@ function checkMessageText(message: Entry<AuthoredMessage>, reminder: boolean): P
           ),
         );
       }
-      const wordDose = WORD_DOSE.exec(plain(text));
+      const wordDose = WORD_DOSE.exec(plain(text)) ?? timesOfDayDose(plain(text));
       if (wordDose) {
         problems.push(
           problem(
@@ -471,20 +615,47 @@ function checkMessageText(message: Entry<AuthoredMessage>, reminder: boolean): P
   return problems;
 }
 
+/** French imperatives that are never another form of the verb (plain text). */
+const FR_IMPERATIVES =
+  'allez|montrez|arretez|parlez|demandez|appelez|prenez|donnez|evitez|consultez|attendez|venez|cessez|gardez|continuez|prevenez|signalez|surveillez|retournez';
+/** A pronoun joined to an imperative by a hyphen: "dites-le", "parlez-en". */
+const FR_PRONOUN = '-(?:le|la|les|lui|leur|en|y)';
+/** The start of a sentence or of a clause (plain text): the text start, or a punctuation mark. */
+const CLAUSE_START = '(?:^|[.:;!?,] )';
 /**
- * An instruction, read on the plain text: a French imperative ("dites-le",
- * "allez", "montrez", "parlez-en", "ne le donnez pas", "n'attendez pas"), or an
- * English one at the start of a sentence or after a colon ("tell the
- * midwife", "do not give"). What a label or a test says is not one: "la notice
+ * An instruction, read on the plain text. French: an imperative ("allez",
+ * "montrez", "prévenez", "surveillez", "parlez-en"); "dites" and "faites" only
+ * at the start of a clause or with a pronoun ("dites-le"), since "les crèmes
+ * dites éclaircissantes" and "des études faites chez l'animal" are not orders;
+ * a negative order ("ne le donnez pas", "n'attendez pas", "ne changez rien");
+ * an obligation ("il faut", "elle doit aller", "le médecin doit être vu");
+ * "à montrer". English: an imperative at the start of a sentence or after a
+ * colon or a comma ("tell the midwife", "if she bleeds, go to the health
+ * post", "do not give", "watch the baby"), "never give", and "should",
+ * "please" or "make sure" anywhere; "Never studied" and "Keep" at the start of
+ * a sentence state a fact. What a label or a test says is not one: "la notice
  * ne la recommande pas", "only a test can tell".
  */
 const INSTRUCTION: Readonly<Record<Lang, RegExp>> = {
   fr: new RegExp(
-    `${WORD_START}(?:(?:dites|allez|montrez|arretez|parlez|demandez|appelez|prenez|donnez|evitez|faites|consultez|attendez|venez|cessez|gardez|continuez)(?:-(?:le|la|les|lui|en|y))?|(?:ne (?:le |la |les |l'|lui |leur |en |y )?|n')\\p{L}+ez pas)${WORD_END}`,
+    WORD_START +
+      '(?:' +
+      [
+        `(?:${FR_IMPERATIVES})(?:${FR_PRONOUN})?`,
+        `(?:dites|faites)${FR_PRONOUN}`,
+        `(?:ne (?:le |la |les |l'|lui |leur |en |y )?|n')\\p{L}+ez (?:pas|rien|jamais|plus)`,
+        'il faut',
+        'doi(?:t|vent) (?:etre (?:vue?s?|examinee?s?)|aller|consulter|voir|montrer|dire|prevenir|appeler|parler|venir|revenir|retourner)',
+        "(?<![\\p{L}'-])a montrer",
+      ].join('|') +
+      ')' +
+      WORD_END +
+      `|${CLAUSE_START}(?:dites|faites)${WORD_END}`,
     'u',
   ),
   en: new RegExp(
-    `(?:^|[.:;!?] )(?:tell|go|show|ask|call|talk|stop|take|give|avoid|keep|bring|come|never|do not|don't)${WORD_END}`,
+    `${CLAUSE_START}(?:tell|go|show|ask|call|talk|stop|take|give|avoid|bring|come|watch|do not|don't)${WORD_END}` +
+      `|${WORD_START}(?:should|please|make sure|never (?:give|take|stop|use|leave))${WORD_END}`,
     'u',
   ),
 };
@@ -506,7 +677,10 @@ function hiddenFields(content: Content): Map<string, Set<'fact' | 'risk-detail'>
   const withFact = new Set<string>([
     ...content.rules
       .filter((r) => r.data.kind !== 'reminder' && r.data.kind !== 'contraception-info')
-      .map((r) => r.data.message),
+      .flatMap((r) => {
+        const possible = r.data['possible-message'];
+        return possible === undefined ? [r.data.message] : [r.data.message, possible];
+      }),
     ...content.plants.map((p) => p.data.message),
   ]);
   const hidden = new Map<string, Set<'fact' | 'risk-detail'>>();
@@ -538,7 +712,7 @@ function checkHiddenInstructions(content: Content): Problem[] {
           problem(
             message,
             `${lang}.${field}`,
-            `gives an instruction ("${found[0].replace(/^[.:;!?] /, '')}") in a field kept behind "Pourquoi ?": put it in the orientation, the line both modes read`,
+            `gives an instruction ("${found[0].replace(/^[.:;!?,] /, '')}") in a field kept behind "Pourquoi ?": put it in the orientation, the line both modes read`,
           ),
         );
       }
@@ -630,6 +804,19 @@ function checkTiming(content: Content): Problem[] {
     ...content.rules
       .filter((r) => r.data.kind !== 'reminder' && r.data.kind !== 'contraception-info')
       .map((r) => ({ message: r.data.message, level: r.data.level, who: `rule ${r.data.id}` })),
+    // An excess that depends on the box is said before the next dose, whatever the rule's level.
+    ...content.rules.flatMap((r) => {
+      const possible = r.data['possible-message'];
+      return possible === undefined
+        ? []
+        : [
+            {
+              message: possible,
+              level: 'before-next-dose' as const,
+              who: `the possible excess of rule ${r.data.id}`,
+            },
+          ];
+    }),
     ...content.dangerSigns.flatMap((s) =>
       s.data.message === undefined
         ? []
@@ -640,6 +827,18 @@ function checkTiming(content: Content): Problem[] {
       level: 'danger',
       who: 'the built-in danger sign message',
     },
+    // A daily maximum that depends on the box, and the total that cannot be
+    // computed: both are said before the next dose.
+    {
+      message: BUILTIN_MESSAGES.maxDoseMayExceed,
+      level: 'before-next-dose',
+      who: 'the built-in max-dose-may-exceed finding',
+    },
+    {
+      message: BUILTIN_MESSAGES.maxDoseNotComputable,
+      level: 'before-next-dose',
+      who: 'the built-in max-dose-not-computable note',
+    },
   ];
   const problems: Problem[] = [];
   const seen = new Set<string>();
@@ -648,12 +847,12 @@ function checkTiming(content: Content): Problem[] {
     const message = content.messages.find((m) => m.data.id === id);
     if (later === undefined || message === undefined || seen.has(`${id}|${level}`)) continue;
     seen.add(`${id}|${level}`);
-    for (const lang of LANGS) {
-      const orientation = message.data[lang].orientation;
+    for (const [lang, field] of LANGS.flatMap((l) => ORIENTATIONS.map((f) => [l, f] as const))) {
+      const orientation = message.data[lang][field];
       if (orientation === undefined) continue;
       const bounded = BOUNDED_APPOINTMENT[level]?.[lang];
       const text = bounded ? plain(orientation).replace(bounded, ' ') : plain(orientation);
-      const where = `${lang}.orientation`;
+      const where = `${lang}.${field}`;
       const word = later[lang].find((w) => sayWord(text, w));
       if (word !== undefined) {
         problems.push(
@@ -697,6 +896,7 @@ function checkMessages(content: Content, raw: RawContent): Problem[] {
   };
   const problems = [
     ...content.messages.flatMap((m) => checkMessageText(m, reminderOnly(m.data.id))),
+    ...content.messages.flatMap(checkOrientations),
     ...content.dangerSigns.flatMap(checkLabels),
   ];
   const present = new Set(raw.messages.map((f) => stem(f.file)));
@@ -712,7 +912,85 @@ function checkMessages(content: Content, raw: RawContent): Problem[] {
   return problems;
 }
 
-/** Checks 2 to 8 on the schema-valid content. */
+/**
+ * A citation link a reader can open on a phone: never an API answer, a bulk
+ * archive or a raw record (JSON, XML), which show code or start a download
+ * over mobile data. A readable page of the same record, or no link.
+ */
+function unreadable(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false; // The schema refuses a URL that is not one.
+  }
+  const host = parsed.hostname.toLowerCase();
+  const pathname = parsed.pathname.toLowerCase();
+  return (
+    /^(?:api|eutils|ftp)\./.test(host) ||
+    /\.(?:tar\.gz|tgz|gz|zip|json|xml)$/.test(pathname) ||
+    // A repository's file or API (WHO IRIS bitstreams): its handle page is readable.
+    /\/server\/api\/|\/bitstreams?\//.test(pathname) ||
+    /(?:^|&)retmode=(?:xml|json)(?:&|$)/i.test(parsed.search.slice(1))
+  );
+}
+
+/** The host of a URL, lowercase; undefined when it is not a URL. */
+function hostOf(url: string): string | undefined {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Check 9: every citation link (rules, remedies, danger signs) opens a
+ * readable page, and a source that declares the hosts of its links (openFDA:
+ * DailyMed) is linked on them only.
+ */
+function checkLinks(content: Content): Problem[] {
+  const declared = new Map<string, string[]>();
+  const policy = content.sources?.data;
+  for (const source of [...(policy?.allowed ?? []), ...(policy?.['fact-only'] ?? [])]) {
+    const hosts = source['link-hosts'];
+    if (hosts !== undefined) declared.set(source.id, hosts);
+  }
+  const cited: { entry: Entry<unknown>; sources: { source: string; url?: string }[] }[] = [
+    ...content.rules.map((entry) => ({ entry, sources: entry.data.sources })),
+    ...content.plants.map((entry) => ({ entry, sources: entry.data.sources })),
+    ...content.dangerSigns.map((entry) => ({ entry, sources: entry.data.sources })),
+  ];
+  return cited.flatMap(({ entry, sources }) =>
+    sources.flatMap((source, index) => {
+      if (source.url === undefined) return [];
+      const where = `sources[${String(index)}].url`;
+      if (unreadable(source.url)) {
+        return [
+          problem(
+            entry,
+            where,
+            `links to an API, an archive or a raw record ("${source.url}"): link a readable page of the record (the BDPM page, PubMed, the LactMed Bookshelf page, DailyMed, a WHO IRIS handle page), or no link`,
+          ),
+        ];
+      }
+      const hosts = declared.get(source.source);
+      const host = hostOf(source.url);
+      if (hosts !== undefined && (host === undefined || !hosts.includes(host))) {
+        return [
+          problem(
+            entry,
+            where,
+            `links "${source.url}" for a ${source.source} citation: knowledge/sources.yaml links its documents on ${hosts.join(', ')} only`,
+          ),
+        ];
+      }
+      return [];
+    }),
+  );
+}
+
+/** Checks 2 to 9 on the schema-valid content. */
 export function checkContent(content: Content, raw: RawContent): Problem[] {
   return [
     ...checkIds(content),
@@ -721,5 +999,6 @@ export function checkContent(content: Content, raw: RawContent): Problem[] {
     ...checkMessages(content, raw),
     ...checkHiddenInstructions(content),
     ...checkTiming(content),
+    ...checkLinks(content),
   ];
 }
