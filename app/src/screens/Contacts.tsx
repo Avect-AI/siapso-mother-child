@@ -9,10 +9,12 @@ import {
 } from '../data/referral.js';
 import {
   contactFromForm,
+  dialNameOf,
   emptyContactForm,
   formFromContact,
   NAME_MAX_LENGTH,
   phoneGroups,
+  telHref,
   validateContactForm,
   whoOf,
   type ContactForm,
@@ -20,8 +22,11 @@ import {
 import type { ReferralContact, ReferralRole } from '../domain/types.js';
 import { useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
+import { FROM_CALL, noteSavedForCall } from '../state/contact-return.js';
+import { visitState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
+import { DialLink } from '../ui/DialLink.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
 import { TextField } from '../ui/TextField.js';
@@ -57,13 +62,27 @@ function ContactText({ contact }: { contact: ReferralContact }) {
   );
 }
 
+/** "Appeler": the contact's number in the phone's dialler. */
+function ContactDial({ contact }: { contact: ReferralContact }) {
+  const t = useT();
+  return (
+    <DialLink
+      href={telHref(contact.phone)}
+      label={t('call.dial')}
+      name={dialNameOf(contact, t)}
+      primary={false}
+    />
+  );
+}
+
 /**
- * The referral contacts kept on this phone (accompanied mode): each with its
- * role, name and number, a way to change it and a way off the list (with a
- * way to put it back, no time limit), then the one primary action, "Ajouter
- * un contact". The contacts of the deployment file follow, read only. Nothing
- * is ever sent: the numbers stay on the phone and are only dialled from who
- * to call.
+ * The referral contacts kept on this phone (both modes, behind the code):
+ * each with its role, name and number, an "Appeler" link that opens the
+ * phone's dialler, a way to change it and a way off the list (with a way to
+ * put it back, no time limit), then the one primary action, "Ajouter un
+ * contact". The contacts of the deployment file follow, to call but not to
+ * change. Nothing is ever sent: the numbers stay on the phone and are only
+ * dialled by the phone.
  */
 export function Contacts() {
   const t = useT();
@@ -131,6 +150,7 @@ export function Contacts() {
             return (
               <li key={contact.id} className="contacts__item">
                 <ContactText contact={contact} />
+                <ContactDial contact={contact} />
                 <div className="contacts__actions">
                   <a
                     className="button button--quiet"
@@ -190,6 +210,7 @@ export function Contacts() {
             {provided.map((contact) => (
               <li key={contact.id} className="contacts__item">
                 <ContactText contact={contact} />
+                <ContactDial contact={contact} />
               </li>
             ))}
           </ul>
@@ -217,10 +238,12 @@ type Loaded =
   | { status: 'failed' };
 
 /**
- * A referral contact (accompanied mode): its role, its name (optional) and
- * its number, digits with spaces and a leading plus if any. The one primary
- * action keeps it on this phone, then goes back to the list, which says it
- * was saved. A failed save says so and keeps what was typed.
+ * A referral contact (both modes, behind the code): its role, its name
+ * (optional) and its number, digits with spaces and a leading plus if any.
+ * The one primary action keeps it on this phone, then goes back to the list,
+ * which says it was saved; or, for a new contact opened from who to call,
+ * back to who to call, where it is there to call. A failed save says so and
+ * keeps what was typed.
  */
 export function ContactEdit({ target }: { target: ContactTarget }) {
   const t = useT();
@@ -228,6 +251,7 @@ export function ContactEdit({ target }: { target: ContactTarget }) {
   const [, navigate] = useLocation();
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const id = target.kind === 'edit' ? target.id : null;
+  const [fromCall] = useState(() => visitState()[FROM_CALL] === true);
 
   useEffect(() => {
     let live = true;
@@ -270,6 +294,13 @@ export function ContactEdit({ target }: { target: ContactTarget }) {
                 ? [...loaded.contacts, contact]
                 : loaded.contacts.map((c) => (c.id === id ? contact : c));
             await withTimeout(saveContacts(contacts), storageTimeoutMs);
+            if (fromCall) {
+              // The same entry of who to call, with its banner and signs: the
+              // contact is there to call, and who to call says it was saved.
+              noteSavedForCall(whoOf(contact, t));
+              window.history.back();
+              return;
+            }
             // The list reads the contact from the history entry to say it was saved.
             navigate('/contacts', { replace: true, state: { contactSaved: whoOf(contact, t) } });
           }}

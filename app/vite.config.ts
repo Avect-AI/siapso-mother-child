@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,11 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { appName } from './src/app-name.js';
+// The engine's wording check, by path: the config loader keeps the workspace
+// package @siapso/engine external, and Node cannot load its TypeScript index;
+// this one file imports types only, so it is bundled with the config.
+import { findForbiddenWording } from '../engine/src/wording.js';
+import { EMERGENCY_NUMBERS } from './src/config/emergency.js';
 import { PACK_PUBLIC_KEYS, type PackPublicKey } from './src/config/pack-keys.js';
 import {
   ALLOW_UNSIGNED_VARIABLE,
@@ -15,6 +20,7 @@ import {
   unsignedPackAllowed,
 } from './src/config/pack-signing.js';
 import { checkOrigin, isVersion } from './src/data/pack-verify.js';
+import { readReferralFile } from './src/domain/referral-file.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -255,10 +261,68 @@ export const workbox = {
   // silently be left out of the precache.
   maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
   navigateFallback: 'index.html',
-  // A voice pack file is never answered with the app page.
-  navigateFallbackDenylist: [/\/voice\//],
+  // A voice pack file, or a deployment file such as config/referral.json, is
+  // never answered with the app page: a missing file stays missing.
+  navigateFallbackDenylist: [/\/voice\//, /\/config\//],
   cleanupOutdatedCaches: true,
 };
+
+/** Lines framed loudly, so a build log cannot hide them. */
+function loud(lines: string[]): string {
+  const rule = '!'.repeat(76);
+  return ['', rule, ...lines, rule, ''].join('\n');
+}
+
+/**
+ * The warning a build prints about the deployment's referral file
+ * (`<publicDir>/config/referral.json`), read as the phones read it
+ * (src/domain/referral-file.ts); null when it is there and every entry filled
+ * in is kept. Missing: the phones show who to call with the built-in national
+ * emergency numbers only (src/config/emergency.ts), no contact of the
+ * district's circuit. Not valid JSON: the phones read it as no file. An entry
+ * left out: each is named, with why.
+ */
+export function referralFileWarning(publicDir: string): string | null {
+  const file = path.join(publicDir, 'config', 'referral.json');
+  if (!existsSync(file)) {
+    return loud([
+      'WARNING: no deployment referral file: public/config/referral.json is missing.',
+      'Who to call will list no contact of the referral circuit, only the built-in',
+      `national emergency numbers (${EMERGENCY_NUMBERS.map(({ service, phone }) => `${service} ${phone}`).join(', ')}) and the line`,
+      '"go to the nearest health post or health centre". Before a pilot build, copy',
+      'public/config/referral.example.json to public/config/referral.json and fill',
+      'it in (README.md, "Referral contacts of a deployment").',
+    ]);
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(readFileSync(file, 'utf8'));
+  } catch (failure) {
+    return loud([
+      'WARNING: public/config/referral.json is not valid JSON: the phones will read it',
+      'as no file and list no contact of the referral circuit.',
+      failure instanceof Error ? failure.message : String(failure),
+    ]);
+  }
+  const { leftOut } = readReferralFile(data, findForbiddenWording);
+  if (leftOut.length === 0) return null;
+  return loud([
+    'WARNING: public/config/referral.json has entries the phones will leave out:',
+    ...leftOut.map((entry) => `  - ${entry}`),
+  ]);
+}
+
+/** Prints referralFileWarning loudly at the start of a production build. */
+function referralFileCheck(): Plugin {
+  return {
+    name: 'siapso-referral-file-check',
+    apply: 'build',
+    configResolved(config) {
+      const warning = referralFileWarning(config.publicDir);
+      if (warning !== null) config.logger.warn(warning);
+    },
+  };
+}
 
 export default defineConfig(async ({ command, mode, isPreview }) => {
   const env = loadEnv(mode, root, 'VITE_');
@@ -286,6 +350,7 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
       react(),
       htmlValues({ APP_NAME: name, THEME_COLOR: themeColour }),
       buildInfoPlugin(buildInfo(mode, acceptsUnsigned, pack), acceptsUnsigned),
+      referralFileCheck(),
       VitePWA({
         // A waiting version takes over only when the user accepts the update prompt.
         registerType: 'prompt',

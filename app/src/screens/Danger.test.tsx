@@ -97,9 +97,10 @@ describe('Danger signs', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Who to call' })).toBeVisible();
     expect(screen.getByRole('alert')).toHaveTextContent('Danger sign Go to the health post now.');
     expect(screen.getByText('Say these signs on the phone or at the health post:')).toBeVisible();
-    expect(screen.getByRole('listitem')).toHaveTextContent('Bleeding');
-    // The circuit is always there: the contacts, or that there are none.
+    expect(screen.getByText('Bleeding', { selector: 'li' })).toBeVisible();
+    // The circuit is always there: the contacts, or that there are none, and the emergency numbers.
     expect(await screen.findByText('No contact saved on this phone.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Call the SAMU (1515)' })).toBeVisible();
 
     window.history.back();
     expect(await screen.findByRole('checkbox', { name: 'Bleeding' })).toBeChecked();

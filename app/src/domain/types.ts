@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import type { CheckedItem, ConditionId, Lang } from '@siapso/engine';
+import type { CheckedItem, ConditionId, Lang, Localized } from '@siapso/engine';
 
 export type Mode = 'woman' | 'accompanied';
 
@@ -52,6 +52,17 @@ export interface ReferralContact {
   /** May be empty: the role alone then names the contact. */
   name: string;
   /** Digits, spaces and an optional leading plus; 6 to 15 digits. */
+  phone: string;
+}
+
+/**
+ * A public emergency number a deployment gives in place of the built-in ones
+ * (config/emergency.ts): the service named in a sentence in both languages
+ * ("le SAMU", "the SAMU"), and its number.
+ */
+export interface EmergencyNumber {
+  name: Localized;
+  /** Digits, spaces and an optional leading plus; 2 to 15 digits (short service numbers too). */
   phone: string;
 }
 

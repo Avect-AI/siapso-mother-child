@@ -1,25 +1,22 @@
 // SPDX-License-Identifier: MIT
 // The referral circuit: who to call when a danger sign is there and no health
 // worker is. The contacts saved on this phone come first (IndexedDB, entered
-// in accompanied mode), then those of the deployment file
+// behind the code, in either mode), then those of the deployment file
 // /config/referral.json, which a deployment adds before building (never
 // committed: public/config/referral.example.json shows its form) and the
-// service worker keeps offline. Nothing here is ever sent anywhere: a call is
-// a tel: link that the phone dials.
-import { findForbiddenWording, type Localized } from '@siapso/engine';
-import { isReferralContact, REFERRAL_ROLES, telHref, tidyPhone } from '../domain/contacts.js';
-import { careUnderWayWording } from '../domain/wording.js';
+// service worker keeps offline. The file may also replace the built-in
+// emergency numbers (config/emergency.ts) and add its circuit text under the
+// built-in line. Nothing here is ever sent anywhere: a call is a tel: link that
+// the phone dials.
+import { findForbiddenWording } from '@siapso/engine';
+import { isReferralContact, REFERRAL_ROLES, telHref } from '../domain/contacts.js';
+import { readReferralFile, type ReferralConfig } from '../domain/referral-file.js';
 import type { ReferralContact } from '../domain/types.js';
 import { openAppDb } from './db.js';
 
-export type { ReferralContact, ReferralRole } from '../domain/types.js';
+export type { ReferralConfig } from '../domain/referral-file.js';
+export type { EmergencyNumber, ReferralContact, ReferralRole } from '../domain/types.js';
 export { REFERRAL_ROLES };
-
-export interface ReferralConfig {
-  contacts: ReferralContact[];
-  /** The national referral circuit, in both languages, when the deployment file gives it. */
-  nationalCircuit?: Localized;
-}
 
 export interface LoadedReferral extends ReferralConfig {
   /** The contacts saved on this phone could not be read: only the deployment's are listed. */
@@ -33,58 +30,23 @@ function referralUrl(): string {
   return `${import.meta.env.BASE_URL}config/referral.json`;
 }
 
-function text(value: unknown): string {
-  return typeof value === 'string' ? value.trim() : '';
-}
-
 /**
- * The deployment file read as a circuit: each contact with a known role and
- * a number the phone can dial (others are left out, such as the example's
- * empty ones), given the id "deployment:<index>"; the national circuit only
- * when it is written in both languages and says nothing the app never says
- * (a forbidden word, or that someone was told or is coming: left out with a
- * warning). Never throws.
+ * The deployment file read as a circuit (domain/referral-file.ts), with a
+ * warning for each entry it leaves out that was filled in. Never throws.
  */
 export function parseReferral(data: unknown): ReferralConfig {
-  if (typeof data !== 'object' || data === null) return { contacts: [] };
-  const { contacts, nationalCircuit } = data as Record<string, unknown>;
-  const listed: unknown[] = Array.isArray(contacts) ? contacts : [];
-  const config: ReferralConfig = {
-    contacts: listed.flatMap((entry, index) => {
-      if (typeof entry !== 'object' || entry === null) return [];
-      const { role, name, phone } = entry as Record<string, unknown>;
-      const contact = {
-        id: `deployment:${String(index)}`,
-        role,
-        name: text(name),
-        phone: tidyPhone(text(phone)),
-      };
-      return isReferralContact(contact) ? [contact] : [];
-    }),
-  };
-  if (typeof nationalCircuit === 'object' && nationalCircuit !== null) {
-    const { fr, en } = nationalCircuit as Record<string, unknown>;
-    const circuit = { fr: text(fr), en: text(en) };
-    if (circuit.fr !== '' && circuit.en !== '') {
-      const wrong = (['fr', 'en'] as const).flatMap((lang) => {
-        const care = careUnderWayWording(circuit[lang], lang);
-        return [
-          ...findForbiddenWording(circuit[lang], lang),
-          ...(care === undefined ? [] : [care]),
-        ];
-      });
-      if (wrong.length === 0) config.nationalCircuit = circuit;
-      else console.warn(`Referral file: national circuit left out for "${wrong.join('", "')}"`);
-    }
-  }
+  const { config, leftOut } = readReferralFile(data, findForbiddenWording);
+  for (const entry of leftOut) console.warn(`Referral file: ${entry}; left out`);
   return config;
 }
 
 /**
- * The circuit of the deployment file. No file (404), a file that cannot be
- * read or is not JSON (a server answering every path with the app page), no
- * network and no copy offline, or no answer within `timeoutMs`: no contact.
- * Never rejects.
+ * The circuit of the deployment file. No file (404), the app page in its
+ * place (a server answering every path with it: an HTML content type, or a
+ * body starting with "<"; said nothing about, as no file), a file that is not
+ * valid JSON (a warning), a file that cannot be read, no network and no copy
+ * offline, or no answer within `timeoutMs`: no contact. A valid file loads
+ * whatever its content type, or with none. Never rejects.
  */
 export async function fetchDeploymentReferral(
   fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis),
@@ -105,9 +67,21 @@ export async function fetchDeploymentReferral(
       console.warn(`Referral file not read: HTTP ${String(response.status)}`);
       return { contacts: [] };
     }
-    return parseReferral(await response.json());
+    const type = response.headers.get('content-type') ?? '';
+    const body = await response.text();
+    // A missing file answered with the app page is the usual case of a
+    // deployment without one: nothing to say.
+    if (/html/i.test(type) || body.trimStart().startsWith('<')) return { contacts: [] };
+    let data: unknown;
+    try {
+      data = JSON.parse(body);
+    } catch {
+      console.warn('Referral file not read: it is not valid JSON');
+      return { contacts: [] };
+    }
+    return parseReferral(data);
   } catch (failure) {
-    // Offline without a copy, too slow, or not JSON.
+    // Offline without a copy, or too slow.
     if (!(failure instanceof TypeError) && !(failure instanceof DOMException)) {
       console.warn('Referral file not read', failure);
     }
@@ -194,5 +168,6 @@ export async function loadReferral({
     savedUnavailable: saved.unavailable,
   };
   if (deployment.nationalCircuit) loaded.nationalCircuit = deployment.nationalCircuit;
+  if (deployment.emergencyNumbers) loaded.emergencyNumbers = deployment.emergencyNumbers;
   return loaded;
 }

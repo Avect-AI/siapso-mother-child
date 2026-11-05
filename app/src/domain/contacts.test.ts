@@ -8,6 +8,7 @@ import {
   formFromContact,
   isPhone,
   isReferralContact,
+  isServiceNumber,
   phoneGroups,
   REFERRAL_ROLES,
   telHref,
@@ -36,6 +37,24 @@ describe('isPhone', () => {
     expect(isPhone('++999000000')).toBe(false);
     expect(isPhone('(000) 000')).toBe(false);
     expect(isPhone('Awa 000000')).toBe(false);
+  });
+});
+
+describe('isServiceNumber', () => {
+  it('takes the short numbers of public services too: 2 to 15 digits', () => {
+    expect(isServiceNumber('00')).toBe(true);
+    expect(isServiceNumber('000')).toBe(true);
+    expect(isServiceNumber(' 00 00 ')).toBe(true);
+    expect(isServiceNumber('+999 000 000 000')).toBe(true);
+  });
+
+  it('refuses anything else', () => {
+    expect(isServiceNumber('')).toBe(false);
+    expect(isServiceNumber('0')).toBe(false);
+    expect(isServiceNumber('9999999999999999')).toBe(false);
+    expect(isServiceNumber('00-00')).toBe(false);
+    expect(isServiceNumber('000+')).toBe(false);
+    expect(isServiceNumber('SAMU')).toBe(false);
   });
 });
 

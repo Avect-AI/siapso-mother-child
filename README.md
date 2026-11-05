@@ -38,7 +38,17 @@ pnpm --filter @siapso/app dev
 
 ### Referral contacts of a deployment
 
-No phone number is ever committed. A deployment that wants to give the phones the contacts of its referral circuit (community relay, Bajenu Gox, head nurse of the health post, midwife) copies `app/public/config/referral.example.json` to `app/public/config/referral.json` (git-ignored), fills in the names, numbers and the national circuit text in French and English, then builds. The national circuit text describes where to go and who refers to whom; it never says that someone will come or has been told. The service worker keeps the file offline. Contacts entered on a phone in accompanied mode are listed first; the app only opens the phone's dialler and never sends anything.
+No personal phone number is ever committed. "Qui appeler" (who to call) always shows a built-in fallback circuit, locked or not and in both modes: the public national emergency numbers of Senegal as call links, "Appeler le SAMU (1515)" and "Appeler les pompiers (18)", with the line "Allez au poste de santé ou au centre de santé le plus proche." ("Go to the nearest health post or health centre."). They live in one module, `app/src/config/emergency.ts`; the team must confirm them with the health authorities of the pilot district before a pilot.
+
+A deployment that wants to give the phones the contacts of its referral circuit (community relay, Bajenu Gox, head nurse of the health post, midwife) copies `app/public/config/referral.example.json` to `app/public/config/referral.json` (git-ignored), fills it in, then builds:
+
+- `contacts`: a role, a name and a number for each contact;
+- `nationalCircuit`: the circuit text in French and English, shown under the built-in line, which always stays. It describes where to go and who refers to whom; it never says that someone will come or has been told;
+- `emergencyNumbers` (optional): the emergency numbers in place of the built-in ones, each as `{ "name": { "fr": "le SAMU", "en": "the SAMU" }, "phone": "1515" }`, the service named as it reads after "Appeler" ("Call"). The built-in numbers stay unless at least one entry can be dialled.
+
+Numbers are digits, with spaces, "-" or "." between groups if you like, and a + only at the start. Entries left empty, as in the example, are ignored. Any other entry the phones cannot use (an unknown role, a number that cannot be dialled, a text in one language only, words the app never says) is left out: the production build names each one in a loud warning, and the app warns in the console.
+
+The file must be in place before the build: the service worker precaches it, so it works offline. A production build without it, or with a file that is not valid JSON, prints a loud warning, since the phones would then list no contact of the circuit. Any content type works; an HTML answer, or a body that starts with `<` (a server that serves the app page for every path), is read as no file, and the service worker never answers a `/config/` request with the app page. A file added or changed after the build is not kept offline: build again. Contacts saved on a phone, behind the code, in either mode, are listed first; the app only opens the phone's dialler and never sends anything.
 
 ## Contributing
 

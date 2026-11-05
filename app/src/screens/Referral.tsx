@@ -1,16 +1,20 @@
 // SPDX-License-Identifier: MIT
+import type { Lang } from '@siapso/engine';
 import { useEffect, useId, useState } from 'react';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
+import { EMERGENCY_NUMBERS } from '../config/emergency.js';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
-import { phoneGroups, telHref, whoOf } from '../domain/contacts.js';
+import { dialNameOf, phoneGroups, telHref } from '../domain/contacts.js';
 import type { InstructionSource } from '../domain/result-view.js';
-import type { ReferralContact } from '../domain/types.js';
+import type { EmergencyNumber, ReferralContact } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
-import { epochToken, forgetStaleEntry, visitState } from '../state/entry-state.js';
+import { FROM_CALL, forgetSavedForCall, savedForCall } from '../state/contact-return.js';
+import { epochToken, forgetStaleEntry, inVisit, visitState } from '../state/entry-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
+import { DialLink } from '../ui/DialLink.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
 import { UNLOCK_PATH } from './Neutral.js';
@@ -82,17 +86,41 @@ function ContactRow({ contact, primary }: { contact: ReferralContact; primary: b
         {contact.name === '' ? null : <p className="meta">{role}</p>}
         <PhoneNumber className="referral__phone" groups={phoneGroups(contact.phone)} />
       </div>
-      {/* Opens the phone's dialler with the number; nothing is sent by the app. The
-          name starts with the visible word, then says who and the number. */}
-      <a
-        className={`button button--${primary ? 'primary' : 'secondary'} referral__dial`}
+      <DialLink
         href={telHref(contact.phone)}
-        aria-label={`${t('call.dial')} ${t('call.dialWho', { who: whoOf(contact, t), phone: contact.phone })}`}
-      >
-        {t('call.dial')}
-      </a>
+        label={t('call.dial')}
+        name={dialNameOf(contact, t)}
+        primary={primary}
+      />
     </li>
   );
+}
+
+/** An emergency number as a call link says it: "Appeler le SAMU (1515)". */
+interface EmergencyLink {
+  key: string;
+  label: string;
+  phone: string;
+}
+
+/** The deployment's emergency numbers when it gives some, else the built-in ones. */
+function emergencyLinks(
+  deployed: EmergencyNumber[] | undefined,
+  lang: Lang,
+  t: ReturnType<typeof useT>,
+): EmergencyLink[] {
+  if (deployed !== undefined) {
+    return deployed.map(({ name, phone }, index) => ({
+      key: `deployment:${String(index)}`,
+      label: t('call.emergencyDial', { service: name[lang], phone }),
+      phone,
+    }));
+  }
+  return EMERGENCY_NUMBERS.map(({ service, phone }) => ({
+    key: service,
+    label: t('call.emergencyDial', { service: t(`call.services.${service}`), phone }),
+    phone,
+  }));
 }
 
 /**
@@ -101,34 +129,45 @@ function ContactRow({ contact, primary }: { contact: ReferralContact; primary: b
  * link) and from a result's danger banner. Opens at once, even before the
  * settings are read. With a danger, the danger banner says what to do: "Allez
  * au poste de santé maintenant." from the danger signs screen (she said it is
- * serious now), the result's own instruction from a result; then the signs
- * ticked, to say when calling. Without a danger, the orientation with its
- * condition, as on the danger signs screen. Then always
- * the circuit: each contact with its role, name and number shown as text, and
- * a large "Appeler" link that opens the phone's dialler (the first one the
- * screen's primary action), or "Aucun contact enregistré sur ce téléphone."
- * In accompanied mode a way to add or change the contacts; then the national
- * circuit of the deployment file. The app never sends a message, and never
- * says that someone knows or is on the way.
+ * serious now), the result's own instruction from a result. Without a danger,
+ * the orientation with its condition, as on the danger signs screen. Then
+ * always the circuit, call links first so that the first one stays in the
+ * first screen: each contact with its role, name and number shown as text,
+ * and a large "Appeler" link that opens the phone's dialler (after a contact
+ * saved from here, "Contact enregistré : ..." once); then, under "Circuit de
+ * référence", the emergency numbers as call links ("Appeler le SAMU (1515)";
+ * built in, or the deployment file's), so that a danger always leads to a
+ * number to call, even with no contact; shown at once, the built-in ones until
+ * the deployment file is read; then where to go, the built-in line and under
+ * it the deployment's circuit text. The first link is the screen's primary
+ * action: the first contact, else the first emergency number. Then the signs
+ * ticked, to say when calling. Last, the contacts of the phone: "Aucun contact
+ * enregistré sur ce téléphone." when there is none, and, once the code is
+ * given, in either mode, a quiet way to add one (saving it comes back here)
+ * or to change them: the boxed buttons of the screen are the calls. The app
+ * never sends a message, and never says that someone knows or is on the way.
  *
  * Before the code (this screen opens locked too), the contacts saved on the
- * phone are not shown, only the deployment's, with a way to give the code
- * that comes back here; they go as soon as the session locks.
+ * phone are not shown, only the deployment's and the emergency numbers, with
+ * a way to give the code that comes back here, worded the same whether
+ * contacts are saved or not; they go as soon as the session locks.
  */
 export function Referral() {
   const t = useT();
   const lang = useLang();
-  const { settings, pack, packError, storageTimeoutMs } = useApp();
+  const { pack, packError, storageTimeoutMs } = useApp();
   const { unlocked, status } = useSession();
   const [, navigate] = useLocation();
   const [opened] = useState(openedWith);
   const [loaded, setLoaded] = useState<(LoadedReferral & { withSaved: boolean }) | null>(null);
   const nationalId = useId();
-  const accompanied = settings.mode === 'accompanied';
+  // Read once when the screen opens, then forgotten: a later visit says nothing.
+  const [justSaved] = useState(savedForCall);
 
   // A state left in another visit, or by a result before a lock, goes from the history.
   useEffect(() => {
     forgetStaleEntry();
+    forgetSavedForCall();
   }, []);
 
   useEffect(() => {
@@ -173,6 +212,13 @@ export function Referral() {
   const contacts = circuit?.contacts ?? [];
   // Locked with a code on the phone: the saved contacts wait for it.
   const behindCode = !unlocked && status !== 'new';
+  // Never "no contact" when that is not known: unreadable storage is said
+  // instead, and locked contacts are behind the code.
+  const none =
+    circuit !== null && contacts.length === 0 && !circuit.savedUnavailable && !behindCode;
+  // A contact just saved from here: said once, only while open in the epoch it was saved in.
+  const saved =
+    justSaved !== null && unlocked && justSaved.epoch === epochToken() ? justSaved.who : null;
 
   return (
     <main className="screen referral">
@@ -185,6 +231,51 @@ export function Referral() {
       ) : (
         <DangerBanner levelLabel={t('level.danger')} title={instruction} headingLevel={2} />
       )}
+      {circuit === null ? (
+        <p className="referral__loading" role="status">
+          {t('call.loading')}
+        </p>
+      ) : (
+        <>
+          {circuit.savedUnavailable ? <Notice>{t('call.savedUnavailable')}</Notice> : null}
+          {contacts.length === 0 ? null : (
+            <ul className="referral__contacts" aria-label={t('call.contactsLabel')}>
+              {contacts.map((contact, index) => (
+                <ContactRow key={contact.id} contact={contact} primary={index === 0} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+      {saved === null ? null : (
+        <p className="referral__status" role="status">
+          {t('contacts.saved', { who: saved })}
+        </p>
+      )}
+
+      {/* Always, and at once (built in until the deployment file is read): the
+          emergency numbers, then where to go, so a danger never ends on no one
+          to call. The call links come first: they stay in the first screen. */}
+      <section className="referral__national" aria-labelledby={nationalId}>
+        <h2 id={nationalId}>{t('call.circuit')}</h2>
+        <ul className="referral__emergency" aria-label={t('call.emergencyLabel')}>
+          {emergencyLinks(circuit?.emergencyNumbers, lang, t).map((number, index) => (
+            <li key={number.key}>
+              <DialLink
+                href={telHref(number.phone)}
+                label={number.label}
+                primary={circuit !== null && contacts.length === 0 && index === 0}
+              />
+            </li>
+          ))}
+        </ul>
+        <p>{t('call.emergencyCircuit')}</p>
+        {circuit?.nationalCircuit === undefined ? null : (
+          <p className="referral__deployed">{circuit.nationalCircuit[lang]}</p>
+        )}
+      </section>
+
+      {/* The signs to say when calling, under the numbers. */}
       {labels.length === 0 ? null : (
         <div className="referral__signs">
           <p>{t('call.signsLabel')}</p>
@@ -196,60 +287,41 @@ export function Referral() {
         </div>
       )}
 
-      <div className="referral__circuit">
-        {circuit === null ? (
-          <p className="referral__loading" role="status">
-            {t('call.loading')}
-          </p>
-        ) : (
-          <>
-            {circuit.savedUnavailable ? <Notice>{t('call.savedUnavailable')}</Notice> : null}
-            {contacts.length === 0 ? (
-              // Unreadable storage is said above, and locked contacts below:
-              // never "no contact" when that is not known.
-              circuit.savedUnavailable || behindCode ? null : (
-                <p className="referral__none">{t('call.none')}</p>
-              )
-            ) : (
-              <ul className="referral__contacts" aria-label={t('call.contactsLabel')}>
-                {contacts.map((contact, index) => (
-                  <ContactRow key={contact.id} contact={contact} primary={index === 0} />
-                ))}
-              </ul>
-            )}
-            {behindCode ? (
-              <div className="referral__locked">
-                <p>{t('call.locked')}</p>
-                <Button
-                  variant="secondary"
-                  className="referral__unlock"
-                  onClick={() => {
-                    // The code screen comes back here once the code is given.
-                    navigate(UNLOCK_PATH, { state: { back: true } });
-                  }}
-                >
-                  {t('call.enterCode')}
-                </Button>
-              </div>
-            ) : null}
-            {accompanied && unlocked ? (
-              <a
-                className="button button--secondary referral__manage"
-                href={contacts.length === 0 ? '#/contacts/new' : '#/contacts'}
-              >
-                {t(contacts.length === 0 ? 'call.add' : 'call.manage')}
-              </a>
-            ) : null}
-          </>
-        )}
-      </div>
-
-      {circuit?.nationalCircuit === undefined ? null : (
-        <section className="referral__national" aria-labelledby={nationalId}>
-          <h2 id={nationalId}>{t('call.circuit')}</h2>
-          <p>{circuit.nationalCircuit[lang]}</p>
-        </section>
-      )}
+      {/* The contacts of the phone, quiet: the boxed buttons of this screen are the calls. */}
+      {circuit === null ? null : behindCode ? (
+        // Worded the same whether contacts are saved or not.
+        <div className="referral__mine">
+          <p>{t('call.locked')}</p>
+          <Button
+            variant="quiet"
+            className="referral__unlock"
+            onClick={() => {
+              // The code screen comes back here once the code is given.
+              navigate(UNLOCK_PATH, { state: { back: true } });
+            }}
+          >
+            {t('call.enterCode')}
+          </Button>
+        </div>
+      ) : none || unlocked ? (
+        <div className="referral__mine">
+          {none ? <p className="referral__none">{t('call.none')}</p> : null}
+          {!unlocked ? null : contacts.length === 0 ? (
+            // Saving the new contact comes back here, to call it.
+            <Link
+              className="button button--quiet referral__manage"
+              href="/contacts/new"
+              state={inVisit({ [FROM_CALL]: true })}
+            >
+              {t('call.add')}
+            </Link>
+          ) : (
+            <a className="button button--quiet referral__manage" href="#/contacts">
+              {t('call.manage')}
+            </a>
+          )}
+        </div>
+      ) : null}
     </main>
   );
 }

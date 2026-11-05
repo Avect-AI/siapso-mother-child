@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CheckedItem, Pack } from '@siapso/engine';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -49,17 +49,29 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function serveDeployment() {
+function serveDeployment(file: object = deployment) {
   vi.stubGlobal('fetch', (input: RequestInfo | URL) =>
     Promise.resolve(
       (typeof input === 'string' ? input : input instanceof URL ? input.href : input.url).endsWith(
         '/config/referral.json',
       )
-        ? new Response(JSON.stringify(deployment))
+        ? Response.json(file)
         : new Response('Not found', { status: 404 }),
     ),
   );
 }
+
+/** The built-in emergency links, in French. */
+function emergencyLinks() {
+  return {
+    samu: screen.getByRole('link', { name: 'Appeler le SAMU (1515)' }),
+    firefighters: screen.getByRole('link', { name: 'Appeler les pompiers (18)' }),
+  };
+}
+
+const CIRCUIT_LINE = 'Allez au poste de santé ou au centre de santé le plus proche.';
+const LOCKED_NOTE =
+  'Si des contacts sont enregistrés sur ce téléphone, ils apparaissent une fois le code entré.';
 
 describe('Who to call', () => {
   it('lists the contacts of the phone, then the deployment, each with a call link and its number', async () => {
@@ -95,7 +107,7 @@ describe('Who to call', () => {
     );
   });
 
-  it('says when no contact is saved, and offers to add one in accompanied mode only', async () => {
+  it('says when no contact is saved, and offers to add one in both modes', async () => {
     const { unmount } = await renderApp({ settings: accompanied, hash: '#/danger/call' });
     expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
     expect(screen.getByRole('link', { name: 'Ajouter un contact' })).toHaveAttribute(
@@ -106,8 +118,141 @@ describe('Who to call', () => {
 
     await renderApp({ settings: woman, hash: '#/danger/call' });
     expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
-    expect(screen.queryByRole('link', { name: 'Ajouter un contact' })).toBeNull();
-    expect(screen.queryByRole('link', { name: /^Appeler/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Ajouter un contact' })).toHaveAttribute(
+      'href',
+      '#/contacts/new',
+    );
+  });
+
+  it('always gives the national emergency numbers to call, and where to go, even with no contact', async () => {
+    await renderApp({ settings: woman, hash: '#/danger/call' });
+
+    expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
+    const { samu, firefighters } = emergencyLinks();
+    expect(samu).toHaveAttribute('href', 'tel:1515');
+    expect(firefighters).toHaveAttribute('href', 'tel:18');
+    // No contact: the first emergency number is the screen's one primary action.
+    expect(samu).toHaveClass('button--primary');
+    expect(firefighters).toHaveClass('button--secondary');
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    const circuit = screen.getByRole('region', { name: 'Circuit de référence' });
+    expect(within(circuit).getByText(CIRCUIT_LINE)).toBeVisible();
+    expect(
+      within(within(circuit).getByRole('list', { name: "Numéros d'urgence" })).getAllByRole('link'),
+    ).toHaveLength(2);
+    // A keyboard reaches an action in the main area: the emergency links come first.
+    const main = screen.getByRole('main');
+    const focusable = within(main).getAllByRole('link');
+    expect(focusable[0]).toBe(samu);
+  });
+
+  it('puts the contacts of the circuit first, the emergency numbers after them, all secondary', async () => {
+    await saveContacts([AWA]);
+    await renderApp({ settings: woman, hash: '#/danger/call' });
+
+    const awa = await screen.findByRole('link', { name: 'Appeler Awa (Relais), 000 000 001' });
+    expect(awa).toHaveClass('button--primary');
+    const { samu, firefighters } = emergencyLinks();
+    expect(samu).toHaveClass('button--secondary');
+    expect(firefighters).toHaveClass('button--secondary');
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    const links = within(screen.getByRole('main')).getAllByRole('link');
+    expect(links.indexOf(awa)).toBeLessThan(links.indexOf(samu));
+  });
+
+  it('gives the emergency numbers at once, while the contacts are still loading', async () => {
+    hangIndexedDB();
+    await renderApp({ hash: '#/danger/call', storageTimeoutMs: 60_000 });
+
+    expect(screen.getByText('Les contacts se chargent.')).toHaveAttribute('role', 'status');
+    const { samu, firefighters } = emergencyLinks();
+    expect(samu).toHaveAttribute('href', 'tel:1515');
+    expect(firefighters).toHaveAttribute('href', 'tel:18');
+    expect(screen.getByText(CIRCUIT_LINE)).toBeVisible();
+  });
+
+  it('keeps the boxed buttons for calls: adding, changing the contacts and the code are quiet', async () => {
+    const boxed = () =>
+      [...document.querySelectorAll('main .button--primary, main .button--secondary')].map(
+        (button) => button.getAttribute('href') ?? button.textContent,
+      );
+    const { unmount } = await renderApp({ settings: woman, hash: '#/danger/call' });
+    expect(await screen.findByRole('link', { name: 'Ajouter un contact' })).toHaveClass(
+      'button--quiet',
+    );
+    expect(boxed()).toEqual(['tel:1515', 'tel:18']);
+    unmount();
+
+    await saveContacts([AWA]);
+    const second = await renderApp({ settings: woman, hash: '#/danger/call' });
+    expect(await screen.findByRole('link', { name: 'Modifier les contacts' })).toHaveClass(
+      'button--quiet',
+    );
+    expect(boxed()).toEqual(['tel:000000001', 'tel:1515', 'tel:18']);
+    second.unmount();
+
+    await renderApp({ settings: woman, hash: '#/danger/call', locked: true });
+    expect(await screen.findByRole('button', { name: 'Entrer le code' })).toHaveClass(
+      'button--quiet',
+    );
+    expect(boxed()).toEqual(['tel:1515', 'tel:18']);
+  });
+
+  it('words the emergency numbers in English', async () => {
+    await renderApp({
+      settings: { lang: 'en', mode: 'woman', onboarded: true },
+      hash: '#/danger/call',
+    });
+
+    expect(await screen.findByRole('link', { name: 'Call the SAMU (1515)' })).toHaveAttribute(
+      'href',
+      'tel:1515',
+    );
+    expect(screen.getByRole('link', { name: 'Call the fire brigade (18)' })).toHaveAttribute(
+      'href',
+      'tel:18',
+    );
+    expect(screen.getByText('Go to the nearest health post or health centre.')).toBeVisible();
+  });
+
+  it("takes the deployment file's emergency numbers in place of the built-in ones, and its circuit under the line", async () => {
+    serveDeployment({
+      ...deployment,
+      emergencyNumbers: [{ name: { fr: 'la ligne verte', en: 'the green line' }, phone: '000' }],
+    });
+    await renderApp({ settings: woman, hash: '#/danger/call' });
+
+    expect(
+      await screen.findByRole('link', { name: 'Appeler la ligne verte (000)' }),
+    ).toHaveAttribute('href', 'tel:000');
+    expect(screen.queryByRole('link', { name: /SAMU/ })).toBeNull();
+    // The built-in line stays; the deployment's circuit text comes under it.
+    const line = screen.getByText(CIRCUIT_LINE);
+    const national = await screen.findByText('Le circuit national.');
+    expect(line.compareDocumentPosition(national) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('puts the call links first: the numbers before where to go, the signs to say after them', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/danger/call',
+      packLoader: loaderOf(pack),
+      entryState: inVisit({ instruction: { standard: true }, signs: ['fever'] }),
+    });
+    const fever = pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr ?? 'missing';
+
+    const { samu } = await waitForEmergencyLinks();
+    const after = (first: Node, second: Node) =>
+      Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const circuit = screen.getByRole('region', { name: 'Circuit de référence' });
+    // In the section: the heading, the numbers, then where to go.
+    expect(after(within(circuit).getByRole('heading', { level: 2 }), samu)).toBe(true);
+    expect(after(samu, within(circuit).getByText(CIRCUIT_LINE))).toBe(true);
+    // The signs to say when calling come after the numbers, before the phone's contacts.
+    const said = screen.getByText('Dites ces signes au téléphone ou au poste de santé :');
+    expect(after(circuit, said)).toBe(true);
+    expect(after(said, screen.getByText(fever))).toBe(true);
+    expect(after(said, screen.getByText('Aucun contact enregistré sur ce téléphone.'))).toBe(true);
   });
 
   it('opens at once, and says when the phone storage does not answer, never a blank', async () => {
@@ -258,11 +403,7 @@ describe('Who to call, before the code', () => {
     expect(screen.queryByText('Awa')).toBeNull();
     expect(screen.queryByText('Aucun contact enregistré sur ce téléphone.')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Modifier les contacts' })).toBeNull();
-    expect(
-      screen.getByText(
-        'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
-      ),
-    ).toBeVisible();
+    expect(screen.getByText(LOCKED_NOTE)).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Entrer le code' }));
@@ -292,13 +433,114 @@ describe('Who to call, before the code', () => {
     });
 
     expect(screen.queryByText('Awa')).toBeNull();
-    expect(
-      await screen.findByText(
-        'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
-      ),
-    ).toBeVisible();
+    expect(await screen.findByText(LOCKED_NOTE)).toBeVisible();
+  });
+
+  it('gives the emergency numbers locked too, and never says whether contacts are saved', async () => {
+    // Two phones, both locked, one with a saved contact: their screens read the same.
+    const texts: (string | null)[] = [];
+    for (const contacts of [[], [AWA]]) {
+      await saveContacts(contacts);
+      const { unmount } = await renderApp({
+        settings: woman,
+        hash: '#/danger/call',
+        locked: true,
+      });
+      const { samu, firefighters } = await waitForEmergencyLinks();
+      expect(samu).toHaveAttribute('href', 'tel:1515');
+      expect(samu).toHaveClass('button--primary');
+      expect(firefighters).toHaveAttribute('href', 'tel:18');
+      expect(screen.getByText(CIRCUIT_LINE)).toBeVisible();
+      expect(screen.getByText(LOCKED_NOTE)).toBeVisible();
+      expect(screen.queryByText('Aucun contact enregistré sur ce téléphone.')).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Ajouter un contact' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Modifier les contacts' })).toBeNull();
+      texts.push(screen.getByRole('main').textContent);
+      unmount();
+    }
+    expect(texts[1]).toBe(texts[0]);
   });
 });
+
+describe('Who to call, adding a contact', () => {
+  it('woman mode: a contact added from who to call is there to call once saved, the signs kept', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/danger/call',
+      packLoader: loaderOf(pack),
+      // As the danger signs screen leaves it: "C'est grave maintenant" with a fever ticked.
+      entryState: inVisit({ instruction: { standard: true }, signs: ['fever'] }),
+    });
+    const user = userEvent.setup();
+    const fever = pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr ?? 'missing';
+    expect(await screen.findByText(fever)).toBeVisible();
+
+    await user.click(await screen.findByRole('link', { name: 'Ajouter un contact' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nouveau contact' })).toBeVisible();
+    await user.click(await screen.findByText('Sage-femme'));
+    await user.type(screen.getByRole('textbox', { name: 'Numéro de téléphone' }), '000 000 004');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // Back on who to call, the same entry: the banner, the sign, and the contact to call first.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(window.location.hash).toBe('#/danger/call');
+    const call = await screen.findByRole('link', { name: 'Appeler Sage-femme, 000 000 004' });
+    expect(call).toHaveAttribute('href', 'tel:000000004');
+    expect(call).toHaveClass('button--primary');
+    expect(screen.getByText(fever)).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent('Allez au poste de santé maintenant.');
+    expect(screen.getByRole('link', { name: 'Modifier les contacts' })).toHaveAttribute(
+      'href',
+      '#/contacts',
+    );
+    // It says the contact was saved, once.
+    const status = within(screen.getByRole('main')).getByText('Contact enregistré : Sage-femme.');
+    expect(status).toHaveAttribute('role', 'status');
+
+    // Away and back: said no more.
+    act(() => {
+      window.location.hash = '#/danger';
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Signes de danger' });
+    act(() => {
+      window.location.hash = '#/danger/call';
+    });
+    await screen.findByRole('link', { name: 'Appeler Sage-femme, 000 000 004' });
+    expect(screen.queryByText('Contact enregistré : Sage-femme.')).toBeNull();
+  });
+
+  it('never says a contact was saved once the session locks', async () => {
+    const session = probeSession();
+    await renderApp({
+      settings: woman,
+      hash: '#/danger/call',
+      packLoader: loaderOf(pack),
+      children: session.element,
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('link', { name: 'Ajouter un contact' }));
+    await user.click(await screen.findByText('Sage-femme'));
+    await user.type(screen.getByRole('textbox', { name: 'Nom' }), 'Fatou');
+    await user.type(screen.getByRole('textbox', { name: 'Numéro de téléphone' }), '000 000 004');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(await screen.findByText('Contact enregistré : Fatou (Sage-femme).')).toBeVisible();
+
+    act(() => {
+      session.current().lock();
+    });
+    expect(await screen.findByText(LOCKED_NOTE)).toBeVisible();
+    expect(document.body.textContent).not.toContain('Fatou');
+  });
+});
+
+/** The emergency links once the circuit is read (they show at once; the primary action waits for the contacts). */
+async function waitForEmergencyLinks() {
+  await screen.findByRole('link', { name: 'Appeler le SAMU (1515)' });
+  await waitFor(() => {
+    expect(screen.queryByText('Les contacts se chargent.')).toBeNull();
+  });
+  return emergencyLinks();
+}
 
 describe('Who to call, from a result', () => {
   const CASTOR: CheckedItem = { ref: { kind: 'plant', id: 'castor-oil' } };

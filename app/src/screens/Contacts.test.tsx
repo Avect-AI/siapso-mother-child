@@ -146,14 +146,12 @@ describe('Contacts', () => {
     expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeEnabled();
   });
 
-  it('lists the contacts of the deployment file apart, to read only', async () => {
+  it('lists the contacts of the deployment file apart, to call but not to change', async () => {
     vi.stubGlobal('fetch', () =>
       Promise.resolve(
-        new Response(
-          JSON.stringify({
-            contacts: [{ role: 'midwife', name: 'Maternité', phone: '000 000 003' }],
-          }),
-        ),
+        Response.json({
+          contacts: [{ role: 'midwife', name: 'Maternité', phone: '000 000 003' }],
+        }),
       ),
     );
     await renderApp({ settings: accompanied, hash: '#/contacts' });
@@ -162,8 +160,33 @@ describe('Contacts', () => {
       name: "Contacts fournis avec l'application",
     });
     expect(within(provided).getByText('Maternité')).toBeVisible();
-    expect(within(provided).queryByRole('link')).toBeNull();
+    // Its one link opens the phone's dialler; nothing to change or remove.
+    const links = within(provided).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['tel:000000003']);
+    expect(links[0]).toHaveAccessibleName('Appeler Maternité (Sage-femme), 000 000 003');
     expect(within(provided).queryByRole('button')).toBeNull();
+  });
+
+  it('calls each number from the list: an "Appeler" link that opens the dialler', async () => {
+    await saveContacts([AWA, { id: 'c2', role: 'icp', name: '', phone: '+999 000 002' }]);
+    await renderApp({ settings: accompanied, hash: '#/contacts' });
+
+    const list = await screen.findByRole('list', { name: 'Contacts enregistrés sur ce téléphone' });
+    const rows = within(list).getAllByRole('listitem');
+    const awa = within(rows[0] as HTMLElement).getByRole('link', {
+      name: 'Appeler Awa (Relais), 000 000 001',
+    });
+    expect(awa).toHaveAttribute('href', 'tel:000000001');
+    expect(awa).toHaveTextContent('Appeler');
+    expect(
+      within(rows[1] as HTMLElement).getByRole('link', {
+        name: 'Appeler Infirmier chef de poste (ICP), +999 000 002',
+      }),
+    ).toHaveAttribute('href', 'tel:+999000002');
+    // The one primary action stays "Ajouter un contact".
+    const primary = document.querySelectorAll('main .button--primary');
+    expect(primary).toHaveLength(1);
+    expect(primary[0]).toHaveTextContent('Ajouter un contact');
   });
 
   it('says when the contact to change is no longer on the phone', async () => {
@@ -175,13 +198,44 @@ describe('Contacts', () => {
     expect(screen.queryByRole('button', { name: 'Enregistrer' })).toBeNull();
   });
 
-  it('is for accompanied mode: in woman mode the route goes home', async () => {
+  it('opens in woman mode too: she keeps her own contacts behind the code', async () => {
     await renderApp({
       settings: { lang: 'fr', mode: 'woman', onboarded: true },
       hash: '#/contacts',
     });
+    const user = userEvent.setup();
 
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
-    expect(window.location.hash).toBe('#/');
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Contacts à appeler' }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/contacts');
+    await user.click(await screen.findByRole('link', { name: 'Ajouter un contact' }));
+    await user.click(await screen.findByText('Sage-femme'));
+    await user.type(screen.getByRole('textbox', { name: 'Numéro de téléphone' }), '000 000 004');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // Opened from the list, saving goes back to the list.
+    await saysInStatus('Contact enregistré : Sage-femme.');
+    expect(screen.getByRole('link', { name: 'Appeler Sage-femme, 000 000 004' })).toHaveAttribute(
+      'href',
+      'tel:000000004',
+    );
+    expect(await loadSavedContacts()).toEqual([
+      { id: expect.any(String) as unknown, role: 'midwife', name: '', phone: '000 000 004' },
+    ]);
+  });
+
+  it('stays behind the code in woman mode', async () => {
+    await saveContacts([AWA]);
+    await renderApp({
+      settings: { lang: 'fr', mode: 'woman', onboarded: true },
+      hash: '#/contacts',
+      locked: true,
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' }),
+    ).toBeVisible();
+    expect(screen.queryByText('Awa')).toBeNull();
   });
 });

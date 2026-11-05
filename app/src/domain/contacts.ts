@@ -14,6 +14,14 @@ export function whoOf(contact: Pick<ReferralContact, 'name' | 'role'>, t: Transl
   return contact.name.trim() === '' ? role : t('contacts.who', { name: contact.name, role });
 }
 
+/** The accessible name of a contact's call link: the visible word, then who and the number. */
+export function dialNameOf(
+  contact: Pick<ReferralContact, 'name' | 'role' | 'phone'>,
+  t: Translate,
+): string {
+  return `${t('call.dial')} ${t('call.dialWho', { who: whoOf(contact, t), phone: contact.phone })}`;
+}
+
 /** The roles, in the order of the referral circuit (closest to the woman first). */
 export const REFERRAL_ROLES: readonly ReferralRole[] = [
   'relay',
@@ -28,18 +36,30 @@ export const NAME_MAX_LENGTH = 60;
 
 const PHONE_DIGITS_MIN = 6;
 const PHONE_DIGITS_MAX = 15;
+/** A public service may have a two-digit number, such as the fire brigade's. */
+const SERVICE_DIGITS_MIN = 2;
 
 /** The number as written, any run of spaces (a no-break space included) made one space. */
 export function tidyPhone(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
 }
 
-/** Digits and spaces, a plus only at the start, and from 6 to 15 digits. */
-export function isPhone(text: string): boolean {
+/** Digits and spaces, a plus only at the start, and from `min` to 15 digits. */
+function hasDigits(text: string, min: number): boolean {
   const phone = tidyPhone(text);
   if (!/^\+?[0-9 ]+$/.test(phone)) return false;
   const digits = phone.replace(/\D/g, '').length;
-  return digits >= PHONE_DIGITS_MIN && digits <= PHONE_DIGITS_MAX;
+  return digits >= min && digits <= PHONE_DIGITS_MAX;
+}
+
+/** Digits and spaces, a plus only at the start, and from 6 to 15 digits. */
+export function isPhone(text: string): boolean {
+  return hasDigits(text, PHONE_DIGITS_MIN);
+}
+
+/** The number of a public emergency service: as a phone number, from 2 to 15 digits. */
+export function isServiceNumber(text: string): boolean {
+  return hasDigits(text, SERVICE_DIGITS_MIN);
 }
 
 /** A run of digits longer than this is shown in groups of three. */

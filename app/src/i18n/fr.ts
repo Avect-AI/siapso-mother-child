@@ -393,8 +393,19 @@ export const fr = {
     add: 'Ajouter un contact',
     manage: 'Modifier les contacts',
     circuit: 'Circuit de référence',
-    // Before the code: the contacts kept on the phone are not shown.
-    locked: 'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
+    // The built-in line said with the emergency numbers (config/emergency.ts); always shown, the deployment's circuit text under it.
+    emergencyCircuit: 'Allez au poste de santé ou au centre de santé le plus proche.',
+    emergencyLabel: "Numéros d'urgence",
+    // The link that dials a public emergency number: the service named in the sentence, then the number.
+    emergencyDial: 'Appeler {service} ({phone})',
+    services: {
+      samu: 'le SAMU',
+      firefighters: 'les pompiers',
+    },
+    // Before the code: the contacts kept on the phone are not shown, and
+    // nothing says whether there are any.
+    locked:
+      'Si des contacts sont enregistrés sur ce téléphone, ils apparaissent une fois le code entré.',
     enterCode: 'Entrer le code',
   },
   contacts: {

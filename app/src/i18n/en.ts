@@ -349,7 +349,14 @@ export const en: Dictionary = {
     add: 'Add a contact',
     manage: 'Edit the contacts',
     circuit: 'Referral circuit',
-    locked: 'The contacts saved on this phone appear once the code is entered.',
+    emergencyCircuit: 'Go to the nearest health post or health centre.',
+    emergencyLabel: 'Emergency numbers',
+    emergencyDial: 'Call {service} ({phone})',
+    services: {
+      samu: 'the SAMU',
+      firefighters: 'the fire brigade',
+    },
+    locked: 'If contacts are saved on this phone, they appear once the code is entered.',
     enterCode: 'Enter the code',
   },
   contacts: {

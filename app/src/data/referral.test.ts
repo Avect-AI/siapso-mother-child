@@ -30,18 +30,31 @@ const deployment = {
   nationalCircuit: { fr: 'Circuit national.', en: 'National circuit.' },
 };
 
-/** A fetch that answers /config/referral.json with `body` (404 when undefined), and records the URLs. */
-function serving(body?: string, status = 200) {
+/**
+ * A fetch that answers /config/referral.json with `body` (404 when
+ * undefined), as JSON unless another content type is given (null: no content
+ * type at all), and records the URLs.
+ */
+function serving(body?: string, status = 200, contentType: string | null = 'application/json') {
   const urls: string[] = [];
   const fetchImpl: typeof fetch = (input) => {
     urls.push(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+    if (body === undefined) return Promise.resolve(new Response('Not found', { status: 404 }));
+    // Bytes, so that the Response adds no content type of its own.
+    const bytes = new TextEncoder().encode(body);
     return Promise.resolve(
-      body === undefined
-        ? new Response('Not found', { status: 404 })
-        : new Response(body, { status }),
+      new Response(bytes, {
+        status,
+        headers: contentType === null ? {} : { 'content-type': contentType },
+      }),
     );
   };
   return { fetch: fetchImpl, urls };
+}
+
+/** The messages console.warn was given, each call as one string. */
+function warnings(): string[] {
+  return vi.mocked(console.warn).mock.calls.map((call) => call.map(String).join(' '));
 }
 
 beforeEach(() => {
@@ -80,6 +93,43 @@ describe('parseReferral', () => {
     });
   });
 
+  it('takes "-" and "." as separators in the numbers of the file', () => {
+    expect(
+      parseReferral({
+        contacts: [{ role: 'icp', name: '', phone: '000-000-003' }],
+        emergencyNumbers: [
+          { name: { fr: 'la ligne verte', en: 'the green line' }, phone: '00.00' },
+        ],
+      }),
+    ).toEqual({
+      contacts: [{ id: 'deployment:0', role: 'icp', name: '', phone: '000 000 003' }],
+      emergencyNumbers: [{ name: { fr: 'la ligne verte', en: 'the green line' }, phone: '00 00' }],
+    });
+  });
+
+  it('warns once for each entry it leaves out that was filled in, never for an empty one', () => {
+    parseReferral({
+      contacts: [
+        { role: 'doctor', name: 'X', phone: '000000' },
+        { role: 'icp', name: '', phone: 'abc' },
+        // Empty, as in the example: no warning.
+        { role: 'relay', name: '', phone: '' },
+      ],
+      emergencyNumbers: [
+        { name: { fr: '', en: '' }, phone: '' },
+        { name: { fr: 'le SAMU', en: '' }, phone: '000' },
+      ],
+      nationalCircuit: { fr: 'Texte', en: '' },
+    });
+    const said = warnings();
+    expect(said).toHaveLength(4);
+    expect(said[0]).toMatch(/contacts\[0\].*doctor/);
+    expect(said[1]).toMatch(/contacts\[1\].*abc/);
+    // In the order of the file.
+    expect(said[2]).toMatch(/nationalCircuit/);
+    expect(said[3]).toMatch(/emergencyNumbers\[1\]/);
+  });
+
   it('leaves out what it cannot read, and a national circuit not written in both languages', () => {
     expect(parseReferral(null)).toEqual({ contacts: [] });
     expect(parseReferral({ contacts: 'none' })).toEqual({ contacts: [] });
@@ -113,6 +163,45 @@ describe('parseReferral', () => {
     );
   });
 
+  it('reads the emergency numbers that replace the built-in ones: named in both languages, short numbers too', () => {
+    const emergencyNumbers = [
+      { name: { fr: 'la ligne verte', en: 'the green line' }, phone: ' 000 ' },
+      { name: { fr: 'les pompiers du district', en: 'the district fire brigade' }, phone: '00' },
+      // Left out: no number, a number that cannot be dialled, a name in one language only.
+      { name: { fr: 'le SAMU', en: 'the SAMU' }, phone: '' },
+      { name: { fr: 'le SAMU', en: 'the SAMU' }, phone: '0' },
+      { name: { fr: 'le SAMU', en: 'the SAMU' }, phone: 'abc' },
+      { name: { fr: 'le SAMU', en: '' }, phone: '000' },
+      'x',
+    ];
+    expect(parseReferral({ contacts: [], emergencyNumbers }).emergencyNumbers).toEqual([
+      { name: { fr: 'la ligne verte', en: 'the green line' }, phone: '000' },
+      { name: { fr: 'les pompiers du district', en: 'the district fire brigade' }, phone: '00' },
+    ]);
+  });
+
+  it('keeps the built-in emergency numbers when the file gives none it can dial', () => {
+    expect(parseReferral({ contacts: [], emergencyNumbers: [] })).toEqual({ contacts: [] });
+    expect(parseReferral({ contacts: [], emergencyNumbers: 'none' })).toEqual({ contacts: [] });
+    expect(
+      parseReferral({
+        contacts: [],
+        emergencyNumbers: [{ name: { fr: '', en: '' }, phone: '' }],
+      }),
+    ).toEqual({ contacts: [] });
+  });
+
+  it('leaves out an emergency number whose name would say someone is coming', () => {
+    const warn = vi.mocked(console.warn);
+    expect(
+      parseReferral({
+        contacts: [],
+        emergencyNumbers: [{ name: { fr: 'les secours', en: 'help is on the way' }, phone: '000' }],
+      }),
+    ).toEqual({ contacts: [] });
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
   it('reads the committed example as roles with no name and no number, so no contact', () => {
     const example: unknown = JSON.parse(
       readFileSync(
@@ -120,13 +209,23 @@ describe('parseReferral', () => {
         'utf8',
       ),
     );
-    const { contacts } = example as { contacts: { role: string; name: string; phone: string }[] };
+    const { contacts, emergencyNumbers } = example as {
+      contacts: { role: string; name: string; phone: string }[];
+      emergencyNumbers: { name: { fr: string; en: string }; phone: string }[];
+    };
     expect(contacts.length).toBeGreaterThan(0);
     for (const contact of contacts) {
       expect(contact.name).toBe('');
       expect(contact.phone).toBe('');
     }
+    // The emergency numbers' form is shown too, empty: the built-in ones stay.
+    expect(emergencyNumbers.length).toBeGreaterThan(0);
+    for (const number of emergencyNumbers) {
+      expect(number.name).toEqual({ fr: '', en: '' });
+      expect(number.phone).toBe('');
+    }
     expect(parseReferral(example)).toEqual({ contacts: [] });
+    expect(warnings()).toEqual([]);
   });
 
   it('keeps the deployment file out of git, next to its example', () => {
@@ -143,10 +242,53 @@ describe('fetchDeploymentReferral', () => {
     expect(config.contacts).toHaveLength(1);
   });
 
+  it('reads a server that answers every path with the app page as no file, saying nothing', async () => {
+    const page = '<!doctype html><html></html>';
+    for (const contentType of ['text/html', 'text/html; charset=utf-8']) {
+      expect(await fetchDeploymentReferral(serving(page, 200, contentType).fetch)).toEqual({
+        contacts: [],
+      });
+    }
+    // A page whatever its content type says, or with none.
+    for (const contentType of ['application/octet-stream', 'application/json', null]) {
+      expect(await fetchDeploymentReferral(serving(`  ${page}`, 200, contentType).fetch)).toEqual({
+        contacts: [],
+      });
+    }
+    expect(warnings()).toEqual([]);
+  });
+
+  it('loads a valid file whatever its content type, or with none', async () => {
+    for (const contentType of [
+      'application/json; charset=utf-8',
+      'application/octet-stream',
+      'text/plain',
+      null,
+    ]) {
+      const config = await fetchDeploymentReferral(
+        serving(JSON.stringify(deployment), 200, contentType).fetch,
+      );
+      expect(config.contacts, String(contentType)).toHaveLength(1);
+    }
+    expect(warnings()).toEqual([]);
+  });
+
+  it('warns, without a raw SyntaxError, when the file is not JSON', async () => {
+    const warn = vi.mocked(console.warn);
+    expect(
+      await fetchDeploymentReferral(serving('{ "contacts": [', 200, 'application/json').fetch),
+    ).toEqual({ contacts: [] });
+    expect(warn).toHaveBeenCalledTimes(1);
+    const args: unknown[] = warn.mock.calls[0] ?? [];
+    expect(args.some((arg) => arg instanceof Error)).toBe(false);
+    expect(warnings()[0]).toMatch(/not valid JSON/);
+    expect(warnings()[0]).not.toMatch(/SyntaxError/);
+  });
+
   it('gives no contact when the file is absent, unreadable, not JSON, or never answers', async () => {
     expect(await fetchDeploymentReferral(serving().fetch)).toEqual({ contacts: [] });
     expect(await fetchDeploymentReferral(serving('oops', 500).fetch)).toEqual({ contacts: [] });
-    // A server that answers every path with the app page.
+    // A JSON content type over the app page.
     expect(await fetchDeploymentReferral(serving('<!doctype html>').fetch)).toEqual({
       contacts: [],
     });
@@ -181,6 +323,17 @@ describe('loadReferral', () => {
     const loaded = await loadReferral({ fetch: serving(JSON.stringify(deployment)).fetch });
     expect(loaded.contacts.map((c) => c.id)).toEqual(['c1', 'c2', 'deployment:0']);
     expect(loaded.nationalCircuit).toEqual(deployment.nationalCircuit);
+    expect(loaded.emergencyNumbers).toBeUndefined();
+  });
+
+  it("passes on the deployment's emergency numbers", async () => {
+    const emergencyNumbers = [
+      { name: { fr: 'la ligne verte', en: 'the green line' }, phone: '000' },
+    ];
+    const loaded = await loadReferral({
+      fetch: serving(JSON.stringify({ ...deployment, emergencyNumbers })).fetch,
+    });
+    expect(loaded.emergencyNumbers).toEqual(emergencyNumbers);
   });
 
   it('lists a number once: a deployed contact with the number of a saved one is left out', async () => {

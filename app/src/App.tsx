@@ -117,8 +117,8 @@ function profileTarget(location: string, mode: Mode | null): ProfileTarget | nul
  * and opens only with the code: while locked, the code screen takes its
  * place (at start or after an auto-lock, so the code brings the same screen
  * back), or the neutral screen after a quick exit. In accompanied mode the
- * start is the list of profiles; the contacts are for accompanied mode.
- * Unknown routes get null and are sent home.
+ * start is the list of profiles. The contacts open in both modes, behind the
+ * code. Unknown routes get null and are sent home.
  */
 function screenFor(
   location: string,
@@ -148,10 +148,7 @@ function screenFor(
   if (location === UNLOCK_PATH) return 'unlocked';
   if (profile) return 'profile';
   if (check) return check.screen;
-  if (contact !== null) {
-    if (settings.mode !== 'accompanied') return null;
-    return contact === 'list' ? 'contacts' : 'contact';
-  }
+  if (contact !== null) return contact === 'list' ? 'contacts' : 'contact';
   if (location !== '/') return null;
   return settings.mode === 'accompanied' ? 'profiles' : 'home';
 }

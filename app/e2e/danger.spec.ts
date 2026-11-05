@@ -46,6 +46,42 @@ function answer(page: Page, question: string | RegExp, label: string) {
 }
 
 /**
+ * The national emergency numbers, always on who to call: call links that open
+ * the phone's dialler, and where to go.
+ */
+async function expectEmergencyNumbers(page: Page, { primary }: { primary: boolean }) {
+  const samu = page.getByRole('link', { name: 'Appeler le SAMU (1515)' });
+  await expect(samu).toHaveAttribute('href', 'tel:1515');
+  await expect(samu).toHaveClass(primary ? /button--primary/ : /button--secondary/);
+  await expect(page.getByRole('link', { name: 'Appeler les pompiers (18)' })).toHaveAttribute(
+    'href',
+    'tel:18',
+  );
+  await expect(
+    page.getByText('Allez au poste de santé ou au centre de santé le plus proche.'),
+  ).toBeVisible();
+}
+
+/** The console warnings of the page about the deployment's referral file. */
+function referralWarnings(page: Page): string[] {
+  const warnings: string[] = [];
+  page.on('console', (message) => {
+    if (/referral/i.test(message.text())) warnings.push(message.text());
+  });
+  return warnings;
+}
+
+/** Fills the new contact screen and saves it. */
+async function saveContact(page: Page, role: string, name: string, phone: string) {
+  await expect(page.getByRole('heading', { level: 1, name: 'Nouveau contact' })).toBeVisible();
+  await answer(page, 'Rôle', role).click();
+  await page.getByRole('textbox', { name: 'Nom' }).fill(name);
+  await page.getByRole('textbox', { name: 'Numéro de téléphone' }).fill(phone);
+  await expectNoSeriousViolation(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+}
+
+/**
  * Welcome in French, a mode and the code; the app is then served offline by
  * the service worker, and the code opens it again after the reload.
  */
@@ -69,6 +105,7 @@ async function openDangerAndBack(page: Page, from: RegExp | string) {
 }
 
 test('offline: danger signs from Home, Check and Result, then who to call', async ({ page }) => {
+  const warnings = referralWarnings(page);
   await onboardOffline(page, 'woman');
 
   // From Home.
@@ -122,7 +159,83 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
     page.getByText('Dites ces signes au téléphone ou au poste de santé :'),
   ).toBeVisible();
   await expect(page.getByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
+  // No contact, no deployment file, offline: the emergency numbers are still there to call.
+  await expectEmergencyNumbers(page, { primary: true });
   await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+  // This build has no deployment file: read as none, without a warning about it.
+  expect(warnings).toEqual([]);
+});
+
+test('online without a deployment file: the app page is never read as one', async ({ page }) => {
+  const warnings = referralWarnings(page);
+  await onboard(page, 'woman');
+  // The preview server answers every path with the app page, as many servers do.
+  const served = await page.request.get('/config/referral.json');
+  expect(served.headers()['content-type']).toMatch(/html/);
+
+  await page.goto('/#/danger/call');
+  await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+  await expectEmergencyNumbers(page, { primary: true });
+  expect(warnings).toEqual([]);
+});
+
+test.describe('on a small phone (360 x 560), from a danger result', () => {
+  test.use({ viewport: { width: 360, height: 560 } });
+
+  /** Home, her profile, a remedy, a fever now, the result, then "Voir qui appeler". */
+  async function fromAFeverResultToCall(page: Page) {
+    await page.goto('/#/');
+    await page.getByRole('button', { name: 'Regarder un produit' }).click();
+    await answer(page, /^Enceinte/, 'Oui').click();
+    await answer(page, 'Terme de la grossesse', 'En semaines').click();
+    await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('14');
+    await answer(page, /^Allaite/, 'Non').click();
+    await page.getByText('Aucune de ces situations').click();
+    await page.getByRole('button', { name: 'Enregistrer' }).click();
+    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+    await page.getByRole('searchbox').fill('kinkeliba');
+    await page.locator('.candidate').first().click();
+    await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    await page
+      .getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' })
+      .getByText('Fièvre', { exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    await page.getByRole('button', { name: 'Voir qui appeler' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    await expect(page.getByRole('alert')).toBeVisible();
+  }
+
+  /** The first call link of the screen ends within the first screen, without a scroll. */
+  async function expectFirstCallInView(page: Page) {
+    const first = page.locator('main a[href^="tel:"]').first();
+    await expect(first).toBeVisible();
+    const fits = await first.evaluate(
+      (link) => window.scrollY === 0 && link.getBoundingClientRect().bottom <= window.innerHeight,
+    );
+    expect(fits).toBe(true);
+  }
+
+  test('with no contact, "Appeler le SAMU (1515)" is in the first screen', async ({ page }) => {
+    await onboard(page, 'woman');
+    await fromAFeverResultToCall(page);
+    await expect(page.locator('main a[href^="tel:"]').first()).toHaveText('Appeler le SAMU (1515)');
+    await expectFirstCallInView(page);
+  });
+
+  test('with one contact, the contact\'s "Appeler" is in the first screen', async ({ page }) => {
+    await onboard(page, 'woman');
+    await page.goto('/#/contacts/new');
+    await saveContact(page, 'Sage-femme', 'Fatou', '00 00 00 00');
+    await expect(page.getByText('Contact enregistré : Fatou (Sage-femme).')).toBeVisible();
+    await fromAFeverResultToCall(page);
+    await expect(page.locator('main a[href^="tel:"]').first()).toHaveAccessibleName(
+      'Appeler Fatou (Sage-femme), 00 00 00 00',
+    );
+    await expectFirstCallInView(page);
+  });
 });
 
 test('offline: "C\'est grave maintenant" never refuses, and keeps the signs ticked for the call', async ({
@@ -140,8 +253,9 @@ test('offline: "C\'est grave maintenant" never refuses, and keeps the signs tick
     'Signe de danger Allez au poste de santé maintenant.',
   );
   await expect(page.getByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
-  // Woman mode: no way to add contacts here.
-  await expect(page.getByRole('link', { name: 'Ajouter un contact' })).toHaveCount(0);
+  await expectEmergencyNumbers(page, { primary: true });
+  // Woman mode: she can add her own contact, behind her code.
+  await expect(page.getByRole('link', { name: 'Ajouter un contact' })).toBeVisible();
   await page.goBack();
 
   // A sign ticked: the same instruction, and the sign to say.
@@ -207,6 +321,44 @@ test('at 200 percent text on a 360 px phone, no word of a sign breaks inside its
   expect(broken).toEqual([]);
 });
 
+test('offline, woman mode: a contact she adds from who to call is there to call, and on her contacts', async ({
+  page,
+}) => {
+  await onboardOffline(page, 'woman');
+  await page.getByRole('banner').getByRole('link', { name: 'Signes de danger' }).click();
+  await page.getByText('Saignement par le vagin', { exact: true }).click();
+  await page.getByRole('button', { name: "C'est grave maintenant" }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+  await page.getByRole('link', { name: 'Ajouter un contact' }).click();
+
+  await saveContact(page, 'Sage-femme', 'Fatou', '00 00 00 00');
+
+  // Straight back to who to call, the danger and the sign still said, the save said once.
+  await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Allez au poste de santé maintenant.');
+  await expect(
+    page.getByRole('main').getByText('Contact enregistré : Fatou (Sage-femme).'),
+  ).toHaveAttribute('role', 'status');
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Saignement par le vagin' }),
+  ).toBeVisible();
+  const call = page.getByRole('link', { name: 'Appeler Fatou (Sage-femme), 00 00 00 00' });
+  await expect(call).toHaveAttribute('href', 'tel:00000000');
+  await expect(call).toHaveClass(/button--primary/);
+  await expectEmergencyNumbers(page, { primary: false });
+  await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+
+  // Her contacts: each number is called from there too.
+  await page.getByRole('link', { name: 'Modifier les contacts' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Contacts à appeler' })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Appeler Fatou (Sage-femme), 00 00 00 00' }),
+  ).toHaveAttribute('href', 'tel:00000000');
+  await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+});
+
 test('offline, accompanied mode: a contact added on the phone is called from who to call', async ({
   page,
 }) => {
@@ -215,24 +367,26 @@ test('offline, accompanied mode: a contact added on the phone is called from who
   await expect(page.getByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
   await page.getByRole('link', { name: 'Ajouter un contact' }).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Nouveau contact' })).toBeVisible();
-  await answer(page, 'Rôle', 'Relais').click();
-  await page.getByRole('textbox', { name: 'Nom' }).fill('Awa');
-  await page.getByRole('textbox', { name: 'Numéro de téléphone' }).fill('00 00 00 00');
-  await expectNoSeriousViolation(page);
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await saveContact(page, 'Relais', 'Awa', '00 00 00 00');
 
-  await expect(page.getByText('Contact enregistré : Awa (Relais).')).toBeVisible();
-  await expectNoSeriousViolation(page);
-  await expectThumbTargets(page);
-  await page.goBack();
-
+  // Saved from who to call: back there, to call it.
   await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
   const call = page.getByRole('link', { name: 'Appeler Awa (Relais), 00 00 00 00' });
   await expect(call).toHaveAttribute('href', 'tel:00000000');
   await expect(page.getByText('00 00 00 00', { exact: true })).toBeVisible();
   await expectNoSeriousViolation(page);
   await expectThumbTargets(page);
+
+  // The contacts screen calls each number too.
+  await page.getByRole('link', { name: 'Modifier les contacts' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Contacts à appeler' })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Appeler Awa (Relais), 00 00 00 00' }),
+  ).toHaveAttribute('href', 'tel:00000000');
+  await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
 
   // At 200 percent text, nothing scrolls sideways at 360 px.
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
