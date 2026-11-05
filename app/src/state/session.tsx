@@ -787,8 +787,9 @@ export function SessionProvider({
     (current: string, next: string): Promise<CodeChange> => {
       const since = closings.current;
       return aloneAmongTabs(async (): Promise<CodeChange> => {
+        // Shown behind the code only (App.tsx): a code is open here.
         const stored = verifier.current;
-        if (stored === null || key.current === null) return 'cancelled';
+        if (stored === null) return 'cancelled';
         const claimed = await claim();
         failures.current = claimed.after;
         if (!claimed.allowed) {

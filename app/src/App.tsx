@@ -7,6 +7,7 @@ import { APP_NAME } from './config.js';
 import type { Mode } from './domain/types.js';
 import { I18nProvider, useT } from './i18n/index.js';
 import { About } from './screens/About.js';
+import { CHANGE_CODE_PATH, ChangeCode } from './screens/ChangeCode.js';
 import { Check } from './screens/Check.js';
 import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
@@ -62,6 +63,7 @@ type Screen =
   | 'forgot'
   | 'neutral'
   | 'settings'
+  | 'changeCode'
   | 'status'
   | 'about'
   | 'licences'
@@ -188,6 +190,8 @@ function screenFor(
     return session.exited ? 'neutral' : 'unlock';
   }
   if (location === UNLOCK_PATH) return 'unlocked';
+  // A new code, behind the current one.
+  if (location === CHANGE_CODE_PATH) return 'changeCode';
   // Open, and no mode was kept (a welcome cut short): who uses the app, first.
   if (settings.mode === null) return 'mode';
   // A passer-by checked without a profile: accompanied mode only.
@@ -388,6 +392,7 @@ function Screens() {
       {/* A lock starts a new epoch: a language or a mode chosen and not applied
           is forgotten with it, never left for whoever gives the code next. */}
       {screen === 'settings' ? <Settings key={session.epoch} /> : null}
+      {screen === 'changeCode' ? <ChangeCode /> : null}
       {screen === 'status' ? <Status /> : null}
       {screen === 'about' ? <About /> : null}
       {screen === 'licences' ? (

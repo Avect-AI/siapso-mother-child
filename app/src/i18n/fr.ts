@@ -109,6 +109,26 @@ export const fr = {
     weakOther: 'Choisir un autre code',
     weakKeep: 'Garder ce code',
   },
+  // A new code behind the current one (Réglages, after the code): the data stay.
+  changeCode: {
+    link: 'Changer le code',
+    title: 'Changer le code',
+    currentLead: "Tapez d'abord le code actuel.",
+    currentLabel: 'Code actuel',
+    newTitle: 'Choisissez le nouveau code',
+    newLead: 'De 4 à 6 chiffres. Gardez-le pour vous : il remplacera le code actuel.',
+    newLabel: 'Nouveau code',
+    confirmTitle: 'Tapez le nouveau code une deuxième fois',
+    same: "Le nouveau code est le même que l'actuel : choisissez-en un autre.",
+    changing: 'Le nouveau code se prépare.',
+    failed:
+      "Le code n'a pas pu être changé sur ce téléphone : le code actuel reste le bon. Essayez encore.",
+    doneTitle: 'Le code est changé',
+    doneLead:
+      "Le nouveau code ouvre l'application et les réponses enregistrées. L'ancien code n'ouvre plus rien.",
+    back: 'Revenir aux réglages',
+    cancel: 'Garder le code actuel',
+  },
   // Shortly before the two minutes run out, while a form has answers not saved.
   autoLock: {
     soon: "L'application va se verrouiller : touchez l'écran pour continuer.",

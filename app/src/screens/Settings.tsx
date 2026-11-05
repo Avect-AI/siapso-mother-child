@@ -9,6 +9,7 @@ import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { CHANGE_CODE_PATH } from './ChangeCode.js';
 
 type Group = 'lang' | 'mode';
 
@@ -135,6 +136,12 @@ export function Settings() {
         {changed ? t('settings.changed') : ''}
       </p>
       <div className="settings__more">
+        {/* Behind the code only: the current code is asked first. */}
+        {unlocked ? (
+          <a className="button button--secondary" href={`#${CHANGE_CODE_PATH}`}>
+            {t('changeCode.link')}
+          </a>
+        ) : null}
         <a className="button button--secondary" href="#/status">
           {t('nav.status')}
         </a>
