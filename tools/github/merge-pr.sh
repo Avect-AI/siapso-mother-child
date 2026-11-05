@@ -9,6 +9,11 @@
 # be skipped. One exception: hygiene.yml skips the Developer Certificate of
 # Origin job for Dependabot, so that check may be skipped on a pull request
 # whose author is Dependabot (and only there); the three others must pass.
+#
+# A pull request whose branch is behind its base is refused, before the checks
+# are read and again just before the merge (the base may move meanwhile): its
+# checks did not run with the latest base, so a green run proves nothing about
+# the merged result. The refusal says how to bring the branch up to date.
 # Usage: tools/github/merge-pr.sh <pr-number>
 # Tested by tools/github/merge-pr.test.sh (a fake gh on PATH).
 set -eu
@@ -33,6 +38,30 @@ if ! printf '%s\n' "$title" | sh "$(dirname "$0")/../hygiene/py.sh" "$(dirname "
   echo "Pull request $PR: title is not a valid Conventional Commits subject." >&2
   exit 1
 fi
+
+# Refuses the pull request when its branch is behind its base: GitHub says
+# BEHIND, or the head commit lacks commits of the base (the comparison counts
+# them; an answer that is not 0, an empty one included, is a refusal).
+refuse_if_behind() {
+  state="$(gh pr view "$PR" --json mergeStateStatus --jq .mergeStateStatus)"
+  base="$(gh pr view "$PR" --json baseRefName --jq .baseRefName)"
+  head="$(gh pr view "$PR" --json headRefOid --jq .headRefOid)"
+  behind="$(gh api "repos/{owner}/{repo}/compare/$base...$head" --jq .behind_by)"
+  if [ "$state" != 'BEHIND' ] && [ "$behind" = '0' ]; then return 0; fi
+  branch="$(gh pr view "$PR" --json headRefName --jq .headRefName)"
+  {
+    echo "Pull request $PR: its branch $branch is behind $base, not merging."
+    echo "Its checks did not run with the latest $base. Bring the branch up to date:"
+    echo "  git fetch origin"
+    echo "  git switch $branch"
+    echo "  git merge --signoff origin/$base   (on a conflict: fix it, git add, git commit -s)"
+    echo "  git push                           (a plain push, never a force-push)"
+    echo "then wait until the checks of the new commit pass, and run this script again."
+  } >&2
+  exit 1
+}
+
+refuse_if_behind
 
 # gh prints a GitHub App author as "app/<name>"; the REST API names the bot
 # "dependabot[bot]". Neither "/" nor "[" can appear in the login of a person.
@@ -102,6 +131,9 @@ if [ -n "$blocked" ]; then
   printf '%s\n' "$blocked" >&2
   exit 1
 fi
+
+# The base may have moved while the checks ran.
+refuse_if_behind
 
 gh pr merge "$PR" --squash --delete-branch
 echo "Pull request $PR squash-merged."
