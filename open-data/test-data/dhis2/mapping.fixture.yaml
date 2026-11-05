@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# TEST DATA: fake identifiers for tests. They are not DHIS2 identifiers of any instance.
+dataElements:
+  checks:
+    dataElement: FAKEdeChk01
+  level_unknown:
+    dataElement: FAKEdeLvU01
+    categoryOptionCombo: FAKEcocDf01
+  level_next_contact:
+    dataElement: FAKEdeLvN01
+  level_before_next_dose:
+    dataElement: FAKEdeLvB01
+  level_danger:
+    dataElement: FAKEdeLvD01
+  iptp_reminders_shown:
+    dataElement: FAKEdeIptp1
+orgUnits:
+  test-district-a: FAKEouDisA1
+  test-district-b: FAKEouDisB1
+  test-district-c: FAKEouDisC1

@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# TEST DATA: fake districts for tests. They are not real districts.
+districts:
+  - id: test-district-a
+    region: dakar
+  - id: test-district-b
+    region: dakar
+  - id: test-district-c
+    region: thies

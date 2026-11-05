@@ -66,3 +66,6 @@ test-results/
 .superpowers/
 # Local agent worktrees
 .claude/worktrees/
+
+# DHIS2 export: restricted data, never committed
+open-data/dhis2/out/

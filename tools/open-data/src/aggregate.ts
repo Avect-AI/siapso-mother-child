@@ -113,6 +113,32 @@ function maskedValues(
   return levels.flatMap((cell, i) => (cell === null ? [feasible[i] ?? new Set<number>()] : []));
 }
 
+/**
+ * Masks level counts: a count below 5 becomes null ("<5"). A masked cell is
+ * acceptable only if every value 0 to 4 stays feasible given the published
+ * cells and the band bounds. Otherwise the exact level cells are withheld
+ * (undefined); if that is not enough, every level cell is. Shared with the
+ * DHIS2 export so both outputs follow the same disclosure rule.
+ */
+export function maskLevels(
+  counts: readonly number[],
+  band: { min: number; max: number },
+  share?: number,
+): (number | null | undefined)[] {
+  const levels: (number | null | undefined)[] = counts.map((count) =>
+    count < SMALL_COUNT ? null : count,
+  );
+  const leaks = (): boolean =>
+    maskedValues(levels, band, share).some((values) => values.size < SMALL_COUNT);
+  if (leaks()) {
+    levels.forEach((value, i) => {
+      if (value !== null) levels[i] = undefined;
+    });
+    if (leaks()) levels.fill(undefined);
+  }
+  return levels;
+}
+
 function suppressedRow(week: string, region: string): Row {
   const row = {
     week,
@@ -144,27 +170,14 @@ function publishedRow(week: string, region: string, cell: Cell): Row {
   const band = bandOf(cell.checks);
   row.status = 'published';
   row.checks = band.label;
-  const levels: (number | null | undefined)[] = cell.levels.map((count) =>
-    count < SMALL_COUNT ? null : count,
-  );
   // The grey share is published only from 20 checks and only when no level
   // cell of the row is masked (the share would narrow a masked cell).
   const share =
-    cell.checks >= MIN_SHARE_CHECKS && !levels.includes(null)
+    cell.checks >= MIN_SHARE_CHECKS && !cell.levels.some((count) => count < SMALL_COUNT)
       ? roundShare(cell.levels[0], cell.checks)
       : undefined;
   row.greyShare = share === undefined ? SUPPRESSED_MARK : String(share);
-  // A masked cell is acceptable only if every value 0 to 4 stays feasible given
-  // the published cells and the band bounds. Otherwise the exact level cells of
-  // the row are withheld; if that is not enough, every level cell is.
-  const leaks = (): boolean =>
-    maskedValues(levels, band, share).some((values) => values.size < SMALL_COUNT);
-  if (leaks()) {
-    levels.forEach((value, i) => {
-      if (value !== null) levels[i] = undefined;
-    });
-    if (leaks()) levels.fill(undefined);
-  }
+  const levels = maskLevels(cell.levels, band, share);
   LEVEL_KEYS.forEach((key, i) => {
     const value = levels[i];
     row[key] = value === null ? SMALL_MARK : value === undefined ? WITHHELD_MARK : String(value);
@@ -175,7 +188,7 @@ function publishedRow(week: string, region: string, cell: Cell): Row {
   return row;
 }
 
-const LEVEL_INDEX = {
+export const LEVEL_INDEX = {
   unknown: 0,
   'next-contact': 1,
   'before-next-dose': 2,

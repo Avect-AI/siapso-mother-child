@@ -27,6 +27,10 @@ export const MAX_FINDINGS_PER_EVENT = 30;
 export interface OpenDataEvent {
   week: string;
   region: string;
+  /** Optional health district id, validated against a list by the DHIS2 export. */
+  district?: string;
+  /** Optional: the IPTp reminder was shown in this check. */
+  iptpReminderShown?: boolean;
   mode: 'woman' | 'accompanied';
   level: Level;
   /** Number of findings per check id in this check. */

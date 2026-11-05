@@ -31,6 +31,10 @@ The app sends nothing today. By design no personal data leaves the phone. Whethe
 - The input of a build is the snapshot of events taken at that date. Events of other weeks are dropped from the file, and an event that arrives after the snapshot is dropped, never added later.
 - Correction procedure: if a published file must be corrected, withdraw it (delete the file from `published/`, with a note in `CHANGELOG.md`), then build the replacement with the next release id (`r2`). There are never two public versions of a week.
 
+## Release scope: the weekly CSV is the only open file
+
+The DHIS2 monthly export (`docs/dhis2.md`) is restricted data for the district's own DHIS2 instance. It is never published and never placed in `published/`; the tool refuses to write it inside `open-data/` except the ignored folder `open-data/dhis2/out/`. The reason is cross-release differencing: subtracting the exact monthly values of a district from the sum of the weekly region rows of the open CSV recovers counts of a suppressed district, and in a region with a single district it is trivial. Raw events that carry `district` must be kept with short retention, restricted access and no export path, never shared or published, and `district` should be sent only for pilot sites that need DHIS2.
+
 ## Limits to settle before any real data is accepted
 
 - The threshold of 10 counts events (checks), not women. One woman running many checks counts many times, so a small group could be one person.

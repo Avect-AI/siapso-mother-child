@@ -9,6 +9,31 @@ export {
   WITHHELD_MARK,
 } from './aggregate.js';
 export type { Aggregate, Row } from './aggregate.js';
+export {
+  aggregateMonth,
+  dhis2Period,
+  earliestMonthRelease,
+  INDICATORS,
+  isAllowedDhis2OutDir,
+  isMonth,
+  monthOfWeek,
+  parseDistricts,
+  parseMapping,
+  PLACEHOLDER,
+  RESTRICTED_NOTICE,
+  renderDhis2,
+  toDataValueSets,
+} from './dhis2.js';
+export type {
+  DataValue,
+  DataValueSet,
+  District,
+  Districts,
+  Indicator,
+  Mapping,
+  MonthAggregate,
+  MonthCell,
+} from './dhis2.js';
 export { COLUMNS, renderCsv } from './csv.js';
 export {
   CHECK_IDS,

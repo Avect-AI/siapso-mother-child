@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Mapping from SIAPSO indicators and districts to DHIS2 identifiers.
+# Copy this file, then replace every placeholder with the identifier created
+# in the district's DHIS2 instance. The export command refuses to run while a
+# placeholder remains. Identifiers are 11 characters (a letter, then letters
+# or digits). Never guess them.
+#
+# categoryOptionCombo is optional; leave the line out when the data element
+# has only the default category option combination.
+dataElements:
+  checks:
+    dataElement: <to be provided by the district>
+  level_unknown:
+    dataElement: <to be provided by the district>
+  level_next_contact:
+    dataElement: <to be provided by the district>
+  level_before_next_dose:
+    dataElement: <to be provided by the district>
+  level_danger:
+    dataElement: <to be provided by the district>
+  iptp_reminders_shown:
+    dataElement: <to be provided by the district>
+# One line per district of districts.yaml: district id, then its DHIS2
+# organisation unit identifier.
+orgUnits:
+  <district-id>: <to be provided by the district>

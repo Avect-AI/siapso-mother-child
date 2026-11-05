@@ -8,15 +8,17 @@ Intended use of the data: understand, in aggregate, how the SIAPSO checks are us
 
 An event is one check, summarised. The schema (`schema/event.schema.json`) allows no other field (`additionalProperties: false`) and no free text: every field is a number, an enumeration or a fixed pattern.
 
-| Field               | Type                     | Meaning                                                                                                                    |
-| ------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `week`              | ISO week, `YYYY-Www`     | Week of the check. No finer date. Week 53 only in years that have one.                                                     |
-| `region`            | enumeration (14 ids)     | Region of Senegal (see below). No finer place.                                                                             |
-| `mode`              | `woman` or `accompanied` | Who ran the check. Validated but never published, so it cannot split a row.                                                |
-| `level`             | enumeration              | Highest level of the result: `unknown` (grey), `next-contact`, `before-next-dose`, `danger`. A grey result has no finding. |
-| `findings`          | `C1` to `C12`, integers  | Number of findings for each check id in this check. Each count is 0 to 20 and the sum is at most 30.                       |
-| `unknownItems`      | integer 0 to 20          | Items whose substance could not be determined.                                                                             |
-| `unrecognisedNames` | integer 0 to 20          | Typed names that were not recognised. Only the count is sent, never the name.                                              |
+| Field               | Type                     | Meaning                                                                                                                            |
+| ------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `week`              | ISO week, `YYYY-Www`     | Week of the check. No finer date. Week 53 only in years that have one.                                                             |
+| `region`            | enumeration (14 ids)     | Region of Senegal (see below). No finer place.                                                                                     |
+| `district`          | optional id              | Health district, read only by the DHIS2 export (see `docs/dhis2.md`). Checked against a district list; never published in the CSV. |
+| `iptpReminderShown` | optional boolean         | The IPTp reminder was shown in this check. Absent means false. Read only by the DHIS2 export.                                      |
+| `mode`              | `woman` or `accompanied` | Who ran the check. Validated but never published, so it cannot split a row.                                                        |
+| `level`             | enumeration              | Highest level of the result: `unknown` (grey), `next-contact`, `before-next-dose`, `danger`. A grey result has no finding.         |
+| `findings`          | `C1` to `C12`, integers  | Number of findings for each check id in this check. Each count is 0 to 20 and the sum is at most 30.                               |
+| `unknownItems`      | integer 0 to 20          | Items whose substance could not be determined.                                                                                     |
+| `unrecognisedNames` | integer 0 to 20          | Typed names that were not recognised. Only the count is sent, never the name.                                                      |
 
 Never in an event: profile identifier, product or plant name, free text, exact date or time, place finer than the region, device or network identifier.
 

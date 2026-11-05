@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Avect-AI/siapso-mother-child/open-data/schema/event.schema.json",
   "title": "SIAPSO open data event",
-  "description": "One check, summarised without identifying anyone: no profile id, no product name, no free text, no date finer than the ISO week, no place finer than the region. Every field is a number, an enumeration or a fixed pattern, and no other field is allowed. Rules a schema cannot state are checked by the code: the week exists in the ISO calendar (week 53 only in years that have one), and the sum of findings in one event is at most 30.",
+  "description": "One check, summarised without identifying anyone: no profile id, no product name, no free text, no date finer than the ISO week, no place finer than the region except the optional district read only by the DHIS2 export. Every field is a number, an enumeration or a fixed pattern, and no other field is allowed. Rules a schema cannot state are checked by the code: the week exists in the ISO calendar (week 53 only in years that have one), and the sum of findings in one event is at most 30.",
   "type": "object",
   "additionalProperties": false,
   "required": ["week", "region", "mode", "level", "findings", "unknownItems", "unrecognisedNames"],
@@ -30,6 +30,16 @@
         "thies",
         "ziguinchor"
       ]
+    },
+    "district": {
+      "description": "Optional. Stable id of a health district, used only by the DHIS2 export. The code checks it against a district list (open-data/dhis2/districts.example.yaml); an id that is not in the list is refused.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 40
+    },
+    "iptpReminderShown": {
+      "description": "Optional. True when the IPTp reminder was shown in this check. Absent means false.",
+      "type": "boolean"
     },
     "mode": {
       "description": "Who ran the check.",

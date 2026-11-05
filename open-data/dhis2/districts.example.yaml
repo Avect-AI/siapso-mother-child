@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Health districts of Senegal used by the DHIS2 export.
+# Senegal has 79 health districts. This list is NOT filled in: the team must
+# complete it from the official list of the Ministry of Health. Do not guess it.
+#
+# Each entry has:
+#   id:     stable lowercase ASCII id used in events (letters, digits, hyphens)
+#   region: one of the 14 region ids of open-data/fields.md
+#
+# Example of the shape (kept as a comment so that no district is invented):
+#   - id: <district-id>
+#     region: <region-id>
+districts: []
