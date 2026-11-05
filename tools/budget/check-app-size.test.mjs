@@ -24,12 +24,14 @@ afterEach(async () => {
 });
 
 describe('measure', () => {
-  it('sums every file of the app, in subfolders too, but not the pack or the voice files', async () => {
+  it('sums every file of the app, in subfolders too, but not the pack, the voice or the reading pack', async () => {
     await file('index.html', 100);
     await file('assets/index.js', 2000);
     await file('fonts/a.woff2', 300);
     await file('pack/products.json', 5_000_000);
     await file('voice/model.onnx', 9_000_000);
+    // A local build after pnpm ocr:install-local copies the reading pack too.
+    await file('ocr/ppocrv5-mobile-latin/models/det.onnx', 4_800_000);
 
     const { total, files } = await measure(dist);
 

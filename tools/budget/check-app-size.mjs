@@ -2,8 +2,10 @@
 // App size budget (implementation design, section 7.2): everything the phone
 // downloads to run the app (HTML, JavaScript, CSS, fonts, icons, web app
 // manifest, service worker) stays at or under 1.5 MB uncompressed. The
-// knowledge pack (pack/) and the voice files (voice/) have budgets of their
-// own and are left out, and so is the speech worker (assets/worker-*.js:
+// knowledge pack (pack/), the voice files (voice/) and the prescription
+// reading pack (ocr/, copied into a local build after pnpm
+// ocr:install-local) have budgets of their own and are left out, and so is
+// the speech worker (assets/worker-*.js:
 // Transformers.js and the JavaScript of ONNX Runtime), which the service
 // worker caches only once a voice is installed; it is said apart, with the
 // voice. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
@@ -15,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 export const LIMIT_BYTES = 1_572_864;
 
 /** Top-level folders of the build that the app budget does not count. */
-export const EXCLUDED = new Set(['pack', 'voice']);
+export const EXCLUDED = new Set(['pack', 'voice', 'ocr']);
 
 /** The speech worker chunk: downloaded with the voice (app/src/pwa/sw-setup.ts). */
 export const VOICE_WORKER = /^assets\/worker-[\w-]+\.js$/;
@@ -67,12 +69,12 @@ export async function checkAppSize(dir, log = console.log) {
   }
   const { total, files, voice } = result;
   if (files.length === 0) {
-    log(`No app file in ${dir} (pack/ and voice/ are not counted): the build looks broken.`);
+    log(`No app file in ${dir} (pack/, voice/ and ocr/ are not counted): the build looks broken.`);
     return 1;
   }
   for (const f of files.slice(0, 8)) log(`  ${kilobytes(f.bytes).padStart(10)}  ${f.path}`);
   if (files.length > 8) log(`  ... and ${String(files.length - 8)} smaller files`);
-  const summary = `App size: ${String(total)} bytes (${kilobytes(total)}) in ${String(files.length)} files, budget ${String(LIMIT_BYTES)} bytes (1.5 MB), pack/ and voice/ excluded.`;
+  const summary = `App size: ${String(total)} bytes (${kilobytes(total)}) in ${String(files.length)} files, budget ${String(LIMIT_BYTES)} bytes (1.5 MB), pack/, voice/ and ocr/ excluded.`;
   log(summary);
   if (voice.files.length > 0) {
     log(

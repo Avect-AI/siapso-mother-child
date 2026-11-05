@@ -284,6 +284,12 @@ describe('navigation fallback', () => {
     expect(denied('/index.html')).toBe(false);
   });
 
+  it('never answers an /ocr/ request with the app page: a reading pack file not served stays missing', () => {
+    expect(denied('/ocr/ppocrv5-mobile-latin/ocr-pack.json')).toBe(true);
+    expect(denied('/siapso/ocr/ppocrv5-mobile-latin/models/det.onnx')).toBe(true);
+    expect(denied('/#/prescription')).toBe(false);
+  });
+
   it('never answers a /config/ request with the app page: a missing file stays missing', () => {
     expect(denied('/config/referral.json')).toBe(true);
     expect(denied('/siapso/config/referral.json')).toBe(true);

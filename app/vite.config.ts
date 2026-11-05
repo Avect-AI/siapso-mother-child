@@ -261,8 +261,9 @@ export const workbox = {
   ],
   // The voice pack (voice/) is an optional download of several hundred
   // megabytes, installed on request into the Cache API by @siapso/speech:
-  // never precached.
-  globIgnores: ['pack/pack.json', 'voice/**'],
+  // never precached. The prescription reading pack (ocr/, 29 MB) likewise,
+  // installed on request by @siapso/ocr (docs/ocr.md).
+  globIgnores: ['pack/pack.json', 'voice/**', 'ocr/**'],
   // Pack fragments grow with the content; a file over the limit would
   // silently be left out of the precache.
   maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,

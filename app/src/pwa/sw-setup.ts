@@ -4,9 +4,10 @@
 // (sw-setup.test.ts):
 //
 // - it precaches the build (the app shell, fonts, icons and the knowledge
-//   pack; never the voice pack, see vite.config.ts) and answers every
-//   navigation with the app page, except a voice pack file or a deployment
-//   file, which stay missing when they are missing;
+//   pack; never the voice pack nor the prescription reading pack, see
+//   vite.config.ts) and answers every navigation with the app page, except a
+//   voice pack file, a reading pack file or a deployment file, which stay
+//   missing when they are missing;
 // - every answer of the precache carries the cross-origin isolation headers
 //   (COOP same-origin, COEP require-corp): a page served by the worker is
 //   cross-origin isolated, so ONNX Runtime may run the speech model on
@@ -32,10 +33,11 @@
 export const NAVIGATE_FALLBACK = 'index.html';
 
 /**
- * Navigations never answered with the app page: a voice pack file, and a
- * deployment file such as config/referral.json (under any base path).
+ * Navigations never answered with the app page: a voice pack file, a
+ * prescription reading pack file, and a deployment file such as
+ * config/referral.json (under any base path).
  */
-export const NAVIGATE_FALLBACK_DENYLIST: RegExp[] = [/\/voice\//, /\/config\//];
+export const NAVIGATE_FALLBACK_DENYLIST: RegExp[] = [/\/voice\//, /\/ocr\//, /\/config\//];
 
 /** The cache of the speech worker's script, filled only once a voice is installed. */
 export const VOICE_WORKER_CACHE = 'siapso-voice-worker';
