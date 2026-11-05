@@ -9,13 +9,13 @@ export const fr = {
     en: 'English',
   },
   welcome: {
-    languageTitle: 'Choisissez votre langue',
     modeTitle: "Qui utilise l'application ?",
     modeWoman: "Je suis enceinte ou j'allaite",
     modeWomanHint: 'Pour moi-même',
     modeAccompanied: "J'accompagne des femmes",
     modeAccompaniedHint: 'Relais, Bajenu Gox, agent de santé, ICP, sage-femme, dépositaire',
-    changeLanguage: 'Changer de langue',
+    // The answer folded into one line, with the way back to the question.
+    change: 'Changer',
   },
   header: {
     danger: 'Signes de danger',
@@ -85,20 +85,19 @@ export const fr = {
     digitsNone: 'Aucun chiffre',
     digitsOne: '1 chiffre',
     digits: '{count} chiffres',
-    createTitle: 'Choisissez un code',
-    createLeadWoman: 'Ce code ouvre votre profil sur ce téléphone.',
-    createLeadAccompanied: 'Ce code ouvre les profils des femmes que vous suivez.',
-    createHintWoman:
-      "De 4 à 6 chiffres. Gardez-le pour vous : sans lui, votre profil ne s'ouvre pas.",
-    createHintAccompanied:
-      "De 4 à 6 chiffres. Gardez-le pour vous : sans lui, les profils ne s'ouvrent pas.",
+    createTitleCount: 'Choisissez un code de {count} chiffres',
+    // What the code opens, and that it is to remember and keep secret.
+    createLeadWoman: 'Il ouvre votre profil. Retenez-le et gardez-le pour vous.',
+    createLeadAccompanied:
+      'Il ouvre les profils des femmes que vous suivez. Retenez-le et gardez-le pour vous.',
+    // The length of a new code, chosen before the first digit (4 for her, 6 in accompanied mode).
+    lengthLegend: 'Nombre de chiffres',
+    lengthHintAccompanied: 'Plus long, il est plus dur à deviner.',
     // The field of the second typing: what a screen reader hears when it takes the focus.
-    confirmLabel: 'Le même code',
-    confirmTitle: 'Tapez le code une deuxième fois',
-    next: 'Continuer',
-    save: 'Enregistrer le code',
+    confirmLabel: 'Tapez-le encore',
     saving: 'Le code se prépare.',
     invalid: 'Écrivez de 4 à 6 chiffres.',
+    invalidCount: 'Tapez {count} chiffres.',
     mismatch: 'Les deux codes ne sont pas les mêmes. Choisissez un code à nouveau.',
     changeMode: 'Changer de mode',
     // A code among the first tried (0000, 1234, a year): a warning and a second

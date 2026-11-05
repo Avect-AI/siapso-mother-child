@@ -72,7 +72,9 @@ describe('Forgotten code', () => {
 
     await user.click(screen.getByRole('button', { name: 'Effacer les profils' }));
 
-    expect(await screen.findByRole('button', { name: 'Français' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: /^Qui utilise l'application/ }),
+    ).toBeVisible();
     // Sealed or not, nothing is left: the keys are gone too.
     const db = await openAppDb();
     expect(await db.getAll('profiles')).toEqual([]);

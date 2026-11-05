@@ -14,7 +14,9 @@ const onboarded = { lang: 'fr', mode: 'woman', onboarded: true } as const;
 describe('App', () => {
   it('opens on the welcome screen at first launch', async () => {
     await renderApp();
-    expect(await screen.findByRole('button', { name: 'Français' })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { name: /^Qui utilise l'application/ }),
+    ).toBeVisible();
   });
 
   it('opens on Home once onboarded', async () => {
@@ -27,7 +29,7 @@ describe('App', () => {
     await renderApp({ storageTimeoutMs: 60_000 });
 
     expect(screen.queryByRole('main')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Français' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: /^Qui utilise l'application/ })).toBeNull();
   });
 
   it('sends an unknown route to Home', async () => {

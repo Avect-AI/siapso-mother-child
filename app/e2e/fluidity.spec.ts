@@ -22,7 +22,8 @@ import {
 
 /** taps / keys / screens / scrolls each journey may take at most. */
 const BUDGETS: Record<string, Budget> = {
-  j1: { taps: 17, keys: 20, screens: 12, scrolls: 3 },
+  // SCRUM-56 P1, the welcome in one screen: 17 taps and 12 screens before.
+  j1: { taps: 14, keys: 20, screens: 9, scrolls: 3 },
   j2a: { taps: 8, keys: 14, screens: 8, scrolls: 0 },
   j2b: { taps: 12, keys: 25, screens: 11, scrolls: 1 },
   j3a: { taps: 8, keys: 14, screens: 8, scrolls: 0 },
@@ -65,16 +66,12 @@ function journey(id: string, title: string, run: (page: Page, j: Journey) => Pro
 
 journey('j1', 'first use, woman mode, ibuprofen', async (page, j) => {
   await page.goto('/');
-  await button(page, 'Français').waitFor();
+  await button(page, /^Je suis enceinte/).waitFor();
   await j.begin('welcome');
-  await j.tap(button(page, 'Français'), 'francais');
+  // The language of the phone: nothing to choose. Mode and code on one screen.
   await j.tap(button(page, /^Je suis enceinte/), 'mode woman');
   await j.keypad(CODE, 'code typed');
-  await j.tap(button(page, 'Continuer'), 'continuer');
-  await j.keypad(CODE, 'code again');
-  await j.tap(button(page, 'Enregistrer le code'), 'save code', {
-    then: button(page, 'Regarder un produit'),
-  });
+  await j.keypad(CODE, 'code again', { then: button(page, 'Regarder un produit') });
   await j.tap(button(page, 'Regarder un produit'), 'regarder un produit');
   await pregnantAnswers(j);
   await j.tap(button(page, 'Enregistrer'), 'enregistrer profil', {

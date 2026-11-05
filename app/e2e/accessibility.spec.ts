@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { makeCode, onboard } from './support.js';
+import { expectWelcome, makeCode, onboard } from './support.js';
 
 /** Runs axe on the page as it is and fails on any serious or critical violation. */
 async function expectNoSeriousViolation(page: Page) {
@@ -14,15 +14,24 @@ async function expectNoSeriousViolation(page: Page) {
 
 test('Welcome has no serious accessibility violation, at every step', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
-  await expectNoSeriousViolation(page);
-
-  await page.getByRole('button', { name: 'Français' }).click();
-  await expect(page.getByRole('button', { name: "J'accompagne des femmes" })).toBeVisible();
+  await expectWelcome(page);
+  await expect(page.getByRole('button', { name: /^J'accompagne des femmes/ })).toBeVisible();
   await expectNoSeriousViolation(page);
 
   await page.getByRole('button', { name: /^J'accompagne/ }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Choisissez un code de 6 chiffres' }),
+  ).toBeVisible();
+  await expectNoSeriousViolation(page);
+
+  // The second typing, then the warning about a code easy to guess.
+  await page.getByLabel('Code', { exact: true }).fill('739215');
+  await expect(page.getByLabel('Tapez-le encore', { exact: true })).toBeFocused();
+  await expectNoSeriousViolation(page);
+  await page.getByRole('button', { name: 'Changer de mode' }).click();
+  await page.getByRole('button', { name: /^J'accompagne/ }).click();
+  await page.getByLabel('Code', { exact: true }).fill('123456');
+  await expect(page.getByRole('heading', { name: 'Ce code est facile à deviner' })).toBeFocused();
   await expectNoSeriousViolation(page);
 });
 
@@ -64,13 +73,13 @@ test.describe('at 360 px with text at 200 percent', () => {
   }) => {
     await page.goto('/');
     await largeText(page);
-    await expectNoSidewaysScroll(page);
-
-    await page.getByRole('button', { name: 'Français' }).click();
+    await expectWelcome(page);
     await expectNoSidewaysScroll(page);
 
     await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Choisissez un code de 4 chiffres' }),
+    ).toBeVisible();
     await expectNoSidewaysScroll(page);
 
     await makeCode(page);

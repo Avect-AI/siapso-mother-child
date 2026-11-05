@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 // Steps shared by the journeys: the welcome with its code, and the code
-// screen. The code is a made-up one for tests.
+// screen. The code is a made-up one for tests. The phone of the tests is set
+// to French (playwright.config.ts): the welcome speaks it, English is one tap.
 import { expect, type Page } from '@playwright/test';
 
 export const CODE = '2468';
 
 const WORDS = {
   fr: {
+    // The switch that turns the welcome into this language.
     language: 'Français',
+    question: /^Qui utilise l'application/,
     woman: /^Je suis enceinte/,
     accompanied: /^J'accompagne/,
-    next: 'Continuer',
-    again: 'Le même code',
-    save: 'Enregistrer le code',
+    length: 'Nombre de chiffres',
+    again: 'Tapez-le encore',
     open: 'Ouvrir',
     unlockTitle: 'Entrez votre code',
     home: 'Regarder un produit',
@@ -20,11 +22,11 @@ const WORDS = {
   },
   en: {
     language: 'English',
+    question: /^Who is using the app/,
     woman: /^I am pregnant/,
     accompanied: /^I support women/,
-    next: 'Continue',
-    again: 'The same code',
-    save: 'Save the code',
+    length: 'Number of digits',
+    again: 'Type it again',
     open: 'Open',
     unlockTitle: 'Enter your code',
     home: 'Look up a product',
@@ -35,13 +37,24 @@ const WORDS = {
 export type Lang = keyof typeof WORDS;
 export type Mode = 'woman' | 'accompanied';
 
-/** Makes the code at the end of the welcome: typed, then typed again. */
+/** The welcome is on screen: who uses the app is asked. */
+export async function expectWelcome(page: Page, lang: Lang = 'fr') {
+  await expect(page.getByRole('heading', { name: WORDS[lang].question })).toBeVisible();
+}
+
+/**
+ * Makes the code in the code part of the welcome: its length chosen when
+ * another one is offered, typed, then typed again; each typing moves on at
+ * its last digit.
+ */
 export async function makeCode(page: Page, code: string = CODE, lang: Lang = 'fr') {
   const words = WORDS[lang];
+  const length = page
+    .getByRole('group', { name: words.length })
+    .getByRole('radio', { name: String(code.length), exact: true });
+  if (!(await length.isChecked())) await length.check();
   await page.getByLabel('Code', { exact: true }).fill(code);
-  await page.getByRole('button', { name: words.next }).click();
   await page.getByLabel(words.again, { exact: true }).fill(code);
-  await page.getByRole('button', { name: words.save }).click();
 }
 
 /** Waits for the start of a mode once open: Home in woman mode, the profiles in accompanied mode. */
@@ -52,11 +65,25 @@ export async function expectStart(page: Page, mode: Mode, lang: Lang = 'fr') {
     : expect(page.getByRole('heading', { level: 1, name: words.profiles })).toBeVisible());
 }
 
-/** The welcome: the language, the mode, then the code; ends on the start of the mode. */
+/** The welcome turned into `lang` when the phone's language is the other one. */
+export async function welcomeIn(page: Page, lang: Lang) {
+  const other = lang === 'fr' ? 'en' : 'fr';
+  await expect(
+    page
+      .getByRole('heading', { name: WORDS[lang].question })
+      .or(page.getByRole('heading', { name: WORDS[other].question })),
+  ).toBeVisible();
+  if (await page.getByRole('heading', { name: WORDS[other].question }).isVisible()) {
+    await page.getByRole('button', { name: WORDS[lang].language, exact: true }).click();
+  }
+  await expectWelcome(page, lang);
+}
+
+/** The welcome: the mode, then the code; ends on the start of the mode. */
 export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: string = CODE) {
   const words = WORDS[lang];
   await page.goto('/');
-  await page.getByRole('button', { name: words.language }).click();
+  await welcomeIn(page, lang);
   await page.getByRole('button', { name: words[mode] }).click();
   await makeCode(page, code, lang);
   await expectStart(page, mode, lang);

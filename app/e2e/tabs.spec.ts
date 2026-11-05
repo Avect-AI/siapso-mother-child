@@ -5,7 +5,7 @@
 // a tab that missed the message cannot write her profile back. The code here
 // is made up.
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, makeCode, onboard, unlock } from './support.js';
+import { CODE, expectWelcome, makeCode, onboard, unlock } from './support.js';
 
 function answer(page: Page, question: string | RegExp, label: string) {
   return page.getByRole('group', { name: question }).getByText(label, { exact: true });
@@ -57,7 +57,7 @@ async function eraseFrom(page: Page) {
   await page.getByLabel('Pour continuer, écrivez EFFACER').fill('EFFACER');
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: 'Effacer les profils' }).click();
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
 }
 
 test('"Quitter" in one tab hides her profile in the other at once', async ({ page }) => {
@@ -91,7 +91,7 @@ test('an erase in one tab sends the other to the welcome', async ({ page }) => {
   await other.goto('/');
   await eraseFrom(other);
 
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await expect(page.getByText('Aminata')).toHaveCount(0);
   expect(await storedProfiles(other)).toBe(0);
 });
@@ -112,7 +112,7 @@ test('a tab without the channel still follows the erase, through local storage',
   await page.reload();
   await eraseFrom(page);
 
-  await expect(other.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(other);
   await expect(other.getByText('Aminata')).toHaveCount(0);
   expect(await storedProfiles(page)).toBe(0);
 });
@@ -156,13 +156,10 @@ function storedCode(page: Page): Promise<unknown> {
  */
 async function tryToMakeACode(page: Page, code: string) {
   const unlockTitle = page.getByRole('heading', { level: 1, name: 'Entrez votre code' });
-  const french = page.getByRole('button', { name: 'Français' });
-  await expect(french.or(unlockTitle)).toBeVisible();
-  if (await french.isVisible()) await french.click();
   const woman = page.getByRole('button', { name: /^Je suis enceinte/ });
   await expect(woman.or(unlockTitle)).toBeVisible();
   if (await woman.isVisible()) await woman.click();
-  const create = page.getByRole('heading', { level: 1, name: 'Choisissez un code' });
+  const create = page.getByRole('heading', { name: 'Choisissez un code de 4 chiffres' });
   await expect(create.or(unlockTitle)).toBeVisible();
   if (await create.isVisible()) await makeCode(page, code);
 }
@@ -176,10 +173,9 @@ test('a tab left on the welcome after an erase never makes a second code over he
   await page.reload();
   await eraseFrom(page);
   // The other tab went back to the welcome with the erase.
-  await expect(other.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(other);
 
   // She makes her code again and saves her profile.
-  await page.getByRole('button', { name: 'Français' }).click();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
   await fillHerProfile(page);
@@ -206,7 +202,7 @@ test('the app opened twice on a new phone keeps one code, even in a tab that hea
 }) => {
   const deaf = await deafTab(page);
   await deaf.goto('/');
-  await expect(deaf.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(deaf);
 
   await onboard(page, 'woman');
   await fillHerProfile(page);
@@ -236,7 +232,6 @@ test('a tab that missed the erase cannot write her profile under the next code e
   // Erased, then the partner makes his code, all in the other tab.
   await page.reload();
   await eraseFrom(page);
-  await page.getByRole('button', { name: 'Français' }).click();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page, '1397');
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();

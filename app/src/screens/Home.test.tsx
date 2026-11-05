@@ -152,7 +152,6 @@ describe('Home', () => {
     const user = userEvent.setup();
     await renderApp();
 
-    await user.click(await screen.findByRole('button', { name: 'Français' }));
     await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
     await makeCode(user);
 

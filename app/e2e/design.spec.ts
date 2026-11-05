@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 import { expect, test } from '@playwright/test';
+import { expectWelcome } from './support.js';
 
 test('the production build never serves the design gallery', async ({ page }) => {
   await page.goto('/#/design');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await expect(page.getByText('SIAPSO visual system')).toHaveCount(0);
 });
 
 test('the self-hosted font loads and the page uses it', async ({ page }) => {
   await page.goto('/');
   // The screen renders once the stored settings are read; the font loads when text needs it.
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await expect
     .poll(() =>
       page.evaluate(async () => {

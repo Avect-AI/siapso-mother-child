@@ -3,8 +3,8 @@
 // small phones (320 x 640), text at 200 percent, keyboard focus, and what a
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { CODE, onboard } from './support.js';
+import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
+import { CODE, expectWelcome, onboard } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -71,6 +71,17 @@ async function tapCode(page: Page, code: string = CODE) {
   for (const digit of code) await keypad.getByRole('button', { name: digit, exact: true }).click();
 }
 
+/** From the top of `top` to the bottom of `bottom`, all in the window as the page stands. */
+async function expectWithin(page: Page, top: Locator, bottom: Locator) {
+  const height = page.viewportSize()?.height ?? 0;
+  expect(
+    await top.evaluate((element) => element.getBoundingClientRect().top),
+  ).toBeGreaterThanOrEqual(0);
+  expect(
+    await bottom.evaluate((element) => element.getBoundingClientRect().bottom),
+  ).toBeLessThanOrEqual(height);
+}
+
 /** Where the danger signs shortcut sits in the band, rounded to the pixel. */
 async function shortcutBox(page: Page) {
   const box = await page
@@ -106,7 +117,7 @@ async function expectShortcutInOnePlace(
   prepare: (page: Page) => Promise<void> = () => Promise.resolve(),
 ) {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await prepare(page);
   const place = await shortcutBox(page);
   expect(place).not.toBeNull();
@@ -176,44 +187,37 @@ async function add(page: Page, list: string, query: string) {
 test.describe('on a small phone (320 x 640)', () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
-  test('the code screens keep their one primary action in the first screen', async ({ page }) => {
+  test('the code part of the welcome comes wholly into view, and "Ouvrir" stays in the first screen', async ({
+    page,
+  }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Français' }).click();
     await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
-    // "Corriger" keeps its place in the keypad, beside 0: the wide button is the primary one.
+    const heading = page.getByRole('heading', {
+      level: 2,
+      name: 'Choisissez un code de 4 chiffres',
+    });
+    await expect(heading).toBeFocused();
+    // "Corriger" keeps its place in the keypad, beside 0.
     const keypad = page.getByRole('group', { name: 'Clavier du code' });
     const row = async (name: string) =>
       keypad
         .getByRole('button', { name, exact: true })
         .evaluate((key) => Math.round(key.getBoundingClientRect().top));
     expect(await row('Corriger le dernier chiffre')).toBe(await row('0'));
+    // From its heading to the last row of keys, without a scroll by hand.
+    await expectWithin(page, heading, keypad);
 
     await tapCode(page);
-    let action = await buttonBottom(page, 'Continuer');
-    expect(action.scrolled).toBe(0);
-    expect(action.bottom).toBeLessThanOrEqual(640);
-    await page.getByRole('button', { name: 'Continuer' }).click();
-    await expect(
-      page.getByRole('heading', { level: 1, name: 'Tapez le code une deuxième fois' }),
-    ).toBeVisible();
-    // Two different codes: said, then the code is chosen again, "Continuer" still in view.
+    await expect(page.getByLabel('Tapez-le encore', { exact: true })).toBeFocused();
+    await expectWithin(page, heading, keypad);
+    // Two different codes: said, then the code is chosen again, the keys still in view.
     await tapCode(page, '1357');
-    await page.getByRole('button', { name: 'Enregistrer le code' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
     await expect(page.getByLabel('Code', { exact: true })).toHaveAccessibleDescription(
       /Les deux codes ne sont pas les mêmes/,
     );
+    await expectWithin(page, heading, keypad);
     await tapCode(page);
-    action = await buttonBottom(page, 'Continuer');
-    expect(action.scrolled).toBe(0);
-    expect(action.bottom).toBeLessThanOrEqual(640);
-    await page.getByRole('button', { name: 'Continuer' }).click();
     await tapCode(page);
-    action = await buttonBottom(page, 'Enregistrer le code');
-    expect(action.scrolled).toBe(0);
-    expect(action.bottom).toBeLessThanOrEqual(640);
-    await page.getByRole('button', { name: 'Enregistrer le code' }).click();
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 
     // The code asked again, with a wrong code said: "Ouvrir" still in the first screen.
@@ -230,7 +234,7 @@ test.describe('on a small phone (320 x 640)', () => {
       window.scrollTo(0, 0);
     });
     await tapCode(page);
-    action = await buttonBottom(page, 'Ouvrir');
+    const action = await buttonBottom(page, 'Ouvrir');
     expect(action.scrolled).toBe(0);
     expect(action.bottom).toBeLessThanOrEqual(640);
     await expectNoSeriousViolation(page);
@@ -241,7 +245,7 @@ test.describe('on a small phone (320 x 640)', () => {
     context,
   }) => {
     await page.goto('/');
-    await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+    await expectWelcome(page);
     const welcome = await shortcutBox(page);
     await onboard(page, 'woman');
     await expect(page.getByRole('button', { name: 'Quitter' })).toBeVisible();
@@ -457,16 +461,16 @@ test.describe('on a 360 px phone', () => {
     await page.goto('/');
     const band = page.getByRole('banner');
     await expect(band.getByRole('link', { name: 'Signes de danger' })).toBeVisible();
-    await page.getByRole('button', { name: 'Français' }).click();
-    await expect(band.getByRole('link', { name: 'Signes de danger' })).toBeVisible();
     await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+    const code = page.getByRole('heading', { level: 2, name: 'Choisissez un code de 4 chiffres' });
+    await expect(code).toBeVisible();
+    await expect(band.getByRole('link', { name: 'Signes de danger' })).toBeVisible();
 
     await band.getByRole('link', { name: 'Signes de danger' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Signes de danger' })).toBeVisible();
     await expectNoSeriousViolation(page);
     await page.goBack();
-    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+    await expect(code).toBeVisible();
     await expectNoSeriousViolation(page);
   });
 

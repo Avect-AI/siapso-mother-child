@@ -1233,9 +1233,13 @@ a {
 }
 
 /*
- * Welcome: the question and its answers low on the screen, where the thumb
- * reaches on a phone held in one hand; the app's mark and name centred in the
- * space above them, the same mark as on the phone's home screen.
+ * Welcome, one screen (SCRUM-56): the question and its answers low on the
+ * screen, where the thumb reaches on a phone held in one hand; the app's mark
+ * and name centred in the space above them, the same mark as on the phone's
+ * home screen, with the other language a quiet link under the name. Once the
+ * question is answered, the mark, the name and the language share one line at
+ * the top, the answer folds into one line with "Changer", and the code part
+ * takes the room below.
  */
 
 .welcome__identity {
@@ -1245,10 +1249,48 @@ a {
   margin-block: auto;
 }
 
+/* A quiet link on its own line: its words line up with the column. */
+.welcome__language {
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+/* The code part takes the room: the screen's steps closer, the identity on one line. */
+.welcome--code {
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+
+.welcome--code .welcome__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: 0;
+  margin-block: 0;
+}
+
+.welcome--code .welcome__identity h1 {
+  flex: 1 1 auto;
+  font-size: var(--font-size-title);
+}
+
+.welcome--code .welcome__language {
+  margin-inline-start: 0;
+}
+
 .welcome__step {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
+}
+
+/* The question answered: said at reading size, its answer and "Changer" under it. */
+.welcome--code .welcome__step {
+  gap: 0;
+}
+
+.welcome--code .welcome__question h2 {
+  font-size: var(--font-size-body);
 }
 
 .welcome__question {
@@ -1264,8 +1306,61 @@ a {
   color: var(--color-text-muted);
 }
 
-.welcome__back {
-  justify-self: start;
+/* The answer given, in bold, and "Changer" beside it, quiet; the answer wraps first. */
+.welcome__chosen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-2);
+  margin: 0;
+}
+
+.welcome__answer {
+  flex: 1 1 8rem;
+  font-weight: var(--font-weight-strong);
+}
+
+.welcome__change {
+  flex: none;
+}
+
+/*
+ * The code part of the welcome: its own steps, closer together than a
+ * screen's, and 48 px keys, so that from its heading to its last row of keys
+ * it holds in the first screen of a 360 x 800 phone with the answer above it.
+ */
+.code-setup--embedded {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.code-setup--embedded h2 {
+  font-size: var(--font-size-title);
+}
+
+.code-setup--embedded .code-form,
+.code-setup--embedded .code-input {
+  gap: var(--space-3);
+}
+
+.code-setup--embedded .keypad {
+  gap: 6px;
+}
+
+.code-setup--embedded .keypad__key {
+  min-height: var(--touch-target);
+}
+
+/* The lengths of a code, three short answers on one row while they fit. */
+.code-setup .options--row > .option {
+  flex-basis: 4.5rem;
+}
+
+.code-setup__weak {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 /*

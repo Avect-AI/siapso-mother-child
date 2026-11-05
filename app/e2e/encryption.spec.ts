@@ -6,7 +6,13 @@
 // works without the Internet. The names, numbers and texts here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, seedBeforeUpdate, unlock, waitForServiceWorkerControl } from './support.js';
+import {
+  CODE,
+  expectWelcome,
+  seedBeforeUpdate,
+  unlock,
+  waitForServiceWorkerControl,
+} from './support.js';
 
 const AMINATA = 'Aminata Seck';
 const NDEYE = 'Ndeye Fall';
@@ -125,7 +131,7 @@ test('a phone updated from the version in clear: sealed at the first code, reada
 }) => {
   // The app opens once (its database is made), then holds what the old version left.
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await waitForServiceWorkerControl(page);
   const old = await seedOldFormat(page);
 
@@ -232,7 +238,7 @@ test('"Quitter" in another tab while the first code after the update is worked o
   context,
 }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await seedOldFormat(page);
   // As on a slow phone: the code takes a while to work out in this tab.
   await page.addInitScript(() => {

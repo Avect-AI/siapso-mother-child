@@ -12,7 +12,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
-import { makeCode, onboard, unlock, waitForServiceWorkerControl } from './support.js';
+import {
+  expectWelcome,
+  makeCode,
+  onboard,
+  unlock,
+  waitForServiceWorkerControl,
+} from './support.js';
 
 test.use({
   launchOptions: {
@@ -179,7 +185,7 @@ async function startWithProfile(page: Page) {
 
 /** The same, on the page already open (another origin than the test server's). */
 async function startWithProfileHere(page: Page) {
-  await page.getByRole('button', { name: 'Français' }).click();
+  await expectWelcome(page);
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();

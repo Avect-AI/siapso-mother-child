@@ -26,6 +26,7 @@ import {
 } from '../data/pack-loader.js';
 import type { PackOrigin } from '../data/pack-verify.js';
 import type { Settings } from '../domain/types.js';
+import { thisPhoneLanguage } from '../i18n/phone-language.js';
 import { storageKeeper } from '../pwa/storage.js';
 import { CheckContext, useCheckStore } from './check-state.js';
 import { SessionProvider, type SessionOptions } from './session.js';
@@ -69,6 +70,14 @@ export interface AppState {
 }
 
 export const DEFAULT_SETTINGS: Settings = { lang: 'fr', mode: null, onboarded: false };
+
+/**
+ * The settings of a phone that stored none: the language of the phone
+ * (SCRUM-56, S1), no mode, the welcome not over.
+ */
+function phoneDefaults(): Settings {
+  return { ...DEFAULT_SETTINGS, lang: thisPhoneLanguage() };
+}
 
 /**
  * How long to wait for IndexedDB before going on with the default settings
@@ -182,10 +191,10 @@ export function AppProvider({
   /** Set by tests only: the app always starts locked, with the full PBKDF2 count. */
   session?: SessionOptions;
 }) {
-  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettingsState] = useState<Settings>(phoneDefaults);
   const [settingsReady, setSettingsReady] = useState(false);
   const [settingsUnavailable, setSettingsUnavailable] = useState(false);
-  const latest = useRef<Settings>(DEFAULT_SETTINGS);
+  const latest = useRef<Settings>(settings);
   /** The stored settings were read: memory holds them, and a store keeps what it did not change. */
   const read = useRef(false);
   const [packState, setPackState] = useState<PackState>(NO_PACK);
@@ -201,7 +210,7 @@ export function AppProvider({
       settled = true;
       clearTimeout(timer);
       read.current = !unavailable;
-      latest.current = { ...DEFAULT_SETTINGS, ...stored };
+      latest.current = { ...phoneDefaults(), ...stored };
       setSettingsState(latest.current);
       setSettingsUnavailable(unavailable);
       setSettingsReady(true);
@@ -280,7 +289,7 @@ export function AppProvider({
         try {
           const stored = await withTimeout(getStoredSettings(), storageTimeoutMs);
           read.current = true;
-          next = { ...DEFAULT_SETTINGS, ...stored, ...patch };
+          next = { ...phoneDefaults(), ...stored, ...patch };
           latest.current = next;
           setSettingsState(next);
           setSettingsUnavailable(false);
