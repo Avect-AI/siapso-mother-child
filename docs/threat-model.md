@@ -103,6 +103,21 @@ A demo build (`pnpm build`, Vite mode `demo`, with `VITE_ALLOW_UNSIGNED_PACK=tru
 - A demo build cannot pass for a release: it goes to `app/dist-demo`, never to `app/dist` where a release goes; its `build-info.json` marker says `"mode": "demo"` and `"acceptsUnsignedPack": true`, and `pnpm release:build` checks the marker of the release before it reports success; it prints a warning at build time; and its Status and About screens say "Version de test : base de connaissances non signée." whatever the pack in use. CI makes demo builds only and never publishes them. A release build refuses a pack that a demo build stored on the same phone and downloads a signed one.
 - Risk: a demo build given to real users would accept any pack served from its origin; the screens say it is a test version. The v0.1.0 demo may be a demo build (its content is not clinically validated); the MVP release must be signed.
 
+## Prescription reading (SCRUM-57)
+
+### An untrusted PDF or photo
+
+Someone hands over a crafted PDF or image (a "prescription" from a messaging app) to break the parser, run code or make the phone fetch something.
+
+- The file is read only in the reading worker (`@siapso/ocr`), never by the page: its first bytes say what it is (never its name or type), a file of more than 20 MB or a photo of more than 40 megapixels is refused before it is decoded, and anything that is neither an image nor a PDF is refused.
+- pdf.js 6.4.299 opens it from the bytes given (no URL), in that worker, with no XFA, no font faces, no system fonts, no WebAssembly decoders, no worker fetch and no cMap, font or wasm address: nothing to fetch. This version has no `eval` path and no `isEvalSupported` option (checked in its build), and no script ever runs: the pack carries no `pdf.sandbox` and no annotation or form layer is drawn. A password, a damaged file and a page that cannot be parsed are refused with their own reason. Three pages at most are read.
+- The worker's `fetch` answers only the reading pack's files from the Cache API and refuses every other address, so a parser bug cannot reach the network through it.
+- Residual risk: a memory-safety bug in the browser's image decoders or in the WebAssembly runtime. The worker is ended after a reading that does not finish within 90 s and a few minutes after the last reading.
+
+### A tampered reading pack
+
+Someone serves altered model, runtime or pdf.js files. Every file of the pack is checked by size and SHA-256 against `ocr-pack.json` once stored, and a file that differs is dropped. The manifest itself is not signed: like the voice pack, the pack is served from the app's own origin, so the host's integrity protects it (see "Out of scope"); signing it as the knowledge pack is would be a later step. A wrong model can only misread text: every product read is confirmed by her, and the engine alone sets the level.
+
 ## Out of scope
 
 - A forensic attacker with the phone and unlimited time, including one who edits the app's storage on the phone or tries every code offline against a copy of it (see "Personal data on the phone", Limits).
