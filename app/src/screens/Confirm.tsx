@@ -29,7 +29,14 @@ import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
 import { StickyAction } from '../ui/StickyAction.js';
 import { WarningMark } from '../ui/WarningMark.js';
-import { backToCheck, flowState, searchPath, type FlowState } from './check-flow.js';
+import {
+  backToCheck,
+  confirmPath,
+  flowEntry,
+  flowState,
+  searchPath,
+  type FlowState,
+} from './check-flow.js';
 import { localNameKey } from './local-name.js';
 import { Typed } from './Typed.js';
 
@@ -227,18 +234,23 @@ function ConfirmForm({
   pack,
   candidate,
   entry,
-  onSearchAgain,
+  no: noLabel,
+  onNo,
+  onAdded,
 }: {
   pack: Pack;
   candidate: ConfirmCandidate;
   entry: FlowState;
-  onSearchAgain: () => void;
+  /** The words of "no": search again, the next product ticked, back to the list. */
+  no: MessageKey;
+  onNo: () => void;
+  /** After "yes" added it: back to the check, or the next product ticked in a sentence. */
+  onAdded: () => void;
 }) {
   const t = useT();
   const tNodes = useTNodes();
   const lang = useLang();
   const check = useCheck();
-  const [, navigate] = useLocation();
   const query = entry.query ?? '';
   // Read once: the pack and the candidate do not change while the screen is open.
   const [choice] = useState(() => strengthChoiceOf(pack, candidate, query));
@@ -403,7 +415,7 @@ function ConfirmForm({
       ...(written !== undefined && said ? { said: true } : {}),
     });
     leaving.current = true;
-    backToCheck(navigate, entry.stepsToCheck);
+    onAdded();
   };
 
   // A long list with the strength typed: those boxes first, the others on demand.
@@ -482,8 +494,8 @@ function ConfirmForm({
     </Button>
   );
   const no = (
-    <Button variant="secondary" className="confirm__no" onClick={onSearchAgain}>
-      {t('confirm.no')}
+    <Button variant="secondary" className="confirm__no" onClick={onNo}>
+      {t(noLabel)}
     </Button>
   );
 
@@ -638,14 +650,31 @@ function ConfirmForm({
  * The product is in the entry's state, never in the address (it can say what
  * she is treated for); an entry without it in this session (an old link, a
  * reload after a lock) goes to the check.
+ *
+ * The products ticked in a sentence (SCRUM-61) are confirmed one after the
+ * other: the screen says which one of how many it is, "yes" adds it and opens
+ * the next, "Non, passer au suivant" opens the next without adding it; after
+ * the last one, the way back to the check, or to the search when none was
+ * added. Each next one takes the place of this entry, so the way back to the
+ * check stays the same.
  */
 export function Confirm({ kind }: { kind: EntryKind }) {
   const t = useT();
   const { pack, packError } = useApp();
   const [, navigate] = useLocation();
-  // Read once: the state of this history entry (the product, the search behind it, the way back).
-  const [entry] = useState(flowState);
+  // Read once: the state of this history entry (the product, the search behind
+  // it, the way back), then the next product ticked in a sentence.
+  const [entry, setEntry] = useState(flowState);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // The next product of the same list took this screen's place: its heading takes the focus.
+  const moved = useRef(false);
   const id = entry.id;
+
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    heading.current?.focus();
+  }, [entry]);
 
   const searchAgain = () => {
     // Opened from the search screen (it leaves the query): back to that entry, with the text.
@@ -653,11 +682,56 @@ export function Confirm({ kind }: { kind: EntryKind }) {
     else navigate(searchPath(kind), { replace: true });
   };
 
+  /** Opens the next product ticked in the sentence, in place of this one; false when none is left. */
+  const next = (added: boolean): boolean => {
+    const [following, ...rest] = entry.queue ?? [];
+    if (following === undefined || entry.queueTotal === undefined) return false;
+    const state: FlowState = {
+      id: following.id,
+      query: following.query,
+      matched: following.matched,
+      queue: rest,
+      queueTotal: entry.queueTotal,
+      ...(entry.stepsToCheck === undefined ? {} : { stepsToCheck: entry.stepsToCheck }),
+      ...(entry.heard === true ? { heard: true } : {}),
+      ...(added || entry.queueAdded === true ? { queueAdded: true } : {}),
+    };
+    if (following.kind === kind) {
+      window.history.replaceState(flowEntry(state), '');
+      moved.current = true;
+      setEntry(state);
+    } else {
+      navigate(confirmPath(following.kind), { replace: true, state: flowEntry(state) });
+    }
+    return true;
+  };
+  const onAdded = () => {
+    if (!next(true)) backToCheck(navigate, entry.stepsToCheck);
+  };
+  const onNo = () => {
+    if (next(false)) return;
+    if (entry.queueAdded === true) backToCheck(navigate, entry.stepsToCheck);
+    else searchAgain();
+  };
+  let no: MessageKey = 'confirm.no';
+  if ((entry.queue?.length ?? 0) > 0) no = 'confirm.noNext';
+  else if (entry.queueAdded === true) no = 'confirm.noBackToList';
+
   if (id === undefined) return <Redirect to="/check" replace />;
   const candidate = pack === null ? undefined : candidateOf(pack, { kind, id });
   return (
     <main className="screen confirm">
-      <h1 tabIndex={-1}>{t(kind === 'product' ? 'confirm.titleProduct' : 'confirm.titlePlant')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t(kind === 'product' ? 'confirm.titleProduct' : 'confirm.titlePlant')}
+      </h1>
+      {entry.queue === undefined || entry.queueTotal === undefined ? null : (
+        <p className="meta confirm__position">
+          {t('confirm.queuePosition', {
+            position: entry.queueTotal - entry.queue.length,
+            total: entry.queueTotal,
+          })}
+        </p>
+      )}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
       {pack !== null && candidate === undefined ? (
         <>
@@ -668,7 +742,16 @@ export function Confirm({ kind }: { kind: EntryKind }) {
         </>
       ) : null}
       {pack !== null && candidate !== undefined ? (
-        <ConfirmForm pack={pack} candidate={candidate} entry={entry} onSearchAgain={searchAgain} />
+        <ConfirmForm
+          // A new product ticked in the sentence starts its answers afresh.
+          key={`${id}:${String(entry.queue?.length ?? 0)}`}
+          pack={pack}
+          candidate={candidate}
+          entry={entry}
+          no={no}
+          onNo={onNo}
+          onAdded={onAdded}
+        />
       ) : null}
     </main>
   );

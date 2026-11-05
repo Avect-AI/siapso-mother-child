@@ -440,6 +440,19 @@ a {
   hyphens: manual;
 }
 
+/* An answer with lines under its words (a product found in a sentence: its substances, its list). */
+.option__text {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.option__detail {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-body);
+}
+
 .option input {
   flex: none;
   width: 1.5rem;
@@ -2514,6 +2527,20 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 }
 
 .search__none-of-these {
+  width: 100%;
+}
+
+/*
+ * The products found in a sentence (SCRUM-61): the answers to tick, then the
+ * one action that confirms each product ticked in turn.
+ */
+.search__sentence {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.search__sentence-add {
   width: 100%;
 }
 

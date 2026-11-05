@@ -33,16 +33,47 @@ export interface FlowState {
    * is labelled "Vous avez dit".
    */
   heard?: boolean;
+  /**
+   * On the confirm entry of a product ticked in a sentence (SCRUM-61), the
+   * products ticked after it, each confirmed in turn on its confirm screen.
+   */
+  queue?: QueuedProduct[];
+  /** With `queue`: how many products were ticked in the sentence. */
+  queueTotal?: number;
+  /** With `queue`: a product ticked before this one was added to the check. */
+  queueAdded?: boolean;
+}
+
+/** A product ticked in a sentence, still to confirm: as a candidate opens its confirm screen. */
+export interface QueuedProduct {
+  kind: EntryKind;
+  id: string;
+  /** The words of the sentence that name it (a strength said with it is preselected). */
+  query: string;
+  /** The name it was found by. */
+  matched: string;
+}
+
+function isQueuedProduct(value: unknown): value is QueuedProduct {
+  if (typeof value !== 'object' || value === null) return false;
+  const { kind, id, query, matched } = value as Partial<Record<keyof QueuedProduct, unknown>>;
+  return (
+    (kind === 'product' || kind === 'plant') &&
+    typeof id === 'string' &&
+    id !== '' &&
+    typeof query === 'string' &&
+    typeof matched === 'string'
+  );
 }
 
 /**
  * The flow state of the current history entry, when left in this visit and
  * epoch: each field kept only when it has its type (a positive whole number
- * of steps, strings), anything else on the entry ignored; empty when there is
- * none.
+ * of steps, strings, a list of products to confirm), anything else on the
+ * entry ignored; empty when there is none.
  */
 export function flowState(): FlowState {
-  const { stepsToCheck, query, matched, id, heard } = sessionState();
+  const { stepsToCheck, query, matched, id, heard, queue, queueTotal, queueAdded } = sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
@@ -51,6 +82,22 @@ export function flowState(): FlowState {
   if (typeof matched === 'string') flow.matched = matched;
   if (typeof id === 'string' && id !== '') flow.id = id;
   if (heard === true) flow.heard = true;
+  if (
+    Array.isArray(queue) &&
+    queue.every(isQueuedProduct) &&
+    typeof queueTotal === 'number' &&
+    Number.isInteger(queueTotal) &&
+    queueTotal > queue.length
+  ) {
+    flow.queue = queue.map(({ kind, id: queued, query: words, matched: name }) => ({
+      kind,
+      id: queued,
+      query: words,
+      matched: name,
+    }));
+    flow.queueTotal = queueTotal;
+    if (queueAdded === true) flow.queueAdded = true;
+  }
   return flow;
 }
 

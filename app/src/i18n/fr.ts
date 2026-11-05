@@ -444,6 +444,20 @@ export const fr = {
       "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
     kindProduct: 'Médicament',
     kindPlant: 'Remède',
+    // A sentence that names products (SCRUM-61): each one found, to tick, then
+    // each one ticked confirmed in turn on its confirm screen.
+    sentenceTitle: 'Produits trouvés dans la phrase :',
+    sentenceHint:
+      'Chaque produit coché sera ensuite à confirmer. Décochez ceux qui ne conviennent pas.',
+    sentenceAdd: 'Ajouter les produits cochés',
+    sentenceNone: 'Cochez au moins un produit, ou écrivez le nom.',
+    sentenceStrengthSaid: 'Dosage dit : {strength}',
+    sentenceStrengthTyped: 'Dosage écrit : {strength}',
+    // A name of the base that is also a common word ("goro", an in-law): offered unticked.
+    sentenceCommonWord: "« {word} » a aussi un autre sens : cochez-le si c'est bien ce produit.",
+    // Read by a screen reader: the list itself shows the names.
+    sentenceFoundOne: 'Un produit trouvé dans la phrase : {name}.',
+    sentenceFoundMany: '{count} produits trouvés dans la phrase, le premier : {name}.',
   },
   // The language of a local name, after the name.
   nameLang: {
@@ -486,6 +500,10 @@ export const fr = {
     yesProduct: "Oui, c'est ce produit",
     yesPlant: "Oui, c'est ce remède",
     no: 'Non, chercher encore',
+    // The products ticked in a sentence (SCRUM-61), confirmed one after the other.
+    queuePosition: 'Produit {position} sur {total} trouvés dans la phrase',
+    noNext: 'Non, passer au suivant',
+    noBackToList: 'Non, revenir à la liste',
     // The product chosen is already in the check: never listed twice. Names the listed product.
     alreadyNamed: '{name} est déjà dans la liste.',
     changeUnits: 'Changer les unités par jour',

@@ -56,6 +56,28 @@ describe('flowState', () => {
     expect(flowState()).toEqual({ query: 'x' });
   });
 
+  // SCRUM-61: the products ticked in a sentence are confirmed one after the other.
+  it('reads the products still to confirm after this one, how many were ticked, and one added', () => {
+    const next = { kind: 'plant', id: 'moringa', query: 'nebeday', matched: 'nebeday' };
+    window.history.replaceState(
+      inSession({ id: 'p', queue: [next], queueTotal: 2, queueAdded: true }),
+      '',
+    );
+    expect(flowState()).toEqual({ id: 'p', queue: [next], queueTotal: 2, queueAdded: true });
+  });
+
+  it('ignores a queue that is not a list of products to confirm', () => {
+    for (const queue of [
+      'moringa',
+      [{ kind: 'unrecognised', id: 'x', query: '', matched: '' }],
+      [{ kind: 'plant', id: '', query: '', matched: '' }],
+      [{ kind: 'plant', id: 'moringa', query: 3, matched: '' }],
+    ]) {
+      window.history.replaceState(inSession({ id: 'p', queue, queueTotal: 0 }), '');
+      expect(flowState(), JSON.stringify(queue)).toEqual({ id: 'p' });
+    }
+  });
+
   it('never puts the product in the address', () => {
     expect(confirmPath('product')).toBe('/confirm/product');
   });

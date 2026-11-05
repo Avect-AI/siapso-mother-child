@@ -196,7 +196,7 @@ export function unitsHeld(name: string): string {
  * grouped ("1000"), held to its unit by a no-break space ("500 mg" never
  * splits across two lines).
  */
-function milligrams(mg: number, lang: Lang): string {
+export function milligrams(mg: number, lang: Lang): string {
   const number = new Intl.NumberFormat(lang, { useGrouping: false, maximumFractionDigits: 3 });
   return `${number.format(mg)}\u00a0mg`;
 }
