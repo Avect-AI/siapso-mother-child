@@ -67,8 +67,52 @@ describe('codes', () => {
     }
   });
 
+  it('finds repeated pairs and triples, doubled digits, keypad columns and day-month dates', () => {
+    for (const code of [
+      // Pairs and triples repeated, each digit doubled.
+      '1212',
+      '121212',
+      '123123',
+      '1122',
+      '112233',
+      '998877',
+      // The keypad's middle column, down or up, and two columns in a row.
+      '2580',
+      '0852',
+      '147258',
+      '258369',
+      '963852',
+      // A day and a month (DDMM or MMDD), as a birth date.
+      '0101',
+      '3112',
+      '2512',
+      '1225',
+      '2902',
+      '0229',
+      '0918',
+    ]) {
+      expect(easyToGuess(code), code).toBe(true);
+    }
+  });
+
   it('leaves other codes alone', () => {
-    for (const code of ['2468', '1357', '7392', '1949', '2031', '1235', '8901', '135790', '0918']) {
+    for (const code of [
+      '2468',
+      '1357',
+      '7392',
+      '1949',
+      '2031',
+      '1235',
+      '8901',
+      '135790',
+      '3002',
+      '0230',
+      '3113',
+      '1300',
+      '4683',
+      '258014',
+      '1913',
+    ]) {
       expect(easyToGuess(code), code).toBe(false);
     }
   });

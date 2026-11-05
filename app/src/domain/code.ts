@@ -91,12 +91,59 @@ export function isCode(text: string): boolean {
 const FIRST_YEAR = 1950;
 const LAST_YEAR = 2030;
 
+/** The columns of a phone keypad, top to bottom; the middle one ends on 0. */
+const KEYPAD_COLUMNS = ['147', '258', '369'] as const;
+/** Days in each month, 29 for February (a birth date can be the 29th). */
+const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+function reversed(text: string): string {
+  return [...text].reverse().join('');
+}
+
+/**
+ * Codes made of keypad columns: the middle column down or up (2580, 0852),
+ * and two columns one after the other, each down or up (147258, 963852).
+ */
+const KEYPAD_CODES: ReadonlySet<string> = new Set([
+  '2580',
+  '0852',
+  ...KEYPAD_COLUMNS.flatMap((first) =>
+    KEYPAD_COLUMNS.filter((second) => second !== first).flatMap((second) =>
+      [first, reversed(first)].flatMap((a) => [second, reversed(second)].map((b) => a + b)),
+    ),
+  ),
+]);
+
+/** Whether `day` and `month` (two digits each) are a day of the year. */
+function isDayMonth(day: string, month: string): boolean {
+  const m = Number(month);
+  const d = Number(day);
+  return m >= 1 && m <= 12 && d >= 1 && d <= (MONTH_DAYS[m - 1] ?? 0);
+}
+
+/** A block of 2 or 3 digits said again (1212, 121212, 123123), or each digit doubled (1122, 112233). */
+function repeatsItself(code: string): boolean {
+  for (const size of [2, 3]) {
+    if (code.length % size !== 0 || code.length === size) continue;
+    const block = code.slice(0, size);
+    if (block.repeat(code.length / size) === code) return true;
+  }
+  if (code.length % 2 !== 0) return false;
+  for (let i = 0; i < code.length; i += 2) {
+    if (code[i] !== code[i + 1]) return false;
+  }
+  return true;
+}
+
 /**
  * Whether a code is among those someone else tries first: one digit repeated
- * (0000), digits in a row up or down (1234, 0123, 987654), or a year from
- * 1950 to 2030 (a birth year). Under the wait after wrong codes, a person
- * gets about 11 tries in the first hour. The code screen warns and asks a
- * second time; it never refuses: the choice stays hers.
+ * (0000), digits in a row up or down (1234, 0123, 987654), a block said again
+ * or each digit doubled (1212, 123123, 1122, 112233), the keypad's columns
+ * (2580, 147258), a day and a month (0101, 3112, 1225: a birth date written
+ * DDMM or MMDD), or a year from 1950 to 2030 (a birth year). Under the wait
+ * after wrong codes, a person gets about 11 tries in the first hour. The code
+ * screen warns and asks a second time; it never refuses: the choice stays
+ * hers.
  */
 export function easyToGuess(code: string): boolean {
   if (!isCode(code)) return false;
@@ -105,8 +152,12 @@ export function easyToGuess(code: string): boolean {
   const steps = digits.slice(1).map((digit, i) => digit - (digits[i] ?? 0));
   if (steps.every((step) => step === 0)) return true;
   if (steps.every((step) => step === 1) || steps.every((step) => step === -1)) return true;
+  if (repeatsItself(code) || KEYPAD_CODES.has(code)) return true;
+  if (code.length !== 4) return false;
+  const [first, second] = [code.slice(0, 2), code.slice(2)];
+  if (isDayMonth(first, second) || isDayMonth(second, first)) return true;
   const year = Number(code);
-  return code.length === 4 && year >= FIRST_YEAR && year <= LAST_YEAR;
+  return year >= FIRST_YEAR && year <= LAST_YEAR;
 }
 
 export function toBase64Url(bytes: Uint8Array): string {
