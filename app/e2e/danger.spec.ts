@@ -3,7 +3,7 @@
 // Phone numbers here are made up: runs of the same digit, never a real number.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock, type Mode } from './support.js';
+import { longestDangerInstruction, onboard, sayInBanner, unlock, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -182,46 +182,6 @@ test('online without a deployment file: the app page is never read as one', asyn
 
 test.describe('on a small phone (360 x 560), a call is in the first screen', () => {
   test.use({ viewport: { width: 360, height: 560 } });
-
-  /**
-   * The longest instruction the danger banner can give with the pack of this
-   * build: the standard one, and the orientation of every danger rule and of
-   * every danger sign, in both languages.
-   */
-  async function longestDangerInstruction(page: Page): Promise<string> {
-    const fragment = async (file: string): Promise<unknown> =>
-      (await page.request.get(`/pack/${file}`)).json();
-    const rules = (await fragment('rules.json')) as { level: string; message: string }[];
-    const signs = (await fragment('danger-signs.json')) as { message?: string }[];
-    const ids = new Set([
-      ...rules.filter((rule) => rule.level === 'danger').map((rule) => rule.message),
-      ...signs.map((sign) => sign.message ?? 'danger-sign'),
-    ]);
-    const texts = ['Allez au poste de santé maintenant.', 'Go to the health post now.'];
-    for (const lang of ['fr', 'en']) {
-      const messages = (await fragment(`messages.${lang}.json`)) as Record<
-        string,
-        { orientation?: string }
-      >;
-      for (const id of ids) {
-        const orientation = messages[id]?.orientation;
-        if (orientation !== undefined) texts.push(orientation);
-      }
-    }
-    return texts.reduce((longest, text) => (text.length > longest.length ? text : longest));
-  }
-
-  /** The danger banner says `words`, sized as the banner sizes a long instruction. */
-  async function sayInBanner(page: Page, words: string) {
-    await page
-      .getByRole('alert')
-      .getByRole('heading')
-      .evaluate((heading, text) => {
-        heading.textContent = text;
-        heading.classList.toggle('danger-banner__title--long', text.length > 40);
-      }, words);
-    await expect(page.getByRole('alert')).toContainText(words);
-  }
 
   for (const { name, contact, locked } of [
     { name: 'no contact, open', contact: false, locked: false },

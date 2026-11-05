@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
-// Steps shared by the journeys: the welcome with its code, and the code
-// screen. The code is a made-up one for tests.
+// Steps shared by the journeys: the welcome with its code, the code screen,
+// and the longest danger instruction of the pack. The code is a made-up one
+// for tests.
 import { expect, type Page } from '@playwright/test';
 
 export const CODE = '2468';
@@ -162,4 +163,44 @@ export async function waitForServiceWorkerControl(page: Page) {
     }
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
   }).toPass({ timeout: 15_000 });
+}
+
+/**
+ * The longest instruction the danger banner can give with the pack of this
+ * build: the standard one, and the orientation of every danger rule and of
+ * every danger sign, in both languages.
+ */
+export async function longestDangerInstruction(page: Page): Promise<string> {
+  const fragment = async (file: string): Promise<unknown> =>
+    (await page.request.get(`/pack/${file}`)).json();
+  const rules = (await fragment('rules.json')) as { level: string; message: string }[];
+  const signs = (await fragment('danger-signs.json')) as { message?: string }[];
+  const ids = new Set([
+    ...rules.filter((rule) => rule.level === 'danger').map((rule) => rule.message),
+    ...signs.map((sign) => sign.message ?? 'danger-sign'),
+  ]);
+  const texts = ['Allez au poste de santé maintenant.', 'Go to the health post now.'];
+  for (const lang of ['fr', 'en']) {
+    const messages = (await fragment(`messages.${lang}.json`)) as Record<
+      string,
+      { orientation?: string }
+    >;
+    for (const id of ids) {
+      const orientation = messages[id]?.orientation;
+      if (orientation !== undefined) texts.push(orientation);
+    }
+  }
+  return texts.reduce((longest, text) => (text.length > longest.length ? text : longest));
+}
+
+/** The danger banner says `words`, sized as the banner sizes a long instruction. */
+export async function sayInBanner(page: Page, words: string) {
+  await page
+    .getByRole('alert')
+    .getByRole('heading')
+    .evaluate((heading, text) => {
+      heading.textContent = text;
+      heading.classList.toggle('danger-banner__title--long', text.length > 40);
+    }, words);
+  await expect(page.getByRole('alert')).toContainText(words);
 }

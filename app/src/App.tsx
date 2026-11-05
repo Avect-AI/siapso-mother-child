@@ -11,6 +11,7 @@ import { Check } from './screens/Check.js';
 import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
 import { ContactEdit, Contacts, contactScreenKey, type ContactTarget } from './screens/Contacts.js';
+import { COUNTRY_PATH, Country } from './screens/Country.js';
 import { Danger } from './screens/Danger.js';
 import { CONTACT_EDIT_PATH, editedId, PROFILE_EDIT_PATH } from './screens/edit-route.js';
 import { FORGOT_PATH, ForgotCode } from './screens/ForgotCode.js';
@@ -68,6 +69,7 @@ type Screen =
   | 'profiles'
   | 'danger'
   | 'call'
+  | 'country'
   | 'contacts'
   | 'contact'
   | 'profile'
@@ -140,7 +142,8 @@ function profileTarget(location: string, mode: Mode | null): ProfileTarget | nul
 /**
  * The screen for a hash route. Danger signs and who to call open from
  * anywhere and at once, even before the stored settings are read, the
- * welcome questions answered or the code given; anything else waits for the
+ * welcome questions answered or the code given, and so does the country of
+ * use that who to call opens (its numbers); anything else waits for the
  * settings ('loading' shows nothing, a few milliseconds normally), then for
  * the welcome answers, then for the stored code. The settings show the
  * language at any time. Every other screen shows something about a profile
@@ -160,6 +163,7 @@ function screenFor(
 ): Screen | null {
   if (location === '/danger') return 'danger';
   if (location === CALL_PATH) return 'call';
+  if (location === COUNTRY_PATH) return 'country';
   if (!settings.ready) return 'loading';
   // The welcome only while no code is known (none stored, or storage unreadable):
   // with a code stored (a welcome cut short), the code comes first, then the mode.
@@ -342,11 +346,13 @@ function Screens() {
   // each is replaced by the neutral one as it is reached.
   if (screen === 'neutral' && location !== '/') return <Redirect to="/" replace />;
   // The quick exit, once the code is given; before it too on the danger signs
-  // and who to call, where signs may be ticked without the code.
+  // and who to call, where signs may be ticked without the code, and on the
+  // country of use, opened from who to call with them.
   const exitShown =
     settings.onboarded &&
     (session.unlocked ||
-      (session.status === 'locked' && (screen === 'danger' || screen === 'call')));
+      (session.status === 'locked' &&
+        (screen === 'danger' || screen === 'call' || screen === 'country')));
   return (
     <>
       {/* On every screen: the danger signs are one tap away even during the
@@ -388,6 +394,7 @@ function Screens() {
           the signs ticked are forgotten. */}
       {screen === 'danger' ? <Danger key={session.epoch} /> : null}
       {screen === 'call' ? <Referral key={session.epoch} /> : null}
+      {screen === 'country' ? <Country /> : null}
       {screen === 'contacts' ? <Contacts /> : null}
       {screen === 'contact' && contact !== null && contact !== 'list' ? (
         <ContactEdit key={key} target={contact} />

@@ -40,6 +40,8 @@ path = [
   ".impeccable/design.json",
   # Design briefs of the impeccable process, written for this project.
   "app/.impeccable/**",
+  # The national emergency numbers by country, with their sources (data).
+  "app/src/config/emergency-numbers.json",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 AVECT AI SARL"

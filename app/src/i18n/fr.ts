@@ -718,10 +718,22 @@ export const fr = {
     emergencyLabel: "Numéros d'urgence",
     // The link that dials a public emergency number: the service named in the sentence, then the number.
     emergencyDial: 'Appeler {service} ({phone})',
+    // One per service of config/emergency-numbers.json, named in a sentence.
     services: {
       samu: 'le SAMU',
+      ambulance: 'les urgences médicales',
+      emergency: "le numéro d'urgence",
       firefighters: 'les pompiers',
+      'civil-protection': 'la protection civile',
+      police: 'la police',
     },
+    // No number for the country of use (unknown, or none in the app): the
+    // country to choose comes first, never a guessed number.
+    noNumber: "Appelez le numéro d'urgence de votre pays.",
+    // The country whose emergency numbers are shown, and the way to change it.
+    country: 'Pays : {country}',
+    changeCountry: 'Changer le pays',
+    chooseCountry: 'Choisir le pays',
     // Before the code: the contacts kept on the phone are not shown, and
     // nothing says whether there are any.
     locked:
@@ -785,6 +797,48 @@ export const fr = {
     loading: 'La liste se prépare.',
     seeResult: 'Voir le résultat',
   },
+  // The country of use: its emergency numbers are those of who to call.
+  country: {
+    title: 'Dans quel pays êtes-vous ?',
+    lead: "Qui appeler montre les numéros d'urgence du pays choisi.",
+    search: 'Chercher un pays',
+    searchHint: 'Une partie de son nom.',
+    listLabel: 'Pays',
+    noMatch: 'Aucun pays de la liste ne porte ce nom.',
+    // A country the list does not have: who to call then shows no number.
+    other: "Mon pays n'est pas dans la liste",
+    chosen: 'Pays choisi',
+    unknown: 'inconnu',
+    otherName: 'autre pays',
+  },
+  // The countries of config/emergency-numbers.json, by ISO code.
+  countries: {
+    SN: 'Sénégal',
+    ML: 'Mali',
+    MR: 'Mauritanie',
+    GM: 'Gambie',
+    GN: 'Guinée',
+    GW: 'Guinée-Bissau',
+    CV: 'Cap-Vert',
+    CI: "Côte d'Ivoire",
+    BF: 'Burkina Faso',
+    NE: 'Niger',
+    TG: 'Togo',
+    BJ: 'Bénin',
+    GH: 'Ghana',
+    NG: 'Nigeria',
+    CM: 'Cameroun',
+    TD: 'Tchad',
+    CF: 'République centrafricaine',
+    GA: 'Gabon',
+    CG: 'Congo (Brazzaville)',
+    CD: 'RD Congo (Kinshasa)',
+    MG: 'Madagascar',
+    MA: 'Maroc',
+    DZ: 'Algérie',
+    TN: 'Tunisie',
+    FR: 'France',
+  },
   settings: {
     unavailable:
       "Ce téléphone n'a pas pu garder vos réglages. Vos choix seront peut-être à refaire.",
@@ -800,6 +854,9 @@ export const fr = {
     // language button is said in the language it switches to.
     applyLanguage: 'Passer en français',
     applyMode: 'Changer de mode',
+    countryHint: "Qui appeler montre les numéros d'urgence de ce pays.",
+    // Set by the deployment file: changing it here would change nothing.
+    countryFixed: "Ce pays est fixé avec l'application.",
     done: "Revenir à l'accueil",
   },
   // The two links to the status and about screens, on Home, the list of

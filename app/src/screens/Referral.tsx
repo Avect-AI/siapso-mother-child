@@ -2,7 +2,7 @@
 import type { Lang } from '@siapso/engine';
 import { useEffect, useId, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { EMERGENCY_NUMBERS } from '../config/emergency.js';
+import { emergencyNumbersOf, type CountryCode } from '../config/emergency.js';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
 import { dialNameOf, phoneGroups, telHref } from '../domain/contacts.js';
 import { keepUnits, type InstructionSource } from '../domain/result-view.js';
@@ -11,6 +11,7 @@ import type { EmergencyNumber, ReferralContact } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { FROM_CALL, forgetSavedForCall, savedForCall } from '../state/contact-return.js';
+import { useCountryOfUse } from '../state/country.js';
 import { epochToken, forgetStaleEntry, inVisit, visitState } from '../state/entry-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
@@ -19,6 +20,7 @@ import { DialLink } from '../ui/DialLink.js';
 import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
+import { COUNTRY_BACK, COUNTRY_PATH } from './Country.js';
 import { UNLOCK_PATH } from './Neutral.js';
 
 /** The route of who to call, under the danger signs. */
@@ -148,9 +150,13 @@ interface EmergencyLink {
   phone: string;
 }
 
-/** The deployment's emergency numbers when it gives some, else the built-in ones. */
+/**
+ * The deployment's emergency numbers when it gives some, else the built-in
+ * ones of the country of use (none for an unknown country).
+ */
 function emergencyLinks(
   deployed: EmergencyNumber[] | undefined,
+  country: CountryCode | null,
   lang: Lang,
   t: ReturnType<typeof useT>,
 ): EmergencyLink[] {
@@ -161,8 +167,8 @@ function emergencyLinks(
       phone,
     }));
   }
-  return EMERGENCY_NUMBERS.map(({ service, phone }) => ({
-    key: service,
+  return emergencyNumbersOf(country).map(({ service, phone }) => ({
+    key: `${service}:${phone}`,
     label: t('call.emergencyDial', { service: t(`call.services.${service}`), phone }),
     phone,
   }));
@@ -280,6 +286,17 @@ export function Referral() {
   // A contact just saved from here: said once, only while open in the epoch it was saved in.
   const saved =
     justSaved !== null && unlocked && justSaved.epoch === epochToken() ? justSaved.who : null;
+  // The country of use: the deployment's once its file is read, else the one
+  // chosen, else what the phone says; its numbers show at once.
+  const { country, source: countryFrom } = useCountryOfUse(circuit?.country);
+  const links = emergencyLinks(circuit?.emergencyNumbers, country, lang, t);
+  const countryName = country === null ? null : t(`countries.${country}`);
+  // Fixed by the deployment: changing it here would change nothing.
+  const changeable = countryFrom !== 'deployment';
+  // No contact listed: the first action of the screen is ours (a number, or the country).
+  const firstIsOurs = circuit !== null && contacts.length === 0;
+  // Opened from here, the country screen comes back to this entry, banner and signs kept.
+  const toCountry = inVisit({ [COUNTRY_BACK]: true });
 
   return (
     <main className="screen referral">
@@ -308,19 +325,55 @@ export function Referral() {
         {saved === null || !announce ? '' : t('contacts.saved', { who: saved })}
       </p>
 
-      {/* Always, and at once (built in until the deployment file is read): the
-          emergency numbers, so a danger never ends on no one to call. */}
-      <ul className="referral__emergency" aria-label={t('call.emergencyLabel')}>
-        {emergencyLinks(circuit?.emergencyNumbers, lang, t).map((number, index) => (
-          <li key={number.key}>
-            <DialLink
-              href={telHref(number.phone)}
-              label={number.label}
-              primary={circuit !== null && contacts.length === 0 && index === 0}
-            />
-          </li>
-        ))}
-      </ul>
+      {/* Always, and at once (those of the country of use until the deployment
+          file is read): the emergency numbers, so a danger never ends on no
+          one to call; with no number for the country, what to do and the
+          country to choose, never a guessed number. */}
+      {links.length > 0 ? (
+        <>
+          <ul className="referral__emergency" aria-label={t('call.emergencyLabel')}>
+            {links.map((number, index) => (
+              <li key={number.key}>
+                <DialLink
+                  href={telHref(number.phone)}
+                  label={number.label}
+                  primary={firstIsOurs && index === 0}
+                />
+              </li>
+            ))}
+          </ul>
+          {/* The country of the numbers, with a quiet way to change it; the
+              deployment's own numbers belong to no country of the list. */}
+          {circuit?.emergencyNumbers !== undefined || countryName === null ? null : (
+            <div className="referral__country">
+              <p>{t('call.country', { country: countryName })}</p>
+              {changeable ? (
+                <Link
+                  className="button button--quiet referral__country-change"
+                  href={COUNTRY_PATH}
+                  state={toCountry}
+                >
+                  {t('call.changeCountry')}
+                </Link>
+              ) : null}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="referral__no-number">
+          <p className="referral__call-country">{t('call.noNumber')}</p>
+          {countryName === null ? null : <p>{t('call.country', { country: countryName })}</p>}
+          {changeable ? (
+            <Link
+              className={`button button--${firstIsOurs ? 'primary' : 'secondary'} referral__choose`}
+              href={COUNTRY_PATH}
+              state={toCountry}
+            >
+              {countryName === null ? t('call.chooseCountry') : t('call.changeCountry')}
+            </Link>
+          ) : null}
+        </div>
+      )}
 
       {/* Then what to do: the danger banner (the calls are its actions), or the orientation. */}
       {instruction === undefined ? null : instruction === null ? (

@@ -11,7 +11,7 @@ import { appName } from './src/app-name.js';
 // package @siapso/engine external, and Node cannot load its TypeScript index;
 // this one file imports types only, so it is bundled with the config.
 import { findForbiddenWording } from '../engine/src/wording.js';
-import { EMERGENCY_NUMBERS } from './src/config/emergency.js';
+import { emergencyNumbersOf } from './src/config/emergency.js';
 import { PACK_PUBLIC_KEYS, type PackPublicKey } from './src/config/pack-keys.js';
 import {
   ALLOW_UNSIGNED_VARIABLE,
@@ -278,21 +278,24 @@ function loud(lines: string[]): string {
  * The warning a build prints about the deployment's referral file
  * (`<publicDir>/config/referral.json`), read as the phones read it
  * (src/domain/referral-file.ts); null when it is there and every entry filled
- * in is kept. Missing: the phones show who to call with the built-in national
- * emergency numbers only (src/config/emergency.ts), no contact of the
- * district's circuit. Not valid JSON: the phones read it as no file. An entry
- * left out: each is named, with why.
+ * in is kept. Missing: the phones show who to call with the national
+ * emergency numbers of the country each phone finds (src/config/emergency.ts,
+ * src/domain/country.ts), no contact of the district's circuit. Not valid
+ * JSON: the phones read it as no file. An entry left out: each is named, with
+ * why. A country fixed with no number in the emergency numbers file, and none
+ * given by the file: who to call would show no number to call.
  */
 export function referralFileWarning(publicDir: string): string | null {
   const file = path.join(publicDir, 'config', 'referral.json');
   if (!existsSync(file)) {
     return loud([
       'WARNING: no deployment referral file: public/config/referral.json is missing.',
-      'Who to call will list no contact of the referral circuit, only the built-in',
-      `national emergency numbers (${EMERGENCY_NUMBERS.map(({ service, phone }) => `${service} ${phone}`).join(', ')}) and the line`,
-      '"go to the nearest health post or health centre". Before a pilot build, copy',
-      'public/config/referral.example.json to public/config/referral.json and fill',
-      'it in (README.md, "Referral contacts of a deployment").',
+      'Who to call will list no contact of the referral circuit, only the national',
+      'emergency numbers of the country each phone finds from its language or time',
+      'zone (src/config/emergency-numbers.json) and the line "go to the nearest',
+      'health post or health centre". Before a pilot build, copy',
+      'public/config/referral.example.json to public/config/referral.json, set its',
+      '"country" and fill it in (README.md, "Referral contacts of a deployment").',
     ]);
   }
   let data: unknown;
@@ -308,12 +311,27 @@ export function referralFileWarning(publicDir: string): string | null {
       failure instanceof Error ? failure.message : String(failure),
     ]);
   }
-  const { leftOut } = readReferralFile(data, findForbiddenWording);
-  if (leftOut.length === 0) return null;
-  return loud([
-    'WARNING: public/config/referral.json has entries the phones will leave out:',
-    ...leftOut.map((entry) => `  - ${entry}`),
-  ]);
+  const { config, leftOut } = readReferralFile(data, findForbiddenWording);
+  const lines: string[] = [];
+  if (leftOut.length > 0) {
+    lines.push(
+      'WARNING: public/config/referral.json has entries the phones will leave out:',
+      ...leftOut.map((entry) => `  - ${entry}`),
+    );
+  }
+  if (
+    config.country !== undefined &&
+    config.emergencyNumbers === undefined &&
+    emergencyNumbersOf(config.country).length === 0
+  ) {
+    lines.push(
+      `WARNING: public/config/referral.json fixes the country ${config.country}, which has no`,
+      'emergency number in src/config/emergency-numbers.json, and gives no',
+      '"emergencyNumbers": who to call will show no number to call. Give the',
+      'numbers of the pilot district in "emergencyNumbers".',
+    );
+  }
+  return lines.length === 0 ? null : loud(lines);
 }
 
 /** Prints referralFileWarning loudly at the start of a production build. */

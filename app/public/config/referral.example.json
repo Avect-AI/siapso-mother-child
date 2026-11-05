@@ -1,4 +1,5 @@
 {
+  "country": "",
   "contacts": [
     { "role": "relay", "name": "", "phone": "" },
     { "role": "bajenu-gox", "name": "", "phone": "" },

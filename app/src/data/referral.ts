@@ -5,9 +5,10 @@
 // /config/referral.json, which a deployment adds before building (never
 // committed: public/config/referral.example.json shows its form) and the
 // service worker keeps offline. The file may also replace the built-in
-// emergency numbers (config/emergency.ts) and add its circuit text under the
-// built-in line. Nothing here is ever sent anywhere: a call is a tel: link that
-// the phone dials.
+// emergency numbers (config/emergency.ts), fix the country of use
+// (domain/country.ts) and add its circuit text under the built-in line.
+// Nothing here is ever sent anywhere: a call is a tel: link that the phone
+// dials.
 import { findForbiddenWording } from '@siapso/engine';
 import { isReferralContact, REFERRAL_ROLES, telHref } from '../domain/contacts.js';
 import { isSealed, UnsealError } from '../domain/crypto.js';
@@ -197,5 +198,6 @@ export async function loadReferral({
   };
   if (deployment.nationalCircuit) loaded.nationalCircuit = deployment.nationalCircuit;
   if (deployment.emergencyNumbers) loaded.emergencyNumbers = deployment.emergencyNumbers;
+  if (deployment.country) loaded.country = deployment.country;
   return loaded;
 }

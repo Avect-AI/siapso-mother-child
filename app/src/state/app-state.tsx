@@ -25,6 +25,7 @@ import {
   type PackFallback,
 } from '../data/pack-loader.js';
 import type { PackOrigin } from '../data/pack-verify.js';
+import { phoneHints, type PhoneHints } from '../domain/country.js';
 import type { Settings } from '../domain/types.js';
 import { storageKeeper } from '../pwa/storage.js';
 import { CheckContext, useCheckStore } from './check-state.js';
@@ -66,6 +67,8 @@ export interface AppState {
   online: boolean;
   /** How long a screen waits for IndexedDB before saying it could not read or store. */
   storageTimeoutMs: number;
+  /** What the phone says of where it is (its languages and time zone), read once, offline. */
+  phone: PhoneHints;
 }
 
 export const DEFAULT_SETTINGS: Settings = { lang: 'fr', mode: null, onboarded: false };
@@ -168,6 +171,7 @@ export function AppProvider({
   acceptsUnsigned = BUILD_TRUST.allowUnsigned,
   storageTimeoutMs = STORAGE_TIMEOUT_MS,
   session = {},
+  phone,
 }: {
   children: ReactNode;
   /** Replaced in tests; loads from /pack/ with a fallback to IndexedDB by default. */
@@ -181,6 +185,8 @@ export function AppProvider({
   storageTimeoutMs?: number;
   /** Set by tests only: the app always starts locked, with the full PBKDF2 count. */
   session?: SessionOptions;
+  /** Replaced in tests; what the phone says of where it is (domain/country.ts) by default. */
+  phone?: PhoneHints;
 }) {
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
   const [settingsReady, setSettingsReady] = useState(false);
@@ -189,6 +195,8 @@ export function AppProvider({
   /** The stored settings were read: memory holds them, and a store keeps what it did not change. */
   const read = useRef(false);
   const [packState, setPackState] = useState<PackState>(NO_PACK);
+  // Read once, on the phone only: no network, no location permission.
+  const [phoneSays] = useState<PhoneHints>(() => phone ?? phoneHints());
 
   const online = useSyncExternalStore(subscribeOnline, isOnline);
   const check = useCheckStore();
@@ -319,6 +327,7 @@ export function AppProvider({
       acceptsUnsigned,
       online,
       storageTimeoutMs,
+      phone: phoneSays,
     }),
     [
       settings,
@@ -331,6 +340,7 @@ export function AppProvider({
       acceptsUnsigned,
       online,
       storageTimeoutMs,
+      phoneSays,
     ],
   );
 

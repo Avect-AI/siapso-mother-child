@@ -54,8 +54,9 @@ describe('build warning for the referral file', () => {
       const warning = referralFileWarning(empty);
       expect(warning).toMatch(/WARNING/);
       expect(warning).toMatch(/config\/referral\.json/);
-      // It says what the phones will show without it.
-      expect(warning).toMatch(/1515/);
+      // It says what the phones will show without it, and how to fix the country.
+      expect(warning).toMatch(/emergency-numbers\.json/);
+      expect(warning).toMatch(/"country"/);
     } finally {
       rmSync(empty, { recursive: true, force: true });
     }
@@ -111,5 +112,31 @@ describe('build warning for the referral file', () => {
     expect(warning).toMatch(/contacts\[2\]/);
     expect(warning).toMatch(/emergencyNumbers\[0\]/);
     expect(warning).not.toMatch(/contacts\[0\]/);
+  });
+
+  it('is loud about a country the emergency numbers file does not have', () => {
+    const warning = warningFor(JSON.stringify({ contacts: [], country: 'XX' }));
+    expect(warning).toMatch(/WARNING/);
+    expect(warning).toMatch(/country: "XX"/);
+  });
+
+  it('is loud when the country fixed has no number to call and the file gives none', () => {
+    const warning = warningFor(JSON.stringify({ contacts: [], country: 'MR' }));
+    expect(warning).toMatch(/WARNING/);
+    expect(warning).toMatch(/MR/);
+    expect(warning).toMatch(/emergencyNumbers/);
+    // With its own numbers, or a country with numbers, nothing to say.
+    expect(
+      warningFor(
+        JSON.stringify({
+          contacts: [],
+          country: 'MR',
+          emergencyNumbers: [
+            { name: { fr: 'la ligne verte', en: 'the green line' }, phone: '000' },
+          ],
+        }),
+      ),
+    ).toBeNull();
+    expect(warningFor(JSON.stringify({ contacts: [], country: 'SN' }))).toBeNull();
   });
 });
