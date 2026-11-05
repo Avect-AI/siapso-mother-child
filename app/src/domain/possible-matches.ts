@@ -23,7 +23,7 @@ import {
   type Finding,
   type Pack,
 } from '@siapso/engine';
-import { parseStrength, queryMentions, search, type Candidate } from '@siapso/resolver';
+import { formWords, parseStrength, queryMentions, search, type Candidate } from '@siapso/resolver';
 import { productFamilyOf, searchIndexOf, strengthChoiceOf } from './search-index.js';
 
 /**
@@ -144,7 +144,10 @@ function substancesOf(pack: Pack, item: CheckedItem): string[] {
  * unknown, as "Je ne sais pas" on the confirm screen. When the check already
  * holds the product family or the remedy the text looks like (an item given,
  * or the possible match of another name typed), the text still gets its own
- * possible match: a copy of that item, marked `sameAs`, put after the others.
+ * possible match: a copy of that item, marked `sameAs`, put after the others,
+ * when it is that very product or remedy, or when the text gives no strength
+ * and no form; another strength or form of the family typed ("Kardegic 300"
+ * beside KARDEGIC 75 mg) is another box, which the engine reads.
  */
 export function withPossibleMatches(
   pack: Pack,
@@ -179,8 +182,16 @@ export function withPossibleMatches(
       const key = keyOf(pack, added);
       if (key === undefined) return;
       const there = standsFor.get(key);
-      if (there === undefined) {
-        standsFor.set(key, all.length);
+      const listedRef = there === undefined ? undefined : all[there]?.ref;
+      // Another strength or form of the family typed ("Kardegic 300" beside
+      // KARDEGIC 75 mg) is another box: the engine reads it, so a duplicate, a
+      // daily maximum or a strength threshold applies to it.
+      const otherBox =
+        listedRef?.kind === 'product' &&
+        listedRef.id !== candidate.id &&
+        (parseStrength(text).strengthMg !== undefined || formWords(text).length > 0);
+      if (there === undefined || otherBox) {
+        if (there === undefined) standsFor.set(key, all.length);
         possible.set(all.length, { forItem, typed: text, strength: found });
         all.push(added);
       } else if (!named) {

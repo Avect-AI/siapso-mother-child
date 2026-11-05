@@ -417,6 +417,44 @@ describe('evaluateWithPossibleMatches', () => {
     }
   });
 
+  // Review of SCRUM-51 (I1): another strength or form of a listed brand is
+  // another box, read by the engine, never a copy of the listed box's cards.
+  it('reads "Kardegic 300" typed beside KARDEGIC 75 mg as its own box at 26 weeks', () => {
+    const kardegic75: CheckedItem = { ref: { kind: 'product', id: 'kardegic-75-mg-64755969' } };
+    const context = at(26, [kardegic75, typed('Kardegic 300')]);
+    expect(evaluate(pack, context).level).not.toBe('before-next-dose');
+    const net = withPossibleMatches(pack, context.items, { declined: () => true });
+    expect(net.items[2]).toEqual({ ref: { kind: 'product', id: 'kardegic-300-mg-68815221' } });
+    expect(net.possible.get(2)).not.toHaveProperty('sameAs');
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    expect(evaluation.level).toBe('before-next-dose');
+    expect(
+      evaluation.findings.find((f) => f.ruleId === 'aspirin-analgesic-dose-pregnancy')?.items,
+    ).toEqual([2]);
+  });
+
+  it('reads "doliprane 1000" typed beside DOLIPRANE 500 mg as a second paracetamol box', () => {
+    const doliprane500: CheckedItem = {
+      ref: { kind: 'product', id: 'doliprane-500-mg-63368332' },
+    };
+    const context = at(26, [doliprane500, typed('doliprane 1000')]);
+    const net = withPossibleMatches(pack, context.items, { declined: () => true });
+    expect(net.possible.get(2)).not.toHaveProperty('sameAs');
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    const duplicate = evaluation.findings.find(
+      (f) => f.ruleId === 'paracetamol-duplicate-products',
+    );
+    expect(duplicate?.items).toEqual([0, 2]);
+  });
+
+  it('copies the cards of a listed box for its own name typed, or the brand alone', () => {
+    const kardegic75: CheckedItem = { ref: { kind: 'product', id: 'kardegic-75-mg-64755969' } };
+    for (const text of ['Kardegic 75', 'kardegic']) {
+      const net = withPossibleMatches(pack, [kardegic75, typed(text)], { declined: () => true });
+      expect(net.possible.get(2), text).toMatchObject({ sameAs: 0, listed: true });
+    }
+  });
+
   it('holds the copy of a danger below a danger when its resemblance is only strong', () => {
     const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
     const context = at(36, [miso, typed('misopristol')]);
