@@ -42,9 +42,35 @@ jobs:
       - run: pnpm format:check
       - run: pnpm typecheck
       - run: pnpm test:coverage
+      # knowledge:check compares minimum-safe-version with origin/main (it
+      # never decreases nor disappears): the shallow checkout has no
+      # origin/main, so fetch it first.
+      - name: Fetch origin/main for the minimum safe version check
+        run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
       - run: pnpm knowledge:check
       - run: pnpm eval:resolver
-      - run: pnpm build
+      # pnpm build is the demo build (Vite mode demo, app/.env.demo, into
+      # app/dist-demo): it accepts the unsigned pack and is never published.
+      # CI does not sign packs: the release workflow will, with a protected
+      # environment (docs/pack-signing.md).
+      - name: Build (demo build, never published)
+        run: pnpm build
+      # The production build must stop, and for the signing rules, not for
+      # another reason: its output must name the refusal.
+      - name: The release build refuses the unsigned pack
+        run: |
+          log="$RUNNER_TEMP/release-check.log"
+          if pnpm --filter @siapso/app exec vite build --outDir "$RUNNER_TEMP/release-check" > "$log" 2>&1; then
+            cat "$log"
+            echo "A production build accepted an unsigned pack." >&2
+            exit 1
+          fi
+          if ! grep -Eq "would refuse every knowledge pack|Release build refused" "$log"; then
+            cat "$log"
+            echo "The production build failed, but not with the signing refusal." >&2
+            exit 1
+          fi
+          grep -E "would refuse every knowledge pack|Release build refused" "$log"
       - name: The build changes no committed file (NOTICE included)
         run: git diff --exit-code
       - run: pnpm budget:app
@@ -67,7 +93,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @siapso/app exec playwright install --with-deps chromium
-      - run: pnpm build
+      # The pack, then the tests: the Playwright web server makes a demo build
+      # in app/dist-demo (never published) that accepts the unsigned pack.
+      - run: pnpm knowledge:build
       - run: pnpm e2e
 
       - name: Upload the Playwright report

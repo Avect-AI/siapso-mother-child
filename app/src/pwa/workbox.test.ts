@@ -22,8 +22,16 @@ describe('service worker precache', () => {
   });
 
   it('keeps the app shell and the knowledge pack in the precache', () => {
-    expect(workbox.globPatterns).toContain('pack/*.json');
+    expect(workbox.globPatterns).toContain('pack/*.{json,sig}');
     expect(workbox.navigateFallback).toBe('index.html');
+  });
+
+  it('keeps the signature of a signed pack offline: manifest.sig is precached when present', () => {
+    // One pattern for both, so an unsigned build (no .sig file) has no pattern that matches nothing.
+    expect(workbox.globPatterns.filter((pattern) => pattern.startsWith('pack/'))).toEqual([
+      'pack/*.{json,sig}',
+    ]);
+    expect(workbox.globIgnores).toEqual(['pack/pack.json', 'voice/**']);
   });
 
   it('keeps the referral file of a deployment offline: who to call works in airplane mode', () => {

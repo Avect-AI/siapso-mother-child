@@ -12,18 +12,39 @@ import {
   type LockoutState,
 } from '../domain/code.js';
 import type { HistoryEntry, Profile, ReferralContact, Settings } from '../domain/types.js';
+import { compareVersions, isVersion, originKey, type PackOrigin } from './pack-verify.js';
 
 export type PackSlot = 'current' | 'previous';
 
 type SettingsKey = 'settings' | 'code' | 'lockout';
 
 /**
- * A validated pack and its fingerprint: the version and the sha256 of every
- * fragment, so an identical download is recognised without rewriting it.
+ * A validated pack and its fingerprint: the version, date and clinical
+ * validation from the manifest and the sha256 of every fragment, so an
+ * identical download is recognised without rewriting it.
  */
 export interface StoredPack {
   pack: Pack;
   fingerprint: string;
+  /** The sha256 of each fragment file, so an update downloads only the changed ones. */
+  hashes?: Record<string, string>;
+  /** Who signed it (absent for a pack stored before packs were signed). */
+  origin?: PackOrigin;
+  /**
+   * Set on a pack restored by a rollback: the version it replaced, which the
+   * loader does not bring back (a higher version is needed).
+   */
+  rolledBackFrom?: string;
+  /** The minimum safe version of its signed manifest: no rollback below it. */
+  minimumSafeVersion?: string;
+}
+
+/** What storePack keeps next to the pack. */
+export type PackDetails = Pick<StoredPack, 'hashes' | 'origin' | 'minimumSafeVersion'>;
+
+/** The version of a stored record, or undefined for a corrupted one that holds no pack. */
+export function versionOf(stored: StoredPack): unknown {
+  return (stored.pack as Partial<Pack> | undefined)?.version;
 }
 
 /** 'unchanged': the same version with the same fragments was already stored. */
@@ -103,21 +124,107 @@ export async function getStoredPack(slot: PackSlot): Promise<StoredPack | undefi
   return (await openAppDb()).get('pack', slot);
 }
 
+export interface StoreOptions {
+  /**
+   * The fingerprint of the stored pack the loader set aside (not trusted by
+   * this build, not valid, or below its floor): that one is replaced
+   * whatever its version. Any other stored pack is compared first.
+   */
+  replaces?: string;
+}
+
+/** Why `version` must not replace `current`, or null (versions that are not semantic are not compared). */
+function refusalOf(version: string, current: StoredPack): string | null {
+  if (!isVersion(version)) return null;
+  const rolledBack = current.rolledBackFrom;
+  if (isVersion(rolledBack) && compareVersions(version, rolledBack) <= 0) {
+    return `version ${version} was rolled back on this device`;
+  }
+  const stored = versionOf(current);
+  if (isVersion(stored) && compareVersions(version, stored) <= 0) {
+    return `version ${stored} is already on this device`;
+  }
+  return null;
+}
+
 /**
- * Stores `pack` as current, unless the current one has the same fingerprint.
- * A current pack of another version becomes the previous one.
+ * Stores `pack` as current, unless the current one has the same fingerprint
+ * and origin. The versions are checked again inside the transaction (another
+ * tab may have stored a pack meanwhile): a pack that is not newer than the
+ * stored one, or not above a version rolled back on this device, is refused,
+ * unless it is the same content (the same pack signed again) or the stored
+ * one is the pack the loader set aside. A current pack of another version
+ * becomes the previous one; a rewrite of the same content keeps its rollback
+ * mark.
  */
-export async function storePack(pack: Pack, fingerprint: string): Promise<StoreOutcome> {
+export async function storePack(
+  pack: Pack,
+  fingerprint: string,
+  details: PackDetails = {},
+  options: StoreOptions = {},
+): Promise<StoreOutcome> {
   const tx = (await openAppDb()).transaction('pack', 'readwrite');
   const current = await tx.store.get('current');
-  if (current?.fingerprint === fingerprint) {
+  if (
+    current?.fingerprint === fingerprint &&
+    originKey(current.origin) === originKey(details.origin)
+  ) {
     await tx.done;
     return 'unchanged';
   }
-  if (current && current.pack.version !== pack.version) await tx.store.put(current, 'previous');
-  await tx.store.put({ pack, fingerprint }, 'current');
+  if (
+    current !== undefined &&
+    current.fingerprint !== fingerprint &&
+    current.fingerprint !== options.replaces
+  ) {
+    const refusal = refusalOf(pack.version, current);
+    if (refusal !== null) {
+      await tx.done;
+      throw new Error(`not stored: ${refusal}`);
+    }
+  }
+  const entry: StoredPack = { pack, fingerprint, ...details };
+  if (current && versionOf(current) !== pack.version) {
+    await tx.store.put(current, 'previous');
+  } else if (current?.rolledBackFrom !== undefined) {
+    entry.rolledBackFrom = current.rolledBackFrom;
+  }
+  await tx.store.put(entry, 'current');
   await tx.done;
   return 'stored';
+}
+
+/**
+ * Makes the previous pack the current one, in one transaction, once `check`
+ * accepted it, knowing the current one (`check` throws to refuse, and then
+ * nothing changes). The pack it replaces is dropped and its version kept as
+ * `rolledBackFrom`. Resolves with the restored pack, or undefined when there
+ * is no previous pack.
+ */
+export async function restorePreviousPack(
+  check: (previous: StoredPack, current: StoredPack | undefined) => void,
+): Promise<StoredPack | undefined> {
+  const tx = (await openAppDb()).transaction('pack', 'readwrite');
+  const previous = await tx.store.get('previous');
+  const current = await tx.store.get('current');
+  if (previous === undefined) {
+    await tx.done;
+    return undefined;
+  }
+  try {
+    check(previous, current);
+  } catch (error) {
+    tx.abort();
+    await tx.done.catch(() => undefined);
+    throw error;
+  }
+  const left = current === undefined ? undefined : versionOf(current);
+  const restored: StoredPack =
+    typeof left === 'string' ? { ...previous, rolledBackFrom: left } : previous;
+  await tx.store.put(restored, 'current');
+  await tx.store.delete('previous');
+  await tx.done;
+  return restored;
 }
 
 export async function getStoredSettings(): Promise<Settings | undefined> {

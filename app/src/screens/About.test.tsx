@@ -19,6 +19,44 @@ beforeAll(async () => {
   real = await knowledgePack();
 });
 
+describe('About: an unsigned base (test or demo build)', () => {
+  it('says so on a line of its own', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/about',
+      packLoader: loaderOf(real, { origin: { signed: false, reason: 'the pack is not signed' } }),
+    });
+
+    expect(
+      await screen.findByText('Version de test : base de connaissances non signée.'),
+    ).toBeVisible();
+  });
+
+  it('says it whenever the build accepts unsigned packs', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/about',
+      acceptsUnsigned: true,
+      packLoader: loaderOf(real, { origin: { signed: true, keyId: 'team-1' } }),
+    });
+
+    expect(
+      await screen.findByText('Version de test : base de connaissances non signée.'),
+    ).toBeVisible();
+  });
+
+  it('says nothing of the kind for a signed base', async () => {
+    await renderApp({
+      settings: english,
+      hash: '#/about',
+      packLoader: loaderOf(real, { origin: { signed: true, keyId: 'team-1' } }),
+    });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'About' })).toBeVisible();
+    expect(screen.queryByText(/Test version/)).toBeNull();
+  });
+});
+
 describe('About', () => {
   it('shows the intended use in French, the fixed sentence, the licences and the repository', async () => {
     await renderApp({ settings: woman, hash: '#/about', packLoader: loaderOf(real) });

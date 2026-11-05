@@ -5,6 +5,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  // No version floor in unit tests: the loader tests pass their own (vite.config.ts
+  // sets the version of the built pack for a real build).
+  define: { __MIN_PACK_VERSION__: 'null', __MIN_SAFE_PACK_VERSION__: 'null' },
   resolve: {
     alias: {
       // A virtual module of vite-plugin-pwa, absent outside a build.

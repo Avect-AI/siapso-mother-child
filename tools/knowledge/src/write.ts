@@ -4,6 +4,7 @@ import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import type { Pack } from '@siapso/engine';
+import { compareVersions } from './version.js';
 
 /** The fragment files the app assembles into a Pack, in a fixed order. */
 export const PACK_FRAGMENTS: readonly string[] = [
@@ -26,15 +27,26 @@ export interface Manifest {
   version: string;
   date: string;
   clinicallyValidated: boolean;
+  /**
+   * The lowest version still safe to use (knowledge/pack.yaml
+   * minimum-safe-version), when set: signed with the manifest, the app never
+   * rolls back below it.
+   */
+  minimumSafeVersion?: string;
   counts: Record<
     'substances' | 'classes' | 'products' | 'plants' | 'rules' | 'dangerSigns' | 'sources',
     number
   >;
   fragments: { path: string; sha256: string; bytes: number }[];
+  /**
+   * The key that signed manifest.sig (src/sign.ts). `siapso-pack sign` adds
+   * it; `siapso-pack build` writes an unsigned manifest without it.
+   */
+  keyId?: string;
 }
 
 /** Two-space indentation and a trailing newline: stable, diff-friendly bytes. */
-function json(value: unknown): string {
+export function json(value: unknown): string {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
@@ -78,10 +90,21 @@ async function emptyDirectory(dir: string): Promise<void> {
 /**
  * Writes the fragments, `pack.json` (the whole pack) and `manifest.json`
  * (which lists only the fragments) into `outDir`, after removing stale files
- * from it. Nothing is touched when the fragments are over the gzip size budget. The output depends only on the
- * pack: no timestamp, same bytes on every build.
+ * from it. Nothing is touched when the fragments are over the gzip size budget
+ * or the minimum safe version is above the version. The output depends only
+ * on the pack: no timestamp, same bytes on every build.
  */
-export async function writePack(pack: Pack, outDir: string): Promise<Manifest> {
+export async function writePack(
+  pack: Pack,
+  outDir: string,
+  options: { minimumSafeVersion?: string } = {},
+): Promise<Manifest> {
+  const { minimumSafeVersion } = options;
+  if (minimumSafeVersion !== undefined && compareVersions(minimumSafeVersion, pack.version) > 0) {
+    throw new Error(
+      `The minimum safe version ${minimumSafeVersion} is above the version of the pack ${pack.version}`,
+    );
+  }
   const values = fragmentsOf(pack);
   const files = PACK_FRAGMENTS.map((name) => ({ name, text: json(values[name]) }));
 
@@ -100,6 +123,7 @@ export async function writePack(pack: Pack, outDir: string): Promise<Manifest> {
     version: pack.version,
     date: pack.date,
     clinicallyValidated: pack.clinicallyValidated,
+    ...(minimumSafeVersion === undefined ? {} : { minimumSafeVersion }),
     counts: {
       substances: pack.substances.length,
       classes: pack.classes.length,

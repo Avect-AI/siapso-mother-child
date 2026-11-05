@@ -4,6 +4,7 @@ import { assemble } from './assemble.js';
 import { checkContent } from './checks.js';
 import { provenanceProblems } from './provenance.js';
 import { schemaProblems } from './schemas.js';
+import { compareVersions, isVersion } from './version.js';
 import type {
   AuthoredClass,
   AuthoredDangerSign,
@@ -150,11 +151,28 @@ function engineProblems(content: Content, raw: RawContent): Problem[] {
  * the built pack. Returns every problem found; an empty list means the content
  * is valid.
  */
+/** The minimum safe version of knowledge/pack.yaml may not be above its version. */
+function metaProblems(content: Content): Problem[] {
+  const meta = content.meta?.data;
+  const minimum = meta?.['minimum-safe-version'];
+  if (meta === undefined || minimum === undefined) return [];
+  if (!isVersion(minimum) || !isVersion(meta.version)) return [];
+  if (compareVersions(minimum, meta.version) <= 0) return [];
+  return [
+    {
+      file: 'knowledge/pack.yaml',
+      path: 'minimum-safe-version',
+      message: `must not be above the version of the pack (${meta.version})`,
+    },
+  ];
+}
+
 export function validateContent(raw: RawContent): Problem[] {
   const { content, problems } = collect(raw);
   const all = [
     ...raw.problems,
     ...problems,
+    ...metaProblems(content),
     ...checkContent(content, raw),
     ...provenanceProblems(content, raw),
   ];

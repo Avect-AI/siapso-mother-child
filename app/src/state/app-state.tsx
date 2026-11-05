@@ -16,7 +16,15 @@ import {
   type ReactNode,
 } from 'react';
 import { getStoredSettings, storeSettings } from '../data/db.js';
-import { loadPack, type LoadedPack } from '../data/pack-loader.js';
+import {
+  BUILD_TRUST,
+  loadPack,
+  previousPackVersion,
+  rollbackPack,
+  type LoadedPack,
+  type PackFallback,
+} from '../data/pack-loader.js';
+import type { PackOrigin } from '../data/pack-verify.js';
 import type { Settings } from '../domain/types.js';
 import { CheckContext, useCheckStore } from './check-state.js';
 import { SessionProvider, type SessionOptions } from './session.js';
@@ -38,6 +46,19 @@ export interface AppState {
   packFallbackReason: string | null;
   /** The pack works but could not be stored on the device. */
   packStoreError: string | null;
+  /** Who signed the pack, or why an unsigned one was accepted (a test or demo build). */
+  packOrigin: PackOrigin | null;
+  /** Why the stored copy is used, when the source is 'cache'. */
+  packFallback: PackFallback | null;
+  /**
+   * Reads the version a rollback would restore (null: none). Only the Status
+   * screen asks, in accompanied mode: nothing reads it after a load.
+   */
+  readPackPrevious: () => Promise<string | null>;
+  /** Makes the previous pack active at once; rejects, changing nothing, when it cannot. */
+  rollbackPack: () => Promise<void>;
+  /** This build accepts unsigned packs: a test or demo build, never a release. */
+  acceptsUnsigned: boolean;
   online: boolean;
   /** How long a screen waits for IndexedDB before saying it could not read or store. */
   storageTimeoutMs: number;
@@ -59,6 +80,8 @@ interface PackState {
   source: LoadedPack['source'] | null;
   fallbackReason: string | null;
   storeError: string | null;
+  origin: PackOrigin | null;
+  fallback: PackFallback | null;
 }
 
 const NO_PACK: PackState = {
@@ -67,7 +90,25 @@ const NO_PACK: PackState = {
   source: null,
   fallbackReason: null,
   storeError: null,
+  origin: null,
+  fallback: null,
 };
+
+/** The state of a pack handed back by the loader or by a rollback. */
+function packStateOf(result: LoadedPack): PackState {
+  return {
+    pack: result.pack,
+    error: null,
+    source: result.source,
+    fallbackReason: result.fallbackReason,
+    storeError: null,
+    origin: result.origin ?? null,
+    fallback: result.fallback ?? null,
+  };
+}
+
+const rollbackStoredPack = () => rollbackPack();
+const storedPreviousVersion = () => previousPackVersion();
 
 const AppContext = createContext<AppState | null>(null);
 
@@ -120,12 +161,21 @@ function requestPersistentStorage(): void {
 export function AppProvider({
   children,
   packLoader = loadPack,
+  packRollback = rollbackStoredPack,
+  packPrevious = storedPreviousVersion,
+  acceptsUnsigned = BUILD_TRUST.allowUnsigned,
   storageTimeoutMs = STORAGE_TIMEOUT_MS,
   session = {},
 }: {
   children: ReactNode;
   /** Replaced in tests; loads from /pack/ with a fallback to IndexedDB by default. */
   packLoader?: () => Promise<LoadedPack>;
+  /** Replaced in tests; restores the previous pack kept in IndexedDB by default. */
+  packRollback?: () => Promise<LoadedPack>;
+  /** Replaced in tests; the version of the previous pack kept in IndexedDB by default. */
+  packPrevious?: () => Promise<string | null>;
+  /** Replaced in tests; whether this build accepts unsigned packs (BUILD_TRUST) by default. */
+  acceptsUnsigned?: boolean;
   storageTimeoutMs?: number;
   /** Set by tests only: the app always starts locked, with the full PBKDF2 count. */
   session?: SessionOptions;
@@ -135,6 +185,7 @@ export function AppProvider({
   const [settingsUnavailable, setSettingsUnavailable] = useState(false);
   const latest = useRef<Settings>(DEFAULT_SETTINGS);
   const [packState, setPackState] = useState<PackState>(NO_PACK);
+
   const online = useSyncExternalStore(subscribeOnline, isOnline);
   const check = useCheckStore();
 
@@ -172,13 +223,7 @@ export function AppProvider({
     packLoader().then(
       (result) => {
         if (!live) return;
-        setPackState({
-          pack: result.pack,
-          error: null,
-          source: result.source,
-          fallbackReason: result.fallbackReason,
-          storeError: null,
-        });
+        setPackState(packStateOf(result));
         // The loader logs a store failure; the state keeps it for the status screen.
         result.stored.catch((error: unknown) => {
           if (live) setPackState((state) => ({ ...state, storeError: messageOf(error) }));
@@ -192,6 +237,11 @@ export function AppProvider({
       live = false;
     };
   }, [packLoader]);
+
+  const rollback = useCallback(async () => {
+    const result = await packRollback();
+    setPackState(packStateOf(result));
+  }, [packRollback]);
 
   const setSettings = useCallback(
     async (patch: Partial<Settings>) => {
@@ -222,6 +272,11 @@ export function AppProvider({
       packSource: packState.source,
       packFallbackReason: packState.fallbackReason,
       packStoreError: packState.storeError,
+      packOrigin: packState.origin,
+      packFallback: packState.fallback,
+      readPackPrevious: packPrevious,
+      rollbackPack: rollback,
+      acceptsUnsigned,
       online,
       storageTimeoutMs,
     }),
@@ -231,6 +286,9 @@ export function AppProvider({
       settingsUnavailable,
       setSettings,
       packState,
+      packPrevious,
+      rollback,
+      acceptsUnsigned,
       online,
       storageTimeoutMs,
     ],

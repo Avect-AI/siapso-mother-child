@@ -1288,6 +1288,8 @@ a {
  */
 .status__intro,
 .status__source,
+.status__rollback,
+.status__confirm,
 .about__section {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1296,8 +1298,28 @@ a {
 
 /* Under the screen's title, a section heading is one step smaller. */
 .status__source h2,
+.status__rollback h2,
 .about__section h2 {
   font-size: var(--font-size-title);
+}
+
+/*
+ * A test or demo build: an unsigned base. A strong line under a rule, kept
+ * on screen; meaning is carried by the words, never by colour.
+ */
+.status__unsigned {
+  padding-block: var(--space-2);
+  border-block: 2px solid var(--color-text);
+  font-weight: var(--font-weight-strong);
+}
+
+/* The technical reason, for the accompanying person: it may be long and unbroken. */
+.status__reason {
+  overflow-wrap: anywhere;
+}
+
+.status__rollback .button {
+  width: 100%;
 }
 
 .facts {

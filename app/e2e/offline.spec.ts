@@ -124,6 +124,7 @@ test('the service worker precaches every fragment the pack manifest lists', asyn
 
   const manifest = (await (await page.request.get('/pack/manifest.json')).json()) as {
     fragments: { path: string }[];
+    keyId?: string;
   };
   const cached = await cachedPaths(page);
 
@@ -134,6 +135,8 @@ test('the service worker precaches every fragment the pack manifest lists', asyn
       '/fonts/atkinson-hyperlegible-next-latin.woff2',
       '/pack/manifest.json',
       ...manifest.fragments.map((fragment) => `/pack/${fragment.path}`),
+      // A signed pack keeps its signature offline (the CI test build is unsigned).
+      ...(manifest.keyId === undefined ? [] : ['/pack/manifest.sig']),
     ]),
   );
   expect(cached).not.toContain('/pack/pack.json');

@@ -75,6 +75,8 @@ export interface AuthoredMeta {
   version: string;
   date: string;
   'clinically-validated': boolean;
+  /** The lowest pack version still safe to use: the app never rolls back below it. */
+  'minimum-safe-version'?: string;
 }
 
 /** One allowed or fact-only source of knowledge/sources.yaml. */

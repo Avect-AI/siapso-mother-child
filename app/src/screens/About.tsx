@@ -18,12 +18,17 @@ function isWebAddress(url: string): boolean {
  */
 export function About() {
   const t = useT();
-  const { pack } = useApp();
+  const { pack, packOrigin, acceptsUnsigned } = useApp();
   const [, navigate] = useLocation();
 
   return (
     <main className="screen about">
       <h1 tabIndex={-1}>{t('about.title')}</h1>
+      {/* A test or demo build, or an unsigned base: said here too, since About is
+          where the app describes itself. */}
+      {acceptsUnsigned || packOrigin?.signed === false ? (
+        <p className="status__unsigned">{t('status.unsigned')}</p>
+      ) : null}
       <section className="about__section" aria-labelledby="about-use">
         <h2 id="about-use">{t('about.intendedUseTitle')}</h2>
         <p>{t('about.intendedUse')}</p>

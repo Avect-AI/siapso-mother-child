@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:demo": "tsc --noEmit && vite build --mode demo --outDir dist-demo",
     "preview": "vite preview --port 4173 --strictPort",
+    "preview:demo": "vite preview --mode demo --outDir dist-demo --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
+    "@noble/ed25519": "3.2.0",
+    "@noble/hashes": "2.4.0",
     "@siapso/engine": "workspace:*",
     "@siapso/resolver": "workspace:*",
     "idb": "8.0.4",

@@ -37,6 +37,12 @@ export const noPack = () => Promise.reject(new PackLoadError('no pack in this te
 /** A pack that is still loading for the whole test. */
 export const pendingPack = () => new Promise<LoadedPack>(() => undefined);
 
+/** No previous pack kept on the phone, so nothing to roll back to. */
+export const noPrevious = () => Promise.resolve(null);
+
+export const noRollback = () =>
+  Promise.reject(new Error('There is no previous pack to roll back to'));
+
 /** Stores the verifier of TEST_CODE, as the welcome leaves it. */
 export async function storeTestCode(): Promise<void> {
   await storeVerifier(await verifierOf(TEST_CODE));
@@ -52,6 +58,9 @@ export async function renderApp({
   settings,
   hash = '',
   packLoader = loaderOf(shellPack()),
+  packRollback = noRollback,
+  packPrevious = noPrevious,
+  acceptsUnsigned = false,
   storageTimeoutMs,
   locked = false,
   entryState,
@@ -62,6 +71,12 @@ export async function renderApp({
   settings?: Settings;
   hash?: string;
   packLoader?: () => Promise<LoadedPack>;
+  /** Restores the previous pack (none by default). */
+  packRollback?: () => Promise<LoadedPack>;
+  /** The version of the previous pack (none by default). */
+  packPrevious?: () => Promise<string | null>;
+  /** A build that accepts unsigned packs (a demo build); a release build by default. */
+  acceptsUnsigned?: boolean;
   storageTimeoutMs?: number;
   locked?: boolean;
   children?: ReactNode;
@@ -73,6 +88,9 @@ export async function renderApp({
   return render(
     <AppProvider
       packLoader={packLoader}
+      packRollback={packRollback}
+      packPrevious={packPrevious}
+      acceptsUnsigned={acceptsUnsigned}
       session={{ startUnlocked: !locked }}
       {...(storageTimeoutMs === undefined ? {} : { storageTimeoutMs })}
     >

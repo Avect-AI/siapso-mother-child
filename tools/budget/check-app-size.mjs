@@ -3,7 +3,7 @@
 // downloads to run the app (HTML, JavaScript, CSS, fonts, icons, web app
 // manifest, service worker) stays at or under 1.5 MB uncompressed. The
 // knowledge pack (pack/) and the voice files (voice/) have budgets of their
-// own and are left out. Run after `pnpm build`:
+// own and are left out. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
 //   node tools/budget/check-app-size.mjs [dist directory, default app/dist]
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -46,7 +46,7 @@ export async function checkAppSize(dir, log = console.log) {
     result = await measure(dir);
   } catch (error) {
     if (error && error.code === 'ENOENT') {
-      log(`No build in ${dir}: run pnpm build first.`);
+      log(`No build in ${dir}: run pnpm build (or pnpm release:build for a release) first.`);
       return 1;
     }
     throw error;

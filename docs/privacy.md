@@ -8,6 +8,7 @@ The app is often used on a phone shared by a family. A pregnancy, an HIV status 
 
 - **Covered:** casual access by someone else in the family who picks up the phone: they see no pseudonym, check, result, history, saved contact or mode without the code, and the quick exit hides everything at once.
 - **Not covered:** a forensic attacker (someone who reads the browser's storage with tools). The profiles stay unencrypted in IndexedDB until SCRUM-39 adds encryption at rest; until then the protection is that the interface never shows them without the code.
+- **The knowledge pack** (a tampered or replayed pack, a compromised signing key) is covered in `docs/threat-model.md`.
 
 ## What protects the data
 

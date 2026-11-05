@@ -40,20 +40,102 @@ function Probe() {
       <dd>store: {app.packStoreError ?? 'none'}</dd>
       <dt>online</dt>
       <dd>online: {String(app.online)}</dd>
+      <dt>kind</dt>
+      <dd>kind: {app.packFallback ?? 'none'}</dd>
+      <dt>origin</dt>
+      <dd>
+        origin: {app.packOrigin === null ? 'none' : app.packOrigin.signed ? 'signed' : 'unsigned'}
+      </dd>
     </dl>
   );
 }
 
-function renderProbe(packLoader: () => Promise<LoadedPack> = loaded, storageTimeoutMs?: number) {
+function renderProbe(
+  packLoader: () => Promise<LoadedPack> = loaded,
+  storageTimeoutMs?: number,
+  rollback: {
+    packRollback?: () => Promise<LoadedPack>;
+    packPrevious?: () => Promise<string | null>;
+  } = {},
+) {
   return render(
     <AppProvider
       packLoader={packLoader}
       {...(storageTimeoutMs === undefined ? {} : { storageTimeoutMs })}
+      {...rollback}
     >
       <Probe />
     </AppProvider>,
   );
 }
+
+describe('AppProvider rollback of the pack', () => {
+  const older = { version: '0.0.9', dangerSigns: [] } as unknown as Pack;
+  const restored: LoadedPack = {
+    pack: older,
+    source: 'cache',
+    fallbackReason: null,
+    fallback: 'rolled-back',
+    stored: Promise.resolve('stored'),
+    origin: { signed: true, keyId: 'team-1' },
+  };
+
+  it('never reads the previous pack on its own: only a screen that asks for it does', async () => {
+    const packPrevious = vi.fn(() => Promise.resolve('0.0.9'));
+
+    renderProbe(loaded, undefined, { packPrevious });
+    await screen.findByText('pack: 0.1.0');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(packPrevious).not.toHaveBeenCalled();
+    await expect(latest?.readPackPrevious()).resolves.toBe('0.0.9');
+    expect(packPrevious).toHaveBeenCalledTimes(1);
+  });
+
+  it('activates the restored pack at once, without a reload', async () => {
+    const packRollback = vi.fn(() => Promise.resolve(restored));
+    renderProbe(loaded, undefined, { packRollback });
+    await screen.findByText('pack: 0.1.0');
+
+    await act(async () => {
+      await latest?.rollbackPack();
+    });
+
+    expect(packRollback).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('pack: 0.0.9')).toBeInTheDocument();
+    expect(screen.getByText('source: cache')).toBeInTheDocument();
+    expect(screen.getByText('kind: rolled-back')).toBeInTheDocument();
+  });
+
+  it('changes nothing when the rollback fails, and says why to the caller', async () => {
+    renderProbe(loaded, undefined, {
+      packRollback: () => Promise.reject(new Error('There is no previous pack to roll back to')),
+    });
+    await screen.findByText('pack: 0.1.0');
+
+    await act(async () => {
+      await expect(latest?.rollbackPack()).rejects.toThrow(/no previous pack/);
+    });
+
+    expect(screen.getByText('pack: 0.1.0')).toBeInTheDocument();
+  });
+
+  it('keeps the origin and the reason for the stored copy of the loaded pack', async () => {
+    renderProbe(
+      loaderOf(pack, {
+        source: 'cache',
+        fallback: 'refused',
+        fallbackReason: 'manifest.sig: the signature does not match',
+        origin: { signed: false, reason: 'the pack is not signed' },
+      }),
+    );
+
+    expect(await screen.findByText('origin: unsigned')).toBeInTheDocument();
+    expect(screen.getByText('kind: refused')).toBeInTheDocument();
+  });
+});
 
 function setOnline(value: boolean) {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(value);

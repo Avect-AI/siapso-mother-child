@@ -434,8 +434,23 @@ export const en: Dictionary = {
     fromNetwork: 'This base is the one loaded with the app.',
     fromCopy: 'This base is the copy kept on this phone.',
     fallback: 'The base could not be loaded with the app. The copy kept on this phone is used.',
+    fallbackRefused:
+      'A new knowledge base was refused by this phone. The copy kept on this phone is used.',
+    rolledBack:
+      'The previous version was put back on this phone. A newer version will be taken once one is available.',
+    reason: 'Technical detail: {reason}',
     notStored:
       'This phone could not keep this base. It works for now. Open the app with Internet so that it is kept.',
+    unsigned: 'Test version: unsigned knowledge base.',
+    rollbackTitle: 'Previous version',
+    rollbackLead:
+      'Version {version} is kept on this phone. Go back to it only if the current base has a problem.',
+    rollbackAction: 'Go back to version {version}',
+    rollbackConfirm:
+      'Base {current} will be taken off this phone and version {previous} used again. This phone will not take version {current} again.',
+    rollbackYes: 'Yes, go back to version {version}',
+    rollbackCancel: 'Cancel',
+    rollbackFailed: 'Going back to the previous version did not work. The current base stays.',
   },
   about: {
     title: 'About',

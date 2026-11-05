@@ -126,3 +126,112 @@ test('the screens fit 360 px at 200 percent text', async ({ page }) => {
     expect(overflow).toBeLessThanOrEqual(0);
   }
 });
+
+/** The packs stored by the app in IndexedDB ('current', and 'previous' after an update). */
+function storedSlots(page: Page): Promise<string[]> {
+  return page.evaluate(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        const open = indexedDB.open('siapso');
+        open.onerror = () => {
+          reject(new Error(open.error?.message ?? 'open failed'));
+        };
+        open.onsuccess = () => {
+          const db = open.result;
+          const keys = db.transaction('pack').objectStore('pack').getAllKeys();
+          keys.onsuccess = () => {
+            db.close();
+            resolve(keys.result.map(String));
+          };
+        };
+      }),
+  );
+}
+
+/**
+ * Keeps a copy of the stored pack, as version `version`, as the previous
+ * pack: what an update leaves on the phone.
+ */
+async function keepPreviousVersion(page: Page, version: string) {
+  await page.evaluate(
+    (older) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('siapso');
+        open.onerror = () => {
+          reject(new Error(open.error?.message ?? 'open failed'));
+        };
+        open.onsuccess = () => {
+          const db = open.result;
+          const tx = db.transaction('pack', 'readwrite');
+          const store = tx.objectStore('pack');
+          const current = store.get('current');
+          current.onsuccess = () => {
+            const stored = current.result as { pack: { version: string }; fingerprint: string };
+            store.put(
+              {
+                ...stored,
+                pack: { ...stored.pack, version: older },
+                fingerprint: `${older} kept`,
+              },
+              'previous',
+            );
+          };
+          tx.oncomplete = () => {
+            db.close();
+            resolve();
+          };
+        };
+      }),
+    version,
+  );
+}
+
+test('accompanied mode: the previous version kept on the phone is put back, and stays after a reload', async ({
+  page,
+}) => {
+  await onboard(page, 'accompanied');
+  const manifest = await manifestOf(page);
+  await expect.poll(() => storedSlots(page)).toContain('current');
+  await keepPreviousVersion(page, '0.0.9');
+  await page.reload();
+  await unlock(page);
+
+  await page.getByRole('link', { name: 'Base de connaissances' }).click();
+  const facts = page.getByRole('list', { name: 'Contenu de la base' });
+  await expect(facts).toContainText(manifest.version);
+  // This end-to-end build is a demo build: its pack is not signed, and the screen says so.
+  await expect(page.getByText('Version de test : base de connaissances non signée.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Revenir à la version 0.0.9' }).click();
+  await expect(page.getByText(/la version 0\.0\.9 reprise/)).toBeVisible();
+  await expectNoSeriousViolation(page);
+  await page.getByRole('button', { name: 'Oui, revenir à la version 0.0.9' }).click();
+
+  await expect(facts).toContainText('0.0.9');
+  await expect(page.getByText(/La version précédente a été remise sur ce téléphone/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Revenir à la version/ })).toHaveCount(0);
+
+  // The version it left is not taken again: a reload keeps 0.0.9 (Status
+  // opens before the code, and offers no rollback while locked).
+  await page.reload();
+  await expect(facts).toContainText('0.0.9');
+  await expect(page.getByRole('button', { name: /Revenir à la version/ })).toHaveCount(0);
+  await expect(page.getByText(/La version précédente a été remise sur ce téléphone/)).toBeVisible();
+  await expect(page.getByText(/Détail technique : .*was rolled back on this device/)).toBeVisible();
+});
+
+test('a demo build says what it is: its build-info.json marker and the test version line', async ({
+  page,
+}) => {
+  const info = (await (await page.request.get('/build-info.json')).json()) as Record<
+    string,
+    unknown
+  >;
+  expect(info).toMatchObject({ mode: 'demo', acceptsUnsignedPack: true, packKeyId: null });
+
+  await onboard(page, 'woman');
+  await page.goto('/#/status');
+  await expect(page.getByText('Version de test : base de connaissances non signée.')).toBeVisible();
+  await page.goto('/#/about');
+  await expect(page.getByText('Version de test : base de connaissances non signée.')).toBeVisible();
+});

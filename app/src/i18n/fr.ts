@@ -493,8 +493,23 @@ export const fr = {
     fromCopy: 'Cette base est la copie gardée sur ce téléphone.',
     fallback:
       "La base n'a pas pu être chargée avec l'application. La copie gardée sur ce téléphone est utilisée.",
+    fallbackRefused:
+      'Une nouvelle base a été refusée par ce téléphone. La copie gardée sur ce téléphone est utilisée.',
+    rolledBack:
+      "La version précédente a été remise sur ce téléphone. Une version plus récente sera prise dès qu'elle sera disponible.",
+    reason: 'Détail technique : {reason}',
     notStored:
       "Ce téléphone n'a pas pu garder cette base. Elle marche pour le moment. Ouvrez l'application avec Internet pour qu'elle soit gardée.",
+    unsigned: 'Version de test : base de connaissances non signée.',
+    rollbackTitle: 'Version précédente',
+    rollbackLead:
+      'La version {version} est gardée sur ce téléphone. Revenez-y seulement si la base actuelle pose problème.',
+    rollbackAction: 'Revenir à la version {version}',
+    rollbackConfirm:
+      'La base {current} sera retirée de ce téléphone et la version {previous} reprise. Ce téléphone ne reprendra pas la version {current}.',
+    rollbackYes: 'Oui, revenir à la version {version}',
+    rollbackCancel: 'Annuler',
+    rollbackFailed: "Le retour à la version précédente n'a pas marché. La base actuelle reste.",
   },
   // Licences, sources and limits of the tool. The intended use is the
   // paragraph of docs/intended-use.md (English: that text, word for word;

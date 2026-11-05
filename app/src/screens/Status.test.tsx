@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Pack } from '@siapso/engine';
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { isIsoDate } from '../domain/dates.js';
@@ -206,5 +206,274 @@ describe('Status', () => {
     expect(screen.getByRole('link', { name: 'À propos' })).toHaveAttribute('href', '#/about');
     await user.click(screen.getByRole('button', { name: "Revenir à l'accueil" }));
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  });
+});
+
+const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
+const UNSIGNED = 'Version de test : base de connaissances non signée.';
+
+describe('Status: where the copy comes from', () => {
+  it('says a new base was refused, and gives the reason in accompanied mode only', async () => {
+    const refused = loaderOf(real, {
+      source: 'cache',
+      fallback: 'refused',
+      fallbackReason: 'manifest.sig: the signature does not match manifest.json (key "team-1")',
+    });
+
+    await renderApp({ settings: accompanied, hash: '#/status', packLoader: refused });
+
+    expect(
+      await screen.findByText(/Une nouvelle base a été refusée par ce téléphone/),
+    ).toBeVisible();
+    expect(screen.getByText(/Détail technique : manifest\.sig: the signature/)).toBeVisible();
+  });
+
+  it('keeps the reason out of woman mode', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/status',
+      packLoader: loaderOf(real, {
+        source: 'cache',
+        fallback: 'refused',
+        fallbackReason: 'manifest.sig: the signature does not match',
+      }),
+    });
+
+    expect(await screen.findByText(/Une nouvelle base a été refusée/)).toBeVisible();
+    expect(screen.queryByText(/Détail technique/)).toBeNull();
+  });
+
+  it('says the base could not be loaded when the phone is offline', async () => {
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real, {
+        source: 'cache',
+        fallback: 'offline',
+        fallbackReason: 'manifest.json: Failed to fetch',
+      }),
+    });
+
+    expect(
+      await screen.findByText(/La base n'a pas pu être chargée avec l'application/),
+    ).toBeVisible();
+    expect(screen.queryByText(/a été refusée/)).toBeNull();
+  });
+
+  it('says the previous version was put back after a rollback', async () => {
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real, {
+        source: 'cache',
+        fallback: 'rolled-back',
+        fallbackReason: 'manifest.json: version 0.2.0 was rolled back on this device',
+      }),
+    });
+
+    expect(
+      await screen.findByText(/La version précédente a été remise sur ce téléphone/),
+    ).toBeVisible();
+    expect(screen.queryByText(/n'a pas pu être chargée/)).toBeNull();
+  });
+});
+
+describe('Status: an unsigned base (test or demo build)', () => {
+  it('says so on a line of its own, in French and in English', async () => {
+    const unsigned = loaderOf(real, {
+      origin: { signed: false, reason: 'the pack is not signed' },
+    });
+
+    await renderApp({ settings: woman, hash: '#/status', packLoader: unsigned });
+    expect(await screen.findByText(UNSIGNED)).toBeVisible();
+  });
+
+  it('says it in English too', async () => {
+    await renderApp({
+      settings: english,
+      hash: '#/status',
+      packLoader: loaderOf(real, { origin: { signed: false, reason: 'the pack is not signed' } }),
+    });
+    expect(await screen.findByText('Test version: unsigned knowledge base.')).toBeVisible();
+  });
+
+  it('says nothing of the kind for a signed base in a release build', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/status',
+      packLoader: loaderOf(real, { origin: { signed: true, keyId: 'team-1' } }),
+    });
+    await screen.findByRole('list', { name: 'Contenu de la base' });
+    expect(screen.queryByText(UNSIGNED)).toBeNull();
+  });
+
+  it('says it whenever the build accepts unsigned packs, even with a signed base', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/status',
+      acceptsUnsigned: true,
+      packLoader: loaderOf(real, { origin: { signed: true, keyId: 'team-1' } }),
+    });
+
+    expect(await screen.findByText(UNSIGNED)).toBeVisible();
+  });
+
+  it('says it in a build that accepts unsigned packs even before a base is loaded', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/status',
+      acceptsUnsigned: true,
+      packLoader: noPack,
+    });
+
+    expect(await screen.findByText(UNSIGNED)).toBeVisible();
+  });
+});
+
+describe('Status: going back to the previous version', () => {
+  // Built when called: the real pack is only loaded in beforeAll.
+  const restored = () =>
+    Promise.resolve({
+      pack: { ...real, version: '0.0.9' },
+      source: 'cache' as const,
+      fallbackReason: null,
+      fallback: 'rolled-back' as const,
+      stored: Promise.resolve('stored' as const),
+    });
+  const kept = () => Promise.resolve('0.0.9');
+
+  it('asks to confirm, then puts the previous version back at once', async () => {
+    const user = userEvent.setup();
+    // As on the phone: once rolled back, no previous version is kept.
+    let keptVersion: string | null = '0.0.9';
+    const packRollback = vi.fn(() => {
+      keptVersion = null;
+      return restored();
+    });
+    const packPrevious = vi.fn(() => Promise.resolve(keptVersion));
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real),
+      packPrevious,
+      packRollback,
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Revenir à la version 0.0.9' }));
+    expect(
+      screen.getByText(/sera retirée de ce téléphone et la version 0\.0\.9 reprise/),
+    ).toBeVisible();
+    expect(packRollback).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Oui, revenir à la version 0.0.9' }));
+
+    expect(packRollback).toHaveBeenCalledTimes(1);
+    const facts = await screen.findByRole('list', { name: 'Contenu de la base' });
+    await waitFor(() => {
+      expect(facts).toHaveTextContent('0.0.9');
+    });
+    expect(screen.getByText(/La version précédente a été remise/)).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Revenir à la version/ })).toBeNull();
+  });
+
+  it('changes nothing when the confirmation is cancelled', async () => {
+    const user = userEvent.setup();
+    const packRollback = vi.fn(restored);
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real),
+      packPrevious: kept,
+      packRollback,
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Revenir à la version 0.0.9' }));
+    await user.click(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(packRollback).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Revenir à la version 0.0.9' })).toBeVisible();
+  });
+
+  it('says plainly when it did not work, with the reason, and keeps the current base', async () => {
+    const user = userEvent.setup();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real),
+      packPrevious: kept,
+      packRollback: () => Promise.reject(new Error('The previous pack is not valid: pack.schema')),
+    });
+
+    await user.click(await screen.findByRole('button', { name: 'Revenir à la version 0.0.9' }));
+    await user.click(screen.getByRole('button', { name: 'Oui, revenir à la version 0.0.9' }));
+
+    expect(
+      await screen.findByText(/Le retour à la version précédente n'a pas marché/),
+    ).toBeVisible();
+    expect(screen.getByText(/Détail technique : The previous pack is not valid/)).toBeVisible();
+    expect(screen.getByRole('list', { name: 'Contenu de la base' })).toHaveTextContent(
+      real.version,
+    );
+  });
+
+  it('is not offered when no previous version is kept', async () => {
+    await renderApp({ settings: accompanied, hash: '#/status', packLoader: loaderOf(real) });
+    await screen.findByRole('list', { name: 'Contenu de la base' });
+
+    expect(screen.queryByRole('heading', { name: 'Version précédente' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Revenir à la version/ })).toBeNull();
+  });
+
+  it('is not offered in woman mode, and the previous version is not even read', async () => {
+    const packPrevious = vi.fn(kept);
+    await renderApp({
+      settings: woman,
+      hash: '#/status',
+      packLoader: loaderOf(real),
+      packPrevious,
+    });
+    await screen.findByRole('list', { name: 'Contenu de la base' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole('button', { name: /Revenir à la version/ })).toBeNull();
+    expect(packPrevious).not.toHaveBeenCalled();
+  });
+
+  it('reads the previous version once Status opens in accompanied mode, not before', async () => {
+    const packPrevious = vi.fn(kept);
+    await renderApp({
+      settings: accompanied,
+      hash: '#/settings',
+      packLoader: loaderOf(real),
+      packPrevious,
+    });
+    await screen.findByRole('heading', { level: 1 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(packPrevious).not.toHaveBeenCalled();
+
+    window.location.hash = '#/status';
+
+    expect(await screen.findByRole('button', { name: 'Revenir à la version 0.0.9' })).toBeVisible();
+    expect(packPrevious).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not offered before the code', async () => {
+    await renderApp({
+      settings: accompanied,
+      hash: '#/status',
+      packLoader: loaderOf(real),
+      packPrevious: kept,
+      locked: true,
+    });
+    await screen.findByRole('list', { name: 'Contenu de la base' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole('button', { name: /Revenir à la version/ })).toBeNull();
   });
 });

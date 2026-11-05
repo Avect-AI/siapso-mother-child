@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-# Build from the repository root, after `pnpm build` has written the pack:
+# Build from the repository root, after `pnpm knowledge:build` has written the pack:
 #   docker build -f server/Dockerfile -t siapso-server .
 # Only the engine, the server and the built pack are copied.
 FROM node:24-slim AS deps

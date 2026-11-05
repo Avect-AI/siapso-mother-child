@@ -11,6 +11,11 @@
       "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
     },
     "date": { "type": "string", "format": "date" },
-    "clinically-validated": { "type": "boolean" }
+    "clinically-validated": { "type": "boolean" },
+    "minimum-safe-version": {
+      "description": "Optional: the lowest pack version still safe to use. The app never rolls back below it (docs/pack-signing.md). At most the version.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$"
+    }
   }
 }

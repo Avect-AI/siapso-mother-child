@@ -1,12 +1,221 @@
 // SPDX-License-Identifier: MIT
 import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { appName } from './src/app-name.js';
+import { PACK_PUBLIC_KEYS, type PackPublicKey } from './src/config/pack-keys.js';
+import {
+  ALLOW_UNSIGNED_VARIABLE,
+  allowsUnsignedPack,
+  signingBuildError,
+  unsignedPackAllowed,
+} from './src/config/pack-signing.js';
+import { checkOrigin, isVersion } from './src/data/pack-verify.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
+
+/** The knowledge pack the build ships (`pnpm knowledge:build` writes it). */
+const PACK_DIR = path.join(root, 'public', 'pack');
+const SHOWN_PACK_DIR = 'app/public/pack';
+
+/** A demo build goes to its own folder: app/dist only ever holds a release. */
+export const DEMO_OUT_DIR = 'dist-demo';
+
+/** What the build ships, from the manifest of the pack built in app/public/pack. */
+export interface BundledPack {
+  /** The floor: the app never accepts a lower version (`__MIN_PACK_VERSION__`). */
+  version: string;
+  /** No rollback below it, and a pack rolled back to below it is replaced (`__MIN_SAFE_PACK_VERSION__`). */
+  minimumSafeVersion: string | null;
+  /** The key that signed it, or null for an unsigned pack. */
+  keyId: string | null;
+}
+
+/** The pack built in `dir`, or null when none was built. */
+export function bundledPack(dir: string = PACK_DIR): BundledPack | null {
+  let text: string;
+  try {
+    text = readFileSync(path.join(dir, 'manifest.json'), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw error;
+  }
+  const manifest = JSON.parse(text) as Record<string, unknown>;
+  const { version, minimumSafeVersion, keyId } = manifest;
+  if (!isVersion(version)) {
+    throw new Error(
+      `${SHOWN_PACK_DIR}/manifest.json: version ${String(version)} is not a semantic version`,
+    );
+  }
+  if (minimumSafeVersion !== undefined && !isVersion(minimumSafeVersion)) {
+    throw new Error(
+      `${SHOWN_PACK_DIR}/manifest.json: minimumSafeVersion ${typeof minimumSafeVersion === 'string' ? minimumSafeVersion : JSON.stringify(minimumSafeVersion)} is not a semantic version`,
+    );
+  }
+  return {
+    version,
+    minimumSafeVersion: minimumSafeVersion ?? null,
+    keyId: typeof keyId === 'string' ? keyId : null,
+  };
+}
+
+/**
+ * build-info.json, written next to the app: the Vite mode, whether the build
+ * accepts unsigned packs, and which pack it ships. Nothing secret. The
+ * release steps check it (docs/pack-signing.md).
+ */
+export function buildInfo(
+  mode: string,
+  acceptsUnsigned: boolean,
+  pack: BundledPack | null,
+): string {
+  const info = {
+    mode,
+    acceptsUnsignedPack: acceptsUnsigned,
+    packVersion: pack?.version ?? null,
+    packMinimumSafeVersion: pack?.minimumSafeVersion ?? null,
+    packKeyId: pack?.keyId ?? null,
+  };
+  return `${JSON.stringify(info, null, 2)}\n`;
+}
+
+/**
+ * Why a build that accepts unsigned packs must not go to `outDir`, or null.
+ * On Windows folder names ignore case, so DIST is app/dist too.
+ */
+export function demoOutDirProblem(
+  acceptsUnsigned: boolean,
+  appRoot: string,
+  outDir: string,
+  platform: NodeJS.Platform = process.platform,
+): string | null {
+  if (!acceptsUnsigned) return null;
+  const same = (a: string, b: string) =>
+    platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  if (!same(path.resolve(appRoot, outDir), path.resolve(appRoot, 'dist'))) return null;
+  return `A demo build never goes to app/dist, where a release goes: it goes to app/${DEMO_OUT_DIR}.`;
+}
+
+/** Writes build-info.json, and keeps a demo build out of app/dist. */
+function buildInfoPlugin(info: string, acceptsUnsigned: boolean): Plugin {
+  return {
+    name: 'siapso-build-info',
+    apply: 'build',
+    configResolved(config) {
+      const problem = demoOutDirProblem(acceptsUnsigned, config.root, config.build.outDir);
+      if (problem !== null) throw new Error(problem);
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'build-info.json', source: info });
+    },
+  };
+}
+
+/**
+ * Checks, with the same code as the app (checkOrigin), that the pack a
+ * release build ships is signed by a key of src/config/pack-keys.ts.
+ */
+async function checkReleasePack(dir: string, keys: readonly PackPublicKey[]): Promise<void> {
+  let bytes: Uint8Array;
+  try {
+    bytes = new Uint8Array(await readFile(path.join(dir, 'manifest.json')));
+  } catch {
+    throw new Error(
+      `Release build refused: ${SHOWN_PACK_DIR}/manifest.json is missing: run pnpm knowledge:build, then pnpm knowledge:sign --key <file>.`,
+    );
+  }
+  const keyId = (JSON.parse(new TextDecoder().decode(bytes)) as { keyId?: unknown }).keyId;
+  if (keyId === undefined) {
+    throw new Error(
+      `Release build refused: the pack in ${SHOWN_PACK_DIR} is not signed. Make a release with pnpm release:build --key <file> (docs/pack-signing.md), or a demo build with pnpm build at the repository root.`,
+    );
+  }
+  if (typeof keyId === 'string' && !keys.some((key) => key.keyId === keyId)) {
+    throw new Error(
+      `Release build refused: the pack in ${SHOWN_PACK_DIR} is signed with key "${keyId}", which app/src/config/pack-keys.ts does not list.`,
+    );
+  }
+  try {
+    await checkOrigin(bytes, keyId, { keys, allowUnsigned: false }, () =>
+      readFile(path.join(dir, 'manifest.sig'), 'utf8'),
+    );
+  } catch (error) {
+    throw new Error(
+      `Release build refused: the signature of the pack in ${SHOWN_PACK_DIR} does not hold (${error instanceof Error ? error.message : String(error)}). Sign it again with pnpm knowledge:sign --key <file>.`,
+      { cause: error },
+    );
+  }
+}
+
+const DEMO_WARNING = [
+  '',
+  '========================================================================',
+  ' DEMO BUILD: this app accepts an unsigned knowledge pack.',
+  ' It is a test or demo build: never publish it as a release.',
+  ' Status and About say "Version de test" ("Test version").',
+  '========================================================================',
+  '',
+].join('\n');
+
+export interface PackSigningCheck {
+  command: 'build' | 'serve';
+  /** The Vite mode: 'production' for `pnpm release:build`, 'demo' for `pnpm build` (the demo build). */
+  mode: string;
+  isPreview: boolean;
+  /** VITE_ALLOW_UNSIGNED_PACK as the build reads it. */
+  flag: string | undefined;
+  keys?: readonly PackPublicKey[];
+  packDir?: string;
+  warn?: (message: string) => void;
+}
+
+/**
+ * The signing rules of a build (docs/pack-signing.md, tested in
+ * src/config/pack-signing.test.ts). A production build never takes
+ * VITE_ALLOW_UNSIGNED_PACK. A build that accepts unsigned packs (a demo build:
+ * another mode with the flag) says so loudly. Every other build, whatever
+ * its mode, needs a public key and ships only a pack signed by a listed key.
+ * The development server only warns, and the preview of a build says nothing.
+ */
+export async function checkPackSigning({
+  command,
+  mode,
+  isPreview,
+  flag,
+  keys = PACK_PUBLIC_KEYS,
+  packDir = PACK_DIR,
+  warn = console.warn,
+}: PackSigningCheck): Promise<void> {
+  if (isPreview) return;
+  if (command === 'serve') {
+    const problem = signingBuildError(keys, flag);
+    if (problem !== null) {
+      warn(
+        `warning: ${problem} On the development server, start it with ${ALLOW_UNSIGNED_VARIABLE}=true to use the local unsigned pack.`,
+      );
+    }
+    return;
+  }
+  if (mode === 'production' && allowsUnsignedPack(flag)) {
+    throw new Error(
+      `${ALLOW_UNSIGNED_VARIABLE}=true is not allowed in a production build: a release only takes a signed pack. Make a test or demo build with pnpm build at the repository root.`,
+    );
+  }
+  if (unsignedPackAllowed(mode, flag)) {
+    // Only a malformed key list stops a demo build.
+    const problem = signingBuildError(keys, flag);
+    if (problem !== null) throw new Error(problem);
+    warn(DEMO_WARNING);
+    return;
+  }
+  const problem = signingBuildError(keys, undefined);
+  if (problem !== null) throw new Error(problem);
+  await checkReleasePack(packDir, keys);
+}
 
 /** A colour from src/styles/tokens.css, so the manifest never drifts from the design. */
 function tokenColour(name: string): string {
@@ -28,11 +237,16 @@ function htmlValues(values: Record<string, string>): Plugin {
 /** Service worker precache (tested in src/pwa/workbox.test.ts). */
 export const workbox = {
   // The app shell, its fonts and icons, and the knowledge pack: the
-  // manifest and its fragments. pack.json repeats every fragment in
-  // one file and the app never reads it, so it is not downloaded twice.
+  // manifest, its signature (manifest.sig, when the pack is signed) and its
+  // fragments. pack.json repeats every fragment in one file and the app
+  // never reads it, so it is not downloaded twice.
   // config/: the deployment's referral file when the build has one (who to
   // call works offline), and its small example.
-  globPatterns: ['**/*.{html,js,css,woff2,svg,png,webmanifest}', 'pack/*.json', 'config/*.json'],
+  globPatterns: [
+    '**/*.{html,js,css,woff2,svg,png,webmanifest}',
+    'pack/*.{json,sig}',
+    'config/*.json',
+  ],
   // The voice pack (voice/) is an optional download of several hundred
   // megabytes, installed on request into the Cache API by @siapso/speech:
   // never precached.
@@ -46,13 +260,32 @@ export const workbox = {
   cleanupOutdatedCaches: true,
 };
 
-export default defineConfig(({ mode }) => {
-  const name = appName(loadEnv(mode, root, 'VITE_')['VITE_APP_NAME']);
+export default defineConfig(async ({ command, mode, isPreview }) => {
+  const env = loadEnv(mode, root, 'VITE_');
+  const flag = env[ALLOW_UNSIGNED_VARIABLE];
+  const acceptsUnsigned = unsignedPackAllowed(mode, flag);
+  await checkPackSigning({ command, mode, isPreview: isPreview === true, flag });
+  // The version floor and the minimum safe version: from the pack built with the app.
+  const pack = isPreview === true ? null : bundledPack();
+  if (command === 'build' && pack === null) {
+    throw new Error(
+      `${SHOWN_PACK_DIR}/manifest.json is missing: run pnpm knowledge:build before building the app (its version is the lowest pack version the app accepts).`,
+    );
+  }
+  const name = appName(env['VITE_APP_NAME']);
   const themeColour = tokenColour('--color-primary');
   return {
+    define: {
+      __MIN_PACK_VERSION__: JSON.stringify(pack?.version ?? null),
+      __MIN_SAFE_PACK_VERSION__: JSON.stringify(pack?.minimumSafeVersion ?? null),
+    },
+    // A demo build never lands where a release goes (the preview of a demo
+    // build, `vite preview --mode demo`, serves this folder too).
+    build: { outDir: acceptsUnsigned ? DEMO_OUT_DIR : 'dist' },
     plugins: [
       react(),
       htmlValues({ APP_NAME: name, THEME_COLOR: themeColour }),
+      buildInfoPlugin(buildInfo(mode, acceptsUnsigned, pack), acceptsUnsigned),
       VitePWA({
         // A waiting version takes over only when the user accepts the update prompt.
         registerType: 'prompt',

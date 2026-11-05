@@ -2,6 +2,7 @@
 node_modules/
 .pnpm-store/
 dist/
+dist-demo/
 build/
 coverage/
 .vite/
@@ -18,6 +19,8 @@ venv/
 .env
 .env.*
 !.env.example
+# The demo mode of the app holds no secret: it only allows an unsigned pack (docs/pack-signing.md)
+!app/.env.demo
 .claude/settings.local.json
 **/.impeccable/config.local.json
 **/.impeccable/cache/

@@ -7,10 +7,14 @@ export default defineConfig({
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
   retries: process.env['CI'] ? 1 : 0,
   use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
+  // The tests run on a demo build in app/dist-demo (Vite mode demo: it
+  // accepts the unsigned pack of `pnpm knowledge:build`, docs/pack-signing.md),
+  // never on a release.
   webServer: {
-    command: 'pnpm preview',
+    command: 'pnpm build:demo && pnpm preview:demo',
     port: 4173,
     reuseExistingServer: !process.env['CI'],
+    timeout: 240_000,
   },
   projects: [
     {

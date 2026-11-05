@@ -61,7 +61,7 @@ Fixed window of one minute per key, `SIAPSO_QUOTA_PER_MINUTE` requests (default 
 ## Running it
 
 ```sh
-pnpm build                      # builds app/public/pack/pack.json
+pnpm knowledge:build            # builds app/public/pack/pack.json
 export SIAPSO_API_KEYS_FILE=/path/to/keys.json
 pnpm server:start               # listens on PORT (default 8080)
 ```
@@ -77,7 +77,7 @@ The pack is read once at start. To serve a new pack, restart the service; client
 
 ## Container
 
-`server/Dockerfile` (Node 24 slim, non-root user, health check on `/v1/health`) is built from the repository root after `pnpm build`:
+`server/Dockerfile` (Node 24 slim, non-root user, health check on `/v1/health`) is built from the repository root after `pnpm knowledge:build`:
 
 ```sh
 docker build -f server/Dockerfile -t siapso-server .

@@ -4,13 +4,14 @@
 
 Run from the repository root (Node 24, pnpm 12):
 
-| Command                                            | What it checks                                                                                                                                                                                                                            |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | ESLint, Prettier and TypeScript over the workspace.                                                                                                                                                                                       |
-| `pnpm test`                                        | Unit and component tests (Vitest, Testing Library, fake IndexedDB).                                                                                                                                                                       |
-| `pnpm build`                                       | Builds the knowledge pack into `app/public/pack/`, then the app into `app/dist/`.                                                                                                                                                         |
-| `pnpm budget:app`                                  | The app (`app/dist` without `pack/` and `voice/`) stays at or under 1.5 MB. Run after `pnpm build`.                                                                                                                                       |
-| `pnpm e2e`                                         | Playwright on the production build (`pnpm preview`, port 4173), at 360 x 800 and on a desktop viewport: airplane mode after one load, the precache, the language choice across reloads, axe scans and large text. Run after `pnpm build`. |
+| Command                                            | What it checks                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm lint`, `pnpm format:check`, `pnpm typecheck` | ESLint, Prettier and TypeScript over the workspace.                                                                                                                                                                                                                                                                                                                            |
+| `pnpm test`                                        | Unit and component tests (Vitest, Testing Library, fake IndexedDB).                                                                                                                                                                                                                                                                                                            |
+| `pnpm build`                                       | The demo build: the knowledge pack into `app/public/pack/`, then the app into `app/dist-demo/` (Vite mode `demo`, with a loud warning). It accepts the unsigned local pack, says "Version de test" on Status and About, and is never published (`docs/pack-signing.md`).                                                                                                       |
+| `pnpm release:build --key <file>`                  | The release build, for maintainers with the offline key: builds and signs the pack, makes the production build into `app/dist` (refused unless the pack is signed by a key of `app/src/config/pack-keys.ts`), then checks `app/dist/build-info.json` and the size.                                                                                                             |
+| `pnpm budget:app`                                  | The demo build (`app/dist-demo` without `pack/` and `voice/`) stays at or under 1.5 MB. Run after `pnpm build`; `pnpm release:build` checks `app/dist` itself.                                                                                                                                                                                                                 |
+| `pnpm e2e`                                         | Playwright on a demo build (the test server runs `pnpm build:demo`, then `pnpm preview:demo`, which serves `app/dist-demo` on port 4173), at 360 x 800 and on a desktop viewport: airplane mode after one load, the precache, the language choice across reloads, the rollback of the pack, the demo build marker, axe scans and large text. Run after `pnpm knowledge:build`. |
 
 The first time, install the browser: `pnpm --filter @siapso/app exec playwright install chromium`. On a machine with little free memory, run fewer browsers at once: `pnpm e2e --workers=2`.
 
@@ -24,12 +25,12 @@ The service worker only runs in a secure context: `https://` or `localhost`. A p
 
 The phone reaches the laptop's `localhost` through a USB cable, so nothing leaves the two devices.
 
-1. On the laptop, build and serve the app:
+1. On the laptop, build and serve the app (a demo build: it accepts the unsigned local pack and the screens say "Version de test", see `docs/pack-signing.md`; a release build is signed instead):
 
    ```sh
    pnpm install
    pnpm build
-   pnpm --filter @siapso/app preview
+   pnpm --filter @siapso/app preview:demo
    ```
 
    The preview answers on `http://localhost:4173`.
@@ -53,7 +54,7 @@ Privacy trade-off: while the tunnel runs, anyone who learns the address can open
 
    ```sh
    pnpm build
-   __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=<tunnel host name> pnpm --filter @siapso/app preview
+   __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=<tunnel host name> pnpm --filter @siapso/app preview:demo
    ```
 
 2. Start the tunnel to `http://localhost:4173` and open its `https://` address on the phone.
