@@ -7,7 +7,9 @@
 #
 # - The pull request must be open and not behind its base (the rule of
 #   merge-pr.sh: GitHub says BEHIND, or the head lacks commits of the base),
-#   and its head must not move while it is read.
+#   and its head must not move while it is read. Nothing may answer yet on
+#   http://localhost:4173, where the end-to-end tests serve the app (a server
+#   that takes it later leaves the End-to-end job not run, without status).
 # - The steps are the steps of .github/workflows/ci.yml and hygiene.yml, in
 #   the same order, listed below (known_steps). The workflows of the head
 #   commit are compared with that list first: a step added, removed or renamed
@@ -54,9 +56,11 @@
 # LOCAL_CI_CACHE (downloads and the reuse environment), LOCAL_CI_REUSE (a
 # reuse command of the pinned version, instead of installing it),
 # LOCAL_CI_NODE_MIRROR (a mirror of https://nodejs.org/dist),
-# PLAYWRIGHT_BROWSERS_PATH (where Playwright installed its browsers).
+# PLAYWRIGHT_BROWSERS_PATH (where Playwright installed its browsers), and
+# PIP_CERT for pip behind a proxy or an antivirus that inspects TLS.
 # Exit code: 0 every job passed and its status was posted, 1 a job failed or
-# a status could not be posted, 2 refused or usage error (nothing posted).
+# did not run or a status could not be posted, 2 refused or usage error
+# (nothing posted).
 # Tested by tools/ci/local-ci.test.sh (fake gh and tools on PATH).
 # The step handlers are called by name, through --step.
 # shellcheck disable=SC2329
@@ -625,6 +629,14 @@ fetch() {
   if command -v curl >/dev/null 2>&1; then curl -fsSL --retry 3 -o "$2" "$1"; else wget -q -O "$2" "$1"; fi
 }
 
+# The address the end-to-end tests serve the app on (app/playwright.config.ts).
+# With CI set, Playwright never reuses a server already there.
+E2E_URL='http://localhost:4173'
+port_taken() {
+  command -v curl >/dev/null 2>&1 || return 1
+  curl -s -o /dev/null --max-time 5 "$E2E_URL/"
+}
+
 node_is() {
   case "$(node --version 2>/dev/null | sed 's/^v//')" in
     "$1" | "$1".*) return 0 ;;
@@ -715,6 +727,10 @@ if selected end-to-end; then
   if [ "$chromium" = no ]; then
     refuse "no Playwright Chromium in $BROWSERS. Install it: pnpm --filter @siapso/app exec playwright install chromium"
   fi
+  if port_taken; then
+    refuse "$E2E_URL already answers: another server holds the port of the end-to-end tests," \
+      'which CI never reuses. Stop it, or leave that job out with --only.'
+  fi
   TOOLS="$TOOLS, Playwright workers: $WORKERS"
 fi
 if selected build-and-test && [ "$SKIP_DOCKER" = yes ]; then TOOLS="$TOOLS, --skip-docker"; fi
@@ -765,6 +781,7 @@ post_status() {
 
 FAILED_JOBS=0
 UNPOSTED=0
+NOT_RUN=0
 : >"$RUN/summary"
 
 # run_job <job> <number>: runs the steps of the job in a fresh worktree, then
@@ -784,6 +801,13 @@ run_job() {
   if [ "$job" = 'Developer Certificate of Origin' ] && [ "$DEPENDABOT" = yes ]; then
     echo '  skipped: hygiene.yml skips this job for Dependabot, no status posted' | tee -a "$log"
     printf '%-32s %-8s %7s  %s\n' "$job" skipped '-' 'no status (Dependabot: merge-pr.sh will find it missing)' >>"$RUN/summary"
+    return 0
+  fi
+  # A server that took the port since the checks: the tests could not run.
+  if [ "$job" = 'End-to-end' ] && port_taken; then
+    echo "  not run: $E2E_URL already answers (another server holds the port), no status posted" | tee -a "$log"
+    printf '%-32s %-8s %7s  %s\n' "$job" 'not run' '-' "no status ($E2E_URL already answered)" >>"$RUN/summary"
+    NOT_RUN=$((NOT_RUN + 1))
     return 0
   fi
   tree="$RUN/w$2"
@@ -869,5 +893,5 @@ if [ -n "$ACTIONS_FAILED" ]; then
   echo 'merge-pr.sh counts them as failures: see docs/testing.md, "While GitHub Actions is unavailable".'
 fi
 echo "Logs: $LOGS"
-if [ "$FAILED_JOBS" -gt 0 ] || [ "$UNPOSTED" -gt 0 ]; then exit 1; fi
+if [ "$FAILED_JOBS" -gt 0 ] || [ "$UNPOSTED" -gt 0 ] || [ "$NOT_RUN" -gt 0 ]; then exit 1; fi
 exit 0

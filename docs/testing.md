@@ -35,12 +35,20 @@ sh tools/github/merge-pr.sh <number>
 
 What `tools/ci/local-ci.sh` does:
 
-- It refuses, posting nothing, a pull request that is not open, that is behind `main` (the rule of `merge-pr.sh`), whose head moves while it is read, or whose workflows have a step it does not know (read the change of that pull request to the script, then run its version).
+- It refuses, posting nothing, a pull request that is not open, that is behind `main` (the rule of `merge-pr.sh`), whose head moves while it is read, or whose workflows have a step it does not know (read the change of that pull request to the script, then run its version). It also refuses to start while something answers on `http://localhost:4173`, where the end-to-end tests serve the app (with `CI` set, Playwright never reuses a server already there): stop that server, or leave the job out with `--only`. A server that takes the port while the other jobs run leaves the End-to-end job not run, without a status.
 - It runs the jobs one after the other (Text hygiene, Developer Certificate of Origin, Build and test, End-to-end), each in a fresh detached worktree at the exact head commit, in a temporary folder outside OneDrive (`$TMPDIR`, or `LOCAL_CI_TMPDIR`), removed at the end, also on failure. The steps are the steps of `ci.yml` and `hygiene.yml`, in the same order, with `CI=true`; a job stops at its first failed step, as on GitHub. `sh tools/ci/local-ci.sh --check-workflows` and the test of the script (`tools/ci/local-ci.test.sh`, run by the Build and test job) fail when either workflow gains, loses or renames a step.
 - After each job, and only then, it posts a commit status on the head commit, named like the job: success when every step passed, failure naming the first failed step. The description says where and when it ran: "Local run on <machine>, <UTC time> (GitHub Actions unavailable)". With `--skip-docker`, the server image step is the only one not run, the description adds "server image build skipped (--skip-docker)", and the status is success only if every other step passed. For a Dependabot pull request, the Developer Certificate of Origin job is skipped as in `hygiene.yml` and no status is posted for it (`merge-pr.sh` then reports it missing).
 - It prints the end of the output of a failed step, a summary (result and duration of each job), the failed checks GitHub Actions left on the commit, if any (see below), and the folder of the logs, one per job (by default `$TMPDIR/siapso-local-ci-logs/pr-<n>-<commit>-<time>/`), with the Playwright report when the end-to-end tests fail.
 
 It needs `gh` signed in with the right to write commit statuses, git, Python 3, `shellcheck`, curl, the pnpm version `package.json` pins, any Node (when it is not the version `.nvmrc` names, that version is downloaded from nodejs.org into the cache, `$TMPDIR/siapso-local-ci-cache`, and checked against the SHA-256 list of the release), the Playwright Chromium (`pnpm --filter @siapso/app exec playwright install chromium`), and Docker unless `--skip-docker`. Run one at a time: the end-to-end tests use port 4173. The script that runs is the maintainer's copy, not the one of the pull request.
+
+The first run installs the pinned `reuse` with pip into the cache. Behind an antivirus or a proxy that inspects TLS, pip may fail with `CERTIFICATE_VERIFY_FAILED`: give it the root certificates the system trusts with `PIP_CERT`, a PEM file. On Windows, PowerShell writes them with:
+
+```powershell
+@(Get-ChildItem Cert:\LocalMachine\Root) + @(Get-ChildItem Cert:\CurrentUser\Root) | ForEach-Object { "-----BEGIN CERTIFICATE-----`n" + [Convert]::ToBase64String($_.RawData, 'InsertLineBreaks') + "`n-----END CERTIFICATE-----" } | Set-Content -Encoding ascii "$env:LOCALAPPDATA\system-roots.pem"
+```
+
+then, in Git Bash, `export PIP_CERT="$LOCALAPPDATA\\system-roots.pem"` before the script. Once `reuse` is in the cache, pip is not needed again until `tools/reuse/requirements.txt` changes.
 
 Differences with GitHub Actions: no Ubuntu runner and no Playwright image, so the tests run on the maintainer's system, with the browsers Playwright installed there (the image check reads that folder instead); the fetch of `origin/main` is not shallow, since the worktree shares the maintainer's clone; on Windows, REUSE lint runs on a `git archive` export of the commit, away from long `node_modules` paths; the Playwright report of a failed run is kept with the logs instead of being uploaded.
 
@@ -51,7 +59,7 @@ gh workflow disable CI
 gh workflow disable hygiene
 ```
 
-A commit pushed before that keeps its refused checks: push a new commit (merging `main` brings it), or delete the refused runs of that commit, after checking that their jobs have no step (`gh run list --commit <sha>`, `gh run view <id> --json jobs`, then `gh run delete <id>`).
+A commit pushed before that keeps its refused checks: push a new commit to the pull request (merging `main` makes one when the branch is behind), then run `local-ci.sh` on it. `local-ci.sh` names the failed checks of GitHub Actions it finds on the commit at the end of its run.
 
 Going back to GitHub Actions: enable the workflows again (`gh workflow enable CI`, `gh workflow enable hygiene`), push a commit or re-run the checks of the open pull requests, and stop using `local-ci.sh`. Its statuses stay on the commits it checked, each saying it was a local run.
 

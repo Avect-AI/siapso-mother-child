@@ -8,7 +8,10 @@
 #   makes it refuse the pull request;
 # - it refuses a pull request behind main (as GitHub reports it, or as the
 #   fetched main shows it), a head that moved, a closed pull request, a
-#   temporary folder in OneDrive, and a missing Docker without --skip-docker;
+#   temporary folder in OneDrive, a missing Docker without --skip-docker, a
+#   server already on the port of the end-to-end tests (later on, it leaves
+#   that job not run, without a status), and a Node download whose SHA-256
+#   is not the one of the release;
 # - it runs each job in a fresh worktree at the head commit, removed at the
 #   end, also on failure, and posts one status per job on that commit only
 #   once the job ran: success only when every step passed (the server image
@@ -81,6 +84,25 @@ for tool in pnpm node shellcheck docker reuse; do
   cp "$work/bin/fake-tool" "$work/bin/$tool"
   chmod +x "$work/bin/$tool"
 done
+
+# A fake curl for the address of the end-to-end tests: nothing answers there,
+# unless $FAKE/port-taken-from holds n, and this is the n-th check or later.
+# Any other address goes to the real curl (the Node mirror of the test).
+REAL_CURL="$(command -v curl)"
+export REAL_CURL
+cat >"$work/bin/curl" <<'FAKE'
+#!/usr/bin/env sh
+case "$*" in
+  *'http://localhost:4173'*)
+    count=$(($(cat "$FAKE/port-checks" 2>/dev/null || echo 0) + 1))
+    echo "$count" >"$FAKE/port-checks"
+    if [ -f "$FAKE/port-taken-from" ] && [ "$count" -ge "$(cat "$FAKE/port-taken-from")" ]; then exit 0; fi
+    exit 7
+    ;;
+esac
+exec "$REAL_CURL" "$@"
+FAKE
+chmod +x "$work/bin/curl"
 
 # The fake gh reads its answers from $FAKE:
 # - state, head-sha, branch, merge-state, cross, author, title, body: what
@@ -400,6 +422,14 @@ skips_dco_for_dependabot() {
   pr_message='Bump a dependency'
 }
 refuses_an_unknown_job() { args='--only lint'; }
+refuses_when_the_end_to_end_port_is_taken() {
+  args='--only end-to-end'
+  echo 1 >"$FAKE/port-taken-from"
+}
+leaves_the_end_to_end_job_when_its_port_is_taken_later() {
+  args='--skip-docker --only build-and-test,end-to-end'
+  echo 2 >"$FAKE/port-taken-from"
+}
 downloads_the_node_nvmrc_names() {
   args='--only end-to-end'
   echo 'v99.0.0' >"$FAKE/node-version"
@@ -444,6 +474,8 @@ scenario refuses refuses_an_unknown_workflow_step 'run: pnpm extra-check'
 scenario refuses refuses_a_temporary_folder_in_onedrive 'OneDrive'
 scenario refuses refuses_a_bad_workers_value 'Usage'
 scenario refuses refuses_an_unknown_job 'Usage'
+scenario refuses refuses_when_the_end_to_end_port_is_taken 'http://localhost:4173 already answers'
+scenario fails leaves_the_end_to_end_job_when_its_port_is_taken_later 'http://localhost:4173 already answers'
 scenario passes downloads_the_node_nvmrc_names 'Downloading node-v'
 scenario refuses refuses_a_node_download_with_a_bad_checksum 'checksum mismatch'
 
@@ -540,6 +572,13 @@ expect_status fails_hygiene_for_a_bad_title 'Text hygiene' failure
 expect_status fails_hygiene_for_an_attributed_body 'Text hygiene' failure
 expect_status fails_hygiene_without_a_jira_reference 'Text hygiene' failure
 expect_status passes_a_fork_without_a_jira_reference 'Text hygiene' success
+
+# A server that took the port of the end-to-end tests after the checks
+# leaves that job not run, without a status, and the run fails.
+s=leaves_the_end_to_end_job_when_its_port_is_taken_later
+expect_status "$s" 'Build and test' success
+expect_status "$s" 'End-to-end' none
+if called "$s" 'pnpm e2e --workers=2'; then fail "$s: does not run the end-to-end tests"; fi
 
 # Dependabot: the commit message is not checked and the Developer
 # Certificate of Origin job is skipped, without a status, as in hygiene.yml.
