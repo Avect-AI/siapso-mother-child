@@ -7,6 +7,7 @@ How well does the app understand a spoken medicine or remedy name in French or W
 ## Status
 
 - Baseline on FLEURS (read general sentences, not product names): measured, see `results/`.
+- Products named inside a sentence (SCRUM-61): measured on 256 written sentences (`sentences.yaml`, `pnpm eval:sentences`, below), and checked by ear on a few French sentences said by Windows voices.
 - Name accuracy after the resolver (top-1, top-3) on product and remedy names: **pending recordings**. No volunteer recording exists yet; the manifest is empty. The FLEURS figures say little about names, and the Wolof one may be optimistic (the fine-tune's training data lists FLEURS Wolof).
 
 ## Run it
@@ -25,6 +26,72 @@ It runs the same ONNX graphs as the browser with Transformers.js in Node: same f
 - Word error rate per language and per pack: lowercase, accents kept, punctuation removed, an apostrophe breaks a word; total errors over total reference words (`speech/eval/wer.ts`). Wolof spelling varies, and each variant counts as an error.
 - Name accuracy for entries with `expect`: the transcription goes to the resolver, and the entry counts as top-1 (or top-3) when the expected id is the first (or among the first three) candidates.
 - Time per utterance (mean, median, 95th percentile) on the host.
+
+## Products named inside a sentence (SCRUM-61)
+
+`sentences.yaml` holds sentences written the way people speak to the app, or the way the voice writes them (lowercase, little punctuation, French names spelt as the Wolof voice hears them): in French (`fr`), in Wolof (`wo`: Wolof grammar, a medicine keeping its French or brand name as Wolof speakers say it) and mixed (`mix`), each with the products it names. No real patient data: every sentence and first name is invented. `pnpm eval:sentences` reads every sentence with the resolver's `productsInSentence` (`resolver/README.md`) and counts, per language and per type, the products found ticked, by family: right when the sentence names it, false otherwise, and missed when named and not found.
+
+```yaml
+- {
+    text: 'dama naan doliprane ak nivaquine',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: 'dama naan kardejik 75',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: kardegic-160-mg-61348441, mg: 75 }],
+  }
+- { text: 'dama lekk ceeb ak jën', lang: wo, type: none, expect: [] }
+```
+
+- `type`: `plain` (names said as written), `misspelt` (a name spelt as heard), `none` (no product: symptoms, food, first names, places, a medicine the base does not have). A sentence of type `none`, and only one, expects `[]`.
+- `expect`: one item per product: `{ kind, id }` (any product of its family is right), or `{ any: [...] }` when several families are equally right (the amoxicillin boxes of several laboratories); `mg` when a strength is said with it, counted apart ("strengths said with a name found, read right").
+- The expectations are written from the registry, never from the output. An honest sentence that fails stays, as a recorded miss (the short form "para", a name cut short "dolipa", two changes from the name "amoksilin" and "paratamol", "vitamine c" alone; and for the strength, "500 mg de paracétamol" said before the name and "doliprane junni" in Wolof numbers); fix the rules, never the expectation.
+- Background: the model's transcripts of general FLEURS sentences in `results/*.json` (400, French and Wolof, no product names) are read too: any product found there, ticked, is a false product.
+- `sentences-baseline.json`: the bars CI enforces, overall and in each language: precision at least 0.97, recall at least 0.95, and no false product in the background. Why: a false product is worse than a missed one (it is put before her, even if she confirms it), so the precision bar is the higher; both are above the floors set for the ticket (0.95 and 0.85) and below what was measured (precision 1.000, recall 0.980 overall, 0.968 at the lowest language) by about two products per language, so an honest new hard sentence can be added without lowering a bar, while a rule that adds a false product in a language, or loses three names, fails. Lower a bar only in a reviewed pull request that says why.
+- It also prints the p95 time of one sentence (the 256 sentences and the 400 transcripts, which are much longer than the 80 characters the search field keeps).
+
+Measured on 2026-11-06 (256 sentences, 244 products named):
+
+| Set      | Sentences | Named | Right | False | Missed | Precision | Recall |
+| -------- | --------: | ----: | ----: | ----: | -----: | --------: | -----: |
+| fr       |       106 |   101 |    99 |     0 |      2 |     1.000 |  0.980 |
+| wo       |        98 |    95 |    92 |     0 |      3 |     1.000 |  0.968 |
+| mix      |        52 |    48 |    48 |     0 |      0 |     1.000 |  1.000 |
+| overall  |       256 |   244 |   239 |     0 |      5 |     1.000 |  0.980 |
+| misspelt |        60 |    65 |    61 |     0 |      4 |     1.000 |  0.938 |
+
+Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word). The sentences were written by the developer who wrote the rules, so these figures are optimistic: the set measures that the rules hold, not how real speakers talk. Sentences said by volunteers (protocol below) will tell.
+
+### Audio check (2026-11-06)
+
+Fourteen French sentences said by the Windows voice Microsoft Hortense (System.Speech, 16 kHz, a short silence first), played through Chromium's fake microphone into the app served by the development server, transcribed by the real French voice pack (`whisper-base-fr-q8`, in the browser), then read by this branch's code as the medicine search screen does. A synthetic voice in a quiet room: an indication, not a measure of real speakers.
+
+| Said                                                  | Heard                                                 | Offered                        |
+| ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------ |
+| J'ai pris du Doliprane ce matin.                      | J'ai pris du douleur libraine ce matin                | nothing (wrong)                |
+| J'ai pris de l'Advil et du Coartem.                   | J'ai pris de l'advile et du co-artant                 | ADVIL only (wrong)             |
+| Hier, j'ai pris du Doliprane et de la Nivaquine.      | Hier, j'ai pris du dôliprane et de la niva-kin        | DOLIPRANE, chloroquine (right) |
+| La sage-femme m'a donné du fer et de l'acide folique. | La sache femme m'a donné du fer et de la site folique | iron only (wrong)              |
+| Je bois du jus de bissap.                             | Je bois du jus de bisap                               | bissap (right)                 |
+| Le pharmacien m'a vendu du Cytotec.                   | Le farmacien m'a vendu du citotec                     | misoprostol (right)            |
+| Je prends de la tisane de kinkéliba le matin.         | Je prends de la tisanne de King Kyliba le matin       | nothing (wrong)                |
+| J'ai pris un Doliprane 1000.                          | J'ai pris un d'olipranmille                           | nothing (wrong)                |
+| Je mets de l'huile de ricin sur le ventre.            | Je mets de l'huile de risque à un sur le ventre       | nothing (wrong)                |
+| Elle a pris de l'ibuprofène pour le mal de dos.       | Elle a pris de Libu Profaine pour le mal de dose      | nothing (wrong)                |
+| Je prends du paracétamol et de la quinine.            | Je prends du paracétamol et de la kinime              | paracetamol only (wrong)       |
+| On m'a donné de l'amoxicilline à la pharmacie.        | On m'a donné de l'amoxiceline à la pharmacie          | amoxicillin (right)            |
+| J'ai mal à la tête depuis hier.                       | J'ai mal à la tête depuis hier                        | nothing (right)                |
+| J'ai mangé du riz avec du poisson.                    | J'ai mangé du riz avec du poisson                     | nothing (right)                |
+
+6 of 14 spoken sentences end with exactly the right products (4 of the 12 that name a product, and the 2 that name none; 8 of the 16 products said are offered), and no false product. Every miss comes from the voice, not from the reading: the French base model writes a name as French words ("douleur libraine", "risque à un", "King Kyliba", "Libu Profaine"), splits it ("co-artant", "d'olipranmille"), or changes a letter of a short name ("kinime"); no rule on the words can safely read these back. The next step is on the voice side: give the decoder the names of the base as a prompt, or measure the Wolof pack, which writes French names as they sound (the respellings above), and real voices (SCRUM-32).
 
 ## Data layout
 
