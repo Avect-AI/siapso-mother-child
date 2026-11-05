@@ -25,4 +25,9 @@ describe('service worker precache', () => {
     expect(workbox.globPatterns).toContain('pack/*.json');
     expect(workbox.navigateFallback).toBe('index.html');
   });
+
+  it('keeps the referral file of a deployment offline: who to call works in airplane mode', () => {
+    expect(workbox.globPatterns).toContain('config/*.json');
+    expect(workbox.globIgnores.some((pattern) => pattern.startsWith('config'))).toBe(false);
+  });
 });

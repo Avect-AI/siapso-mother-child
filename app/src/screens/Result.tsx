@@ -10,6 +10,7 @@ import {
   buildResultView,
   type FindingView,
   type ResultView,
+  type RiskView,
   type SourceView,
 } from '../domain/result-view.js';
 import type { Mode, Profile } from '../domain/types.js';
@@ -22,6 +23,7 @@ import { LevelIcon } from '../ui/LevelIcon.js';
 import { Notice } from '../ui/Notice.js';
 import { ResultCard } from '../ui/ResultCard.js';
 import { backToCheck, flowState } from './check-flow.js';
+import { CALL_PATH } from './Referral.js';
 
 type Loaded =
   | { status: 'loading' }
@@ -33,9 +35,14 @@ type Loaded =
 type Evaluated =
   { status: 'ready'; evaluation: Evaluation; items: CheckedItem[] } | { status: 'failed' };
 
-/** Whether a finding has source, evidence or rule lines: in accompanied mode only. */
-function hasMeta({ evidence, cappedNote, sources, ruleIds }: FindingView): boolean {
-  return [evidence, cappedNote, sources, ruleIds].some((field) => field !== undefined);
+/** Whether a finding has source or rule lines: in accompanied mode only. */
+function hasMeta({ sources, ruleIds }: FindingView): boolean {
+  return sources !== undefined || ruleIds !== undefined;
+}
+
+/** What a risk has for the health worker: its detailed risk, evidence level or capped note. */
+function hasDetail({ detail, evidence, cappedNote }: RiskView): boolean {
+  return detail !== undefined || evidence !== undefined || cappedNote !== undefined;
 }
 
 /** The sources of a finding by source, in their order: each source named once, then its records. */
@@ -49,16 +56,12 @@ function bySource(sources: readonly SourceView[]): { name: string; records: Sour
   return groups;
 }
 
-/** Source, evidence and rule of a finding. */
+/** Sources and rules of a finding. */
 function FindingMeta({ finding }: { finding: FindingView }) {
   const t = useT();
-  const { evidence, cappedNote, sources, ruleIds } = finding;
+  const { sources, ruleIds } = finding;
   return (
     <>
-      {(evidence ?? []).map((line) => (
-        <p key={line.level}>{line.text}</p>
-      ))}
-      {cappedNote === undefined ? null : <p>{cappedNote}</p>}
       {sources === undefined ? null : (
         <div className="result-card__sources">
           <p>{t('result.sources')}</p>
@@ -140,30 +143,41 @@ function Names({ names }: { names: readonly string[] }) {
 }
 
 function Finding({ finding }: { finding: FindingView }) {
-  // Accompanied mode: the fact and the detailed risk come after who to show and
-  // when, so both modes say the same lines first.
+  // Accompanied mode: the fact, then each risk's detailed risk with its own
+  // evidence level and capped note, after who to show and when, so both modes
+  // say the same lines first. In a card of several risks each of these blocks
+  // starts with its risk, so a detail or a level is never read as another's.
+  const several = finding.risks.length > 1;
+  const detailed = finding.risks.filter(hasDetail);
   const details =
-    finding.fact === undefined && finding.riskDetails === undefined ? undefined : (
+    finding.fact === undefined && detailed.length === 0 ? undefined : (
       <>
         {finding.fact === undefined ? null : <p>{finding.fact}</p>}
-        {(finding.riskDetails ?? []).map((detail) => (
-          <p key={detail}>{detail}</p>
+        {detailed.map((risk, index) => (
+          <div key={`${String(index)}:${risk.text}`} className="result-card__risk">
+            {several ? <p className="result-card__risk-name">{risk.text}</p> : null}
+            {risk.detail === undefined ? null : <p>{risk.detail}</p>}
+            {risk.evidence === undefined ? null : <p className="meta">{risk.evidence.text}</p>}
+            {risk.cappedNote === undefined ? null : <p className="meta">{risk.cappedNote}</p>}
+          </div>
         ))}
       </>
     );
+  // The risk sentences, each once (the same sentence with two evidence levels is read once).
+  const texts = [...new Set(finding.risks.map((risk) => risk.text))];
   return (
     <ResultCard
       level={finding.level}
       levelLabel={finding.levelLabel}
       title={<Names names={finding.names} />}
       headingLevel={2}
-      orientation={finding.orientation}
+      orientation={typeof finding.orientation === 'string' ? finding.orientation : null}
       {...(details === undefined ? {} : { details })}
       {...(hasMeta(finding) ? { meta: <FindingMeta finding={finding} /> } : {})}
     >
       {finding.lead === undefined ? null : <p>{finding.lead}</p>}
-      {finding.risks.map((risk) => (
-        <p key={risk}>{risk}</p>
+      {texts.map((text) => (
+        <p key={text}>{text}</p>
       ))}
       {finding.termNote === undefined ? null : <p className="meta">{finding.termNote}</p>}
     </ResultCard>
@@ -262,7 +276,7 @@ export function Result() {
   const [entry] = useState(flowState);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, signs } = check;
+  const { profileId, items, signs, signsGiven } = check;
   const recorded = useRef<Evaluation | null>(null);
 
   useEffect(() => {
@@ -308,7 +322,7 @@ export function Result() {
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
   useEffect(() => {
-    if (evaluated?.status !== 'ready' || profileId === null) return;
+    if (evaluated?.status !== 'ready' || profileId === null || !signsGiven) return;
     if (recorded.current === evaluated.evaluation) return;
     recorded.current = evaluated.evaluation;
     const kept = historyEntryOf({
@@ -322,9 +336,11 @@ export function Result() {
     recordHistoryOnce(kept).catch((failure: unknown) => {
       console.warn('Evaluation not kept in the history on this device', failure);
     });
-  }, [evaluated, profileId, signs]);
+  }, [evaluated, profileId, signs, signsGiven]);
 
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
+  // The signs present now are asked before any result (a typed address, an old entry).
+  if (!signsGiven) return <Redirect to="/signs" replace />;
 
   const back = () => {
     backToCheck(navigate, entry.stepsToCheck);
@@ -360,7 +376,9 @@ export function Result() {
               action={t('result.dangerAction')}
               headingLevel={2}
               onAction={() => {
-                navigate('/danger');
+                // Who to call says the same instruction (which message says it, so it
+                // is worded in the language of the moment), and the signs to say.
+                navigate(CALL_PATH, { state: { instruction: ready.headlineSource, signs } });
               }}
             />
           ) : null}

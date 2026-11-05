@@ -30,7 +30,9 @@ export const workbox = {
   // The app shell, its fonts and icons, and the knowledge pack: the
   // manifest and its fragments. pack.json repeats every fragment in
   // one file and the app never reads it, so it is not downloaded twice.
-  globPatterns: ['**/*.{html,js,css,woff2,svg,png,webmanifest}', 'pack/*.json'],
+  // config/: the deployment's referral file when the build has one (who to
+  // call works offline), and its small example.
+  globPatterns: ['**/*.{html,js,css,woff2,svg,png,webmanifest}', 'pack/*.json', 'config/*.json'],
   // The voice pack (voice/) is an optional download of several hundred
   // megabytes, installed on request into the Cache API by @siapso/speech:
   // never precached.

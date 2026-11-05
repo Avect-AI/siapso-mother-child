@@ -5,10 +5,27 @@
 // text. The view is what the screen renders, string for string.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { evaluate, findForbiddenWording, type Lang, type Pack } from '@siapso/engine';
+import {
+  evaluate,
+  findForbiddenWording,
+  itemMatches,
+  type CheckedItem,
+  type ConditionId,
+  type EvaluationContext,
+  type Finding,
+  type Lang,
+  type Pack,
+  type Rule,
+  type Subject,
+} from '@siapso/engine';
 import { contextOf, loadCases, type ReferenceCase } from '@siapso/pack-tools';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildResultView, formatPackDate, type ResultView } from './domain/result-view.js';
+import {
+  buildResultView,
+  cardGroups,
+  formatPackDate,
+  type ResultView,
+} from './domain/result-view.js';
 import type { Mode } from './domain/types.js';
 import { translate, type MessageKey, type Vars } from './i18n/translate.js';
 import { knowledgePack } from './test/knowledge-pack.js';
@@ -37,9 +54,14 @@ function strings(value: unknown, at = ''): [string, string][] {
   return [];
 }
 
-/** Read by the screen: everything but the keys React uses and the links' targets. */
+/**
+ * Read by the screen: everything but the keys React uses, the links' targets
+ * and where the headline comes from (a message id, never shown).
+ */
 function shown(view: ResultView): [string, string][] {
-  return strings(view).filter(([at]) => !/\.key$/.test(at) && !/\.url$/.test(at));
+  return strings(view).filter(
+    ([at]) => !/\.key$/.test(at) && !/\.url$/.test(at) && !at.startsWith('headlineSource'),
+  );
 }
 
 function viewOf(reference: ReferenceCase, mode: Mode, lang: Lang): ResultView {
@@ -74,7 +96,7 @@ describe('result wording over the reference cases', () => {
       if (mode !== 'woman') {
         // Not vacuous: the detailed risk of accompanied mode does hold numbers.
         accompaniedNumbers += shown(view).filter(
-          ([at, text]) => /\.riskDetails\[\d+\]$/.test(at) && /\d/.test(text),
+          ([at, text]) => /\.risks\[\d+\]\.detail$/.test(at) && /\d/.test(text),
         ).length;
         return;
       }
@@ -96,11 +118,29 @@ describe('result wording over the reference cases', () => {
       expect(view.findings.length, label).toBeGreaterThan(0);
       for (const finding of view.findings) {
         expect(finding.levelLabel, label).toBe(translate(lang, `level.${finding.level}`));
-        expect(finding.orientation.trim(), label).not.toBe('');
         expect(finding.risks.length, label).toBeGreaterThan(0);
-        for (const risk of finding.risks) expect(risk.trim(), label).not.toBe('');
+        for (const risk of finding.risks) expect(risk.text.trim(), label).not.toBe('');
       }
     });
+  });
+
+  it('always says who to show and when: on the card, or once in the danger banner above it', () => {
+    let inBanner = 0;
+    eachView((view, label) => {
+      for (const finding of view.findings) {
+        if (typeof finding.orientation === 'string') {
+          expect(finding.orientation.trim(), label).not.toBe('');
+          continue;
+        }
+        inBanner += 1;
+        // Left out of the card only when the banner shows and says it.
+        expect(view.danger, label).toBe(true);
+        expect(finding.level, label).toBe('danger');
+        expect(view.headline.trim(), label).not.toBe('');
+      }
+    });
+    // Not vacuous: the danger cases leave their instruction to the banner.
+    expect(inBanner).toBeGreaterThan(0);
   });
 
   it('shows in woman mode only what the woman reads', () => {
@@ -108,9 +148,11 @@ describe('result wording over the reference cases', () => {
       if (mode !== 'woman') return;
       expect(view.reminders, label).toEqual([]);
       for (const finding of view.findings) {
-        for (const hidden of ['fact', 'riskDetails', 'evidence', 'sources', 'ruleIds']) {
+        for (const hidden of ['fact', 'sources', 'ruleIds']) {
           expect(finding, `${label} ${hidden}`).not.toHaveProperty(hidden);
         }
+        // A risk is its sentence alone: no detail, evidence or capped note.
+        for (const risk of finding.risks) expect(Object.keys(risk), label).toEqual(['text']);
       }
     });
   });
@@ -144,7 +186,8 @@ describe('result wording beyond the reference cases', () => {
         const [finding] = view.findings;
         const label = `${sign.id} ${lang}`;
         expect(finding?.lead, label).toBe(pack.messages[lang][sign.message ?? '']?.fact);
-        for (const text of [finding?.lead ?? '', ...(finding?.risks ?? []), view.headline]) {
+        const risks = (finding?.risks ?? []).map((risk) => risk.text);
+        for (const text of [finding?.lead ?? '', ...risks, view.headline]) {
           expect(text, label).not.toMatch(/\d/);
           expect(findForbiddenWording(text, lang), label).toEqual([]);
         }
@@ -152,41 +195,209 @@ describe('result wording beyond the reference cases', () => {
     }
   });
 
-  it('never has two rules a card would merge into one while they say different orientations', () => {
+  it('never merges into one card two findings of one level that say different orientations', () => {
     expect(mergeClashes(pack)).toEqual([]);
-    // Not vacuous: a copy of a rule with another orientation is caught, by rule id.
+    // Not vacuous: a rule on ibuprofen (another subject than the NSAID class of
+    // its twin) with another orientation is caught, with the product and the rules.
     const rule = pack.rules.find((r) => r.id === 'nsaid-pregnancy-from-20-weeks');
     if (rule === undefined) throw new Error('rule missing');
-    const twin = { ...rule, id: 'nsaid-twin', message: 'nsaid-twin' };
+    expect(rule.when.subject).toEqual({ class: 'nsaid' });
+    const twin = {
+      ...rule,
+      id: 'nsaid-twin',
+      message: 'nsaid-twin',
+      when: { ...rule.when, subject: { substance: 'ibuprofen' } },
+    };
     const other = { fact: 'Fait.', risk: 'Risque.', orientation: 'Parlez-en à la sage-femme.' };
     const clashing: Pack = {
       ...pack,
       rules: [...pack.rules, twin],
       messages: { ...pack.messages, fr: { ...pack.messages.fr, 'nsaid-twin': other } },
     };
-    expect(mergeClashes(clashing)).toEqual([
-      expect.stringContaining('nsaid-pregnancy-from-20-weeks, nsaid-twin') as unknown,
-    ]);
+    const clashes = mergeClashes(clashing);
+    expect(clashes.length).toBeGreaterThan(0);
+    for (const clash of clashes) {
+      expect(clash).toMatch(
+        /^product:\S+.*: C1 before-next-dose: nsaid-pregnancy-from-20-weeks, nsaid-twin$/,
+      );
+    }
   });
 });
 
+describe('merge guard', () => {
+  it('also tries each product with its strength unknown, as the confirm screen can add it', () => {
+    // A substance whose every product has a known strength: a rule above any
+    // of them matches only a box whose strength is not known.
+    const substance = pack.substances.find((s) => {
+      const holding = pack.products.filter((p) => p.components.some((c) => c.substance === s.id));
+      return (
+        holding.length > 0 &&
+        holding.every((p) =>
+          p.components.every((c) => c.substance !== s.id || c.strengthMg !== undefined),
+        )
+      );
+    });
+    if (substance === undefined) throw new Error('no substance with known strengths only');
+    const base = pack.rules.find((r) => r.id === 'nsaid-pregnancy-from-20-weeks');
+    if (base === undefined) throw new Error('rule missing');
+    const twin = (id: string, strengthAboveMg?: number): Rule => ({
+      ...base,
+      id,
+      kind: 'toxicity',
+      level: 'next-contact',
+      evidence: 'C',
+      message: id,
+      when: {
+        subject: { substance: substance.id },
+        ...(strengthAboveMg === undefined ? {} : { strengthAboveMg }),
+      },
+    });
+    const clashing: Pack = {
+      ...pack,
+      rules: [...pack.rules, twin('plain-twin'), twin('strong-twin', 1_000_000)],
+      messages: {
+        ...pack.messages,
+        fr: {
+          ...pack.messages.fr,
+          'plain-twin': { fact: 'Fait.', risk: 'Risque.', orientation: 'Dites-le au relais.' },
+          'strong-twin': {
+            fact: 'Fait.',
+            risk: 'Risque.',
+            orientation: 'Dites-le à la sage-femme.',
+          },
+        },
+      },
+    };
+    expect(mergeClashes(clashing)).toContainEqual(
+      expect.stringMatching(/: C5 next-contact: plain-twin, strong-twin$/) as unknown,
+    );
+  });
+});
+
+/** Every subject a rule reads an item against: its subject, its partners, its exceptions. */
+function subjectsOf(rule: Rule): Subject[] {
+  const { subject, requires = [], unlessWith = [] } = rule.when;
+  return [
+    ...(subject === undefined ? [] : [subject]),
+    ...requires.flatMap((requirement) => ('with' in requirement ? [requirement.with] : [])),
+    ...unlessWith,
+  ];
+}
+
 /**
- * Rules a card could merge while they orient differently: a card keeps the
- * highest level of one item set and check, then that finding's orientation, so
- * two rules of one kind (one check), one level and one subject with different
- * orientations would hide one of them. Each clash names its rule ids.
+ * How the rules see an item: for each rule, which of its subjects the item
+ * matches (the subject with its strength threshold), and the components of
+ * an item a daily maximum adds up. Two items the rules see alike give the
+ * same findings, alone or beside any other item, so one stands for both.
+ * Null when no rule sees the item at all.
+ */
+function seenBy(of: Pack, item: CheckedItem): string | null {
+  const reads = of.rules.map((rule) =>
+    subjectsOf(rule).map((s) => {
+      // The strength threshold is the subject's only, never a partner's.
+      const threshold = s === rule.when.subject ? rule.when.strengthAboveMg : undefined;
+      return itemMatches(of, item, s, threshold);
+    }),
+  );
+  if (!reads.some((matches) => matches.includes(true))) return null;
+  const ref = item.ref;
+  // A daily maximum adds up strengths: the components count only for an item it sees.
+  const summed = of.rules.some((rule, index) => rule.kind === 'max-dose' && reads[index]?.[0]);
+  const product = ref.kind === 'product' ? of.products.find((p) => p.id === ref.id) : undefined;
+  // A box of unknown strength adds nothing to a daily total: another way of being seen.
+  return JSON.stringify([
+    ref.kind,
+    item.strengthUnknown === true,
+    reads,
+    summed ? (product?.components ?? []) : [],
+  ]);
+}
+
+/** Every subset of a few conditions, the empty one first. */
+function subsets<T>(values: readonly T[]): T[][] {
+  return values.reduce<T[][]>((all, value) => [...all, ...all.map((s) => [...s, value])], [[]]);
+}
+
+/**
+ * Findings a card would merge while they say different orientations. A card
+ * stands for the findings of one item set and check and shows the orientation
+ * of the first (highest) one, so two findings with the same check, level and
+ * items whose own orientations differ would hide one of them, whatever their
+ * subjects. Every product and plant of the registry is evaluated against the
+ * rules, alone and beside every other one (at 24 units a day, so a daily
+ * maximum is passed), during a pregnancy of unknown term (every window) and
+ * while breastfeeding a baby of unknown age, with every combination of the
+ * conditions the rules name. Items the rules see alike are evaluated once
+ * (seenBy). Each clash names the products or plants and the rule ids.
  */
 function mergeClashes(of: Pack): string[] {
-  const groups = new Map<string, Map<string, string[]>>();
-  for (const rule of of.rules) {
-    if (rule.kind === 'reminder' || rule.kind === 'contraception-info') continue;
-    const key = `${rule.kind} ${rule.level} ${JSON.stringify(rule.when.subject)}`;
-    const byOrientation = groups.get(key) ?? new Map<string, string[]>();
-    const orientation = of.messages.fr[rule.message]?.orientation ?? `default ${rule.level}`;
-    byOrientation.set(orientation, [...(byOrientation.get(orientation) ?? []), rule.id]);
-    groups.set(key, byOrientation);
+  // Each product as listed with its strength, and as a box whose strength is
+  // not known (the confirm screen's "Je ne sais pas"): a strength threshold
+  // matches the second even when it matches no known strength.
+  const entries: CheckedItem[] = [
+    ...of.products.flatMap((p): CheckedItem[] => [
+      { ref: { kind: 'product', id: p.id }, unitsPerDay: 24 },
+      { ref: { kind: 'product', id: p.id }, unitsPerDay: 24, strengthUnknown: true },
+    ]),
+    ...of.plants.map((p): CheckedItem => ({ ref: { kind: 'plant', id: p.id } })),
+  ];
+  // Up to two items per way of being seen: two of them make a pair of the same kind.
+  const alike = new Map<string, CheckedItem[]>();
+  for (const entry of entries) {
+    const key = seenBy(of, entry);
+    if (key === null) continue;
+    const members = alike.get(key) ?? [];
+    if (members.length < 2) alike.set(key, [...members, entry]);
   }
-  return [...groups.entries()]
-    .filter(([, byOrientation]) => byOrientation.size > 1)
-    .map(([key, byOrientation]) => `${key}: ${[...byOrientation.values()].flat().join(', ')}`);
+  const kinds = [...alike.values()];
+  const itemSets: CheckedItem[][] = [];
+  kinds.forEach((members, i) => {
+    const [first, second] = members;
+    if (first === undefined) return;
+    itemSets.push([first]);
+    if (second !== undefined) itemSets.push([first, second]);
+    for (const others of kinds.slice(i + 1)) {
+      if (others[0] !== undefined) itemSets.push([first, others[0]]);
+    }
+  });
+  const named = new Set<ConditionId>(
+    of.rules.flatMap((rule) => [
+      ...(rule.when.requires ?? []).flatMap((r) => ('condition' in r ? [r.condition] : [])),
+      ...(rule.when.unlessConditions ?? []),
+    ]),
+  );
+  // Kept small on purpose: every combination is evaluated.
+  expect(named.size).toBeLessThanOrEqual(6);
+  const orientationOf = (finding: Finding) =>
+    (['fr', 'en'] as const)
+      .map((lang) => of.messages[lang][finding.message]?.orientation ?? `default ${finding.level}`)
+      .join(' | ');
+
+  const clashes = new Set<string>();
+  for (const items of itemSets) {
+    for (const conditions of subsets([...named])) {
+      const context: EvaluationContext = {
+        pregnancy: { weeksMin: 0, weeksMax: 42, precision: 'unknown' },
+        breastfeeding: {},
+        conditions,
+        items,
+        signs: [],
+      };
+      for (const group of cardGroups(evaluate(of, context).findings)) {
+        for (const level of new Set(group.map((f) => f.level))) {
+          const same = group.filter((f) => f.level === level);
+          if (new Set(same.map(orientationOf)).size < 2) continue;
+          const [first] = same;
+          const names = items.map((item) =>
+            'id' in item.ref
+              ? `${item.ref.kind}:${item.ref.id}${item.strengthUnknown === true ? ' (strength unknown)' : ''}`
+              : '',
+          );
+          const rules = same.map((f) => f.ruleId ?? f.message).sort();
+          clashes.add(`${names.join(' + ')}: ${first?.check ?? ''} ${level}: ${rules.join(', ')}`);
+        }
+      }
+    }
+  }
+  return [...clashes].sort();
 }

@@ -83,8 +83,8 @@ function Item({
  * substances and strengths, units per day when given), each with a way off the
  * list; a medicine or a remedy is added through the search screen. Under the
  * list, in words, what just changed (added, taken off with a way to put it
- * back). The one primary action shows the result, once at least one item is
- * listed.
+ * back). The one primary action goes on to the result, through the danger
+ * signs present now, once at least one item is listed.
  *
  * The check is for the active profile: hers in woman mode, the profile of the
  * check in progress or the one saved last in accompanied mode. Without any
@@ -254,8 +254,9 @@ export function Check() {
         disabled={empty}
         aria-describedby={empty ? emptyId : undefined}
         onClick={() => {
-          // One entry after this one: the result's way back comes here (check-flow.ts).
-          navigate('/result', { state: { stepsToCheck: 1 } });
+          // The danger signs present now come first, then the result (one entry
+          // after this one, then two: their ways back come here, check-flow.ts).
+          navigate('/signs', { state: { stepsToCheck: 1 } });
         }}
       >
         {t('check.seeResult')}

@@ -127,6 +127,9 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
         pack.messages.fr['danger-sign-fever']?.fact ?? 'missing',
       ),
     ).toBeVisible();
+    // The instruction is said once, in the banner: the danger card does not repeat it.
+    expect(within(cards[0] as HTMLElement).queryByText(goForTest)).toBeNull();
+    expect(cards[0]?.querySelector('.result-card__orientation')).toBeNull();
     expect(within(cards[1] as HTMLElement).getByText(/rien ne prouve qu'il guérit/)).toBeVisible();
     expect(
       within(cards[1] as HTMLElement).getByText(
@@ -161,10 +164,11 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     expect(kept).toMatchObject({ profileId: 'p1', level: 'danger', signs: ['fever'] });
     expect(kept?.items).toEqual([KINKELIBA]);
 
+    // The banner's action: who to call, with the same instruction and the circuit.
     await user.click(call);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Signes de danger' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: goForTest })).toBeVisible();
+    expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
 
     // Back to the same result: the same check is not recorded a second time.
     window.history.back();
@@ -231,6 +235,27 @@ describe('Result: accompanied mode', () => {
     // One finding: no summary, the card says it all.
     expect(screen.queryByRole('list', { name: 'Résumé' })).toBeNull();
   });
+
+  it('pairs each risk of a merged card with its own detailed risk and evidence level', async () => {
+    await saveProfile(profileOf({ term: { kind: 'unknown' } }));
+    await openResult({ items: [ADVIL], settings: accompanied });
+
+    const card = await screen.findByRole('article');
+    const from20 = pack.messages.fr['nsaid-pregnancy-from-20-weeks'];
+    const before20 = pack.messages.fr['nsaid-pregnancy-before-20-weeks'];
+    const blocks = [...card.querySelectorAll('.result-card__details .result-card__risk')];
+    // Each block: its risk, its detailed risk, then its own evidence level.
+    expect(blocks.map((block) => [...block.children].map((p) => p.textContent))).toEqual([
+      [from20?.risk, from20?.riskDetail, 'Niveau de preuve A : « peut provoquer »'],
+      [
+        before20?.risk,
+        before20?.riskDetail,
+        'Niveau de preuve C : « des cas graves ont été rapportés »',
+      ],
+    ]);
+    // The sources and rules close the card; no evidence line apart from its risk.
+    expect(card.querySelector('.result-card__meta')).not.toHaveTextContent(/Niveau de preuve/);
+  });
 });
 
 describe('Result: one finding, the way back', () => {
@@ -249,6 +274,8 @@ describe('Result: one finding, the way back', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
     await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
 
     const card = await screen.findByRole('article', {
@@ -269,7 +296,7 @@ describe('Result: one finding, the way back', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
     expect(probe.current().items).toEqual([ADVIL]);
-    // Back went back one entry: the result is not stacked on top of the check.
+    // Back went back to the check entry: neither the result nor the signs are stacked on top.
     window.history.back();
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   });

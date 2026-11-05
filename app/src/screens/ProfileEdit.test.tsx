@@ -283,7 +283,7 @@ describe('ProfileEdit: validation', () => {
     await openForm(woman);
     const pseudonym = screen.getByRole('textbox', { name: 'Surnom' });
     await user.clear(pseudonym);
-    await user.type(pseudonym, '77 123 45 67');
+    await user.type(pseudonym, '00 000 00 00');
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
     expect(pseudonym).toHaveAccessibleDescription(/Pas de numéro de téléphone/);

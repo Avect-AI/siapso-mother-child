@@ -22,7 +22,10 @@ export interface CheckState {
   /** The profile the check is for; null until a screen starts it. */
   profileId: string | null;
   items: CheckedItem[];
+  /** The danger signs present now, as answered before the result (none: empty). */
   signs: string[];
+  /** The signs question was answered: an empty `signs` is then "none of these", not "not asked yet". */
+  signsGiven: boolean;
   // Function properties, not methods: stable callbacks, safe to pass on alone.
   /**
    * The check is for this profile: kept when it already is (or when it was
@@ -55,6 +58,7 @@ export interface CheckState {
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
+  /** The answer to the signs question: the signs present now, or none (empty). */
   setSigns: (signs: string[]) => void;
   /** Back to no check at all, for no profile. */
   reset: () => void;
@@ -92,6 +96,7 @@ interface CheckData {
   profileId: string | null;
   items: CheckedItem[];
   signs: string[];
+  signsGiven: boolean;
   changed: CheckChange | null;
   /** The list each unrecognised text was typed in, by refKey. */
   lists: Readonly<Record<string, EntryKind>>;
@@ -112,6 +117,7 @@ const EMPTY: CheckData = {
   profileId: null,
   items: [],
   signs: [],
+  signsGiven: false,
   changed: null,
   lists: {},
   families: {},
@@ -205,7 +211,7 @@ function reduce(state: CheckData, action: Action): CheckData {
     case 'clearChanged':
       return state.changed === null ? state : { ...state, changed: null };
     case 'signs':
-      return { ...state, signs: [...action.signs] };
+      return { ...state, signs: [...new Set(action.signs)], signsGiven: true };
     case 'reset':
       return EMPTY;
   }
@@ -252,7 +258,7 @@ export function useCheckStore(): CheckState {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
-  const { profileId, items, signs, changed, lists } = data;
+  const { profileId, items, signs, signsGiven, changed, lists } = data;
   const indexOf = useCallback(
     (ref: ItemRef) => items.findIndex((item) => sameRef(item.ref, ref)),
     [items],
@@ -263,6 +269,7 @@ export function useCheckStore(): CheckState {
       profileId,
       items,
       signs,
+      signsGiven,
       changed,
       start,
       add,
@@ -278,6 +285,7 @@ export function useCheckStore(): CheckState {
       profileId,
       items,
       signs,
+      signsGiven,
       changed,
       start,
       add,

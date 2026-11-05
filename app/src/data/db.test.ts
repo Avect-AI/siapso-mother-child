@@ -12,14 +12,58 @@ import {
 
 const pack = (version: string) => ({ version }) as unknown as Pack;
 
+/** Opens the database at a version with the raw API, creating the version 1 stores on upgrade. */
+function openRaw(version: number, upgrade?: (db: IDBDatabase) => void): Promise<IDBDatabase> {
+  return new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open('siapso', version);
+    request.onupgradeneeded = () => {
+      upgrade?.(request.result);
+    };
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      reject(request.error ?? new Error('open failed'));
+    };
+  });
+}
+
 describe('openAppDb', () => {
-  it('creates the pack, settings, profiles and history stores', async () => {
+  it('creates the pack, settings, profiles, history and contacts stores', async () => {
     const db = await openAppDb();
 
-    expect([...db.objectStoreNames].sort()).toEqual(['history', 'pack', 'profiles', 'settings']);
+    expect([...db.objectStoreNames].sort()).toEqual([
+      'contacts',
+      'history',
+      'pack',
+      'profiles',
+      'settings',
+    ]);
     expect(db.transaction('profiles').store.keyPath).toBe('id');
     expect(db.transaction('history').store.keyPath).toBe('id');
     expect(db.transaction('history').store.indexNames.contains('profileId')).toBe(true);
+  });
+
+  it('adds the contacts store to a version 1 database and keeps what it holds', async () => {
+    const old = await openRaw(1, (db) => {
+      db.createObjectStore('pack');
+      db.createObjectStore('settings');
+      db.createObjectStore('profiles', { keyPath: 'id' });
+      db.createObjectStore('history', { keyPath: 'id' }).createIndex('profileId', 'profileId');
+    });
+    await new Promise<void>((resolve) => {
+      const tx = old.transaction('settings', 'readwrite');
+      tx.objectStore('settings').put({ lang: 'en', mode: 'woman', onboarded: true }, 'settings');
+      tx.oncomplete = () => {
+        resolve();
+      };
+    });
+    old.close();
+
+    const db = await openAppDb();
+    expect(db.version).toBe(2);
+    expect(db.objectStoreNames.contains('contacts')).toBe(true);
+    expect(await getStoredSettings()).toEqual({ lang: 'en', mode: 'woman', onboarded: true });
   });
 
   it('opens once and shares the connection until it is closed', async () => {
@@ -33,17 +77,9 @@ describe('openAppDb', () => {
   it('gives way when another tab opens a newer version, instead of blocking it', async () => {
     await openAppDb();
 
-    const newer = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('siapso', 2);
-      request.onsuccess = () => {
-        resolve(request.result);
-      };
-      request.onerror = () => {
-        reject(request.error ?? new Error('open failed'));
-      };
-    });
+    const newer = await openRaw(3);
 
-    expect(newer.version).toBe(2);
+    expect(newer.version).toBe(3);
     newer.close();
   });
 });

@@ -83,7 +83,7 @@ describe('validateForm', () => {
     expect(validateForm(common({ pseudonym: '   ' }), TODAY, 'woman').pseudonym).toBe(
       'profile.error.pseudonym',
     );
-    expect(validateForm(common({ pseudonym: '77 123 45 67' }), TODAY, 'woman').pseudonym).toBe(
+    expect(validateForm(common({ pseudonym: '00 000 00 00' }), TODAY, 'woman').pseudonym).toBe(
       'profile.error.pseudonymNumber',
     );
     expect(validateForm(common({ pseudonym: 'Femme 12' }), TODAY, 'woman')).toEqual({});

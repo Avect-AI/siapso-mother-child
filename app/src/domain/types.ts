@@ -42,6 +42,19 @@ export interface Profile {
   updatedAt: string;
 }
 
+/** Who a referral contact is in the circuit: community relay, Bajenu Gox, ICP, midwife, other. */
+export type ReferralRole = 'relay' | 'bajenu-gox' | 'icp' | 'midwife' | 'other';
+
+/** Someone to call when a danger sign is there and no health worker is. */
+export interface ReferralContact {
+  id: string;
+  role: ReferralRole;
+  /** May be empty: the role alone then names the contact. */
+  name: string;
+  /** Digits, spaces and an optional leading plus; 6 to 15 digits. */
+  phone: string;
+}
+
 export interface CurrentCheck {
   profileId: string;
   items: CheckedItem[];

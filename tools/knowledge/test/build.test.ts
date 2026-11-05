@@ -78,9 +78,10 @@ describe('buildPack', () => {
     expect(pack.classes).toStrictEqual([
       { id: 'nsaid', names: { fr: 'AINS', en: 'NSAID' }, excludes: [] },
     ]);
-    expect(pack.dangerSigns.map((s) => s.id)).toEqual(['bleeding', 'fever']);
-    expect(pack.dangerSigns[0]?.message).toBe('bleeding-sign');
-    expect(pack.dangerSigns[1]).not.toHaveProperty('message');
+    // As written in the file, not sorted.
+    expect(pack.dangerSigns.map((s) => s.id)).toEqual(['fever', 'bleeding']);
+    expect(pack.dangerSigns[1]?.message).toBe('bleeding-sign');
+    expect(pack.dangerSigns[0]).not.toHaveProperty('message');
     expect(pack.sources.map((s) => s.id)).toEqual(['lactmed', 'literature', 'openfda', 'who']);
   });
 
@@ -109,12 +110,22 @@ describe('buildPack', () => {
     });
   });
 
-  it('sorts every array by id, whatever the order of the files', async () => {
+  it('keeps the danger signs in the order written in their file: the order the screens list them', async () => {
+    for (const reversed of [false, true]) {
+      const raw = copyOf(await loadValid());
+      const written = list(raw.dangerSigns?.data);
+      if (reversed) written.reverse();
+      const ids = written.map((sign) => (sign as { id: string }).id);
+      expect(ids.length).toBeGreaterThan(1);
+      expect(buildPack(raw).dangerSigns.map((sign) => sign.id)).toEqual(ids);
+    }
+  });
+
+  it('sorts every other array by id, whatever the order of the files', async () => {
     const raw = copyOf(await loadValid());
     raw.rules.reverse();
     raw.products.reverse();
     list(raw.substances?.data).reverse();
-    list(raw.dangerSigns?.data).reverse();
     const pack = buildPack(raw);
     for (const collection of [
       pack.rules,
@@ -122,7 +133,6 @@ describe('buildPack', () => {
       pack.plants,
       pack.substances,
       pack.classes,
-      pack.dangerSigns,
     ]) {
       const ids = collection.map((e) => e.id);
       expect(ids).toEqual([...ids].sort());

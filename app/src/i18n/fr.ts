@@ -295,6 +295,90 @@ export const fr = {
     listUnavailable: "La liste des signes de danger n'est pas encore sur ce téléphone.",
     // A pack is loaded but lists no danger sign.
     listEmpty: "La liste des signes de danger n'a pas encore été ajoutée.",
+    // The list to choose from: one or more signs seen now, then "C'est grave maintenant".
+    question: 'Quels signes voyez-vous maintenant ?',
+    hint: 'Cochez les signes que vous voyez, pour les dire quand vous appelez.',
+    group: {
+      pregnancy: 'Pendant la grossesse',
+      postpartum: "Après l'accouchement",
+      baby: 'Chez le bébé',
+    },
+    now: "C'est grave maintenant",
+    // Straight to who to call, without choosing a sign (one missing from the list).
+    call: 'Voir qui appeler',
+  },
+  // Who to call: the referral circuit. The app only opens the phone's dialler:
+  // it never sends anything and never says that someone knows or is coming.
+  call: {
+    title: 'Qui appeler',
+    signsLabel: 'Dites ces signes au téléphone ou au poste de santé :',
+    contactsLabel: 'Contacts à appeler',
+    loading: 'Les contacts se chargent.',
+    none: 'Aucun contact enregistré sur ce téléphone.',
+    savedUnavailable:
+      "Les contacts de ce téléphone n'ont pas pu être lus. Fermez l'application, puis rouvrez-la.",
+    // The link that opens the phone's dialler; who and the number follow for a screen reader.
+    dial: 'Appeler',
+    dialWho: '{who}, {phone}',
+    add: 'Ajouter un contact',
+    manage: 'Modifier les contacts',
+    circuit: 'Circuit de référence',
+  },
+  contacts: {
+    title: 'Contacts à appeler',
+    lead: 'Ces numéros restent sur ce téléphone.',
+    listLabel: 'Contacts enregistrés sur ce téléphone',
+    add: 'Ajouter un contact',
+    edit: 'Modifier',
+    editNamed: 'Modifier {who}',
+    // Taken off the phone's list of contacts.
+    remove: 'Retirer',
+    removeNamed: 'Retirer {who}',
+    removed: '{who} est retiré des contacts.',
+    putBack: 'Remettre dans les contacts',
+    restored: '{who} est remis dans les contacts.',
+    saved: 'Contact enregistré : {who}.',
+    provided: "Contacts fournis avec l'application",
+    providedHint: 'Ils ne se modifient pas ici.',
+    loadFailed:
+      "Les contacts n'ont pas pu être lus sur ce téléphone. Fermez l'application, puis rouvrez-la.",
+    saveFailed: "Les contacts n'ont pas pu être enregistrés sur ce téléphone. Essayez encore.",
+    missing: "Ce contact n'est plus sur ce téléphone. Revenez aux contacts.",
+    titleNew: 'Nouveau contact',
+    titleEdit: 'Modifier le contact',
+    role: 'Rôle',
+    name: 'Nom',
+    nameHint: 'Facultatif.',
+    phone: 'Numéro de téléphone',
+    phoneHint:
+      'Des chiffres, avec des espaces si vous voulez, et un + au début pour un numéro international.',
+    save: 'Enregistrer',
+    // A contact: the name, then the role; the role alone when no name was given.
+    who: '{name} ({role})',
+    roles: {
+      relay: 'Relais',
+      'bajenu-gox': 'Bajenu Gox',
+      icp: 'Infirmier chef de poste (ICP)',
+      midwife: 'Sage-femme',
+      other: 'Autre contact',
+    },
+    error: {
+      role: 'Choisissez un rôle.',
+      phone: 'Écrivez un numéro de téléphone.',
+      phoneFormat:
+        'Écrivez de 6 à 15 chiffres, avec des espaces si vous voulez, et un + seulement au début.',
+    },
+  },
+  // Danger signs now, asked once in a check before the result (spec section 7.1, screen 8).
+  signs: {
+    titleWoman: 'Avez-vous un de ces signes maintenant ?',
+    titleAccompanied: 'A-t-elle un de ces signes maintenant ?',
+    hint: 'Cochez Aucun de ces signes, ou chaque signe présent maintenant.',
+    none: 'Aucun de ces signes',
+    showAll: 'Voir tous les signes',
+    error: 'Répondez : Aucun de ces signes, ou les signes présents maintenant.',
+    loading: 'La liste se prépare.',
+    seeResult: 'Voir le résultat',
   },
   settings: {
     unavailable:

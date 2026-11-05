@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { CheckboxGroup, RadioGroup } from './ChoiceGroup.js';
+import { CheckboxGroup, RadioGroup, SectionedCheckboxGroup } from './ChoiceGroup.js';
 
 const yesNo = [
   { value: 'yes', label: 'Oui' },
@@ -147,5 +147,83 @@ describe('CheckboxGroup', () => {
 
     expect(onScar).toHaveBeenCalledWith(false);
     expect(onNone).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('SectionedCheckboxGroup', () => {
+  const sections = (checked: boolean, onFever = vi.fn()) => [
+    {
+      id: 'pregnancy',
+      label: 'Pendant la grossesse',
+      options: [{ id: 'fever', label: 'Fièvre', checked, onChange: onFever }],
+    },
+    {
+      id: 'baby',
+      label: 'Chez le bébé',
+      options: [
+        { id: 'baby-fever', label: 'Le bébé a de la fièvre', checked: false, onChange: vi.fn() },
+      ],
+    },
+  ];
+
+  it('puts the exclusive answer first, set apart, then each section as a group named by its heading', async () => {
+    const onFever = vi.fn();
+    const onNone = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <SectionedCheckboxGroup
+        legend="A-t-elle un de ces signes maintenant ?"
+        hint="Cochez"
+        none={{ id: 'none', label: 'Aucun de ces signes', checked: false, onChange: onNone }}
+        sections={sections(false, onFever)}
+      />,
+    );
+
+    const group = screen.getByRole('group', { name: 'A-t-elle un de ces signes maintenant ?' });
+    const boxes = within(group).getAllByRole('checkbox');
+    expect(boxes.map((box) => box.closest('label')?.textContent)).toEqual([
+      'Aucun de ces signes',
+      'Fièvre',
+      'Le bébé a de la fièvre',
+    ]);
+    expect(boxes[0]?.closest('label')).toHaveClass('option--none-first');
+    expect(within(group).getByRole('group', { name: 'Chez le bébé' })).toContainElement(
+      boxes[2] ?? null,
+    );
+
+    await user.click(screen.getByText('Fièvre'));
+    await user.click(screen.getByText('Aucun de ces signes'));
+    expect(onFever).toHaveBeenCalledWith(true);
+    expect(onNone).toHaveBeenCalledWith(true);
+  });
+
+  it('can be named by a heading outside it instead of a legend', () => {
+    render(
+      <>
+        <h1 id="question">Quels signes ?</h1>
+        <SectionedCheckboxGroup labelledBy="question" sections={sections(false)} />
+      </>,
+    );
+
+    const group = screen.getByRole('group', { name: 'Quels signes ?' });
+    expect(group.querySelector(':scope > legend')).toBeNull();
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(2);
+  });
+
+  it('marks every answer invalid with the error, and takes a heading as its legend', () => {
+    render(
+      <SectionedCheckboxGroup
+        legend={<h1>Quels signes ?</h1>}
+        error="Cochez au moins un signe."
+        sections={sections(false)}
+      />,
+    );
+
+    expect(screen.getByRole('group', { name: 'Quels signes ?' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Quels signes ?' })).toBeVisible();
+    for (const box of screen.getAllByRole('checkbox')) {
+      expect(box).toHaveAttribute('aria-invalid', 'true');
+      expect(box).toHaveAccessibleDescription('Cochez au moins un signe.');
+    }
   });
 });

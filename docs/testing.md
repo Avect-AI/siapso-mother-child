@@ -67,5 +67,7 @@ Each new tunnel address is a different origin: the phone treats it as a new app,
 - **Language:** the language chosen at the welcome screen is still the one in use, and the page language follows it.
 - **Looking up a product:** from Home, "Regarder un produit" ("Look up a product"): search, confirm a product and its units, add a remedy (from SCRUM-24).
 - **A result:** the result screen shows the level, its name and pictogram, who to show and when, the knowledge base version and the fixed sentences (from SCRUM-25).
-- **Danger signs:** the "Signes de danger" button in the header opens the danger signs from every screen, with "Allez au poste de santé maintenant."
+- **Danger signs:** the "Signes de danger" button in the header opens the danger signs from every screen, with "Allez au poste de santé maintenant.", the signs in three groups and "C'est grave maintenant". With or without a sign ticked, it opens "Qui appeler" with "Allez au poste de santé maintenant.", the signs ticked to say and the contacts (from SCRUM-26).
+- **Signs in a check:** "Voir le résultat" first asks "Avez-vous un de ces signes maintenant ?" ("A-t-elle..." in accompanied mode), "Aucun de ces signes" first; a sign ticked there gives a danger card in the result (from SCRUM-26).
+- **Who to call:** contacts saved on the phone and those of the deployment's `referral.json` are listed with their numbers; "Appeler" opens the phone's dialler with the number (the call itself needs the phone network, not the internet). Without any contact: "Aucun contact enregistré sur ce téléphone." The app never says a message was sent or that someone is coming.
 - No screen offers an action that needs the network without saying so.

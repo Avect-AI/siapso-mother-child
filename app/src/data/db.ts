@@ -3,7 +3,7 @@
 // is ever sent anywhere.
 import type { Pack } from '@siapso/engine';
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { HistoryEntry, Profile, Settings } from '../domain/types.js';
+import type { HistoryEntry, Profile, ReferralContact, Settings } from '../domain/types.js';
 
 export type PackSlot = 'current' | 'previous';
 
@@ -25,23 +25,28 @@ interface SiapsoDb extends DBSchema {
   settings: { key: 'settings'; value: Settings };
   profiles: { key: string; value: Profile };
   history: { key: string; value: HistoryEntry; indexes: { profileId: string } };
+  /** The referral contacts saved on this phone, in their order, under one key (version 2). */
+  contacts: { key: 'saved'; value: ReferralContact[] };
 }
 
 const NAME = 'siapso';
-const VERSION = 1;
+const VERSION = 2;
 
 let opening: Promise<IDBPDatabase<SiapsoDb>> | undefined;
 let connection: IDBPDatabase<SiapsoDb> | undefined;
 
-/** The database, opened once and shared (created on first use). */
+/** The database, opened once and shared (created on first use, upgraded from an older version). */
 export function openAppDb(): Promise<IDBPDatabase<SiapsoDb>> {
   if (opening) return opening;
   const attempt: Promise<IDBPDatabase<SiapsoDb>> = openDB<SiapsoDb>(NAME, VERSION, {
-    upgrade(db) {
-      db.createObjectStore('pack');
-      db.createObjectStore('settings');
-      db.createObjectStore('profiles', { keyPath: 'id' });
-      db.createObjectStore('history', { keyPath: 'id' }).createIndex('profileId', 'profileId');
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        db.createObjectStore('pack');
+        db.createObjectStore('settings');
+        db.createObjectStore('profiles', { keyPath: 'id' });
+        db.createObjectStore('history', { keyPath: 'id' }).createIndex('profileId', 'profileId');
+      }
+      if (oldVersion < 2) db.createObjectStore('contacts');
     },
     // An older version of the app keeps the database open in another tab:
     // this open waits until that tab closes or reloads.

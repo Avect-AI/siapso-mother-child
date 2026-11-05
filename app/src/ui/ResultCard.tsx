@@ -11,8 +11,10 @@ export type HeadingLevel = 2 | 3 | 4;
  * and the level name as a caption, and wraps a white reserve with the product
  * name and the fields, always in the same order: the reading fields
  * (children: the risk), then who to show and when (the clearest line of the
- * reserve), then the details for the health worker (`details`), then the
- * source, evidence and version lines (`meta`).
+ * reserve), then the details for the health worker (`details`: the fact,
+ * each detailed risk with its evidence level), then the source and rule
+ * lines (`meta`). A danger card leaves out the orientation only when the
+ * danger banner above says it (`orientation` null).
  *
  * The heading says the level before the product, so a screen reader that
  * jumps from heading to heading hears both; the caption, the same words, is
@@ -38,11 +40,14 @@ export function ResultCard({
   title: ReactNode;
   /** The product name's heading level, from the page outline. */
   headingLevel: HeadingLevel;
-  /** Who to show and when. */
-  orientation: string;
-  /** More for the health worker (fact, detailed risk), after the orientation. */
+  /**
+   * Who to show and when; null only for a danger card whose orientation is
+   * the instruction of the danger banner above it (said once, there).
+   */
+  orientation: string | null;
+  /** More for the health worker (fact, detailed risk and its evidence level), after the orientation. */
   details?: ReactNode;
-  /** Source, evidence and version lines, last. */
+  /** Source and rule lines, last. */
   meta?: ReactNode;
   children: ReactNode;
 }) {
@@ -59,7 +64,7 @@ export function ResultCard({
           <span className="sr-only">{levelLabel}.</span> {title}
         </Heading>
         {children}
-        <p className="result-card__orientation">{orientation}</p>
+        {orientation === null ? null : <p className="result-card__orientation">{orientation}</p>}
         {details === undefined ? null : <div className="result-card__details">{details}</div>}
         {meta === undefined ? null : <div className="result-card__meta">{meta}</div>}
       </div>

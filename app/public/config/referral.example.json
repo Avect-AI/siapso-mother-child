@@ -1,0 +1,9 @@
+{
+  "contacts": [
+    { "role": "relay", "name": "", "phone": "" },
+    { "role": "bajenu-gox", "name": "", "phone": "" },
+    { "role": "icp", "name": "", "phone": "" },
+    { "role": "midwife", "name": "", "phone": "" }
+  ],
+  "nationalCircuit": { "fr": "", "en": "" }
+}

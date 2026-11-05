@@ -219,6 +219,9 @@ describe('Check to result', () => {
     const { user } = await openCheckFromHome();
     await addThrough(user, 'Ajouter un remède', 'kinkeliba');
     await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now come first.
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
     // Kinkeliba has no rule and evidence 0: we do not know, never reassurance.

@@ -34,6 +34,14 @@ async function pregnantAt(page: Page, weeks: number, mode: 'woman' | 'accompanie
 
 const womanAt = (page: Page, weeks: number) => pregnantAt(page, weeks, 'woman');
 
+/** From the check: "Voir le résultat", "Aucun de ces signes" on the danger signs now, then the result. */
+async function seeResult(page: Page) {
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await page.getByText('Aucun de ces signes', { exact: true }).click();
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
+}
+
 /** Adds the first candidate for `query` from one list, confirmed. */
 async function add(page: Page, list: 'Ajouter un médicament' | 'Ajouter un remède', query: string) {
   await page.getByRole('button', { name: list }).click();
@@ -49,7 +57,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
 }) => {
   await womanAt(page, 30);
   await add(page, 'Ajouter un médicament', 'ibuprofene');
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await seeResult(page);
 
   const card = page.getByRole('article');
   await expect(card).toHaveCount(1);
@@ -83,7 +91,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
 test('kinkeliba without a danger sign: we do not know, and who to show it to', async ({ page }) => {
   await womanAt(page, 14);
   await add(page, 'Ajouter un remède', 'kinkeliba');
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await seeResult(page);
 
   const card = page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' });
   await expect(card).toBeVisible();
@@ -100,11 +108,12 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
 }) => {
   await pregnantAt(page, 30, 'accompanied');
   await add(page, 'Ajouter un médicament', 'advil 400');
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await seeResult(page);
 
   const card = page.getByRole('article');
   await expect(card.locator('.result-card__details')).toContainText('anti-inflammatoire');
-  await expect(card.locator('.result-card__meta')).toContainText('Niveau de preuve A');
+  // The evidence level sits with the detailed risk it belongs to.
+  await expect(card.locator('.result-card__risk')).toContainText('Niveau de preuve A');
   await expect(card.getByRole('link').first()).toHaveAttribute('href', /^https:\/\//);
   await expect(page.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
   await expectNoSeriousViolation(page);

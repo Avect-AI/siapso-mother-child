@@ -82,9 +82,18 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   // Back from the check goes home: the search and confirm steps are not stacked behind it.
   await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
   await page.keyboard.press('Enter');
+  // The danger signs present now, by keyboard too: "none" first, then on to the result.
+  const signsTitle = 'Avez-vous un de ces signes maintenant ?';
+  await expect(page.getByRole('heading', { level: 1, name: signsTitle })).toBeVisible();
+  await tabTo(page, page.getByRole('checkbox', { name: 'Aucun de ces signes' }));
+  await page.keyboard.press('Space');
+  await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
+  await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
   await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).toBeChecked();
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
   await page.goBack();

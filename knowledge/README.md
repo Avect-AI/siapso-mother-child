@@ -142,4 +142,4 @@ pnpm knowledge:check   # prints one problem per line as "file: path: message", e
 pnpm knowledge:build   # writes app/public/pack/ (fragments, pack.json, manifest.json) and NOTICE
 ```
 
-The build empties `app/public/pack/` first (it only cleans a directory named `pack`). It is deterministic (arrays sorted by id, no timestamp) and fails if the gzipped fragments exceed 3 MB.
+The build empties `app/public/pack/` first (it only cleans a directory named `pack`). It is deterministic (arrays sorted by id, except the danger signs, which keep the order written in `danger-signs.yaml`, the order the screens list them; no timestamp) and fails if the gzipped fragments exceed 3 MB.

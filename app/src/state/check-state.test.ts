@@ -247,6 +247,25 @@ describe('useCheckStore', () => {
     expect(result.current.signs).toEqual(['bleeding', 'fever']);
   });
 
+  it('tells "none of these signs" from no answer yet', () => {
+    const { result } = renderHook(() => useCheckStore());
+    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
+    act(() => {
+      result.current.start('p1');
+      result.current.setSigns([]);
+    });
+    expect(result.current).toMatchObject({ signs: [], signsGiven: true });
+    // The answer stays while the list changes; a check for another profile asks again.
+    act(() => {
+      result.current.add(paracetamol);
+    });
+    expect(result.current.signsGiven).toBe(true);
+    act(() => {
+      result.current.start('p2');
+    });
+    expect(result.current.signsGiven).toBe(false);
+  });
+
   it('keeps the check when it starts again for the same profile, and empties it for another', () => {
     const { result } = renderHook(() => useCheckStore());
     act(() => {

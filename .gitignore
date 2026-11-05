@@ -49,6 +49,10 @@ Thumbs.db
 # Knowledge pack built from knowledge/ and registry/
 app/public/pack/
 
+# Referral contacts of a deployment (real phone numbers): never committed.
+# app/public/config/referral.example.json shows the form.
+app/public/config/referral.json
+
 # Voice pack: converted model files, never committed (speech/convert/README.md)
 app/public/voice/
 speech/convert/out/

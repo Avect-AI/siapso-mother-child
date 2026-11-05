@@ -54,25 +54,51 @@ export interface FindingView {
   fact?: string;
   /**
    * Every distinct risk of the findings the card stands for, the highest
-   * first (two pregnancy rules on one ibuprofen: both risks). No numbers,
-   * except the version and date of "nothing found".
+   * first (two pregnancy rules on one ibuprofen: both risks), each with what
+   * belongs to it alone in accompanied mode.
    */
-  risks: string[];
-  /** Accompanied mode only: every distinct detailed risk, in the same order. */
-  riskDetails?: string[];
-  /** Who to show and when, of the highest finding: its message's own, or the level's default. */
-  orientation: string;
+  risks: RiskView[];
+  /**
+   * Who to show and when, of the highest finding: its message's own, or the
+   * level's default; `{ inBanner: true }` for a danger card whose orientation
+   * is the instruction of the danger banner above it, said once there.
+   */
+  orientation: string | InBanner;
   /** "Terme estimé" or "terme inconnu", when a pregnancy window matched on a range. */
   termNote?: string;
-  /** Accompanied mode only: every distinct evidence level, in the same order. */
-  evidence?: EvidenceView[];
   /** Accompanied mode only: the sources of every finding of the card, each once. */
   sources?: SourceView[];
   /** Accompanied mode only: every rule of the card, in the same order. */
   ruleIds?: string[];
   /** Of the highest finding: its level was held down by weak evidence. */
   capped: boolean;
-  /** Accompanied mode only, when capped. */
+}
+
+/**
+ * Where the danger banner's instruction comes from, so another screen (who
+ * to call) can word it again in the language of the moment: the orientation
+ * of a pack message, or the standard danger orientation of the interface.
+ */
+export type InstructionSource = { message: string } | { standard: true };
+
+/** The orientation of a danger card that the danger banner says, above the cards. */
+export interface InBanner {
+  inBanner: true;
+}
+
+/**
+ * One risk of a card with, in accompanied mode, its own detailed risk,
+ * evidence level and capped note: from the same finding, so a merged card
+ * never pairs a risk with another finding's evidence.
+ */
+export interface RiskView {
+  /** No numbers, except the version and date of "nothing found". */
+  text: string;
+  /** Accompanied mode only: the detailed risk of its message, when it has one. */
+  detail?: string;
+  /** Accompanied mode only: the evidence level of its finding, when it has one. */
+  evidence?: EvidenceView;
+  /** Accompanied mode only: its finding's level was held down by weak evidence. */
   cappedNote?: string;
 }
 
@@ -100,6 +126,8 @@ export interface ResultView {
    * differ. Otherwise the level name.
    */
   headline: string;
+  /** When a finding is a danger, where the headline comes from (for who to call). */
+  headlineSource?: InstructionSource;
   /** A finding is a danger: the screen leads with the danger banner. */
   danger: boolean;
   /** One per item set and check, in engine order (shownFindings). */
@@ -225,19 +253,41 @@ function defaultOrientation(scope: Scope, finding: Finding, said: string): strin
   return [...lead, t('result.orientation.unknown')].join(' ');
 }
 
+/** A card as built, before the banner takes over the danger instruction. */
+type CardView = FindingView & { orientation: string };
+
 /**
  * The banner's instruction when a finding is a danger: the orientation every
  * danger card gives when they give the same one, else the standard "go to the
  * health post now".
  */
-function dangerInstruction(scope: Scope, cards: readonly FindingView[]): string {
-  const orientations = distinct(
-    cards.filter((card) => card.level === 'danger').map((card) => card.orientation),
-  );
-  const [only] = orientations;
-  return orientations.length === 1 && only !== undefined
-    ? only
-    : scope.t('result.orientation.danger');
+function dangerInstruction(
+  scope: Scope,
+  cards: readonly CardView[],
+  groups: readonly (readonly Finding[])[],
+): { text: string; source: InstructionSource } {
+  const danger = cards.flatMap((card, index) => {
+    const first = groups[index]?.[0];
+    return card.level === 'danger' && first !== undefined ? [{ card, first }] : [];
+  });
+  const orientations = distinct(danger.map(({ card }) => card.orientation));
+  const [only] = danger;
+  if (orientations.length !== 1 || only === undefined) {
+    return { text: scope.t('result.orientation.danger'), source: { standard: true } };
+  }
+  // The message's own orientation, or the level's default (the standard one).
+  const own = messageOf(scope, only.first.message).orientation !== undefined;
+  return {
+    text: only.card.orientation,
+    source: own ? { message: only.first.message } : { standard: true },
+  };
+}
+
+/** A danger card whose orientation is the banner's instruction leaves it to the banner. */
+function saidInBanner(card: CardView, instruction: string): FindingView {
+  return card.level === 'danger' && card.orientation === instruction
+    ? { ...card, orientation: { inBanner: true } }
+    : card;
 }
 
 /** The risk as read: for "nothing found", its first sentence first, with the version and date. */
@@ -276,25 +326,47 @@ function sourcesOf(scope: Scope, group: readonly Finding[]): SourceView[] {
 }
 
 /**
- * One card: the level, names, orientation, term and fact of its highest
- * finding, and every distinct risk of the group (in accompanied mode also
- * every detailed risk, evidence level, rule and source), so a merge never
- * hides what a lower finding says.
+ * One risk of a card: its sentence and, in accompanied mode, the detailed
+ * risk, evidence level and capped note of the same finding.
  */
-function findingView(scope: Scope, group: readonly Finding[]): FindingView {
+function riskView(scope: Scope, finding: Finding, message: Message): RiskView {
+  const { t } = scope;
+  const risk: RiskView = { text: riskOf(scope, finding, message) };
+  if (scope.mode === 'woman') return risk;
+  if (message.riskDetail !== undefined) risk.detail = message.riskDetail;
+  const level = finding.evidence;
+  if (level !== undefined) {
+    const wording = t(`result.evidenceWording.${level}`);
+    risk.evidence = { level, wording, text: t('result.evidence', { level, wording }) };
+  }
+  if (finding.capped) risk.cappedNote = t('result.capped');
+  return risk;
+}
+
+/**
+ * One card: the level, names, orientation, term and fact of its highest
+ * finding, and every distinct risk of the group (in accompanied mode each
+ * with its own detailed risk, evidence level and capped note, and every rule
+ * and source), so a merge never hides what a lower finding says.
+ */
+function findingView(scope: Scope, group: readonly Finding[]): CardView {
   const { t, mode } = scope;
   const [finding] = group;
   if (finding === undefined) throw new Error('A card needs at least one finding');
   const message = messageOf(scope, finding.message);
-  const messages = group.map((f) => messageOf(scope, f.message));
   const names = namesOf(scope, finding);
   // A sign with its own message explains itself first (fever, then malaria);
   // the standard one's fact is the level again, so it is not said at all.
   const sign = finding.sign !== undefined;
   const signFact = sign && finding.message !== BUILTIN_MESSAGES.dangerSign;
-  const risks = distinct(group.map((f, i) => riskOf(scope, f, messages[i] ?? message)));
-  const said = [signFact ? message.fact : '', ...risks].join(' ');
-  const view: FindingView = {
+  // Each risk once, with what is its own (two rules of one message and level: one risk).
+  const all = group.map((f) => riskView(scope, f, messageOf(scope, f.message)));
+  const risks = all.filter(
+    (risk, index) =>
+      all.findIndex((other) => JSON.stringify(other) === JSON.stringify(risk)) === index,
+  );
+  const said = [signFact ? message.fact : '', ...distinct(risks.map((r) => r.text))].join(' ');
+  const view: CardView = {
     key: `${keyOf(finding)}|${finding.ruleId ?? finding.message}`,
     level: finding.level,
     levelLabel: t(`level.${finding.level}`),
@@ -312,18 +384,6 @@ function findingView(scope: Scope, group: readonly Finding[]): FindingView {
 
   // "Nothing found" reads its fact in the risk, with the version; a sign's fact is the lead or nothing.
   if (finding.message !== BUILTIN_MESSAGES.nothingFound && !sign) view.fact = message.fact;
-  const riskDetails = distinct(
-    messages.flatMap((m) => (m.riskDetail === undefined ? [] : [m.riskDetail])),
-  );
-  if (riskDetails.length > 0) view.riskDetails = riskDetails;
-  const levels = distinct(group.flatMap((f) => (f.evidence === undefined ? [] : [f.evidence])));
-  if (levels.length > 0) {
-    view.evidence = levels.map((level) => {
-      const wording = t(`result.evidenceWording.${level}`);
-      return { level, wording, text: t('result.evidence', { level, wording }) };
-    });
-  }
-  if (finding.capped) view.cappedNote = t('result.capped');
   const sources = sourcesOf(scope, group);
   if (sources.length > 0) view.sources = sources;
   const ruleIds = distinct(group.flatMap((f) => (f.ruleId === undefined ? [] : [f.ruleId])));
@@ -366,13 +426,17 @@ export function buildResultView(
   };
   const levelLabel = t(`level.${evaluation.level}`);
   const danger = evaluation.level === 'danger';
-  const findings = cardGroups(evaluation.findings).map((group) => findingView(scope, group));
+  const groups = cardGroups(evaluation.findings);
+  const cards = groups.map((group) => findingView(scope, group));
+  const instruction = danger ? dangerInstruction(scope, cards, groups) : null;
+  const headline = instruction?.text ?? levelLabel;
   const view: ResultView = {
     level: evaluation.level,
     levelLabel,
-    headline: danger ? dangerInstruction(scope, findings) : levelLabel,
+    headline,
     danger,
-    findings,
+    // The danger instruction is said once, in the banner.
+    findings: danger ? cards.map((card) => saidInBanner(card, headline)) : cards,
     reminders:
       mode === 'accompanied'
         ? evaluation.reminders.map((reminder) => noteView(scope, reminder, 'reminder'))
@@ -384,5 +448,6 @@ export function buildResultView(
     closing: t('result.closing'),
   };
   if (view.notValidated) view.notValidatedLine = t('result.notValidated');
+  if (instruction !== null) view.headlineSource = instruction.source;
   return view;
 }

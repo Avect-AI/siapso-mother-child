@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { findForbiddenWording, type Lang } from '@siapso/engine';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { careUnderWayWording } from '../domain/wording.js';
 import { en } from './en.js';
 import { fr, type Dictionary } from './fr.js';
 import { interpolate, translate, type MessageKey } from './translate.js';
@@ -50,6 +51,37 @@ describe('dictionaries', () => {
       expect(value as string, `${lang} ${key}`).not.toContain(EM_DASH);
       expect(PICTOGRAPHIC.test(value as string), `${lang} ${key}`).toBe(false);
     }
+  });
+
+  it.each(['fr', 'en'] as const)(
+    'never say in %s that a message was sent, that someone knows or is coming, or that care has started',
+    (lang) => {
+      for (const [key, value] of leaves(dictionaries[lang])) {
+        expect(careUnderWayWording(value as string, lang), `${lang} ${key}`).toBeUndefined();
+      }
+    },
+  );
+
+  it('catch the wording of care under way (the check is not vacuous)', () => {
+    for (const text of [
+      'Le message a été envoyé.',
+      'La sage-femme est prévenue.',
+      "L'ambulance arrive.",
+      'Elle est prise en charge.',
+      'Le relais est informé.',
+    ]) {
+      expect(careUnderWayWording(text, 'fr'), text).toBeDefined();
+    }
+    for (const text of [
+      'A message was sent.',
+      'The midwife was informed.',
+      'Help is on the way.',
+      'Someone is coming.',
+    ]) {
+      expect(careUnderWayWording(text, 'en'), text).toBeDefined();
+    }
+    expect(careUnderWayWording('Appeler', 'fr')).toBeUndefined();
+    expect(careUnderWayWording('See who to call', 'en')).toBeUndefined();
   });
 
   it('never say "vérifier" in French, in any form: the tool flags, it does not verify', () => {

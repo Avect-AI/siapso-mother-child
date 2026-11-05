@@ -362,7 +362,11 @@ describe('DangerBanner', () => {
       />,
     );
     expect(screen.getByRole('heading', { level: 2 })).toHaveClass('danger-banner__title--long');
-    expect(rule('.danger-banner__title--long')).toMatch(/font-size:\s*var\(--font-size-title\)/);
+    // Title size at most, down to the reading size in a narrow banner at large text.
+    expect(rule('.danger-banner__title--long')).toMatch(
+      /font-size:\s*clamp\(var\(--font-size-body\),[^;]*var\(--font-size-title\)\)/,
+    );
+    expect(rule('.danger-banner')).toMatch(/container-type:\s*inline-size/);
     // At 200 percent text a long word ("immédiatement") breaks instead of widening the banner.
     expect(rule('.danger-banner__head')).toMatch(/min-width:\s*0/);
     expect(rule('.danger-banner__head')).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
@@ -377,6 +381,20 @@ describe('DangerBanner', () => {
     expect(action).toHaveClass('button');
     await userEvent.click(action);
     expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  it('can stand without an action, when the actions follow it (who to call)', () => {
+    render(
+      <DangerBanner
+        levelLabel="Signe de danger"
+        title="Allez au poste de santé maintenant."
+        headingLevel={2}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Signe de danger Allez au poste de santé maintenant.',
+    );
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('names the level in text before the instruction, which is its largest line', () => {

@@ -99,8 +99,10 @@ export function assemble(content: Content): Pack {
     products: [...content.products].sort((a, b) => byId(a.data, b.data)).map(product),
     plants: [...content.plants].sort((a, b) => byId(a.data, b.data)).map(plant),
     rules: sorted(content.rules).map((rule) => camelKeys(rule) as Rule),
-    dangerSigns: sorted(content.dangerSigns).map(
-      (sign) => camelKeys(sign) as Pack['dangerSigns'][number],
+    // In the order written in danger-signs.yaml (one file, so still
+    // deterministic): the order the screens list them, set by the content.
+    dangerSigns: content.dangerSigns.map(
+      (sign) => camelKeys(sign.data) as Pack['dangerSigns'][number],
     ),
     sources: sources(content),
     messages: { fr: messages(content, 'fr'), en: messages(content, 'en') },

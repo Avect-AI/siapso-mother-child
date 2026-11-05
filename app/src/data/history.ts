@@ -62,7 +62,10 @@ const recordedThisVisit = new Set<string>();
 
 /**
  * What makes two evaluations the same check: the profile, the pack version,
- * the items (whatever their order, with their units and flags) and the signs.
+ * the items (whatever their order, with their units and flags), the signs,
+ * and what the evaluation gave (its level and rules, in engine order): the
+ * same items looked at again after a change of profile (a corrected term)
+ * give another evaluation, which is kept.
  */
 function checkKey(entry: HistoryEntry): string {
   const items = entry.items
@@ -75,7 +78,14 @@ function checkKey(entry: HistoryEntry): string {
       ]),
     )
     .sort();
-  return JSON.stringify([entry.profileId, entry.packVersion, items, [...entry.signs].sort()]);
+  return JSON.stringify([
+    entry.profileId,
+    entry.packVersion,
+    items,
+    [...entry.signs].sort(),
+    entry.level,
+    entry.ruleIds,
+  ]);
 }
 
 /**

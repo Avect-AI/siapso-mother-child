@@ -103,7 +103,9 @@ test('after one load the precache alone starts the app, Home and the danger sign
   await expect(page.getByText('Allez au poste de santé maintenant.')).toBeVisible();
   // The pack loaded: its list, or the loaded-but-empty notice; never "not on this phone".
   await expect(
-    page.getByRole('list').or(page.getByText(/n'a pas encore été ajoutée/)),
+    page
+      .getByRole('group', { name: 'Quels signes voyez-vous maintenant ?' })
+      .or(page.getByText(/n'a pas encore été ajoutée/)),
   ).toBeVisible();
   await expect(page.getByText(/n'est pas encore sur ce téléphone/)).toHaveCount(0);
   // The pack served by the precache was stored again in the background.

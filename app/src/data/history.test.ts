@@ -84,6 +84,24 @@ describe('recordHistoryOnce', () => {
     expect(await listHistory('p1')).toHaveLength(4);
   });
 
+  it('records the same items again when the evaluation changed in the visit (level or rules)', async () => {
+    // The profile was corrected between two looks at the same product: the
+    // same items and signs, another evaluation.
+    expect(await recordHistoryOnce(entry('p1', 1))).toBe(true);
+    const higher: HistoryEntry = {
+      ...entry('p1', 2),
+      level: 'next-contact',
+      ruleIds: ['nsaid-pregnancy-before-20-weeks'],
+    };
+    expect(await recordHistoryOnce(higher)).toBe(true);
+    // Same level, other rules: still another evaluation.
+    const otherRule: HistoryEntry = { ...higher, id: 'p1-3', ruleIds: ['other-rule'] };
+    expect(await recordHistoryOnce(otherRule)).toBe(true);
+    // And the same evaluation again is not.
+    expect(await recordHistoryOnce({ ...otherRule, id: 'p1-4' })).toBe(false);
+    expect(await listHistory('p1')).toHaveLength(3);
+  });
+
   it('records the same check again in a new visit, or after a failed write', async () => {
     expect(await recordHistoryOnce(entry('p1', 1))).toBe(true);
     forgetVisit();

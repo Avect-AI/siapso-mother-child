@@ -68,12 +68,15 @@ describe('buildResultView: woman mode', () => {
       level: 'before-next-dose',
       levelLabel: 'À montrer avant la prochaine prise',
       title: 'ADVIL 400 mg, comprimé enrobé',
-      risks: [pack.messages.fr['nsaid-pregnancy-from-20-weeks']?.risk],
       orientation:
         "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
       capped: false,
     });
-    for (const hidden of ['fact', 'riskDetails', 'evidence', 'sources', 'ruleIds', 'cappedNote']) {
+    // The risk sentence alone: no detail, evidence or capped note beside it.
+    expect(finding.risks).toEqual([
+      { text: pack.messages.fr['nsaid-pregnancy-from-20-weeks']?.risk },
+    ]);
+    for (const hidden of ['fact', 'sources', 'ruleIds']) {
       expect(finding, hidden).not.toHaveProperty(hidden);
     }
   });
@@ -153,12 +156,16 @@ describe('buildResultView: accompanied mode', () => {
     );
     const message = pack.messages.fr['nsaid-pregnancy-from-20-weeks'];
     expect(finding.fact).toBe(message?.fact);
-    expect(finding.riskDetails).toEqual([message?.riskDetail]);
-    expect(finding.evidence).toEqual([
+    // The risk with its own detail and evidence level, side by side.
+    expect(finding.risks).toEqual([
       {
-        level: 'A',
-        wording: 'peut provoquer',
-        text: 'Niveau de preuve A : « peut provoquer »',
+        text: message?.risk,
+        detail: message?.riskDetail,
+        evidence: {
+          level: 'A',
+          wording: 'peut provoquer',
+          text: 'Niveau de preuve A : « peut provoquer »',
+        },
       },
     ]);
     expect(finding.ruleIds).toEqual(['nsaid-pregnancy-from-20-weeks']);
@@ -215,8 +222,15 @@ describe('buildResultView: accompanied mode', () => {
 
 describe('buildResultView: orientation', () => {
   it('uses the message orientation when it has one', () => {
-    const view = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), 'woman');
-    expect(onlyFinding(view).orientation).toBe(pack.messages.fr['danger-sign-fever']?.orientation);
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    expect(pack.products.some((p) => p.id === 'aspirin-generic')).toBe(true);
+    const view = viewOf(contextOf({ pregnancy: weeks(30), items: [aspirin] }), 'woman');
+    expect(onlyFinding(view).orientation).toBe(
+      pack.messages.fr['aspirin-analgesic-dose-pregnancy']?.orientation,
+    );
+    // A danger sign's own orientation leads the banner.
+    const fever = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), 'woman');
+    expect(fever.headline).toBe(pack.messages.fr['danger-sign-fever']?.orientation);
   });
 
   it('says the unknown default in full, without a sentence the message already said', () => {
@@ -359,7 +373,9 @@ describe('buildResultView: nothing found', () => {
       const finding = onlyFinding(viewOf(context, mode));
       expect(finding.level).toBe('unknown');
       expect(finding.risks, mode).toEqual([
-        `Rien n'a été trouvé dans notre base (version ${pack.version} du ${formatPackDate(pack.date, 'fr')}). Cela ne veut pas dire que c'est sans risque.`,
+        {
+          text: `Rien n'a été trouvé dans notre base (version ${pack.version} du ${formatPackDate(pack.date, 'fr')}). Cela ne veut pas dire que c'est sans risque.`,
+        },
       ]);
       expect(finding.orientation).toBe(
         'Montrez cet écran à votre sage-femme ou à votre pharmacien.',
@@ -368,7 +384,9 @@ describe('buildResultView: nothing found', () => {
     }
     const english = onlyFinding(viewOf(context, 'woman', 'en'));
     expect(english.risks).toEqual([
-      `Nothing was found in our knowledge base (version ${pack.version} of ${formatPackDate(pack.date, 'en')}). This does not mean it is risk-free.`,
+      {
+        text: `Nothing was found in our knowledge base (version ${pack.version} of ${formatPackDate(pack.date, 'en')}). This does not mean it is risk-free.`,
+      },
     ]);
   });
 });
@@ -416,15 +434,20 @@ describe('buildResultView: merged findings', () => {
       expect(woman.orientation).toBe(
         "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
       );
-      expect(woman.risks).toEqual([from20?.risk, before20?.risk]);
+      expect(woman.risks).toEqual([{ text: from20?.risk }, { text: before20?.risk }]);
       expect(woman).not.toHaveProperty('ruleIds');
 
-      // Accompanied mode: also both detailed risks, both evidence levels, both rules, all sources.
+      // Accompanied mode: each risk with its own detailed risk and evidence
+      // level (never two lists to match by position), both rules, all sources.
       const accompanied = onlyFinding(
         buildResultView(evaluation, pack, context.items, 'accompanied', 'fr', tOf('fr')),
       );
-      expect(accompanied.riskDetails).toEqual([from20?.riskDetail, before20?.riskDetail]);
-      expect(accompanied.evidence?.map((e) => e.level)).toEqual(['A', 'C']);
+      expect(
+        accompanied.risks.map((risk) => [risk.text, risk.detail, risk.evidence?.level]),
+      ).toEqual([
+        [from20?.risk, from20?.riskDetail, 'A'],
+        [before20?.risk, before20?.riskDetail, 'C'],
+      ]);
       expect(accompanied.ruleIds).toEqual(ids);
       const names = new Set(accompanied.sources?.map((s) => s.name));
       expect(names.has('FDA Drug Safety Communications')).toBe(true);
@@ -487,12 +510,33 @@ describe('buildResultView: capped findings', () => {
     };
     const woman = onlyFinding(buildResultView(capped, pack, [ADVIL], 'woman', 'fr', tOf('fr')));
     expect(woman.capped).toBe(true);
-    expect(woman).not.toHaveProperty('cappedNote');
+    expect(woman.risks.every((risk) => !('cappedNote' in risk))).toBe(true);
     const accompanied = onlyFinding(
       buildResultView(capped, pack, [ADVIL], 'accompanied', 'en', tOf('en')),
     );
     expect(accompanied.capped).toBe(true);
-    expect(accompanied.cappedNote).toBe('Level limited because the evidence is weak.');
+    expect(accompanied.risks[0]?.cappedNote).toBe('Level limited because the evidence is weak.');
+  });
+
+  it('says it with the risk whose level was held down, not with another risk of the card', () => {
+    const context = contextOf({
+      pregnancy: { weeksMin: 0, weeksMax: 42, precision: 'unknown' },
+      items: [ADVIL],
+    });
+    const evaluation = evaluate(pack, context);
+    // The lower of the two findings was capped, the highest was not.
+    const lowerCapped: Evaluation = {
+      ...evaluation,
+      findings: evaluation.findings.map((f, i) => (i === 1 ? { ...f, capped: true } : f)),
+    };
+    const view = onlyFinding(
+      buildResultView(lowerCapped, pack, context.items, 'accompanied', 'fr', tOf('fr')),
+    );
+    expect(view.capped).toBe(false);
+    expect(view.risks.map((risk) => risk.cappedNote)).toEqual([
+      undefined,
+      'Niveau limité parce que la preuve est faible.',
+    ]);
   });
 });
 
@@ -533,12 +577,81 @@ describe('buildResultView: danger', () => {
     expect(view.headline).toBe('Allez au poste de santé maintenant.');
   });
 
+  it('says where the danger instruction comes from, so who to call can word it again', () => {
+    const fever = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), 'woman');
+    expect(fever.headlineSource).toEqual({ message: 'danger-sign-fever' });
+    const castor = viewOf(contextOf({ ...scar, items: [CASTOR] }), 'woman');
+    expect(castor.headlineSource).toEqual({ message: 'castor-oil-term-uterine-scar' });
+    // Different instructions, or the standard message's own words: the standard one.
+    const mixed = viewOf(
+      contextOf({ ...scar, items: [CASTOR], signs: ['vaginal-bleeding'] }),
+      'woman',
+    );
+    expect(mixed.headlineSource).toEqual({ standard: true });
+    expect(viewOf(contextOf({ pregnancy: weeks(30), items: [ADVIL] }), 'woman')).not.toHaveProperty(
+      'headlineSource',
+    );
+  });
+
   it('has no danger lead otherwise; the headline is the level name', () => {
     const view = viewOf(contextOf({ pregnancy: weeks(30), items: [ADVIL] }), 'woman', 'en');
     expect(view.danger).toBe(false);
     expect(view.headline).toBe('Show before the next dose');
   });
+
+  it('says the danger instruction once: a danger card leaves out the orientation the banner says', () => {
+    for (const mode of ['woman', 'accompanied'] as const) {
+      const fever = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), mode);
+      expect(fever.headline, mode).toBe(pack.messages.fr['danger-sign-fever']?.orientation);
+      expect(onlyFinding(fever).orientation, mode).toEqual({ inBanner: true });
+    }
+    // Castor oil (its own orientation) and bleeding (go now, the banner's): the
+    // bleeding card leaves its orientation to the banner, castor oil keeps its own.
+    const view = viewOf(
+      contextOf({ ...scar, items: [CASTOR], signs: ['vaginal-bleeding'] }),
+      'woman',
+    );
+    expect(view.headline).toBe('Allez au poste de santé maintenant.');
+    expect(view.findings.map((f) => f.orientation)).toEqual([
+      pack.messages.fr['castor-oil-term-uterine-scar']?.orientation,
+      { inBanner: true },
+    ]);
+  });
+
+  it('every card shows its orientation, or it is the instruction of the banner shown above', () => {
+    const contexts: EvaluationContext[] = [
+      contextOf({ pregnancy: weeks(14), signs: ['fever'], items: [KINKELIBA] }),
+      contextOf({ ...scar, items: [CASTOR, MARKET], signs: ['vaginal-bleeding', 'fever'] }),
+      contextOf({ pregnancy: weeks(30), items: [ADVIL, KINKELIBA] }),
+      contextOf({ breastfeeding: {}, signs: ['baby-fever-or-cold', 'fever-after-birth'] }),
+    ];
+    for (const context of contexts) {
+      for (const mode of ['woman', 'accompanied'] as const) {
+        for (const lang of ['fr', 'en'] as const) {
+          expect(orientationProblems(viewOf(context, mode, lang)), `${mode} ${lang}`).toEqual([]);
+        }
+      }
+    }
+    // Not vacuous: a card without its orientation and without a banner is caught.
+    const view = viewOf(contexts[0] ?? contextOf({}), 'woman');
+    expect(orientationProblems({ ...view, danger: false })).toHaveLength(1);
+  });
 });
+
+/**
+ * Cards that would leave someone without who to show and when: each card
+ * says its orientation, or it is a danger card whose orientation is the
+ * instruction of the banner, and the banner shows.
+ */
+function orientationProblems(view: ResultView): string[] {
+  return view.findings.flatMap((finding) => {
+    if (typeof finding.orientation === 'string') {
+      return finding.orientation.trim() === '' ? [`${finding.key}: empty orientation`] : [];
+    }
+    const said = view.danger && finding.level === 'danger' && view.headline.trim() !== '';
+    return said ? [] : [`${finding.key}: orientation left to a banner that is not shown`];
+  });
+}
 
 describe('buildResultView: closing lines', () => {
   it('ends with the fixed sentence, the version, "not validated" and the closing sentence', () => {

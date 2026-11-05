@@ -18,12 +18,16 @@ interface AnswerState {
  */
 function Fieldset({
   legend,
+  labelledBy,
   hint,
   error,
   question,
   children,
 }: {
-  legend: string;
+  /** Text, or a heading when the question is the screen's title. */
+  legend?: ReactNode;
+  /** Instead of a legend: the id of the heading that already says the question. */
+  labelledBy?: string | undefined;
   hint: string | undefined;
   error: string | undefined;
   /** A main question of the screen (title size) rather than a detail of one. */
@@ -42,8 +46,12 @@ function Fieldset({
     .filter(Boolean)
     .join(' ');
   return (
-    <fieldset className={classes} aria-describedby={describedBy || undefined}>
-      <legend className="choice-group__legend">{legend}</legend>
+    <fieldset
+      className={classes}
+      aria-labelledby={labelledBy}
+      aria-describedby={describedBy || undefined}
+    >
+      {legend === undefined ? null : <legend className="choice-group__legend">{legend}</legend>}
       <div className="choice-group__body">
         {hint ? (
           <p id={hintId} className="choice-group__hint">
@@ -135,23 +143,9 @@ export interface CheckboxOption {
   onChange: (checked: boolean) => void;
 }
 
-/** Any number of answers, then an optional exclusive one set apart ("none of these"). */
-export function CheckboxGroup({
-  legend,
-  hint,
-  error,
-  options,
-  none,
-  question = false,
-}: {
-  legend: string;
-  hint?: string | undefined;
-  error?: string | undefined;
-  options: readonly CheckboxOption[];
-  none?: CheckboxOption;
-  question?: boolean;
-}) {
-  const box = (option: CheckboxOption, answer: AnswerState, extra?: string) => (
+/** One checkbox answer: a whole-width label, the words being the target. */
+function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
+  return (
     <label
       key={option.id}
       className={['option', option.checked ? 'option--checked' : null, extra]
@@ -169,12 +163,81 @@ export function CheckboxGroup({
       <span>{option.label}</span>
     </label>
   );
+}
+
+/** Any number of answers, then an optional exclusive one set apart ("none of these"). */
+export function CheckboxGroup({
+  legend,
+  hint,
+  error,
+  options,
+  none,
+  question = false,
+}: {
+  legend: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+  options: readonly CheckboxOption[];
+  none?: CheckboxOption;
+  question?: boolean;
+}) {
   return (
     <Fieldset legend={legend} hint={hint} error={error} question={question}>
       {(answer) => (
         <div className="options">
           {options.map((option) => box(option, answer))}
           {none ? box(none, answer, 'option--none') : null}
+        </div>
+      )}
+    </Fieldset>
+  );
+}
+
+export interface CheckboxSection {
+  id: string;
+  /** The section's heading, which names its group of answers. */
+  label: string;
+  options: readonly CheckboxOption[];
+}
+
+/**
+ * A long list to tick, in sections (each a group named by its heading), and
+ * an optional exclusive answer first, set apart by a hairline: "none of these"
+ * when it is the answer expected most of the time, said before the list so it
+ * is never read as the end of it, and never left implied. The question is the
+ * main question of a screen (title size), or its title (a heading as legend).
+ */
+export function SectionedCheckboxGroup({
+  legend,
+  labelledBy,
+  hint,
+  error,
+  sections,
+  none,
+}: {
+  hint?: string | undefined;
+  error?: string | undefined;
+  sections: readonly CheckboxSection[];
+  none?: CheckboxOption;
+} & (
+  | { legend: ReactNode; labelledBy?: undefined }
+  /**
+   * The id of the screen's heading that asks the question: the group is
+   * named by it, and the heading stays where it is while the answers load.
+   */
+  | { legend?: undefined; labelledBy: string }
+)) {
+  return (
+    <Fieldset legend={legend} labelledBy={labelledBy} hint={hint} error={error} question>
+      {(answer) => (
+        <div className="choice-sections">
+          {none ? <div className="options">{box(none, answer, 'option--none-first')}</div> : null}
+          {sections.map((section) => (
+            <fieldset key={section.id} className="choice-section">
+              <legend className="choice-section__legend">{section.label}</legend>
+              <div className="options">{section.options.map((option) => box(option, answer))}</div>
+            </fieldset>
+          ))}
         </div>
       )}
     </Fieldset>

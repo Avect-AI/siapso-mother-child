@@ -36,6 +36,10 @@ pnpm test
 pnpm --filter @siapso/app dev
 ```
 
+### Referral contacts of a deployment
+
+No phone number is ever committed. A deployment that wants to give the phones the contacts of its referral circuit (community relay, Bajenu Gox, head nurse of the health post, midwife) copies `app/public/config/referral.example.json` to `app/public/config/referral.json` (git-ignored), fills in the names, numbers and the national circuit text in French and English, then builds. The national circuit text describes where to go and who refers to whom; it never says that someone will come or has been told. The service worker keeps the file offline. Contacts entered on a phone in accompanied mode are listed first; the app only opens the phone's dialler and never sends anything.
+
 ## Contributing
 
 Contributions follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md):
