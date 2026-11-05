@@ -337,6 +337,12 @@ export const en: Dictionary = {
     found: 'Choose the one that matches.',
     noneFound: 'No product matches this name.',
     noneFoundPlant: 'No remedy matches this name.',
+    withWordProduct:
+      'No product has just the name “{word}”. These products have this word in their name:',
+    withWordPlant:
+      'No remedy has just the name “{word}”. These remedies have this word in their name:',
+    withWordListProduct: 'Products with “{word}” in their name',
+    withWordListPlant: 'Remedies with “{word}” in their name',
     otherName: 'Other name: {name}',
     otherNameLang: 'Other name: {name} ({lang})',
     localName: 'Local name: {name} ({lang})',

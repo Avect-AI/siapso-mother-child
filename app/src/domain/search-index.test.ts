@@ -9,6 +9,7 @@ import {
   candidateDisplayOf,
   candidateOf,
   displayOf,
+  entriesNamedWith,
   localNameOf,
   missingBrandSubstancesOf,
   missingSubstancesOf,
@@ -558,6 +559,27 @@ describe('browseEntriesOf', () => {
   it('keeps the local names, by language: a Wolof name that was said is found again', () => {
     const moringa = browseEntriesOf(pack, 'plant', 'fr').find((entry) => entry.id === 'moringa');
     expect(moringa?.local).toEqual([{ lang: 'wo', names: ['nebeday', 'nebedaay'] }]);
+  });
+});
+
+describe('entriesNamedWith', () => {
+  const ids = (query: string, kind: 'product' | 'plant' = 'plant') =>
+    entriesNamedWith(pack, kind, query, 'fr').map((entry) => entry.id);
+
+  it('lists the remedies with a carrier word of the query in one of their names', () => {
+    expect(ids('huile')).toEqual(['castor-oil']);
+    expect(ids('Huiles')).toEqual(['castor-oil']);
+    expect(ids('feuille')).toEqual(['bitter-leaf']);
+    expect(ids('feuilles')).toEqual(['bitter-leaf']);
+    expect(ids('une feuille')).toEqual([]);
+  });
+
+  it('lists nothing for a query that names something, a form word or a word in no name', () => {
+    expect(ids('huile de ricin')).toEqual([]);
+    expect(ids('sirop')).toEqual([]);
+    expect(ids('comprimé', 'product')).toEqual([]);
+    expect(ids('tisane')).toEqual([]);
+    expect(ids('')).toEqual([]);
   });
 });
 

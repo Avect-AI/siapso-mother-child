@@ -400,6 +400,14 @@ export const fr = {
     found: 'Choisissez celui qui correspond.',
     noneFound: 'Aucun produit ne correspond à ce nom.',
     noneFoundPlant: 'Aucun remède ne correspond à ce nom.',
+    // A carrier or generic word alone ("huile", "feuille"): it names nothing,
+    // but the entries that have it in their name are listed to choose from.
+    withWordProduct:
+      "Aucun produit ne s'appelle seulement « {word} ». Ces produits ont ce mot dans leur nom :",
+    withWordPlant:
+      "Aucun remède ne s'appelle seulement « {word} ». Ces remèdes ont ce mot dans leur nom :",
+    withWordListProduct: 'Produits avec « {word} » dans leur nom',
+    withWordListPlant: 'Remèdes avec « {word} » dans leur nom',
     // A French or English name is another name, never a local one (local-name.ts).
     otherName: 'Autre nom : {name}',
     otherNameLang: 'Autre nom : {name} ({lang})',

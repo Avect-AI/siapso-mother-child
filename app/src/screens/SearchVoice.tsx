@@ -180,6 +180,44 @@ export function VoicePanel({
  * is added from here. The heading takes the focus, so a screen reader starts
  * with what the list is.
  */
+/** One remedy or medicine family of a list to choose from: its name, local names and detail. */
+export function BrowseEntryButton({
+  entry,
+  onChoose,
+}: {
+  entry: BrowseEntry;
+  onChoose: (entry: BrowseEntry) => void;
+}) {
+  const t = useT();
+  return (
+    <li>
+      <button
+        type="button"
+        className="candidate"
+        onClick={() => {
+          onChoose(entry);
+        }}
+      >
+        <span className="candidate__text">
+          <span className="candidate__name">{entry.name}</span>
+          {entry.local.map((local) => (
+            <span className="candidate__local" key={local.lang}>
+              {t('search.localName', {
+                name: local.names.join(', '),
+                lang: t(`nameLang.${local.lang}`),
+              })}
+            </span>
+          ))}
+          {entry.detail === undefined ? null : (
+            <span className="candidate__detail">{entry.detail}</span>
+          )}
+        </span>
+        <Chevron />
+      </button>
+    </li>
+  );
+}
+
 export function BrowseList({
   kind,
   onChoose,
@@ -209,31 +247,7 @@ export function BrowseList({
           <h3 id={`${id}-${group.letter}`}>{group.letter}</h3>
           <ul className="candidates" aria-labelledby={`${id}-${group.letter}`}>
             {group.entries.map((entry) => (
-              <li key={entry.id}>
-                <button
-                  type="button"
-                  className="candidate"
-                  onClick={() => {
-                    onChoose(entry);
-                  }}
-                >
-                  <span className="candidate__text">
-                    <span className="candidate__name">{entry.name}</span>
-                    {entry.local.map((local) => (
-                      <span className="candidate__local" key={local.lang}>
-                        {t('search.localName', {
-                          name: local.names.join(', '),
-                          lang: t(`nameLang.${local.lang}`),
-                        })}
-                      </span>
-                    ))}
-                    {entry.detail === undefined ? null : (
-                      <span className="candidate__detail">{entry.detail}</span>
-                    )}
-                  </span>
-                  <Chevron />
-                </button>
-              </li>
+              <BrowseEntryButton key={entry.id} entry={entry} onChoose={onChoose} />
             ))}
           </ul>
         </div>

@@ -15,6 +15,7 @@ import {
   parseStrength,
   plainText,
   queryMentions,
+  STOP_WORDS,
   withoutStopWords,
   type Candidate,
   type ResolverIndex,
@@ -455,6 +456,58 @@ export function browseEntriesOf(pack: Pack, kind: 'product' | 'plant', lang: Lan
     });
   }
   return entries.sort((a, b) => collator.compare(a.name, b.name) || compareText(a.id, b.id));
+}
+
+/** The stop-words as the resolver compares them (normalised). */
+const STOP_KEYS: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
+
+/** A word as compared with the words of names: its singular, normalised ("feuilles", "feuil"). */
+function wordKey(word: string): string {
+  return normalize(word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word);
+}
+
+/**
+ * The carrier and generic words of a query made only of stop-words ("huile",
+ * "feuilles"), each as wordKey reads it; none when the query names anything
+ * else, or holds only form words ("sirop").
+ */
+function carrierWordsOf(query: string): string[] {
+  const plain = plainText(parseStrength(query).text);
+  if (plain === '' || withoutStopWords(normalize(plain)) !== '') return [];
+  return plain
+    .split(' ')
+    .filter((word) => STOP_KEYS.has(normalize(word)) && formWords(word).length === 0)
+    .map(wordKey);
+}
+
+/**
+ * The remedies, or medicine families, that have in one of their names a
+ * carrier or generic word the query is made of ("huile": Huile de ricin;
+ * "feuille": Feuille amère), in the order of the whole list, for the search
+ * to list them when the name typed names nothing (live test round 2). The
+ * resolver, and so the safety net of the result, still reads such a word as
+ * naming nothing. Empty for any other query.
+ */
+export function entriesNamedWith(
+  pack: Pack,
+  kind: 'product' | 'plant',
+  query: string,
+  lang: Lang,
+): BrowseEntry[] {
+  const words = new Set(carrierWordsOf(query));
+  if (words.size === 0) return [];
+  const namesOf = (entry: BrowseEntry): string[] => {
+    const plant = kind === 'plant' ? pack.plants.find((p) => p.id === entry.id) : undefined;
+    const own = plant === undefined ? [entry.name] : [plant.names.fr, plant.names.en];
+    return [...own, ...entry.local.flatMap((local) => local.names)];
+  };
+  return browseEntriesOf(pack, kind, lang).filter((entry) =>
+    namesOf(entry).some((name) =>
+      plainText(name)
+        .split(' ')
+        .some((word) => words.has(wordKey(word))),
+    ),
+  );
 }
 
 /**
