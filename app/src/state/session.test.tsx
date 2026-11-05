@@ -310,6 +310,53 @@ describe('session', () => {
     expect(visitState()).toEqual({});
   });
 
+  it('a lock forgets the lists waiting for the other women, and keeps the one held', async () => {
+    const { session, check } = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      check.current().start('bineta');
+      check.current().add({ ref: { kind: 'plant', id: 'kinkeliba' } });
+      check.current().start('coumba');
+      check.current().add({ ref: { kind: 'plant', id: 'moringa' } });
+    });
+    expect(check.current().pendingOf('bineta')).toBe(1);
+
+    act(() => {
+      session.current().lock();
+    });
+
+    expect(session.current().status).toBe('locked');
+    expect(check.current().pendingOf('bineta')).toBe(0);
+    // The screen held comes back after the code, with its list.
+    expect(check.current()).toMatchObject({
+      profileId: 'coumba',
+      items: [{ ref: { kind: 'plant', id: 'moringa' } }],
+    });
+  });
+
+  it('a lock lets a passer-by go, and the code then opens the start, not her screen', async () => {
+    const { session, check } = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      check.current().startQuick(profileOf({ id: 'passer-by' }));
+      check.current().add({ ref: { kind: 'plant', id: 'moringa' } });
+    });
+
+    act(() => {
+      session.current().lock();
+    });
+
+    expect(check.current()).toMatchObject({ quick: null, profileId: null, items: [] });
+    act(() => {
+      session.current().holdScreen('/check', null);
+    });
+    expect(session.current().takeHeldScreen()).toBeNull();
+  });
+
   it('makes a code: only its verifier is stored, and the session opens', async () => {
     const { session } = await renderSession({ code: null });
     await waitFor(() => {
@@ -581,6 +628,46 @@ describe('session across the tabs of one phone', () => {
       other.session.current().holdScreen('/confirm/product', null);
     });
     expect(other.session.current().takeHeldScreen()).toBeNull();
+  });
+
+  it('a lock from another tab forgets the lists waiting and the passer-by here', async () => {
+    const { other, here } = await twoOpenTabs();
+    act(() => {
+      other.check.current().start('bineta');
+      other.check.current().add({ ref: { kind: 'plant', id: 'kinkeliba' } });
+      other.check.current().startQuick(profileOf({ id: 'passer-by' }));
+      other.check.current().add({ ref: { kind: 'plant', id: 'moringa' } });
+    });
+
+    act(() => {
+      here.session.current().lock();
+    });
+
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(other.check.current().pendingOf('bineta')).toBe(0);
+    expect(other.check.current()).toMatchObject({ quick: null, profileId: null, items: [] });
+  });
+
+  it('another code stored in another tab locks this one and forgets the lists waiting and the passer-by', async () => {
+    const { other } = await twoOpenTabs();
+    act(() => {
+      other.check.current().start('bineta');
+      other.check.current().add({ ref: { kind: 'plant', id: 'kinkeliba' } });
+      other.check.current().startQuick(profileOf({ id: 'passer-by' }));
+    });
+
+    await storeVerifier(await verifierOf('7392'));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(other.check.current().pendingOf('bineta')).toBe(0);
+    expect(other.check.current().quick).toBeNull();
   });
 
   it('an auto-lock stays in its own tab: each tab counts its own two minutes', async () => {

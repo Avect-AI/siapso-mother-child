@@ -16,8 +16,9 @@ const ROWS = [
  * name and the password managers' ignore marks, so no browser offers to keep
  * it. The keys never take the field's focus, so the phone's keyboard does not
  * cover them; a screen reader hears how many digits are typed as they are
- * tapped, never which. "Effacer" with nothing to erase is aria-disabled: it
- * keeps the focus when tapped. Takes its text from the caller.
+ * tapped, never which. The key that takes the last digit off ("Corriger",
+ * never the word of the data wipe) is aria-disabled with nothing to take
+ * off: it keeps the focus when tapped. Takes its text from the caller.
  */
 export function CodeInput({
   label,
@@ -28,6 +29,7 @@ export function CodeInput({
   onChange,
   keypadLabel,
   eraseLabel,
+  eraseName,
   countLabel,
   inputRef,
 }: {
@@ -38,7 +40,10 @@ export function CodeInput({
   maxLength: number;
   onChange: (value: string) => void;
   keypadLabel: string;
+  /** The word on the key that takes the last digit off. */
   eraseLabel: string;
+  /** Its accessible name, which starts with the word shown ("Corriger le dernier chiffre"). */
+  eraseName: string;
   /** How many digits are typed, in words ("3 chiffres"). */
   countLabel: (count: number) => string;
   inputRef?: Ref<HTMLInputElement>;
@@ -94,6 +99,7 @@ export function CodeInput({
         <button
           type="button"
           className="keypad__key keypad__erase"
+          aria-label={eraseName}
           aria-disabled={empty ? true : undefined}
           onClick={() => {
             if (!empty) change(value.slice(0, -1));

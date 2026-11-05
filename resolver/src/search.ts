@@ -5,7 +5,14 @@ import type { CompiledIndex, CompiledName } from './index-build.js';
 import { formWords, normalize, splitAgeWords, withoutStopWords } from './normalize.js';
 import { parseStrength } from './strength.js';
 import { jaccard, trigrams } from './trigrams.js';
-import type { Candidate, IndexEntry, MatchKind, ResolverIndex, SearchOptions } from './types.js';
+import type {
+  Candidate,
+  IndexEntry,
+  MatchKind,
+  ResolverIndex,
+  SearchOptions,
+  WeakWord,
+} from './types.js';
 
 export const DEFAULT_LIMIT = 3;
 export const DEFAULT_MIN_SCORE = 0.55;
@@ -304,6 +311,16 @@ function missingFrom(entry: IndexEntry, named: ReadonlySet<string>): number {
 }
 
 /**
+ * Why a whole word of a name may name none of its products (Candidate.weakWord):
+ * the names of several families have it, or it starts no name of the product.
+ */
+function weakWordOf(kind: MatchKind, shared: boolean, leading: boolean): { weakWord?: WeakWord } {
+  if (kind !== 'word') return {};
+  if (shared) return { weakWord: 'shared' };
+  return leading ? {} : { weakWord: 'inner' };
+}
+
+/**
  * Proposes the products and plants whose names look like the query, best
  * first, at most one candidate per family (its best product, or the one whose
  * strength is typed in the query) with the other products of the family as
@@ -342,10 +359,13 @@ export function search(
   const onlySubstances = named.size >= 2 && mentions.rest.length === 0;
 
   const bestById = new Map<string, Match>();
+  // The products one of whose names starts with the query as a whole word.
+  const leading = new Set<string>();
   for (const name of compiled.names) {
     if (kinds && !kinds.includes(name.entry.kind)) continue;
     const missing = missingFrom(name.entry, named);
     let { score: raw, kind } = scoreName(name, scored, minScore);
+    if (kind === 'word' && name.leading.has(normalized)) leading.add(name.entry.id);
     if (onlySubstances && name.substance !== undefined && missing === 0) {
       const exact = (name.entry.substances ?? []).length === named.size;
       const bySubstances = exact ? SET_SCORE : SUPERSET_SCORE;
@@ -401,6 +421,7 @@ export function search(
       matchedLang: name.lang,
       score,
       match: kind,
+      ...weakWordOf(kind, compiled.sharedWords.has(normalized), leading.has(name.entry.id)),
       queryLength: compactQuery.length,
       variants: (compiled.families.get(name.entry.family) ?? [])
         .filter((member) => member.id !== name.entry.id)

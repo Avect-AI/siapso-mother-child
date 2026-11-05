@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 import type { Lang } from '@siapso/engine';
-import { createContext, Fragment, useCallback, useContext, useEffect, type ReactNode } from 'react';
+import {
+  createContext,
+  Fragment,
+  useCallback,
+  useContext,
+  useLayoutEffect,
+  type ReactNode,
+} from 'react';
 import { translate, type MessageKey, type Vars } from './translate.js';
 
 export type { MessageKey, Vars } from './translate.js';
@@ -8,9 +15,14 @@ export { translate } from './translate.js';
 
 const LangContext = createContext<Lang | null>(null);
 
-/** Provides the interface language and keeps `<html lang>` in step with it. */
+/**
+ * Provides the interface language and keeps `<html lang>` in step with it: set
+ * in the same commit as the words (a layout effect), so neither a screen
+ * reader nor a test ever finds English words on a page still marked French. A
+ * passive effect ran a task later, after the words were in the page.
+ */
 export function I18nProvider({ lang, children }: { lang: Lang; children: ReactNode }) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
   return <LangContext value={lang}>{children}</LangContext>;

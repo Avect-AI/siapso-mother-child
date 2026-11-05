@@ -8,6 +8,8 @@ import { recordHistory } from '../data/history.js';
 import { saveProfile } from '../data/profiles.js';
 import { saveContacts } from '../data/referral.js';
 import type { Settings } from '../domain/types.js';
+import { translate, type MessageKey, type Vars } from '../i18n/index.js';
+import { waitTime } from './code-words.js';
 import { inSession } from '../state/entry-state.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
@@ -104,12 +106,15 @@ describe('Unlock', () => {
     expect(screen.getByLabelText('Code')).toHaveAccessibleDescription('Écrivez de 4 à 6 chiffres.');
   });
 
-  it('types with the large keys on the screen, and erases the last digit', async () => {
+  it('types with the large keys on the screen, and takes the last digit off', async () => {
     const user = userEvent.setup();
     await renderApp({ settings: woman, locked: true });
     const keypad = await screen.findByRole('group', { name: 'Clavier du code' });
-    // Nothing to erase: "Effacer" says so, and keeps the focus when tapped.
-    const erase = within(keypad).getByRole('button', { name: 'Effacer' });
+    // Never the word of the data wipe (EFFACER): "Corriger", named for what it does.
+    expect(within(keypad).queryByText(/effacer/i)).toBeNull();
+    const erase = within(keypad).getByRole('button', { name: 'Corriger le dernier chiffre' });
+    expect(erase).toHaveTextContent(/^Corriger$/);
+    // Nothing to take off: it says so, and keeps the focus when tapped.
     expect(erase).toHaveAttribute('aria-disabled', 'true');
     expect(erase).not.toBeDisabled();
     await user.click(erase);
@@ -127,7 +132,7 @@ describe('Unlock', () => {
     expect(counts).toContain('4 chiffres');
     expect(counts.join(' ')).not.toMatch(/\d{2,}/);
     expect(erase).not.toHaveAttribute('aria-disabled');
-    await user.click(within(keypad).getByRole('button', { name: 'Effacer' }));
+    await user.click(erase);
     await user.click(within(keypad).getByRole('button', { name: '8' }));
     expect(screen.getByLabelText('Code')).toHaveValue(TEST_CODE);
     // The keys never take the field's place: the phone's keyboard stays closed.
@@ -147,9 +152,60 @@ describe('Unlock', () => {
 
     const field = await screen.findByLabelText('Code');
     expect(field).toHaveAccessibleDescription(
-      "Trop d'essais. Attendez 30 secondes, puis essayez encore.",
+      "Trop d'essais. Attendez 30\u00a0s, puis essayez encore.",
     );
     expect(screen.getByRole('button', { name: 'Ouvrir' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('says a wait in minutes and seconds ("1 min 59 s"), and in words to a screen reader', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 5, 10, 0, 0));
+    // The seventh wrong code: a wait of 2 minutes, 1 second of it gone.
+    await storeLockout({ failures: 7, lockedUntil: Date.now() + 119_000 });
+    await renderApp({ settings: woman, locked: true });
+
+    const field = await screen.findByLabelText('Code');
+    expect(field).toHaveAccessibleDescription(
+      "Trop d'essais. Attendez 1\u00a0min\u00a059\u00a0s, puis essayez encore.",
+    );
+    // A screen reader hears the wait once, as the screen first showed it, in words.
+    const status = within(screen.getByRole('main')).getByRole('status');
+    await waitFor(() => {
+      expect(status.textContent).toBe(
+        "Trop d'essais. Attendez 1 minute 59 secondes, puis essayez encore.",
+      );
+    });
+  });
+
+  it('says the wait to a screen reader in whole words, minutes and seconds', () => {
+    const t = (key: MessageKey, vars?: Vars) => translate('fr', key, vars);
+    expect(waitTime(t, 119_000, 'spoken')).toBe('1 minute 59 secondes');
+    expect(waitTime(t, 61_000, 'spoken')).toBe('1 minute 1 seconde');
+    expect(waitTime(t, 30_000, 'spoken')).toBe('30 secondes');
+    expect(waitTime(t, 1_800_000, 'spoken')).toBe('30 minutes');
+    const en = (key: MessageKey, vars?: Vars) => translate('en', key, vars);
+    expect(waitTime(en, 119_000, 'spoken')).toBe('1 minute 59 seconds');
+    expect(waitTime(en, 1_000, 'spoken')).toBe('1 second');
+    // Shown: short, on one line.
+    expect(waitTime(t, 119_000)).toBe('1\u00a0min\u00a059\u00a0s');
+  });
+
+  it('says the wait in English the same way', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 5, 10, 0, 0));
+    await storeLockout({ failures: 6, lockedUntil: Date.now() + 45_000 });
+    await renderApp({ settings: { ...woman, lang: 'en' }, locked: true });
+
+    const field = await screen.findByLabelText('Code');
+    expect(field).toHaveAccessibleDescription('Too many tries. Wait 45\u00a0s, then try again.');
+    const status = within(screen.getByRole('main')).getByRole('status');
+    await waitFor(() => {
+      expect(status.textContent).toBe('Too many tries. Wait 45 seconds, then try again.');
+    });
+    const keypad = screen.getByRole('group', { name: 'Code keypad' });
+    expect(within(keypad).getByRole('button', { name: 'Delete the last digit' })).toHaveTextContent(
+      /^Delete$/,
+    );
   });
 
   it('says the time left of a wait to a screen reader after a reload, as the screen shows it', async () => {
@@ -160,15 +216,16 @@ describe('Unlock', () => {
     await renderApp({ settings: woman, locked: true });
 
     const field = await screen.findByLabelText('Code');
-    const waitLeft = "Trop d'essais. Attendez 14 secondes, puis essayez encore.";
-    expect(field).toHaveAccessibleDescription(waitLeft);
+    expect(field).toHaveAccessibleDescription(
+      "Trop d'essais. Attendez 14\u00a0s, puis essayez encore.",
+    );
     const status = within(screen.getByRole('main')).getByRole('status');
     // Empty when the screen appears, then filled, so a screen reader reads it.
     expect(status).toHaveTextContent('');
     await waitFor(() => {
-      expect(status).toHaveTextContent(waitLeft);
+      expect(status.textContent).toBe("Trop d'essais. Attendez 14 secondes, puis essayez encore.");
     });
-    expect(document.body.textContent).not.toContain('60 secondes');
+    expect(document.body.textContent).not.toContain('1 minute');
   });
 
   it('brings back the screen it locked, once the code is given; the address meanwhile is neutral', async () => {

@@ -301,7 +301,10 @@ export function referralFileWarning(publicDir: string): string | null {
   }
   let data: unknown;
   try {
-    data = JSON.parse(readFileSync(file, 'utf8'));
+    // A byte order mark left by an editor is dropped, as the phones' fetch
+    // text() drops it (UTF-8 decode): only what they cannot read is reported.
+    const text = readFileSync(file, 'utf8');
+    data = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
   } catch (failure) {
     return loud([
       'WARNING: public/config/referral.json is not valid JSON: the phones will read it',

@@ -181,13 +181,13 @@ test.describe('on a small phone (320 x 640)', () => {
     await page.getByRole('button', { name: 'Français' }).click();
     await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
-    // "Effacer" keeps its place in the keypad, beside 0: the wide button is the primary one.
+    // "Corriger" keeps its place in the keypad, beside 0: the wide button is the primary one.
     const keypad = page.getByRole('group', { name: 'Clavier du code' });
     const row = async (name: string) =>
       keypad
         .getByRole('button', { name, exact: true })
         .evaluate((key) => Math.round(key.getBoundingClientRect().top));
-    expect(await row('Effacer')).toBe(await row('0'));
+    expect(await row('Corriger le dernier chiffre')).toBe(await row('0'));
 
     await tapCode(page);
     let action = await buttonBottom(page, 'Continuer');

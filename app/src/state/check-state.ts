@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: MIT
 // The check in progress: who it is for, the items the user confirmed and the
-// danger signs she gave. Kept in memory only for now (a reload starts a new
-// check); the history of checks comes with Task 14. Only confirmed items get
-// here: the confirm screen adds a recognised product or remedy, the search
-// screen adds the text of one it could not find. A product is never listed
-// twice: two items of one product would read as a duplicate to the engine
-// and double its daily total.
+// danger signs she gave. Kept in memory only (a reload starts a new check).
+// Only confirmed items get here: the confirm screen adds a recognised product
+// or remedy, the search screen adds the text of one it could not find. A
+// product is never listed twice: two items of one product would read as a
+// duplicate to the engine and double its daily total.
+//
+// In accompanied mode a visit goes from woman to woman: the unfinished list
+// of each woman waits in memory while another one is looked at, and comes
+// back when she is chosen again (her danger signs are asked again). Those
+// lists are forgotten at every lock and at the quick exit; the list on
+// screen follows the check (kept across an auto-lock with the screen held,
+// forgotten at the quick exit). A passer-by can be looked up without a
+// profile (accompanied mode): her answers stay in memory only (`quick`),
+// never in storage, and she is let go as soon as another woman or passer-by
+// is looked at, at every lock, at a change of mode, at the quick exit, at an
+// erase and at a reload.
 import type { CheckedItem, ItemRef } from '@siapso/engine';
 import type { EntryKind } from '@siapso/resolver';
 import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
@@ -26,12 +36,42 @@ export interface CheckState {
   signs: string[];
   /** The signs question was answered: an empty `signs` is then "none of these", not "not asked yet". */
   signsGiven: boolean;
+  /**
+   * The answers of a passer-by checked without a profile, in memory only (never
+   * stored, no history), when the check is hers; null otherwise.
+   */
+  quick: Profile | null;
   // Function properties, not methods: stable callbacks, safe to pass on alone.
   /**
    * The check is for this profile: kept when it already is (or when it was
-   * for none yet), emptied when it was for another one.
+   * for none yet). For another one, the list left waits in memory (unless it
+   * is empty or a passer-by's), and the list this profile was left with comes
+   * back, its danger signs to be asked again; none: an empty list.
    */
   start: (profileId: string) => void;
+  /**
+   * A check for a passer-by, from an empty list: her answers (pregnancy, term,
+   * breastfeeding, situations) as a profile kept in memory only. The list left
+   * waits as with `start`; an earlier passer-by is let go.
+   */
+  startQuick: (profile: Profile) => void;
+  /**
+   * New answers for the passer-by of the check (`profile` keeps her id): her
+   * list stays, her danger signs are asked again. Nothing happens when the
+   * check is not hers.
+   */
+  updateQuick: (profile: Profile) => void;
+  /**
+   * Lets the passer-by go (a lock, a change of mode): when the check is hers,
+   * it is for no one now, empty; the lists waiting for the women stay.
+   */
+  forgetQuick: () => void;
+  /** Forgets the list of this profile (deleted): the one waiting, or the one on screen. */
+  forget: (profileId: string) => void;
+  /** Forgets the lists waiting for the other women (a lock), keeping the one on screen. */
+  forgetOthers: () => void;
+  /** How many items the list of this profile holds now, on screen or waiting (0: none). */
+  pendingOf: (profileId: string) => number;
   /**
    * Lists the item at the end, unless it is already there, then updated in
    * its place: never listed twice. A known strength is the product itself
@@ -66,7 +106,7 @@ export interface CheckState {
   setSigns: (signs: string[]) => void;
   /** No answer to the signs question (yet): the result asks it first. */
   clearSigns: () => void;
-  /** Back to no check at all, for no profile. */
+  /** Back to no check at all, for no profile: every list and the passer-by forgotten. */
   reset: () => void;
 }
 
@@ -123,10 +163,22 @@ interface CheckData {
   written: Readonly<Record<string, string>>;
   /** The unrecognised texts she said were none of the products proposed, by refKey. */
   declined: Readonly<Record<string, true>>;
+  /** The unfinished lists of the other women of the visit, by profile id. */
+  others: Readonly<Record<string, KeptList>>;
+  /** The passer-by's answers, when the check is hers. */
+  quick: Profile | null;
 }
+
+/** A list waiting while another woman is looked at: its items and what was said about them. */
+type KeptList = Pick<CheckData, 'items' | 'lists' | 'families' | 'written' | 'declined'>;
 
 type Action =
   | { type: 'start'; profileId: string }
+  | { type: 'startQuick'; profile: Profile }
+  | { type: 'updateQuick'; profile: Profile }
+  | { type: 'forgetQuick' }
+  | { type: 'forget'; profileId: string }
+  | { type: 'forgetOthers' }
   | { type: 'add'; item: CheckedItem; options: AddOptions }
   | { type: 'remove'; index: number }
   | { type: 'restore'; index: number; item: CheckedItem }
@@ -145,7 +197,31 @@ const EMPTY: CheckData = {
   families: {},
   written: {},
   declined: {},
+  others: {},
+  quick: null,
 };
+
+/** The record without `key`. */
+function without<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([listed]) => listed !== key));
+}
+
+/**
+ * The check for another profile: the list left waits for its woman (unless it
+ * is empty or a passer-by's, who is let go), and the list `profileId` was
+ * left with comes back (a passer-by's always starts empty). The danger signs
+ * are asked again (reduce clears them as the list changes).
+ */
+function switched(state: CheckData, profileId: string, quick: Profile | null): CheckData {
+  const left = state.profileId;
+  let others = without(state.others, profileId);
+  if (left !== null && state.quick?.id !== left && state.items.length > 0) {
+    const { items, lists, families, written, declined } = state;
+    others = { ...others, [left]: { items, lists, families, written, declined } };
+  }
+  const kept = quick === null ? state.others[profileId] : undefined;
+  return { ...EMPTY, ...kept, profileId, quick, others };
+}
 
 function unknownStrength(item: CheckedItem): boolean {
   return item.strengthUnknown === true && item.ref.kind === 'product';
@@ -242,9 +318,29 @@ function reduceList(state: CheckData, action: Action): CheckData {
   switch (action.type) {
     case 'start':
       if (state.profileId === action.profileId) return state;
-      return state.profileId === null
-        ? { ...state, profileId: action.profileId }
-        : { ...EMPTY, profileId: action.profileId };
+      // Items added before any profile go to the first one.
+      if (state.profileId === null && Object.keys(state.others).length === 0) {
+        return { ...state, profileId: action.profileId };
+      }
+      return switched(state, action.profileId, null);
+    case 'startQuick':
+      return switched(state, action.profile.id, action.profile);
+    case 'updateQuick':
+      return state.quick?.id === action.profile.id && state.profileId === action.profile.id
+        ? withoutSigns({ ...state, quick: action.profile })
+        : state;
+    case 'forgetQuick':
+      if (state.quick === null) return state;
+      return state.profileId === state.quick.id
+        ? { ...EMPTY, others: state.others }
+        : { ...state, quick: null };
+    case 'forget': {
+      const others = without(state.others, action.profileId);
+      if (state.profileId === action.profileId) return { ...EMPTY, others };
+      return action.profileId in state.others ? { ...state, others } : state;
+    }
+    case 'forgetOthers':
+      return Object.keys(state.others).length === 0 ? state : { ...state, others: {} };
     case 'add':
       return added(state, action.item, action.options);
     case 'remove':
@@ -295,6 +391,21 @@ export function useCheckStore(): CheckState {
   const start = useCallback((profileId: string) => {
     dispatch({ type: 'start', profileId });
   }, []);
+  const startQuick = useCallback((profile: Profile) => {
+    dispatch({ type: 'startQuick', profile });
+  }, []);
+  const updateQuick = useCallback((profile: Profile) => {
+    dispatch({ type: 'updateQuick', profile });
+  }, []);
+  const forgetQuick = useCallback(() => {
+    dispatch({ type: 'forgetQuick' });
+  }, []);
+  const forget = useCallback((profileId: string) => {
+    dispatch({ type: 'forget', profileId });
+  }, []);
+  const forgetOthers = useCallback(() => {
+    dispatch({ type: 'forgetOthers' });
+  }, []);
   const add = useCallback((item: CheckedItem, options: AddOptions = {}) => {
     dispatch({ type: 'add', item: checkedCopy(item), options });
   }, []);
@@ -316,7 +427,12 @@ export function useCheckStore(): CheckState {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
-  const { profileId, items, signs, signsGiven, changed, lists, written, declined } = data;
+  const { profileId, items, signs, signsGiven, changed, lists, written, declined, others, quick } =
+    data;
+  const pendingOf = useCallback(
+    (id: string) => (id === profileId ? items.length : (others[id]?.items.length ?? 0)),
+    [profileId, items, others],
+  );
   const indexOf = useCallback(
     (ref: ItemRef) => items.findIndex((item) => sameRef(item.ref, ref)),
     [items],
@@ -334,7 +450,14 @@ export function useCheckStore(): CheckState {
       signs,
       signsGiven,
       changed,
+      quick,
       start,
+      startQuick,
+      updateQuick,
+      forgetQuick,
+      forget,
+      forgetOthers,
+      pendingOf,
       add,
       remove,
       restore,
@@ -353,7 +476,14 @@ export function useCheckStore(): CheckState {
       signs,
       signsGiven,
       changed,
+      quick,
       start,
+      startQuick,
+      updateQuick,
+      forgetQuick,
+      forget,
+      forgetOthers,
+      pendingOf,
       add,
       remove,
       restore,

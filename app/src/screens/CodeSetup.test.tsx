@@ -60,6 +60,70 @@ describe('Code setup', () => {
     expect(verifier === undefined ? false : await checkCode('1357', verifier)).toBe(true);
   });
 
+  it('warns about a code easy to guess, and keeps it after a second yes', async () => {
+    const user = await toCodeStep(/^Je suis enceinte/);
+
+    await user.type(screen.getByLabelText('Code'), '1990');
+    await user.click(screen.getByRole('button', { name: 'Continuer' }));
+
+    // Not refused: a plain warning, then her choice.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce code est facile à deviner' }),
+    ).toHaveFocus();
+    expect(screen.getByText(/N'utilisez pas une année de naissance\./)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Choisir un autre code' })).toHaveClass(
+      'button--primary',
+    );
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    // Never red: a weak code is not a danger sign.
+    expect(document.querySelector('main .level--danger')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Garder ce code' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Tapez le code une deuxième fois' }),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Le même code')).toHaveFocus();
+    await user.type(screen.getByLabelText('Le même code'), '1990');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le code' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Un médicament ou un remède ?' }),
+    ).toBeVisible();
+    const verifier = await getStoredVerifier();
+    expect(verifier === undefined ? false : await checkCode('1990', verifier)).toBe(true);
+  });
+
+  it('goes back to an empty field to choose another code after the warning', async () => {
+    const user = await toCodeStep(/^J'accompagne/);
+
+    await user.type(screen.getByLabelText('Code'), '1234');
+    await user.click(screen.getByRole('button', { name: 'Continuer' }));
+    await user.click(await screen.findByRole('button', { name: 'Choisir un autre code' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Choisissez un code' }),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Code')).toHaveValue('');
+    expect(screen.getByLabelText('Code')).toHaveFocus();
+    await makeCode(user, '7392');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(await getStoredVerifier()).toBeDefined();
+  });
+
+  it('says the warning in English too', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    await user.click(await screen.findByRole('button', { name: 'English' }));
+    await user.click(await screen.findByRole('button', { name: /^I am pregnant/ }));
+    await user.type(await screen.findByLabelText('Code'), '0000');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This code is easy to guess' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Keep this code' })).toBeVisible();
+  });
+
   it('refuses fewer than 4 digits, and keeps at most 6', async () => {
     const user = await toCodeStep(/^J'accompagne/);
     expect(screen.getByText('Ce code ouvre les profils des femmes que vous suivez.')).toBeVisible();

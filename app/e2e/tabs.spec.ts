@@ -150,7 +150,10 @@ function storedCode(page: Page): Promise<unknown> {
   );
 }
 
-/** Someone goes through the welcome of `page` to make `code`, as far as the app lets him. */
+/**
+ * Someone goes through the welcome of `page` to make `code`, as far as the app
+ * lets him. `code` is not an easy one (0000, 1234, a year): those ask a second yes first.
+ */
 async function tryToMakeACode(page: Page, code: string) {
   const unlockTitle = page.getByRole('heading', { level: 1, name: 'Entrez votre code' });
   const french = page.getByRole('button', { name: 'Français' });
@@ -185,11 +188,11 @@ test('a tab left on the welcome after an erase never makes a second code over he
   const hers = await storedCode(page);
 
   // The partner, in the other tab, tries to make his own.
-  await tryToMakeACode(other, '1111');
+  await tryToMakeACode(other, '1397');
 
   await expect(other.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
   expect(await storedCode(page)).toEqual(hers);
-  await unlock(other, '1111');
+  await unlock(other, '1397');
   await expect(other.getByLabel('Code', { exact: true })).toHaveAccessibleDescription(
     /^Ce n'est pas le bon code\./,
   );
@@ -211,7 +214,7 @@ test('the app opened twice on a new phone keeps one code, even in a tab that hea
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
   const hers = await storedCode(page);
 
-  await tryToMakeACode(deaf, '1111');
+  await tryToMakeACode(deaf, '1397');
 
   // Refused: the deaf tab asks for her code, and hers is the one kept.
   await expect(deaf.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
@@ -235,7 +238,7 @@ test('a tab that missed the erase cannot write her profile under the next code e
   await eraseFrom(page);
   await page.getByRole('button', { name: 'Français' }).click();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
-  await makeCode(page, '1111');
+  await makeCode(page, '1397');
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 
   await stale.getByRole('button', { name: 'Enregistrer' }).click();

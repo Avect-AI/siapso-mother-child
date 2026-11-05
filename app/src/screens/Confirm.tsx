@@ -24,6 +24,7 @@ import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { StickyAction } from '../ui/StickyAction.js';
 import { WarningMark } from '../ui/WarningMark.js';
 import { backToCheck, flowState, searchPath, type FlowState } from './check-flow.js';
 import { localNameKey } from './local-name.js';
@@ -123,6 +124,16 @@ const ANNOUNCE_DELAY_MS = 700;
 /** The radio value of "it is another box", in the same-box question. */
 const OTHER_BOX = ':other-box';
 
+/**
+ * More strengths than this is a long list (DOLIPRANE has 15): the strength
+ * typed is shown first with the others one tap away, and "yes" is held in
+ * reach while the list scrolls.
+ */
+const LONG_LIST = 5;
+
+/** The held "yes" of a long list takes at most a third of the screen's height. */
+const STICKY_SHARE = 1 / 3;
+
 /** A substance name inside a list: "codéine", "acide ascorbique (vitamine C)". */
 function lowerFirst(name: string): string {
   return name.charAt(0).toLocaleLowerCase() + name.slice(1);
@@ -214,6 +225,10 @@ function ConfirmForm({
   const [selected, setSelected] = useState<string | null>(() =>
     choice?.preselected === 'candidate' ? candidate.id : null,
   );
+  // A long list shows the strength typed first; every strength once she asks.
+  const [allShown, setAllShown] = useState(false);
+  // The first strength shown by "see all", which takes the focus once it is there.
+  const focusOption = useRef<string | null>(null);
   // The answer to "is it the same box?": an index of the check, OTHER_BOX, or none yet.
   const [sameBox, setSameBox] = useState<string | null>(null);
   // What is typed in the units field, per target; a listed item starts from its count.
@@ -302,6 +317,16 @@ function ConfirmForm({
     formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [attempts]);
 
+  // Every strength now shown: the focus goes to the first one that was not.
+  useEffect(() => {
+    const id = focusOption.current;
+    if (id === null) return;
+    focusOption.current = null;
+    [...(formRef.current?.querySelectorAll<HTMLInputElement>('input[type="radio"]') ?? [])]
+      .find((radio) => radio.value === id)
+      ?.focus();
+  }, [allShown]);
+
   // The product chosen is said once she settles on an answer, not at every move
   // through the answers (each answer is read as it is reached).
   useEffect(() => {
@@ -336,11 +361,22 @@ function ConfirmForm({
     backToCheck(navigate, entry.stepsToCheck);
   };
 
+  // A long list with the strength typed: those boxes first, the others on demand.
+  const collapsed =
+    choice !== null &&
+    !allShown &&
+    choice.options.length > LONG_LIST &&
+    choice.matching.length > 0 &&
+    choice.matching.length < choice.options.length;
+  const listed = choice === null ? [] : collapsed ? choice.matching : choice.options;
+  // A product of a long family: "yes" held at the bottom of the screen while
+  // the question (even shortened) and the units scroll.
+  const longList = (choice?.options.length ?? 0) > LONG_LIST;
   const options =
     choice === null
       ? []
       : [
-          ...choice.options.map((id) => ({
+          ...listed.map((id) => ({
             value: id,
             label: strengthOptionLabel(pack, candidate, id, lang),
           })),
@@ -394,9 +430,43 @@ function ConfirmForm({
 
   let yes: MessageKey = candidate.kind === 'product' ? 'confirm.yesProduct' : 'confirm.yesPlant';
   if (target !== null) yes = askUnits ? 'confirm.changeUnits' : 'confirm.backToList';
+  const adding = readback === '' ? null : <p className="confirm__adding">{readback}</p>;
+  const yesButton = (
+    <Button variant="primary" type="submit" className="confirm__yes">
+      {t(yes)}
+    </Button>
+  );
+  const no = (
+    <Button variant="secondary" className="confirm__no" onClick={onSearchAgain}>
+      {t('confirm.no')}
+    </Button>
+  );
 
   return (
-    <form ref={formRef} className="confirm__form" noValidate onSubmit={confirm}>
+    <form
+      ref={formRef}
+      className="confirm__form"
+      noValidate
+      onSubmit={confirm}
+      onFocus={(event) => {
+        // With "yes" held over a long list, a keyboard focus brings the whole
+        // answer (its words too, not only its control) clear of it; the page
+        // keeps the bar's room (base.css). A tap leaves the page where it is.
+        const answer = event.target.closest<HTMLElement>('label, .text-field');
+        if (
+          longList &&
+          answer !== null &&
+          event.target.matches(':focus-visible') &&
+          typeof answer.scrollIntoView === 'function'
+        ) {
+          // After the choice it makes is drawn: the product shown above it
+          // changes with the strength chosen, and moves the answer.
+          requestAnimationFrame(() => {
+            answer.scrollIntoView({ block: 'nearest' });
+          });
+        }
+      }}
+    >
       <div className="confirm__product">
         <p className="confirm__name">{shown.name}</p>
         {shown.detail === undefined ? null : (
@@ -444,6 +514,19 @@ function ConfirmForm({
           }}
         />
       )}
+      {collapsed ? (
+        <Button
+          variant="secondary"
+          className="confirm__all"
+          onClick={() => {
+            focusOption.current =
+              choice.options.find((id) => !choice.matching.includes(id)) ?? null;
+            setAllShown(true);
+          }}
+        >
+          {t('confirm.showAllStrengths', { count: choice.options.length })}
+        </Button>
+      ) : null}
 
       {sameBoxQuestion}
 
@@ -460,15 +543,24 @@ function ConfirmForm({
       <p className="sr-only confirm__announce" role="status">
         {announced}
       </p>
-      <div className="confirm__actions">
-        {readback === '' ? null : <p className="confirm__adding">{readback}</p>}
-        <Button variant="primary" type="submit" className="confirm__yes">
-          {t(yes)}
-        </Button>
-        <Button variant="secondary" className="confirm__no" onClick={onSearchAgain}>
-          {t('confirm.no')}
-        </Button>
-      </div>
+      {longList ? (
+        <>
+          {adding}
+          {/* Under a long list "yes" alone stays in reach while it scrolls (a
+              child of the form, so it is held over all of it), unless it would
+              take more than a third of the screen. */}
+          <StickyAction className="confirm__decide" maxShare={STICKY_SHARE}>
+            {yesButton}
+          </StickyAction>
+          {no}
+        </>
+      ) : (
+        <div className="confirm__actions">
+          {adding}
+          {yesButton}
+          {no}
+        </div>
+      )}
     </form>
   );
 }
@@ -479,7 +571,10 @@ function ConfirmForm({
  * strengths, the strength written on the box (never one picked for the user
  * when she did not type it), with "I do not know", always offered, which keeps
  * the product with its strength unknown; for a product whose substance has a
- * daily maximum, the units per day (optional). Only "yes" adds a recognised
+ * daily maximum, the units per day (optional). A long list (more than 5
+ * strengths) shows the boxes of the strength typed first, then "I do not
+ * know", with "Voir tous les dosages" for the others, and holds "yes" at the
+ * bottom of the screen while the question and the units scroll. Only "yes" adds a recognised
  * item to the check; a product already listed is not listed twice: "yes" then
  * changes its units per day, or goes back to the list. "No" goes back to the
  * search, with what was typed.

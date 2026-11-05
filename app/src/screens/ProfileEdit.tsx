@@ -188,7 +188,14 @@ function shortDate(iso: string, lang: 'fr' | 'en'): string {
   return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', options).format(date);
 }
 
-function Form({
+/**
+ * The questions of a profile: its pseudonym, the pregnancy and its term,
+ * breastfeeding with the baby's age, the situations. Saved on the phone, then
+ * `onSaved`. For a passer-by (`quick`, "Regarder sans enregistrer") the same
+ * questions and the same checks, without a pseudonym, and nothing is stored:
+ * `onSaved` gets the answers as a profile kept in memory only.
+ */
+export function ProfileQuestions({
   mode,
   today,
   base,
@@ -197,6 +204,7 @@ function Form({
   taken,
   onSaved,
   onDelete,
+  quick = false,
 }: {
   mode: Mode;
   today: string;
@@ -210,6 +218,8 @@ function Form({
   onSaved: (profile: Profile) => void;
   /** Asks to delete the profile edited; absent for a profile not saved yet. */
   onDelete?: (() => void) | undefined;
+  /** A passer-by: no pseudonym asked, nothing stored. */
+  quick?: boolean;
 }) {
   const t = useT();
   const lang = useLang();
@@ -348,6 +358,11 @@ function Form({
       todayIso: today,
       self,
     });
+    // A passer-by's answers stay in memory: nothing goes to storage.
+    if (quick) {
+      onSaved(profile);
+      return;
+    }
     try {
       await withTimeout(saveProfile(profile), storageTimeoutMs);
       onSaved(profile);
@@ -374,17 +389,19 @@ function Form({
         void submit(event);
       }}
     >
-      <TextField
-        label={t('profile.pseudonym')}
-        hint={t('profile.pseudonymHint')}
-        error={error('pseudonym')}
-        value={form.pseudonym}
-        autoComplete="off"
-        spellCheck={false}
-        onChange={(event) => {
-          update({ pseudonym: event.target.value });
-        }}
-      />
+      {quick ? null : (
+        <TextField
+          label={t('profile.pseudonym')}
+          hint={t('profile.pseudonymHint')}
+          error={error('pseudonym')}
+          value={form.pseudonym}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => {
+            update({ pseudonym: event.target.value });
+          }}
+        />
+      )}
 
       <section className="profile__group">
         <RadioGroup<PregnantAnswer>
@@ -682,7 +699,7 @@ function Form({
             way out is the delete offered with the notice (and below). */}
         {notCovered ? null : (
           <Button variant="primary" type="submit" className="profile__submit">
-            {t('profile.save')}
+            {t(quick ? 'quick.start' : 'profile.save')}
           </Button>
         )}
         {onDelete === undefined ? null : (
@@ -795,7 +812,7 @@ function freeNumber(from: number, taken: readonly string[], name: (n: number) =>
 export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
   const { settings, storageTimeoutMs } = useApp();
-  const { start, reset, profileId: checkProfileId } = useCheck();
+  const { start, forget } = useCheck();
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
   const [ask] = useState(entryAsk);
@@ -874,8 +891,8 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
             setConfirming(false);
           }}
           onDeleted={() => {
-            // A check in progress for her is gone with her.
-            if (checkProfileId === base.id) reset();
+            // Her list, on screen or waiting, is gone with her; the others stay.
+            forget(base.id);
             navigate('/', {
               replace: true,
               state:
@@ -898,7 +915,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
         {loaded.status === 'missing' ? <Notice>{t('profile.notFound')}</Notice> : null}
         {loaded.status === 'failed' ? <Notice>{t('profile.loadFailed')}</Notice> : null}
         {ready ? (
-          <Form
+          <ProfileQuestions
             mode={mode}
             today={ready.today}
             base={ready.base}

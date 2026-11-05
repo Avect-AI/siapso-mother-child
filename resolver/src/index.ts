@@ -30,4 +30,5 @@ export type {
   NameLang,
   ResolverIndex,
   SearchOptions,
+  WeakWord,
 } from './types.js';

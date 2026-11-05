@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Pack } from '@siapso/engine';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
@@ -9,6 +9,7 @@ import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, renderApp, storeTestCode } from '../test/render-app.js';
+import { SEARCH_DEBOUNCE_MS } from './Search.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -29,6 +30,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -134,12 +136,27 @@ describe('Search', () => {
   });
 
   it('waits for a pause in typing before it searches', async () => {
-    const { user, field } = await openSearch('Ajouter un remède');
-    await user.type(field, 'nebeday');
+    const { field } = await openSearch('Ajouter un remède');
+    // The pause on the test's own clock: on a loaded machine a key can take
+    // longer than the pause itself, and the list would show while typing.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const wait = (ms: number) => {
+      act(() => {
+        vi.advanceTimersByTime(ms);
+      });
+    };
 
-    // Typed at once: the candidates follow only after the pause.
+    // Each key starts the pause again: nothing while she types, a key every 100 ms.
+    for (const typed of ['n', 'ne', 'neb', 'nebe', 'nebed', 'nebeda', 'nebeday']) {
+      fireEvent.change(field, { target: { value: typed } });
+      wait(100);
+      expect(screen.queryByRole('list'), typed).toBeNull();
+    }
+    wait(SEARCH_DEBOUNCE_MS - 101);
     expect(screen.queryByRole('list')).toBeNull();
-    expect(await screen.findByRole('list')).toBeVisible();
+    // The pause is over: the candidates follow.
+    wait(1);
+    expect(screen.getByRole('list')).toBeVisible();
   });
 
   it('says when no product matches, and still offers the text typed', async () => {

@@ -257,11 +257,14 @@ export function AppProvider({
     setPackState(packStateOf(result));
   }, [packRollback]);
 
+  const { forgetQuick } = check;
   const setSettings = useCallback(
     async (patch: Partial<Settings>, { store = true }: { store?: boolean } = {}) => {
       const before = latest.current;
       const next = { ...before, ...patch };
       latest.current = next;
+      // A passer-by is looked up in accompanied mode only: any change of mode lets her go.
+      if (next.mode !== before.mode) forgetQuick();
       // The screen follows the choice at once; storage never holds it up.
       setSettingsState(next);
       if (!store) return;
@@ -273,7 +276,7 @@ export function AppProvider({
         setSettingsUnavailable(true);
       }
     },
-    [storageTimeoutMs],
+    [storageTimeoutMs, forgetQuick],
   );
 
   const value = useMemo<AppState>(

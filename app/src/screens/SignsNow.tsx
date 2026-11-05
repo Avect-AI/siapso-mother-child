@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useId, useRef, useState } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { latestHistoryAt } from '../data/history.js';
-import { getProfile } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { groupsForProfile, shownGroups, signsByGroup } from '../domain/signs.js';
 import { latestDay } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
+import { readCheckProfile } from '../state/check-profile.js';
 import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
@@ -45,7 +44,7 @@ export function SignsNow() {
   // Read once: how many history entries back the check is.
   const [entry] = useState(flowState);
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, setSigns, clearSigns } = check;
+  const { profileId, items, setSigns, clearSigns, quick } = check;
   const [answer, setAnswer] = useState<Answer>(null);
   // The profile (null when it cannot be read), the phone's date, her last result kept.
   const [loaded, setLoaded] = useState<{
@@ -74,11 +73,9 @@ export function SignsNow() {
   useEffect(() => {
     if (profileId === null) return;
     let live = true;
-    const load = async () => {
-      const profile = await getProfile(profileId);
-      return { profile, lastAt: profile ? await latestHistoryAt(profileId) : undefined };
-    };
-    withTimeout(load(), storageTimeoutMs).then(
+    // A passer-by's answers are in memory (accompanied mode only); a profile is read from the phone.
+    const passerBy = mode === 'accompanied' ? quick : null;
+    withTimeout(readCheckProfile(profileId, passerBy), storageTimeoutMs).then(
       ({ profile, lastAt }) => {
         // Today from the phone's clock, handed to pure code.
         if (live) setLoaded({ profile: profile ?? null, today: todayIso(new Date()), lastAt });
@@ -91,7 +88,7 @@ export function SignsNow() {
     return () => {
       live = false;
     };
-  }, [profileId, storageTimeoutMs]);
+  }, [profileId, quick, mode, storageTimeoutMs]);
 
   // A failed attempt moves focus to the first answer, its question in view.
   useEffect(() => {

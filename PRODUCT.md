@@ -50,7 +50,7 @@ The only open, offline tool focused on the safety of medicines and traditional r
 
 - Name: SIAPSO Mère-Enfant (French), SIAPSO Mother-Child (English).
 - Voice: plain, calm, respectful words. Short sentences. Allowed verbs: show, tell, ask, go, call. Never blame traditional medicine: "we do not know enough" rather than "dangerous".
-- Every finding of an accompanied-mode result keeps its source and evidence level under "Pourquoi ?"; every result says the knowledge base version near its top and ends with it and "Cet outil ne remplace pas un soignant." ("This tool does not take the place of a health worker.")
+- Every finding of an accompanied-mode result keeps its source and evidence level under "Pourquoi ?"; every result says the knowledge base version near its top and ends with it and "Cet outil ne remplace pas un soignant." ("This tool does not take the place of a health worker.") Woman mode leaves the details, evidence levels and sources to the health worker it sends her to (`docs/intended-use.md`, "What a result shows in each mode").
 
 ## Evidence on Hand
 

@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import type { Mode, Profile } from '../domain/types.js';
 import { useT } from '../i18n/index.js';
 import { Button } from '../ui/Button.js';
-import { editEntry, PROFILE_EDIT_PATH } from './edit-route.js';
+import { editEntry, PROFILE_EDIT_PATH, QUICK_PATH } from './edit-route.js';
 
 /**
  * The profile screen of this profile and the state to open it with: hers in
@@ -27,9 +27,20 @@ function profileEdit(
  * the breastfeeding and baby age questions to answer; "No" opens it with the
  * term to give again. Both come back to the check once saved. The two answers
  * weigh the same (neither is the primary action); the danger signs and who to
- * call stay in the header, one tap away.
+ * call stay in the header, one tap away. A passer-by looked up without saving
+ * has no profile: both answers open her questions again ("Regarder sans
+ * enregistrer"), her list kept.
  */
-export function OutdatedTerm({ mode, profile }: { mode: Mode; profile: Profile }) {
+export function OutdatedTerm({
+  mode,
+  profile,
+  passerBy = false,
+}: {
+  mode: Mode;
+  profile: Profile;
+  /** The check is a passer-by's, in memory: no profile to open. */
+  passerBy?: boolean;
+}) {
   const t = useT();
   const [, navigate] = useLocation();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -42,8 +53,12 @@ export function OutdatedTerm({ mode, profile }: { mode: Mode; profile: Profile }
   }, []);
 
   const update = (answer: 'born' | 'term') => {
-    // In place of this entry: once saved, the profile screen gives way to the
-    // check, so Back never shows the same check twice.
+    // In place of this entry: once saved, the profile screen (or a passer-by's
+    // questions) gives way to the check, so Back never shows the same check twice.
+    if (passerBy) {
+      navigate(QUICK_PATH, { replace: true, state: { update: answer } });
+      return;
+    }
     const { path, state } = profileEdit(mode, profile);
     navigate(path, { replace: true, state: { ...state, update: answer, next: '/check' } });
   };
@@ -54,9 +69,19 @@ export function OutdatedTerm({ mode, profile }: { mode: Mode; profile: Profile }
           {t(accompanied ? 'outdated.titleAccompanied' : 'outdated.titleWoman')}
         </h1>
         {accompanied ? (
-          <p className="meta">{t('check.profile', { name: profile.pseudonym })}</p>
+          <p className="meta">
+            {passerBy ? t('check.quick') : t('check.profile', { name: profile.pseudonym })}
+          </p>
         ) : null}
-        <p>{t(accompanied ? 'outdated.leadAccompanied' : 'outdated.leadWoman')}</p>
+        <p>
+          {t(
+            passerBy
+              ? 'outdated.leadPasserBy'
+              : accompanied
+                ? 'outdated.leadAccompanied'
+                : 'outdated.leadWoman',
+          )}
+        </p>
       </div>
       <div className="outdated__answers">
         <Button

@@ -55,7 +55,7 @@ describe('a code that could not be made', () => {
     // Meanwhile, another tab made her code.
     await storeNewVerifier(await verifierOf('2468'));
 
-    await makeCode(user, '1111');
+    await makeCode(user, '1397');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' }),

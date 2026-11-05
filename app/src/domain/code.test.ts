@@ -8,6 +8,7 @@ import {
   CODE_MIN,
   constantTimeEqual,
   createVerifier,
+  easyToGuess,
   fromBase64Url,
   isCode,
   isCodeVerifier,
@@ -33,6 +34,35 @@ describe('codes', () => {
     expect([CODE_MIN, CODE_MAX, PBKDF2_ITERATIONS, AUTO_LOCK_MS, MAX_WAIT_MS]).toEqual([
       4, 6, 600_000, 120_000, 1_800_000,
     ]);
+  });
+
+  it('finds the codes most often tried first: one digit repeated, digits in a row, a year', () => {
+    for (const code of [
+      '0000',
+      '1111',
+      '99999',
+      '777777',
+      '1234',
+      '0123',
+      '12345',
+      '123456',
+      '456789',
+      '4321',
+      '3210',
+      '987654',
+      '1950',
+      '1990',
+      '2026',
+      '2030',
+    ]) {
+      expect(easyToGuess(code), code).toBe(true);
+    }
+  });
+
+  it('leaves other codes alone', () => {
+    for (const code of ['2468', '1357', '7392', '1949', '2031', '1235', '8901', '135790', '0918']) {
+      expect(easyToGuess(code), code).toBe(false);
+    }
   });
 
   it('accepts 4 to 6 digits, nothing else', () => {

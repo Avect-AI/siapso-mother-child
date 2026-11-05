@@ -347,7 +347,7 @@ describe('useCheckStore', () => {
     expect(result.current).toMatchObject({ items: [paracetamol], signs: [], signsGiven: false });
   });
 
-  it('keeps the check when it starts again for the same profile, and empties it for another', () => {
+  it('keeps the check when it starts again for the same profile, and starts empty for another', () => {
     const { result } = renderHook(() => useCheckStore());
     act(() => {
       result.current.start('p1');
@@ -361,6 +361,153 @@ describe('useCheckStore', () => {
       result.current.start('p2');
     });
     expect(result.current).toMatchObject({ profileId: 'p2', items: [], signs: [] });
+  });
+
+  it("keeps each woman's unfinished list while another woman is looked at (live test round 2)", () => {
+    const cytotec: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const coco: CheckedItem = { ref: { kind: 'unrecognised', text: 'huile de coco' } };
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(cytotec, { written: 'cytotec' });
+      result.current.add(coco, { list: 'plant', declined: true });
+      result.current.setSigns(['fever']);
+      result.current.start('coumba');
+      result.current.add(moringa);
+    });
+    expect(result.current).toMatchObject({ profileId: 'coumba', items: [moringa] });
+    expect(result.current.pendingOf('bineta')).toBe(2);
+    expect(result.current.pendingOf('coumba')).toBe(1);
+    expect(result.current.pendingOf('awa')).toBe(0);
+
+    act(() => {
+      result.current.start('bineta');
+    });
+    // Her list as she left it, with what was said about each item.
+    expect(result.current).toMatchObject({ profileId: 'bineta', items: [cytotec, coco] });
+    expect(result.current.writtenOf(cytotec)).toBe('cytotec');
+    expect(result.current.listOf(coco)).toBe('plant');
+    expect(result.current.declinedOf(coco)).toBe(true);
+    // The signs present now are asked again: they may have changed meanwhile.
+    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
+    expect(result.current.pendingOf('coumba')).toBe(1);
+    // A name typed for one woman is never said for another.
+    act(() => {
+      result.current.start('coumba');
+    });
+    expect(result.current.writtenOf(cytotec)).toBeUndefined();
+  });
+
+  it('forgets the lists of the other women at a lock, keeping the one on screen', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.start('coumba');
+      result.current.add(moringa);
+      result.current.forgetOthers();
+    });
+    expect(result.current).toMatchObject({ profileId: 'coumba', items: [moringa] });
+    expect(result.current.pendingOf('bineta')).toBe(0);
+    act(() => {
+      result.current.start('bineta');
+    });
+    expect(result.current.items).toEqual([]);
+  });
+
+  it('forgets every list at a reset (the quick exit)', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.start('coumba');
+      result.current.reset();
+      result.current.start('bineta');
+    });
+    expect(result.current.items).toEqual([]);
+  });
+
+  it('forgets the list of one woman whose profile is deleted, and only hers', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.start('coumba');
+      result.current.add(moringa);
+      result.current.forget('bineta');
+    });
+    expect(result.current).toMatchObject({ profileId: 'coumba', items: [moringa] });
+    expect(result.current.pendingOf('bineta')).toBe(0);
+
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.forget('bineta');
+    });
+    expect(result.current).toMatchObject({ profileId: null, items: [] });
+    expect(result.current.pendingOf('coumba')).toBe(1);
+  });
+
+  it('checks a passer-by without a profile: her answers in memory, a new check each time', () => {
+    const passerBy = profileOf({ id: 'quick-1', pseudonym: '' });
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.startQuick(passerBy);
+      result.current.add(moringa);
+    });
+    expect(result.current).toMatchObject({ profileId: 'quick-1', items: [moringa] });
+    expect(result.current.quick).toBe(passerBy);
+    // The woman left for the passer-by keeps her list.
+    expect(result.current.pendingOf('bineta')).toBe(1);
+
+    // The next passer-by starts from nothing.
+    const next = profileOf({ id: 'quick-2', pseudonym: '' });
+    act(() => {
+      result.current.startQuick(next);
+    });
+    expect(result.current).toMatchObject({ profileId: 'quick-2', items: [] });
+    expect(result.current.pendingOf('quick-1')).toBe(0);
+
+    // Going back to a woman lets the passer-by go: nothing of hers is kept.
+    act(() => {
+      result.current.add(moringa);
+      result.current.start('bineta');
+    });
+    expect(result.current).toMatchObject({ profileId: 'bineta', items: [paracetamol] });
+    expect(result.current.quick).toBeNull();
+    expect(result.current.pendingOf('quick-2')).toBe(0);
+  });
+
+  it('lets a passer-by go on demand (a lock, a change of mode), keeping the lists waiting', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('bineta');
+      result.current.add(paracetamol);
+      result.current.startQuick(profileOf({ id: 'quick-1' }));
+      result.current.add(moringa);
+      result.current.forgetQuick();
+    });
+    expect(result.current).toMatchObject({ profileId: null, items: [], quick: null });
+    expect(result.current.pendingOf('bineta')).toBe(1);
+
+    // Nothing to let go: nothing changes.
+    act(() => {
+      result.current.start('bineta');
+      result.current.forgetQuick();
+    });
+    expect(result.current).toMatchObject({ profileId: 'bineta', items: [paracetamol] });
+  });
+
+  it('lets a passer-by go at a reset', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.startQuick(profileOf({ id: 'quick-1' }));
+      result.current.add(moringa);
+      result.current.reset();
+    });
+    expect(result.current).toMatchObject({ profileId: null, items: [], quick: null });
   });
 
   it('gives the items added before any profile to the first profile it starts for', () => {

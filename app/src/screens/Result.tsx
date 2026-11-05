@@ -8,8 +8,7 @@ import {
 } from '@siapso/engine';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { historyEntryOf, latestHistoryAt, recordHistoryOnce } from '../data/history.js';
-import { getProfile } from '../data/profiles.js';
+import { historyEntryOf, recordHistoryOnce } from '../data/history.js';
 import { contextFromProfile } from '../domain/context.js';
 import { todayIso } from '../domain/dates.js';
 import { isStale } from '../domain/staleness.js';
@@ -35,6 +34,7 @@ import {
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
+import { readCheckProfile } from '../state/check-profile.js';
 import { useCheck } from '../state/check-state.js';
 import { inSession } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
@@ -461,7 +461,10 @@ export function Result() {
   const [entry] = useState(flowState);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, signs, signsGiven } = check;
+  const { profileId, items, signs, signsGiven, quick } = check;
+  // A passer-by looked up without saving (accompanied mode only): her result
+  // is shown, never kept.
+  const passerBy = mode === 'accompanied' && quick !== null && quick.id === profileId;
   const recorded = useRef<Evaluation | null>(null);
 
   // Each reading of the profile and the phone's date; a new one when the app
@@ -480,11 +483,8 @@ export function Result() {
   useEffect(() => {
     if (profileId === null) return;
     let live = true;
-    const load = async () => {
-      const profile = await getProfile(profileId);
-      return { profile, lastAt: profile ? await latestHistoryAt(profileId) : undefined };
-    };
-    withTimeout(load(), storageTimeoutMs).then(
+    // A passer-by's answers are in memory; a profile is read from the phone.
+    withTimeout(readCheckProfile(profileId, passerBy ? quick : null), storageTimeoutMs).then(
       ({ profile, lastAt }) => {
         // Today from the phone's clock, handed to pure code (the term and the context).
         const today = todayIso(new Date());
@@ -499,7 +499,7 @@ export function Result() {
     return () => {
       live = false;
     };
-  }, [profileId, storageTimeoutMs, reading]);
+  }, [profileId, quick, passerBy, storageTimeoutMs, reading]);
 
   // A day the app has already seen: the knowledge pack's date, her last result.
   const notBefore = loaded.status === 'ready' ? latestDay(pack?.date, loaded.lastAt) : undefined;
@@ -555,8 +555,9 @@ export function Result() {
 
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
+  // A passer-by's check is never kept.
   useEffect(() => {
-    if (evaluated?.status !== 'ready' || profileId === null || !signsGiven) return;
+    if (evaluated?.status !== 'ready' || profileId === null || !signsGiven || passerBy) return;
     if (recorded.current === evaluated.evaluation) return;
     recorded.current = evaluated.evaluation;
     const kept = historyEntryOf({
@@ -570,7 +571,7 @@ export function Result() {
     recordHistoryOnce(kept).catch((failure: unknown) => {
       console.warn('Evaluation not kept in the history on this device', failure);
     });
-  }, [evaluated, profileId, signs, signsGiven]);
+  }, [evaluated, profileId, signs, signsGiven, passerBy]);
 
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
   // The signs present now are asked before any result (a typed address, an old entry).
@@ -579,7 +580,7 @@ export function Result() {
   if (outdated && loaded.status === 'ready') {
     return (
       <main className="screen result">
-        <OutdatedTerm mode={mode} profile={loaded.profile} />
+        <OutdatedTerm mode={mode} profile={loaded.profile} passerBy={passerBy} />
       </main>
     );
   }
@@ -595,10 +596,11 @@ export function Result() {
   else if (view === 'failed') problem = 'result.failed';
   const ready = problem === null && view !== null && view !== 'failed' ? view : null;
 
-  const title =
-    mode === 'accompanied' && loaded.status === 'ready'
-      ? t('result.titleFor', { name: loaded.profile.pseudonym })
-      : t('result.title');
+  let title = t('result.title');
+  if (passerBy) title = t('result.titleQuick');
+  else if (mode === 'accompanied' && loaded.status === 'ready') {
+    title = t('result.titleFor', { name: loaded.profile.pseudonym });
+  }
 
   // What the result was worked out on: under the title, or under the danger
   // banner when there is one (the danger instruction comes first).

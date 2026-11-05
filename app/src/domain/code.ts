@@ -50,6 +50,28 @@ export function isCode(text: string): boolean {
   return new RegExp(`^[0-9]{${String(CODE_MIN)},${String(CODE_MAX)}}$`).test(text);
 }
 
+/** The years a code may be (a birth year, the year of the day): the first ones tried. */
+const FIRST_YEAR = 1950;
+const LAST_YEAR = 2030;
+
+/**
+ * Whether a code is among those someone else tries first: one digit repeated
+ * (0000), digits in a row up or down (1234, 0123, 987654), or a year from
+ * 1950 to 2030 (a birth year). Under the wait after wrong codes, a person
+ * gets about 11 tries in the first hour. The code screen warns and asks a
+ * second time; it never refuses: the choice stays hers.
+ */
+export function easyToGuess(code: string): boolean {
+  if (!isCode(code)) return false;
+  // ASCII digits only (isCode): each code unit is one digit.
+  const digits = Array.from({ length: code.length }, (_, i) => code.charCodeAt(i) - 48);
+  const steps = digits.slice(1).map((digit, i) => digit - (digits[i] ?? 0));
+  if (steps.every((step) => step === 0)) return true;
+  if (steps.every((step) => step === 1) || steps.every((step) => step === -1)) return true;
+  const year = Number(code);
+  return code.length === 4 && year >= FIRST_YEAR && year <= LAST_YEAR;
+}
+
 export function toBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);

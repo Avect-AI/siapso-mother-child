@@ -1346,7 +1346,7 @@ a {
 }
 
 /*
- * The digits keep their places as on a phone, and "Effacer" keeps its key
+ * The digits keep their places as on a phone, and "Corriger" keeps its key
  * beside 0 (on a 320 px phone too), so the one wide button is the primary
  * action; only when its word cannot fit a key (large text) does it take a
  * row of its own.
@@ -1421,7 +1421,8 @@ a {
   gap: var(--space-4);
 }
 
-.forgot__actions {
+.forgot__actions,
+.code-setup__actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
@@ -1513,6 +1514,12 @@ a {
   font-weight: var(--font-weight-body);
 }
 
+/* A list waiting for her during the visit: the line a relay looks for, in ink. */
+.profiles__status--pending {
+  color: var(--color-text);
+  font-weight: var(--font-weight-strong);
+}
+
 /* "To be updated": in ink, with the triangle, never in a level colour. */
 .profiles__status--update {
   display: flex;
@@ -1531,10 +1538,16 @@ a {
   margin-inline: auto calc(-1 * var(--space-3));
 }
 
-.profiles__add,
 .settings__done {
   width: 100%;
   margin-top: auto;
+}
+
+/* The actions above the list: in reach whatever its length. */
+.profiles__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 /*
@@ -1855,10 +1868,20 @@ a {
   background: var(--color-bg);
 }
 
-html:has(.sticky-action) {
+/* A bar back in the flow (sticky-action--off) keeps no room under the focus. */
+html:has(.sticky-action:not(.sticky-action--off)) {
   scroll-padding-block-end: calc(
     var(--update-band-height, 0px) + var(--sticky-action-height, 6rem) + var(--space-2)
   );
+}
+
+/*
+ * A bar that may take only a share of the screen (StickyAction maxShare, the
+ * confirm bar) and would take more (large text, a small phone) goes back into
+ * the flow, the same box, and keeps no room under the focus.
+ */
+.sticky-action--off {
+  position: static;
 }
 
 /*
@@ -2460,7 +2483,8 @@ html:has(.sticky-action) {
   font-variant-numeric: tabular-nums;
 }
 
-.confirm__actions {
+.confirm__actions,
+.confirm__decide {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
@@ -2473,7 +2497,8 @@ html:has(.sticky-action) {
 }
 
 .confirm__yes,
-.confirm__no {
+.confirm__no,
+.confirm__all {
   width: 100%;
 }
 

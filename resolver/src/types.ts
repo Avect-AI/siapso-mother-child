@@ -42,6 +42,9 @@ export interface IndexEntry {
 export type MatchKind =
   'exact' | 'word' | 'prefix' | 'near' | 'fuzzy' | 'fuzzy-word' | 'substances' | 'contained';
 
+/** Why a whole word of a name may name none of its products (see Candidate.weakWord). */
+export type WeakWord = 'shared' | 'inner';
+
 export interface Candidate {
   id: string;
   kind: EntryKind;
@@ -54,6 +57,20 @@ export interface Candidate {
   score: number;
   /** How the best name matched (see MatchKind). */
   match: MatchKind;
+  /**
+   * For a `word` match, why the word alone may name none of the products:
+   * `shared` when the names of several families have it (a laboratory,
+   * "biogaran"; "gastro" of "gastro-résistant"), `inner` when it leads no name
+   * of the product, coming after its brand word (a qualifier, "chrono" of
+   * "DEPAKINE CHRONO", "emulgel" of "VOLTARENE EMULGEL"; a word of a
+   * description, "cutanée"). A word after only substance names or a short
+   * prefix is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of
+   * "Néo-Codion", "profenid" of "BI PROFENID LP"), and the first word of a name
+   * in brackets leads it ("oseille" of "Bissap (oseille de Guinée)"). A caller
+   * weighs such a match as a weak resemblance; the score and the order are
+   * not changed.
+   */
+  weakWord?: WeakWord;
   /** The length of the cleaned query without spaces: a prefix of 4 letters is a weak match. */
   queryLength: number;
   /** The other product ids of the family, strength ascending then id, for the confirm screen. */

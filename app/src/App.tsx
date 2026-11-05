@@ -18,6 +18,7 @@ import { Home } from './screens/Home.js';
 import { Neutral, UNLOCK_PATH } from './screens/Neutral.js';
 import { ProfileEdit, type ProfileTarget } from './screens/ProfileEdit.js';
 import { Profiles } from './screens/Profiles.js';
+import { QUICK_PATH, QuickCheck } from './screens/QuickCheck.js';
 import { CALL_PATH, Referral } from './screens/Referral.js';
 import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
@@ -60,6 +61,7 @@ type Screen =
   | 'contacts'
   | 'contact'
   | 'profile'
+  | 'quick'
   | 'mode'
   | CheckRoute['screen'];
 
@@ -173,6 +175,8 @@ function screenFor(
   if (location === UNLOCK_PATH) return 'unlocked';
   // Open, and no mode was kept (a welcome cut short): who uses the app, first.
   if (settings.mode === null) return 'mode';
+  // A passer-by checked without a profile: accompanied mode only.
+  if (location === QUICK_PATH) return settings.mode === 'accompanied' ? 'quick' : null;
   if (profile) return 'profile';
   if (check) return check.screen;
   if (contact !== null) return contact === 'list' ? 'contacts' : 'contact';
@@ -365,6 +369,7 @@ function Screens() {
         <ContactEdit key={key} target={contact} />
       ) : null}
       {screen === 'profile' && profile ? <ProfileEdit key={key} target={profile} /> : null}
+      {screen === 'quick' ? <QuickCheck /> : null}
       {screen === 'check' ? <Check /> : null}
       {screen === 'search' && check?.screen === 'search' ? (
         <Search key={key} kind={check.kind} />

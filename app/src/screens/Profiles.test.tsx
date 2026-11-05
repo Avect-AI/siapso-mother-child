@@ -6,9 +6,10 @@ import { saveProfile } from '../data/profiles.js';
 import { AUTO_LOCK_MS } from '../domain/code.js';
 import { addDays, todayIso } from '../domain/dates.js';
 import type { Settings } from '../domain/types.js';
+import { probeCheck } from '../test/check-probe.js';
 import { enterCode } from '../test/code-steps.js';
-import { profileOf } from '../test/knowledge-pack.js';
-import { renderApp, storeTestCode } from '../test/render-app.js';
+import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
+import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -146,6 +147,93 @@ describe('Profiles', () => {
     expect(screen.queryByRole('list', { name: /^Profils enregistrés/ })).toBeNull();
     // The start of accompanied mode, as Home is for a woman: whether the phone works offline.
     expect(document.querySelector('main .offline-ready')).toHaveAttribute('role', 'status');
+  });
+
+  it('keeps the list of each woman while another is looked at, and says so on her row', async () => {
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Bineta' }));
+    await saveProfile(profileOf({ id: 'c', pseudonym: 'Coumba' }));
+    const probe = probeCheck();
+    const user = userEvent.setup();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      packLoader: loaderOf(await knowledgePack()),
+      children: probe.element,
+    });
+    const open = async (name: RegExp) => {
+      const list = await screen.findByRole('list', {
+        name: 'Profils enregistrés sur ce téléphone',
+      });
+      await user.click(within(list).getByRole('button', { name }));
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" });
+    };
+
+    await open(/^Bineta/);
+    act(() => {
+      probe.current().add({ ref: { kind: 'plant', id: 'kinkeliba' } });
+    });
+    expect(await screen.findByText(/^Kinkéliba/)).toBeVisible();
+    act(() => {
+      window.history.back();
+    });
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    // The accessible name reads the no-break space before ":" as a plain space.
+    expect(within(list).getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+      'Bineta Environ 26 semaines Liste en cours : 1 produit',
+    );
+
+    await open(/^Coumba/);
+    expect(screen.getByText(/^Rien n'est encore ajouté\./)).toBeVisible();
+    act(() => {
+      window.history.back();
+    });
+    await open(/^Bineta/);
+
+    // Her list as it was left, nothing to type again.
+    expect(screen.getByText(/^Kinkéliba/)).toBeVisible();
+  });
+
+  it('puts "Ajouter un profil" and a check without saving above the list', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await renderApp({ settings: accompanied, hash: '#/' });
+
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    const add = screen.getByRole('button', { name: 'Ajouter un profil' });
+    const quick = screen.getByRole('button', { name: 'Regarder sans enregistrer' });
+    expect(quick).toHaveClass('button--secondary');
+    for (const action of [add, quick]) {
+      expect(action.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it('finds a woman by her pseudonym once more than 8 are followed', async () => {
+    const names = ['Awa', 'Aïssatou', 'Bineta', 'Coumba', 'Diarra', 'Fatou', 'Khady', 'Mariama'];
+    for (const [index, pseudonym] of names.entries()) {
+      await saveProfile(profileOf({ id: `p${String(index)}`, pseudonym }));
+    }
+    const { unmount } = await renderApp({ settings: accompanied, hash: '#/' });
+    await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    // Eight: the list is short enough to read.
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    unmount();
+
+    await saveProfile(profileOf({ id: 'p9', pseudonym: 'Ndeye' }));
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/' });
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    const field = screen.getByRole('searchbox', { name: 'Chercher un profil' });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(9);
+
+    // Without case or accents, anywhere in the pseudonym.
+    await user.type(field, 'AISS');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(list).getByRole('button', { name: /^Aïssatou/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ajouter un profil' })).toBeVisible();
+
+    await user.clear(field);
+    await user.type(field, 'zz');
+    expect(screen.getByText('Aucun profil ne porte ce surnom.')).toBeVisible();
+    expect(screen.queryByRole('list', { name: 'Profils enregistrés sur ce téléphone' })).toBeNull();
   });
 
   it('is never rendered while locked: the code first, then the list', async () => {

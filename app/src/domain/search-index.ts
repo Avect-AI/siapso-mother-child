@@ -369,6 +369,13 @@ export interface StrengthChoice {
    * "I do not know" is her own answer too.
    */
   preselected: 'candidate' | null;
+  /**
+   * The options with the strength typed in the query, in the order of
+   * `options` (the candidate among them); empty when no strength is typed. A
+   * long list shows them first, the others one tap away: the strength she
+   * read on the box stays in view with "yes".
+   */
+  matching: string[];
 }
 
 /** The form words of a product: of its French name and of its form ("comprimé", "sirop"). */
@@ -404,13 +411,15 @@ export function strengthChoiceOf(
 
   const typed = parseStrength(query).strengthMg;
   const forms = formWords(query);
-  let preselected: StrengthChoice['preselected'] = null;
-  if (
+  const hasTyped = (p: Product) =>
     typed !== undefined &&
-    product.components.some(
-      (c) => c.strengthMg !== undefined && Math.abs(c.strengthMg - typed) < 1e-6,
-    )
-  ) {
+    p.components.some((c) => c.strengthMg !== undefined && Math.abs(c.strengthMg - typed) < 1e-6);
+  const matching = options.filter((id) => {
+    const option = members.find((p) => p.id === id);
+    return option !== undefined && hasTyped(option);
+  });
+  let preselected: StrengthChoice['preselected'] = null;
+  if (hasTyped(product)) {
     preselected = 'candidate';
   } else if (typed === undefined && forms.length > 0 && hasNoStrength(product)) {
     // "Néo-Codion sirop": the only product of the family in that form, and no strength chosen.
@@ -422,7 +431,7 @@ export function strengthChoiceOf(
       preselected = 'candidate';
     }
   }
-  return { options, preselected };
+  return { options, preselected, matching };
 }
 
 /**

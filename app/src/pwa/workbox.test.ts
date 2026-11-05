@@ -94,6 +94,12 @@ describe('build warning for the referral file', () => {
     expect(warningFor(example)).toBeNull();
   });
 
+  it('reads a file saved with a UTF-8 byte order mark, as the phones do (fetch text() drops it)', () => {
+    // Made from its code point: the character itself is invisible in the source.
+    const bom = String.fromCharCode(0xfeff);
+    expect(warningFor(`${bom}{"contacts":[]}`)).toBeNull();
+  });
+
   it('is loud when the file is not valid JSON: the phones would read it as no file', () => {
     const warning = warningFor('{ "contacts": [');
     expect(warning).toMatch(/WARNING/);

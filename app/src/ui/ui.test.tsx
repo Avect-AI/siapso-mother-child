@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LEVELS, type Level } from '@siapso/engine';
 import { Button, DangerBanner, LevelBadge, LevelIcon, ResultCard, TextField } from './index.js';
 import { STICKY_HEIGHT, StickyAction } from './StickyAction.js';
@@ -477,9 +477,69 @@ describe('StickyAction', () => {
     );
     // The page's scroll padding is the measured height, not a fixed guess.
     expect(baseCss).toMatch(
-      /html:has\(\.sticky-action\) \{\s*scroll-padding-block-end: calc\([^;]*var\(--sticky-action-height/,
+      /html:has\(\.sticky-action:not\(\.sticky-action--off\)\) \{\s*scroll-padding-block-end: calc\([^;]*var\(--sticky-action-height/,
     );
     unmount();
     expect(document.documentElement.style.getPropertyValue(STICKY_HEIGHT)).toBe('');
+  });
+
+  describe('with a share of the screen at most (the confirm bar)', () => {
+    let resized: () => void = () => undefined;
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+
+    function heldBar(height: number) {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: () => void) {
+            resized = callback;
+          }
+          observe() {
+            return undefined;
+          }
+          disconnect() {
+            return undefined;
+          }
+        },
+      );
+      vi.stubGlobal('innerHeight', 640);
+      const box = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockReturnValue({ height } as DOMRect);
+      render(
+        <StickyAction className="confirm__decide" maxShare={1 / 3}>
+          <Button variant="primary">Oui</Button>
+        </StickyAction>,
+      );
+      return { bar: () => screen.getByRole('button').parentElement, box };
+    }
+
+    it('is held while it takes a third of the screen or less', () => {
+      const { bar } = heldBar(80);
+      expect(bar()).toHaveClass('sticky-action', 'confirm__decide');
+      expect(bar()).not.toHaveClass('sticky-action--off');
+      expect(document.documentElement.style.getPropertyValue(STICKY_HEIGHT)).toBe('80px');
+    });
+
+    it('goes back into the flow, keeping no room, when it would take more (large text)', () => {
+      const { bar, box } = heldBar(80);
+      box.mockReturnValue({ height: 230 } as DOMRect);
+      act(() => {
+        resized();
+      });
+      expect(bar()).toHaveClass('sticky-action--off');
+      expect(document.documentElement.style.getPropertyValue(STICKY_HEIGHT)).toBe('');
+      expect(baseCss).toMatch(/\.sticky-action--off \{\s*position: static;/);
+
+      box.mockReturnValue({ height: 80 } as DOMRect);
+      act(() => {
+        resized();
+      });
+      expect(bar()).not.toHaveClass('sticky-action--off');
+    });
   });
 });

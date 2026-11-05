@@ -51,9 +51,16 @@ export const fr = {
     wrong: "Ce n'est pas le bon code.",
     triesLeft: 'Encore {count} essais avant une attente.',
     lastTry: 'Encore 1 essai avant une attente.',
-    waitSeconds: "Trop d'essais. Attendez {count} secondes, puis essayez encore.",
-    waitMinutes: "Trop d'essais. Attendez {count} minutes, puis essayez encore.",
-    waitHours: "Trop d'essais. Attendez {count} heures, puis essayez encore.",
+    // A wait as it is read aloud: "1 min 59 s", never "119 secondes" (30 minutes at most).
+    wait: "Trop d'essais. Attendez {time}, puis essayez encore.",
+    timeSeconds: '{seconds} s',
+    timeMinutes: '{minutes} min',
+    timeMinutesSeconds: '{minutes} min {seconds} s',
+    // Said to a screen reader in whole words: "1 minute 59 secondes".
+    spokenSecond: '1 seconde',
+    spokenSeconds: '{seconds} secondes',
+    spokenMinute: '1 minute',
+    spokenMinutes: '{minutes} minutes',
     // Said once to a screen reader when a wait is over.
     tryAgain: 'Vous pouvez essayer à nouveau.',
     unavailable:
@@ -62,7 +69,9 @@ export const fr = {
     exists: "Un code existe déjà sur ce téléphone : entrez-le pour ouvrir l'application.",
     notSaved: "Le code n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
     keypad: 'Clavier du code',
-    erase: 'Effacer',
+    // The key that takes the last digit off: never the word of the data wipe (EFFACER).
+    erase: 'Corriger',
+    eraseName: 'Corriger le dernier chiffre',
     // Said to a screen reader as the keys on the screen are tapped.
     digitsNone: 'Aucun chiffre',
     digitsOne: '1 chiffre',
@@ -83,6 +92,13 @@ export const fr = {
     invalid: 'Écrivez de 4 à 6 chiffres.',
     mismatch: 'Les deux codes ne sont pas les mêmes. Choisissez un code à nouveau.',
     changeMode: 'Changer de mode',
+    // A code among the first tried (0000, 1234, a year): a warning and a second
+    // yes, never a refusal. Never red: it is not a danger sign.
+    weakTitle: 'Ce code est facile à deviner',
+    weakLead:
+      "Une année, un même chiffre répété ou des chiffres qui se suivent (comme 1234) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une année de naissance.",
+    weakOther: 'Choisir un autre code',
+    weakKeep: 'Garder ce code',
   },
   home: {
     title: 'Un médicament ou un remède ?',
@@ -123,6 +139,15 @@ export const fr = {
     loading: 'Les profils se chargent.',
     empty: 'Aucun profil sur ce téléphone pour le moment.',
     add: 'Ajouter un profil',
+    // A passer-by (a sale at the depot): checked with no profile and no history kept.
+    quick: 'Regarder sans enregistrer',
+    // From 9 profiles on, a field finds a woman by her pseudonym.
+    search: 'Chercher un profil',
+    searchHint: 'Une partie du surnom suffit.',
+    noMatch: 'Aucun profil ne porte ce surnom.',
+    // Her list waits while another woman is looked at (cleared at the lock and by Quitter).
+    pendingOne: 'Liste en cours : 1 produit',
+    pendingMany: 'Liste en cours : {count} produits',
     edit: 'Modifier',
     editNamed: 'Modifier le profil de {name}',
     // The way to a profile whose term is to be updated or confirmed.
@@ -151,6 +176,8 @@ export const fr = {
     titleAccompanied: 'Le terme noté a passé 42 semaines. Le bébé est-il né ?',
     leadWoman: 'Mettez votre profil à jour avant de regarder un produit.',
     leadAccompanied: 'Mettez son profil à jour avant de regarder un produit.',
+    // A passer-by has no profile: her answers are given again.
+    leadPasserBy: 'Reprenez ses réponses avant de regarder un produit.',
     born: 'Oui, le bébé est né',
     notBorn: 'Non, toujours enceinte',
   },
@@ -295,7 +322,18 @@ export const fr = {
         "L'application sert pendant la grossesse et l'allaitement : répondez Oui à au moins une des deux questions.",
     },
   },
+  // A passer-by checked without a profile (accompanied mode, a sale at the depot).
+  quick: {
+    // "Regarder", as "Regarder un produit": never "contrôle", which reads as an inspection.
+    title: 'Regarder sans enregistrer',
+    lead: 'Pour une femme de passage. Ses réponses servent seulement à regarder ses produits : aucun profil et aucun historique ne restent sur ce téléphone.',
+    // Her term was past 42 weeks and the baby is born: the questions again.
+    leadBorn: "Le bébé est né : dites si elle allaite, et l'âge du bébé.",
+    start: 'Regarder ses produits',
+  },
   check: {
+    // A passer-by: said instead of a pseudonym.
+    quick: "Femme de passage : rien n'est enregistré",
     // Woman mode: what she takes herself; accompanied mode: what the woman takes.
     titleWoman: 'Ce que vous prenez',
     titleAccompanied: "Ce qu'elle prend",
@@ -392,6 +430,8 @@ export const fr = {
     strength: 'Quel dosage est écrit sur la boîte ?',
     strengthHint: 'Sur la boîte ou sur la plaquette : le nombre suivi de mg ou de g.',
     dontKnow: 'Je ne sais pas',
+    // A long list shows the strength typed first: the others on demand.
+    showAllStrengths: 'Voir tous les dosages ({count})',
     chooseStrength: 'Choisissez un dosage, ou « Je ne sais pas ».',
     units: "Combien d'unités par jour ?",
     unitsHint:
@@ -426,6 +466,8 @@ export const fr = {
     title: 'Résultat',
     // Accompanied mode: the profile's pseudonym, never a real name.
     titleFor: 'Résultat pour {name}',
+    // A passer-by checked without a profile: nothing of it is kept.
+    titleQuick: 'Résultat, sans enregistrer',
     loading: 'Le résultat se prépare.',
     failed: "Le résultat n'a pas pu être donné. Revenez à la liste.",
     profileMissing: "Ce profil n'est plus sur ce téléphone. Revenez à la liste.",

@@ -344,6 +344,80 @@ describe('Confirm: the strength on the box', () => {
   });
 });
 
+describe('Confirm: a long list of strengths (live test round 2)', () => {
+  it('shows the strength typed first, then "Je ne sais pas", the others one tap away', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'Doliprane 1000 mg');
+
+    const question = screen.getByRole('group', { name: STRENGTH });
+    const answers = within(question).getAllByRole('radio');
+    // Only the boxes of 1000 mg: no children's suppository before them.
+    expect(answers.slice(0, -1).map((answer) => answer.getAttribute('value'))).not.toHaveLength(0);
+    for (const answer of answers.slice(0, -1)) {
+      expect(answer).toHaveAccessibleName(/(^|\s)1000\smg/);
+    }
+    expect(answers.at(-1)).toHaveAccessibleName('Je ne sais pas');
+    expect(answers.filter((answer) => (answer as HTMLInputElement).checked)).toHaveLength(1);
+    const more = screen.getByRole('button', { name: /^Voir tous les dosages \(\d+\)$/ });
+    expect(more).toHaveClass('button--secondary');
+    // Yes follows, held in reach while the question and the units scroll.
+    const yes = screen.getByRole('button', { name: "Oui, c'est ce produit" });
+    expect(more.compareDocumentPosition(yes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(yes.closest('.sticky-action')).not.toBeNull();
+    // Only "yes" is held: what it adds is said in the flow, never over the list.
+    const adding = document.querySelector('.confirm__adding');
+    expect(adding).toHaveTextContent(/^Vous ajoutez/);
+    expect(adding?.closest('.sticky-action')).toBeNull();
+    await user.click(yes);
+
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: expect.stringMatching(/^doliprane-1000-mg-/) as string } },
+    ]);
+  });
+
+  it('opens every strength on demand, the focus on the first one it shows', async () => {
+    const { user } = await confirmFirst('Ajouter un médicament', 'Doliprane 1000 mg');
+    const question = screen.getByRole('group', { name: STRENGTH });
+    const before = within(question)
+      .getAllByRole('radio')
+      .map((answer) => answer.getAttribute('value'));
+
+    await user.click(screen.getByRole('button', { name: /^Voir tous les dosages/ }));
+
+    const after = within(question).getAllByRole('radio');
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(screen.queryByRole('button', { name: /^Voir tous les dosages/ })).toBeNull();
+    const first = after.find((answer) => !before.includes(answer.getAttribute('value')));
+    expect(first).toHaveFocus();
+    // The strength typed stays chosen.
+    expect(
+      after
+        .filter((answer) => (answer as HTMLInputElement).checked)
+        .map((a) => a.getAttribute('value')),
+    ).toEqual([expect.stringMatching(/^doliprane-1000-mg-/)]);
+  });
+
+  it('holds "Oui, c\'est ce produit" in reach under a long list (no strength typed)', async () => {
+    await confirmFirst('Ajouter un médicament', 'doliprane');
+
+    expect(
+      within(screen.getByRole('group', { name: STRENGTH })).getAllByRole('radio').length,
+    ).toBeGreaterThan(6);
+    const yes = screen.getByRole('button', { name: "Oui, c'est ce produit" });
+    expect(yes.closest('.sticky-action')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /^Voir tous les dosages/ })).toBeNull();
+  });
+
+  it('leaves a short list as it is', async () => {
+    await confirmFirst('Ajouter un médicament', 'paracetamol 1 g');
+
+    expect(screen.queryByRole('button', { name: /^Voir tous les dosages/ })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: "Oui, c'est ce produit" }).closest('.sticky-action'),
+    ).toBeNull();
+  });
+});
+
 describe('Confirm: the name she typed', () => {
   it('says the name typed when the product is shown under another one, up to the result', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'cytotec');

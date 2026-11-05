@@ -364,7 +364,30 @@ describe('strengthChoiceOf', () => {
     expect(strengthChoiceOf(pack, candidate, 'paracetamol')).toEqual({
       options: ['paracetamol-500-generic', 'paracetamol-1000-generic'],
       preselected: null,
+      matching: [],
     });
+  });
+
+  it('names the products of the strength typed, so a long list can show them first', () => {
+    const query = 'Doliprane 1000 mg';
+    const candidate = first(query, 'product');
+    const choice = strengthChoiceOf(pack, candidate, query);
+    expect(choice?.preselected).toBe('candidate');
+    expect(choice?.matching).toContain(candidate.id);
+    for (const id of choice?.matching ?? []) {
+      const product = pack.products.find((p) => p.id === id);
+      expect(
+        product?.components.some((c) => c.strengthMg === 1000),
+        id,
+      ).toBe(true);
+    }
+    // In the order of the list, the children's strengths left out.
+    expect(choice?.matching).toEqual(choice?.options.filter((id) => choice.matching.includes(id)));
+    expect(choice?.matching.length).toBeLessThan(choice?.options.length ?? 0);
+    // No strength typed: none.
+    expect(strengthChoiceOf(pack, first('doliprane', 'product'), 'doliprane')?.matching).toEqual(
+      [],
+    );
   });
 
   it('preselects the form typed in the query when one product of the family has it', () => {

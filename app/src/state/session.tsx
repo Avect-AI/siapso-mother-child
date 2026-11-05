@@ -184,7 +184,12 @@ export function SessionProvider({
   startUnlocked = false,
 }: SessionOptions & { children: ReactNode }) {
   const { settings, setSettings, storageTimeoutMs } = useApp();
-  const { reset } = useCheck();
+  const { reset, forgetOthers, forgetQuick, quick, profileId: checkProfileId } = useCheck();
+  // Whether the check on screen is a passer-by's, read by the lock.
+  const passerBy = useRef(false);
+  useEffect(() => {
+    passerBy.current = quick !== null && quick.id === checkProfileId;
+  }, [quick, checkProfileId]);
   const [status, setStatus] = useState<SessionStatus>(startUnlocked ? 'unlocked' : 'loading');
   const [exited, setExited] = useState(false);
   const [lockout, setLockout] = useState<LockoutState>(NO_LOCKOUT);
@@ -283,12 +288,24 @@ export function SessionProvider({
     setEpoch(epochToken());
   }, []);
 
+  /**
+   * What a lock forgets of the visit: the lists waiting for the other women,
+   * and a passer-by (her screen is then not held: the code opens the start).
+   * The list of a woman on screen stays with the screen held.
+   */
+  const forgetAtLock = useCallback(() => {
+    if (passerBy.current) holdNothing.current = true;
+    forgetOthers();
+    forgetQuick();
+  }, [forgetOthers, forgetQuick]);
+
   /** Locks this tab only (its own two minutes are over). */
   const lockHere = useCallback(() => {
     key.current = null;
     renewEpoch();
+    forgetAtLock();
     setStatus((now) => (now === 'unlocked' ? 'locked' : now));
-  }, [renewEpoch]);
+  }, [renewEpoch, forgetAtLock]);
 
   const lock = useCallback(() => {
     lockHere();
@@ -447,6 +464,7 @@ export function SessionProvider({
     // Nothing of this tab comes back after another code: no screen is held.
     held.current = null;
     holdNothing.current = true;
+    forgetAtLock();
     renewEpoch();
     setCodeUnavailable(false);
     setStatus((now) => (now === 'loading' ? now : 'locked'));
@@ -457,7 +475,7 @@ export function SessionProvider({
     } catch {
       void setSettings({ onboarded: true }, { store: false });
     }
-  }, [forgetAll, renewEpoch, setSettings, storageTimeoutMs]);
+  }, [forgetAll, forgetAtLock, renewEpoch, setSettings, storageTimeoutMs]);
 
   /** A code made here was refused: this tab asks for the stored one, the welcome over. */
   const refuseCode = useCallback(async (): Promise<CodeMade> => {

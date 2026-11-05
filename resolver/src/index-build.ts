@@ -82,6 +82,48 @@ export interface CompiledName {
    * is not found inside any text.
    */
   containable: boolean;
+  /**
+   * The words that lead the name, so a query equal to one of them names it
+   * (normalised, as matched): the first word of the name and of each part in
+   * brackets ("oseille" of "Bissap (oseille de Guinée)"), and the first word
+   * after the substance names and short prefixes a brand may follow
+   * ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of "Néo-Codion",
+   * "profenid" of "BI PROFENID LP"). A word after the brand word ("chrono"
+   * of "DEPAKINE CHRONO") does not lead it.
+   */
+  leading: ReadonlySet<string>;
+}
+
+/** A word this short before a brand is a prefix joined to it ("Néo-Codion", "BI PROFENID"). */
+const PREFIX_LENGTH = 3;
+
+/** The words that lead a name (CompiledName.leading); `cleaned` cleans a text as names are. */
+function leadingWordsOf(
+  text: string,
+  cleaned: (text: string) => string,
+  substances: ReadonlyMap<string, string>,
+  substanceWords: number,
+): Set<string> {
+  const leading = new Set<string>();
+  for (const part of text.split(/[()]/)) {
+    const words = cleaned(part)
+      .split(' ')
+      .filter((word) => word !== '');
+    const [first] = words;
+    if (first === undefined) continue;
+    leading.add(first);
+    let at = 0;
+    while (at < words.length) {
+      let length = Math.min(substanceWords, words.length - at);
+      while (length > 0 && !substances.has(words.slice(at, at + length).join(' '))) length -= 1;
+      if (length > 0) at += length;
+      else if ((words[at] ?? '').length <= PREFIX_LENGTH) at += 1;
+      else break;
+    }
+    const brand = words[at];
+    if (brand !== undefined) leading.add(brand);
+  }
+  return leading;
 }
 
 /** A name needs a word of this many letters or more to be found inside a longer text. */
@@ -109,6 +151,21 @@ export interface CompiledIndex {
   substances: Map<string, string>;
   /** The number of words of the longest substance name. */
   substanceWords: number;
+  /** The words (normalised, as matched) found in the names of two families or more. */
+  sharedWords: ReadonlySet<string>;
+}
+
+/** The words of the names that two families or more have in their names. */
+function sharedWordsOf(names: readonly CompiledName[]): Set<string> {
+  const families = new Map<string, Set<string>>();
+  for (const name of names) {
+    for (const word of new Set(name.norm.split(' '))) {
+      const seen = families.get(word) ?? new Set<string>();
+      seen.add(name.entry.family);
+      families.set(word, seen);
+    }
+  }
+  return new Set([...families].filter(([, seen]) => seen.size > 1).map(([word]) => word));
 }
 
 /** The first strength of an entry, or Infinity when it has none (sorted last). */
@@ -233,8 +290,14 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         ages: agesById.get(entry.id) ?? new Set<string>(),
         ...(name.substance === undefined ? {} : { substance: name.substance }),
         containable: containable(norm),
+        // Once every substance name is known (below).
+        leading: new Set<string>(),
       });
     }
+  }
+  const cleanedPart = (part: string) => splitAgeWords(clean(part)).text;
+  for (const name of names) {
+    name.leading = leadingWordsOf(name.text, cleanedPart, substances, substanceWords);
   }
   const index: ResolverIndex = Object.freeze({ size: entries.length });
   compiled.set(index, {
@@ -244,6 +307,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
     families: buildFamilies(entries),
     substances,
     substanceWords,
+    sharedWords: sharedWordsOf(names),
   });
   return index;
 }

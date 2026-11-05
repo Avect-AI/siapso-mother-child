@@ -2,26 +2,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { CODE_MAX, isCode, remainingLockMs } from '../domain/code.js';
-import { useT, type MessageKey, type Vars } from '../i18n/index.js';
+import { useT } from '../i18n/index.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { CodeInput } from '../ui/CodeInput.js';
 import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
-import { digitCount } from './code-words.js';
+import { digitCount, waitTime } from './code-words.js';
 import { FORGOT_PATH } from './ForgotCode.js';
 
 /** Wrong codes allowed before the first wait (domain/code.ts): the screen says how many are left. */
 const TRIES = 5;
-
-/** A wait in the largest unit that keeps it readable: seconds, then minutes, then hours (rounded up). */
-function waitMessage(ms: number): [MessageKey, Vars] {
-  const seconds = Math.ceil(ms / 1000);
-  if (seconds <= 120) return ['code.waitSeconds', { count: seconds }];
-  const minutes = Math.ceil(seconds / 60);
-  if (minutes <= 120) return ['code.waitMinutes', { count: minutes }];
-  return ['code.waitHours', { count: Math.ceil(minutes / 60) }];
-}
 
 /**
  * The code, asked whenever the session is locked (at start, after two minutes
@@ -75,8 +66,11 @@ export function Unlock() {
   let shown: string | undefined;
   let said = '';
   if (waiting) {
-    shown = t(...waitMessage(left));
-    said = t(...waitMessage(saidWait?.until === lockout.lockedUntil ? saidWait.left : left));
+    // In minutes and seconds ("1 min 59 s"); a screen reader hears the wait
+    // once, as the screen first showed it, in words ("1 minute 59 secondes").
+    shown = t('code.wait', { time: waitTime(t, left) });
+    const first = saidWait?.until === lockout.lockedUntil ? saidWait.left : left;
+    said = t('code.wait', { time: waitTime(t, first, 'spoken') });
   } else if (problem === 'invalid') {
     shown = t('code.invalid');
     said = shown;
@@ -129,6 +123,7 @@ export function Unlock() {
           maxLength={CODE_MAX}
           keypadLabel={t('code.keypad')}
           eraseLabel={t('code.erase')}
+          eraseName={t('code.eraseName')}
           countLabel={digitCount(t)}
           onChange={(value) => {
             setCode(value);

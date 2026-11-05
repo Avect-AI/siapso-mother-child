@@ -178,7 +178,8 @@ test('five wrong codes wait 30 seconds, and a reload keeps the wait', async ({ p
     await expect(field).toHaveValue('');
   }
 
-  const wait = /^Trop d'essais\. Attendez \d+ secondes, puis essayez encore\.$/;
+  // Read aloud as "30 s" (minutes and seconds past a minute), never "119 secondes".
+  const wait = /^Trop d'essais\. Attendez \d+\ss, puis essayez encore\.$/;
   await expect(field).toHaveAccessibleDescription(wait);
   await expect(page.getByRole('button', { name: 'Ouvrir' })).toHaveAttribute(
     'aria-disabled',

@@ -8,6 +8,8 @@ import { inSession, sessionState } from '../state/entry-state.js';
 
 export const PROFILE_EDIT_PATH = '/profile/edit';
 export const CONTACT_EDIT_PATH = '/contacts/edit';
+/** The questions of a passer-by looked up without saving (accompanied mode only). */
+export const QUICK_PATH = '/quick';
 
 /** The state to open the edit screen of `id` with. */
 export function editEntry(id: string): Record<string, unknown> {

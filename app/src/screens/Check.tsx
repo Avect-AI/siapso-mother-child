@@ -113,7 +113,10 @@ function Item({
  *
  * The check is for the active profile: hers in woman mode, the one chosen in
  * the list of profiles in accompanied mode (without a choice, the list opens),
- * named with where she stands (the term used, the baby's age). Without any
+ * or a passer-by looked up without saving (her answers in memory, "Femme de
+ * passage : rien n'est enregistré" said in place of a pseudonym; accompanied
+ * mode only), named with where she
+ * stands (the term used, the baby's age). Without any
  * profile, the profile screen opens first, then comes back here. When her term
  * is outdated (past 42 weeks), the check asks first whether the baby is born
  * (OutdatedTerm), and nothing can be added or looked at until the profile is
@@ -126,11 +129,13 @@ export function Check() {
   const check = useCheck();
   const [, navigate] = useLocation();
   const mode: Mode = settings.mode ?? 'woman';
-  const [profile, setProfile] = useState<{
+  const [stored, setStored] = useState<{
     profile: Profile;
     today: string;
     lastAt: string | undefined;
   } | null>(null);
+  // Today from the phone's clock, once, handed to pure code.
+  const [today] = useState(() => todayIso(new Date()));
   const [failed, setFailed] = useState(false);
   const [change, setChange] = useState<Change | null>(null);
   // After a removal or an undo, the row whose button takes the focus (else the first add button).
@@ -138,7 +143,15 @@ export function Check() {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLDivElement>(null);
   const emptyId = useId();
-  const { start, profileId, changed, clearChanged } = check;
+  const { start, profileId, changed, clearChanged, quick } = check;
+  // A passer-by checked without saving: her answers are in memory, never stored.
+  // Accompanied mode only: woman mode never shows a passer-by's answers.
+  const passerBy =
+    mode === 'accompanied' && quick !== null && quick.id === profileId ? quick : null;
+  const profile =
+    passerBy === null
+      ? stored
+      : { profile: passerBy, today, lastAt: undefined as string | undefined };
   useWarmSearchIndex(pack);
   // True once the profile has taken a moment to read: the loading status speaks then.
   const slow = useLiveRegionReady(CHECK_LOADING_DELAY_MS);
@@ -158,6 +171,8 @@ export function Check() {
   }, [changed, clearChanged]);
 
   useEffect(() => {
+    // A passer-by's answers are in memory: nothing to read.
+    if (passerBy !== null) return;
     let live = true;
     const load = async () => {
       const profiles = await listProfiles();
@@ -183,7 +198,7 @@ export function Check() {
         }
         start(active.id);
         // Today from the phone's clock, handed to pure code.
-        setProfile({ profile: active, today: todayIso(new Date()), lastAt });
+        setStored({ profile: active, today: todayIso(new Date()), lastAt });
       })
       .catch((failure: unknown) => {
         console.warn('Profiles not read on this device', failure);
@@ -192,7 +207,7 @@ export function Check() {
     return () => {
       live = false;
     };
-  }, [mode, profileId, start, navigate, storageTimeoutMs]);
+  }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs]);
 
   useEffect(() => {
     const index = focusRow.current;
@@ -247,7 +262,7 @@ export function Check() {
   ) {
     return (
       <main className="screen check">
-        <OutdatedTerm mode={mode} profile={profile.profile} />
+        <OutdatedTerm mode={mode} profile={profile.profile} passerBy={passerBy !== null} />
       </main>
     );
   }
@@ -262,7 +277,8 @@ export function Check() {
         <p>{t('check.lead')}</p>
         {profile === null ? null : (
           <p className="meta check__profile">
-            {mode === 'accompanied' ? (
+            {passerBy !== null ? <span>{t('check.quick')}</span> : null}
+            {mode === 'accompanied' && passerBy === null ? (
               <span>{t('check.profile', { name: profile.profile.pseudonym })}</span>
             ) : null}
             {profileSummary(profile.profile, profile.today, notBefore).map((line) => (
