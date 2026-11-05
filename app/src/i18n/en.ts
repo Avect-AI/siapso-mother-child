@@ -109,6 +109,7 @@ export const en: Dictionary = {
   },
   autoLock: {
     soon: 'The app is about to lock: touch the screen to continue.',
+    soonPasserBy: 'The app is about to lock: her answers will be cleared. Touch the screen to continue.',
     stay: 'Continue',
     restored: 'Your answers are back, but they are not saved yet.',
   },
@@ -161,6 +162,7 @@ export const en: Dictionary = {
     update: 'Update',
     updateNamed: 'Update the profile of {name}',
     deleted: 'Profile deleted: {name}.',
+    passerByCleared: 'For her privacy, the answers of the woman passing by were cleared.',
   },
   profileStatus: {
     outdated: 'To be updated',
@@ -546,6 +548,7 @@ export const en: Dictionary = {
     // "replace" is a forbidden word in English: the tool does not take the place of a person.
     closing: 'This tool does not take the place of a health worker.',
     backToList: 'Back to the list',
+    nextPasserBy: 'Next woman',
   },
   level: {
     danger: 'Danger sign',

@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { listHistory } from '../data/history.js';
 import type { LoadedPack } from '../data/pack-loader.js';
 import { saveProfile } from '../data/profiles.js';
+import { AUTO_LOCK_MS, LOCK_WARNING_MS } from '../domain/code.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
@@ -111,6 +112,57 @@ async function openResult({
   await screen.findByRole('heading', { level: 1, name: heading });
   return { probe, view, user: userEvent.setup() };
 }
+
+describe('Result: the auto-lock on a danger result (live test round 2)', () => {
+  const WARNING = "L'application va se verrouiller : touchez l'écran pour continuer.";
+
+  /** From now on the timers are faked: a touch starts the two minutes on them. */
+  function fakeTimers() {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      window.dispatchEvent(new Event('pointerdown'));
+    });
+  }
+
+  function idle(ms: number) {
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  }
+
+  it('warns 30 s before the lock, and "Continuer" keeps the danger on screen', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 14, givenOn: '2026-11-04' } }));
+    await openResult({ items: [KINKELIBA], signs: ['fever'] });
+    expect((await screen.findAllByRole('article'))[0]).toHaveClass('level--danger');
+
+    fakeTimers();
+    idle(AUTO_LOCK_MS - LOCK_WARNING_MS - 1000);
+    expect(screen.queryByText(WARNING)).toBeNull();
+    idle(1000);
+    expect(screen.getByText(WARNING)).toBeVisible();
+
+    act(() => {
+      screen.getByRole('button', { name: 'Continuer' }).click();
+    });
+    expect(screen.queryByText(WARNING)).toBeNull();
+    idle(AUTO_LOCK_MS - 1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+    // Untouched, it still locks: the agreed trade-off.
+    idle(1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  });
+
+  it('never warns on a result with no danger', async () => {
+    await saveProfile(profileOf());
+    await openResult({ items: [KINKELIBA] });
+    await screen.findAllByRole('article');
+
+    fakeTimers();
+    idle(AUTO_LOCK_MS - 1000);
+
+    expect(screen.queryByText(WARNING)).toBeNull();
+  });
+});
 
 describe('Result: a danger sign and a remedy we know nothing about', () => {
   it('leads with the danger, then every finding with its level, then the closing lines', async () => {

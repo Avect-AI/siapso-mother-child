@@ -216,10 +216,20 @@ export interface Session {
   /** Drops the answers kept, unless they are those of the screen `key` (the one shown). */
   dropDraft: (key: string) => void;
   /**
-   * The auto-lock comes in LOCK_WARNING_MS while a form has answers not saved:
-   * the screen says so, and a touch (or `touch`) puts it off.
+   * The auto-lock comes in LOCK_WARNING_MS while a form has answers not saved,
+   * or a danger result is on screen (warnBeforeLock): the screen says so, and
+   * a touch (or `touch`) puts it off.
    */
   lockSoon: boolean;
+  /**
+   * A screen that must not go without a word warns before the auto-lock too
+   * (a danger result: someone without the code would lose the instruction).
+   */
+  warnBeforeLock: (on: boolean) => void;
+  /** A lock let a passer-by go, with her answers: the next screen says so once. */
+  passerByLetGo: boolean;
+  /** The screen said it: not said again. */
+  passerByNoted: () => void;
 }
 
 export interface SessionOptions {
@@ -285,6 +295,9 @@ export function SessionProvider({
   const [epoch, setEpoch] = useState(epochToken);
   const [lockSoon, setLockSoon] = useState(false);
   const [deletedProfile, setDeletedProfile] = useState<DeletedProfile | null>(null);
+  const [passerByLetGo, setPasserByLetGo] = useState(false);
+  /** A danger result on screen: warned about before the auto-lock. */
+  const attention = useRef(false);
   const verifier = useRef<CodeVerifier | null>(null);
   const failures = useRef<LockoutState>(NO_LOCKOUT);
   const key = useRef<CryptoKey | null>(null);
@@ -388,6 +401,9 @@ export function SessionProvider({
    * screen stays with the screen held.
    */
   const forgetAtLock = useCallback(() => {
+    // Her answers (typed, or used for a check) go: the next screen says so once.
+    const typed = draft.current?.key === PASSER_BY_DRAFT && draft.current.unsaved;
+    if (passerBy.current || typed) setPasserByLetGo(true);
     if (passerBy.current) holdNothing.current = true;
     if (draft.current?.key === PASSER_BY_DRAFT) draft.current = null;
     forgetOthers();
@@ -589,6 +605,8 @@ export function SessionProvider({
     newVisit();
     held.current = null;
     draft.current = null;
+    // "Quitter" or the erase: nothing of the visit is said afterwards.
+    setPasserByLetGo(false);
   }, [reset]);
 
   /** The quick exit in this tab: locked, memory forgotten, the neutral screen on the entry. */
@@ -886,6 +904,15 @@ export function SessionProvider({
     if (draft.current?.key !== key) draft.current = null;
   }, []);
 
+  const warnBeforeLock = useCallback((on: boolean) => {
+    attention.current = on;
+    if (!on && draft.current?.unsaved !== true) setLockSoon(false);
+  }, []);
+
+  const passerByNoted = useCallback(() => {
+    setPasserByLetGo(false);
+  }, []);
+
   // Two minutes without interaction, or more than two minutes hidden: while
   // open, the session locks (in this tab only); while locked, a new epoch
   // starts, so the danger signs ticked without the code are forgotten. The
@@ -900,7 +927,7 @@ export function SessionProvider({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let warning: ReturnType<typeof setTimeout> | undefined;
     const warn = () => {
-      if (draft.current?.unsaved === true) setLockSoon(true);
+      if (draft.current?.unsaved === true || attention.current) setLockSoon(true);
     };
     const restart = () => {
       last = Date.now();
@@ -971,6 +998,9 @@ export function SessionProvider({
       draftFor,
       dropDraft,
       lockSoon,
+      warnBeforeLock,
+      passerByLetGo,
+      passerByNoted,
     }),
     [
       status,
@@ -996,6 +1026,9 @@ export function SessionProvider({
       draftFor,
       dropDraft,
       lockSoon,
+      warnBeforeLock,
+      passerByLetGo,
+      passerByNoted,
     ],
   );
 

@@ -11,6 +11,7 @@ import { useApp, withTimeout } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
 import { WarningMark } from '../ui/WarningMark.js';
@@ -51,9 +52,15 @@ export function Profiles() {
   const { storageTimeoutMs, pack, online } = useApp();
   const { start, pendingOf } = useCheck();
   // A profile deleted in another tab: the list is read again, so she is no longer named.
-  const { deletedProfile } = useSession();
+  const { deletedProfile, passerByLetGo, passerByNoted } = useSession();
   const [, navigate] = useLocation();
   const note = useProfileNote();
+  const said = useLiveRegionReady();
+  // A lock let a passer-by go: said once here (read when the screen opens, StrictMode included).
+  const [letGo] = useState(() => passerByLetGo);
+  useEffect(() => {
+    if (letGo) passerByNoted();
+  }, [letGo, passerByNoted]);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const [filter, setFilter] = useState('');
 
@@ -91,9 +98,10 @@ export function Profiles() {
         <h1 tabIndex={-1}>{t('profiles.title')}</h1>
         <p>{t('profiles.lead')}</p>
       </div>
-      {note === null ? null : (
+      {/* There empty first, then filled: a region filled as it appears is not read out. */}
+      {note === null && !letGo ? null : (
         <p className="home__saved" role="status">
-          {profileNoteText(note, t)}
+          {!said ? '' : note === null ? t('profiles.passerByCleared') : profileNoteText(note, t)}
         </p>
       )}
       {/* In reach at the top, however long the list. */}

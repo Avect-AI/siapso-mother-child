@@ -379,6 +379,14 @@ describe('Check', () => {
     expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
   });
 
+  it('sends accompanied mode to the list when no woman is chosen and none is saved, never to a new profile', async () => {
+    // A passer-by's check, let go at a lock: Back or the code lands here.
+    await renderApp({ settings: accompanied, hash: '#/check', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+  });
+
   it('sends accompanied mode to the list when no woman is chosen, never to one by default', async () => {
     await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
     await renderApp({ settings: accompanied, hash: '#/check', packLoader: loaderOf(pack) });

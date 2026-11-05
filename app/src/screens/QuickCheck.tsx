@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { todayIso } from '../domain/dates.js';
 import {
@@ -13,7 +13,8 @@ import type { Profile } from '../domain/types.js';
 import { useT } from '../i18n/index.js';
 import { useCheck } from '../state/check-state.js';
 import { sessionState } from '../state/entry-state.js';
-import { PASSER_BY_DRAFT } from '../state/session.js';
+import { PASSER_BY_DRAFT, useSession } from '../state/session.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { QUICK_PATH } from './edit-route.js';
 import { ProfileQuestions } from './ProfileEdit.js';
 
@@ -50,7 +51,14 @@ function updateAsked(): 'born' | 'term' | 'post-term' | null {
 export function QuickCheck() {
   const t = useT();
   const { quick, profileId, startQuick, updateQuick } = useCheck();
+  const { passerByLetGo, passerByNoted } = useSession();
   const [, navigate] = useLocation();
+  const said = useLiveRegionReady();
+  // Read when the screen opens (StrictMode included), then said once.
+  const [letGo] = useState(() => passerByLetGo);
+  useEffect(() => {
+    if (letGo) passerByNoted();
+  }, [letGo, passerByNoted]);
   // Today from the phone's clock, once, handed to pure code.
   const [today] = useState(() => todayIso(new Date()));
   // Read once: the passer-by being updated, when the outdated-term step sent her here.
@@ -85,6 +93,12 @@ export function QuickCheck() {
         {lead()}
         <p>{t('quick.lead')}</p>
       </div>
+      {/* A lock let the passer-by before go: said once, after the screen is up. */}
+      {letGo ? (
+        <p className="home__saved" role="status">
+          {said ? t('profiles.passerByCleared') : ''}
+        </p>
+      ) : null}
       <ProfileQuestions
         quick
         draftKey={PASSER_BY_DRAFT}

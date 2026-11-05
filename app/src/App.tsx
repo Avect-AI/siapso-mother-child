@@ -214,6 +214,9 @@ const OPEN_WITHOUT_CODE: readonly Screen[] = [
   'voice',
 ];
 
+/** Screens on the way that keep the answers of a form not saved: the code's, and the danger path. */
+const KEEPS_DRAFT: readonly string[] = ['unlocked', 'loading', 'danger', 'call'];
+
 /** The route in the address now (the hash), as wouter reads it. */
 function addressNow(): string {
   return '/' + window.location.hash.replace(/^#?\/?/, '');
@@ -249,11 +252,16 @@ function AfterUnlock() {
   useEffect(() => {
     if (done.current) return;
     done.current = true;
-    const held = takeHeldScreen();
     const state: unknown = window.history.state;
     const back = typeof state === 'object' && state !== null && 'back' in state && state.back;
-    if (back === true) window.history.back();
-    else if (held) navigate(held.path, { replace: true, state: intoThisEpoch(held.state) });
+    // Back to the screen that asked for the code (who to call): the screen
+    // the session locked on stays held, for Back to reach it with its answers.
+    if (back === true) {
+      window.history.back();
+      return;
+    }
+    const held = takeHeldScreen();
+    if (held) navigate(held.path, { replace: true, state: intoThisEpoch(held.state) });
     else navigate('/', { replace: true });
   }, [navigate, takeHeldScreen]);
   return null;
@@ -322,9 +330,11 @@ function Screens() {
 
   // Answers kept for a form (state/draft.ts) stay while its screen shows, and
   // across a lock until the code brings it back; another screen drops them.
+  // The danger signs and who to call keep them too: a look there in an
+  // emergency (before the code included) never costs her the form.
   const { unlocked, dropDraft } = session;
   useEffect(() => {
-    if (unlocked && key !== null && key !== 'unlocked' && key !== 'loading') dropDraft(key);
+    if (unlocked && key !== null && !KEEPS_DRAFT.includes(key)) dropDraft(key);
   }, [unlocked, key, dropDraft]);
 
   // A new screen takes the focus to its heading, so a screen reader starts
@@ -438,7 +448,8 @@ function Screens() {
       {check !== null && screen === check.screen ? <LeaveDeletedCheck /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}
-        message={t('autoLock.soon')}
+        // A passer-by's answers go with the lock: said so.
+        message={t(screen === 'quick' ? 'autoLock.soonPasserBy' : 'autoLock.soon')}
         action={t('autoLock.stay')}
         onStay={session.touch}
       />

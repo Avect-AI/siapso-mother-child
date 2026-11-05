@@ -188,8 +188,10 @@ export function Check() {
       .then(({ profiles, active, lastAt }) => {
         if (!live) return;
         if (active === undefined) {
-          // Accompanied mode with profiles, none chosen: she is chosen in the list.
-          if (mode === 'accompanied' && profiles.length > 0) {
+          // Accompanied mode, none chosen: she is chosen in the list (a
+          // passer-by let go at a lock lands here by Back or after the code,
+          // and never on a new profile).
+          if (mode === 'accompanied') {
             navigate('/', { replace: true });
             return;
           }

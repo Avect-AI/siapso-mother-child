@@ -132,6 +132,9 @@ export const fr = {
   // Shortly before the two minutes run out, while a form has answers not saved.
   autoLock: {
     soon: "L'application va se verrouiller : touchez l'écran pour continuer.",
+    // A passer-by: her answers go with the lock (never given back).
+    soonPasserBy:
+      "L'application va se verrouiller : ses réponses seront effacées. Touchez l'écran pour continuer.",
     stay: 'Continuer',
     // Answers kept in memory across an auto-lock, given back after the code.
     restored: 'Vos réponses sont revenues, mais elles ne sont pas encore enregistrées.',
@@ -196,6 +199,8 @@ export const fr = {
     update: 'Mettre à jour',
     updateNamed: 'Mettre à jour le profil de {name}',
     deleted: 'Profil supprimé : {name}.',
+    // A lock let a passer-by go: said once, so the keeper knows why her answers are gone.
+    passerByCleared: 'Pour sa confidentialité, les réponses de la femme de passage ont été effacées.',
   },
   // Where a profile stands, in plain words: on the list, the check and the result.
   profileStatus: {
@@ -683,6 +688,8 @@ export const fr = {
     closing: 'Cet outil ne remplace pas un soignant.',
     // The check is kept: a forgotten product can still be added.
     backToList: 'Revenir à la liste',
+    // A passer-by served: she is let go, and the questions open for the next one.
+    nextPasserBy: 'Femme suivante',
   },
   // Level names (DESIGN.md, Levels): always shown with their pictogram.
   level: {

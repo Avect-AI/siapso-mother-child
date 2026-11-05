@@ -117,7 +117,12 @@ describe('Home', () => {
       </AppProvider>,
     );
 
-    expect(await screen.findByText('Profil enregistré : Awa.')).toBeVisible();
+    // The status line is there empty first, then filled: a screen reader reads it out.
+    await screen.findByRole('heading', { level: 1 });
+    const status = document.querySelector('.home__saved');
+    expect(status).toHaveAttribute('role', 'status');
+    expect(status).toHaveTextContent(/^$/);
+    expect(await screen.findByText('Profil enregistré : Awa.')).toBe(status);
     // Home takes the note off the history entry in an effect: wait for it, not for the clock.
     await waitFor(() => {
       expect(window.history.state).toBeNull();

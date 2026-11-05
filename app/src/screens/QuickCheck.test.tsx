@@ -96,6 +96,32 @@ describe('Regarder sans enregistrer', () => {
     expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
   });
 
+  it('"Femme suivante" on her result lets her go and opens empty questions for the next one', async () => {
+    const { user, probe } = await openQuick();
+    await answer(user, '24');
+    act(() => {
+      probe.current().add(ADVIL);
+    });
+    await user.click(await screen.findByRole('button', { name: 'Voir le résultat' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    await screen.findByRole('heading', { level: 1, name: 'Résultat, sans enregistrer' });
+
+    await user.click(await screen.findByRole('button', { name: 'Femme suivante' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Regarder sans enregistrer' }),
+    ).toBeVisible();
+    expect(option(/^Enceinte/, 'Oui')).not.toBeChecked();
+    expect(probe.current()).toMatchObject({ quick: null, items: [] });
+    // Back never shows her again: her screens lead to the list of profiles.
+    act(() => {
+      window.history.back();
+    });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(document.body.textContent).not.toContain('Advil');
+  });
+
   it('checks a passer-by with the term rules of a profile, and keeps no profile and no history', async () => {
     const { user, probe } = await openQuick();
     await answer(user, '24');
