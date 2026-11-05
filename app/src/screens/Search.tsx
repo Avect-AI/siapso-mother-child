@@ -17,6 +17,7 @@ import { Button } from '../ui/Button.js';
 import { Chevron } from '../ui/Chevron.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
+import { localNameKey } from './local-name.js';
 import {
   backToCheck,
   confirmPath,
@@ -95,7 +96,7 @@ function CandidateButton({
           )}
           {local === undefined ? null : (
             <span className="candidate__local">
-              {tNodes('search.localName', {
+              {tNodes(localNameKey(local, lang), {
                 name: <span lang={local.lang}>{local.text}</span>,
                 lang: t(`nameLang.${local.lang}`),
               })}

@@ -30,8 +30,8 @@ const LEVEL_INFO: Record<Level, { fr: string; en: string; colour: string; use: s
     use: 'Show the product to the midwife, the nurse or the pharmacist before the next dose.',
   },
   'next-contact': {
-    fr: 'À signaler au prochain contact',
-    en: 'Mention at the next contact',
+    fr: 'À dire à la prochaine visite',
+    en: 'Tell at the next visit',
     colour: 'Chrome yellow field, dark text',
     use: 'Tell the midwife at the next visit.',
   },
@@ -62,7 +62,7 @@ const SUMMARY: { level: Level; product: string; label: string }[] = [
   {
     level: 'next-contact',
     product: 'Sirop contre la toux à la codéine',
-    label: 'À signaler au prochain contact',
+    label: 'À dire à la prochaine visite',
   },
   { level: 'unknown', product: 'Poudre achetée au marché (nom inconnu)', label: 'On ne sait pas' },
 ];
@@ -159,7 +159,7 @@ function SampleProducts() {
         </ResultCard>
         <ResultCard
           level="next-contact"
-          levelLabel="À signaler au prochain contact"
+          levelLabel="À dire à la prochaine visite"
           title="Sirop contre la toux à la codéine"
           headingLevel={3}
           orientation="Dites-le à la sage-femme à la prochaine visite."
@@ -180,7 +180,9 @@ function SampleProducts() {
           orientation="Montrez-le à la sage-femme ou au pharmacien à la prochaine visite."
           meta={<p>Produit absent de la base.</p>}
         >
-          <p>Nous n’avons pas d’information fiable. Cela ne veut pas dire que c’est sans risque.</p>
+          <p>
+            Nous n’avons pas d’information fiable. On ne sait pas si ce produit peut faire du mal.
+          </p>
         </ResultCard>
         <Closing />
         <Button variant="primary" className="screen__action">
@@ -310,7 +312,7 @@ export function Gallery() {
             </ResultCard>
             <ResultCard
               level="next-contact"
-              levelLabel="Mention at the next contact"
+              levelLabel="Tell at the next visit"
               title="Cough syrup with codeine"
               headingLevel={3}
               orientation="Tell the midwife at the next visit."
@@ -328,7 +330,9 @@ export function Gallery() {
               orientation="Show it to your midwife or pharmacist."
               meta={<p>Product not in the knowledge base.</p>}
             >
-              <p>We have no reliable information. This does not mean it is risk-free.</p>
+              <p>
+                We have no reliable information. We do not know whether this product can cause harm.
+              </p>
             </ResultCard>
           </div>
         </section>

@@ -3,9 +3,9 @@ import type { Pack } from '@siapso/engine';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import type { PackFallback } from '../data/pack-loader.js';
-import { isIsoDate, todayIso } from '../domain/dates.js';
+import { formatDate, isIsoDate, todayIso } from '../domain/dates.js';
 import { isStale } from '../domain/staleness.js';
-import { useT, type MessageKey } from '../i18n/index.js';
+import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
@@ -109,6 +109,7 @@ function Rollback({ current, previous }: { current: string; previous: string }) 
  */
 export function Status() {
   const t = useT();
+  const lang = useLang();
   const {
     settings,
     pack,
@@ -178,7 +179,10 @@ export function Status() {
             </li>
             <li>
               <span>{t('status.date')}</span>
-              <strong>{isIsoDate(pack.date) ? pack.date : t('status.dateUnknown')}</strong>
+              {/* Written as on the result: one date format in each language. */}
+              <strong>
+                {isIsoDate(pack.date) ? formatDate(pack.date, lang) : t('status.dateUnknown')}
+              </strong>
             </li>
             <li>
               <span>{t('status.rules')}</span>

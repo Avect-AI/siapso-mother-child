@@ -63,6 +63,9 @@ describe('About', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'À propos' })).toBeVisible();
     expect(screen.getByText(fr.about.intendedUse)).toBeVisible();
+    // The French name of the app on a French screen (PRODUCT.md, Brand Commitments).
+    expect(fr.about.intendedUse).toMatch(/^SIAPSO Mère-Enfant /);
+    expect(document.body.textContent).not.toContain('Mother-Child');
     expect(screen.getByText('Cet outil ne remplace pas un soignant.')).toBeVisible();
     expect(screen.getByText(/licence MIT/)).toBeVisible();
     expect(screen.getByText(/CC BY 4\.0/)).toBeVisible();
@@ -90,15 +93,43 @@ describe('About', () => {
     for (const [index, source] of real.sources.entries()) {
       const item = items[index];
       if (item === undefined) throw new Error('missing item');
-      expect(item.textContent).toContain(source.name);
-      expect(item.textContent).toContain(source.licence);
+      // In French on a French screen: name, licence and version.
+      expect(source.fr).toBeDefined();
+      expect(item.textContent).toContain(source.fr?.name);
+      expect(item.textContent).toContain(source.fr?.licence);
+      expect(item.textContent).toContain(source.fr?.version);
+      // A source of English documents says so.
+      expect(item.textContent.includes('(documents en anglais)')).toBe(source.documents === 'en');
     }
+    // No English label as the screen's own words.
+    for (const english of [
+      'Peer-reviewed literature',
+      'Public domain',
+      'downloaded on',
+      'Varies',
+    ]) {
+      expect(list.textContent).not.toContain(english);
+    }
+    // The download date written as the screen writes dates.
+    expect(list.textContent).toContain('téléchargés le 04/11/2026');
     const linked = real.sources.filter((source) => /^https?:\/\//.test(source.url));
     for (const link of within(list).getAllByRole('link')) {
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     }
     expect(within(list).queryAllByRole('link')).toHaveLength(linked.length);
+  });
+
+  it('keeps the English words of the sources on an English screen, and says which documents are French', async () => {
+    await renderApp({ settings: english, hash: '#/about', packLoader: loaderOf(real) });
+
+    const list = await screen.findByRole('list', { name: 'Sources of the base' });
+    expect(within(list).getByText('Peer-reviewed literature')).toBeVisible();
+    const bdpm = within(list)
+      .getByText(/^Base de données publique des médicaments/)
+      .closest('li');
+    expect(bdpm).toHaveTextContent('(documents in French)');
+    expect(bdpm).toHaveTextContent('downloaded on 4 November 2026');
   });
 
   it('says the links of the sources open with the Internet, and says nothing without a link', async () => {

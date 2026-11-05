@@ -403,6 +403,13 @@ export function parsePack(json: unknown): Pack {
     string(o.licence, `${where}.licence`);
     string(o.url, `${where}.url`);
     optional(o.version, (v) => string(v, `${where}.version`));
+    optional(o.documents, (v) => oneOf(v, LANG_IDS, `${where}.documents`));
+    optional(o.fr, (v) => {
+      const words = object(v, `${where}.fr`);
+      string(words.name, `${where}.fr.name`);
+      string(words.licence, `${where}.fr.licence`);
+      optional(words.version, (w) => string(w, `${where}.fr.version`));
+    });
   });
   const byLang = messages(pack.messages);
 

@@ -3,7 +3,7 @@ import type { Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { isIsoDate } from '../domain/dates.js';
+import { formatDate, isIsoDate } from '../domain/dates.js';
 import type { Settings } from '../domain/types.js';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, pendingPack, renderApp } from '../test/render-app.js';
@@ -43,7 +43,11 @@ describe('Status', () => {
     const facts = await screen.findByRole('list', { name: 'Contenu de la base' });
     const text = facts.textContent;
     expect(text).toContain(real.version);
-    expect(text).toContain(real.date);
+    // The date written as on the result: day, month, year.
+    expect(within(facts).getByText('Date de la base').nextSibling).toHaveTextContent(
+      formatDate(real.date, 'fr'),
+    );
+    expect(text).not.toContain(real.date);
     expect(within(facts).getByText('Règles').nextSibling).toHaveTextContent(
       String(real.rules.length),
     );
@@ -68,7 +72,7 @@ describe('Status', () => {
     });
     const facts = await screen.findByRole('list', { name: 'Contenu de la base' });
     expect(within(facts).getByText('Date inconnue')).toBeVisible();
-    expect(screen.queryByText(/Base périmée/)).toBeNull();
+    expect(screen.queryByText(/Base de connaissances ancienne/)).toBeNull();
   });
 
   it('counts the collections of the pack as built', async () => {
@@ -106,7 +110,7 @@ describe('Status', () => {
       packLoader: loaderOf(packOf('2026-11-04')),
     });
     await screen.findByRole('list', { name: 'Contenu de la base' });
-    expect(screen.queryByText(/Base périmée/)).toBeNull();
+    expect(screen.queryByText(/Base de connaissances ancienne/)).toBeNull();
   });
 
   it('warns at 91 days, in French', async () => {
@@ -119,7 +123,7 @@ describe('Status', () => {
     // Testing Library reads a no-break space as a space.
     expect(
       await screen.findByText(
-        /^Base périmée\s: plus de 90 jours\. Faites-la mettre à jour au poste de santé\.$/,
+        /^Base de connaissances ancienne\s: plus de 90 jours\. Faites-la mettre à jour au poste de santé\.$/,
       ),
     ).toBeVisible();
   });
@@ -135,6 +139,8 @@ describe('Status', () => {
     expect(screen.getByText(/^Knowledge base out of date: more than 90 days old/)).toBeVisible();
     expect(screen.getByText(/^Content not clinically validated/)).toBeVisible();
     expect(screen.getByText('Rules')).toBeVisible();
+    // The date as the English result writes it.
+    expect(screen.getByText('4 November 2026')).toBeVisible();
     expect(document.documentElement.lang).toBe('en');
   });
 
@@ -237,7 +243,10 @@ describe('Status: where the copy comes from', () => {
     expect(
       await screen.findByText(/Une nouvelle base a été refusée par ce téléphone/),
     ).toBeVisible();
-    expect(screen.getByText(/Détail technique : manifest\.sig: the signature/)).toBeVisible();
+    // Said in English: labelled as such on a French screen.
+    expect(
+      screen.getByText(/Détail technique \(en anglais\)\s: manifest\.sig: the signature/),
+    ).toBeVisible();
   });
 
   it('keeps the reason out of woman mode', async () => {
@@ -422,7 +431,9 @@ describe('Status: going back to the previous version', () => {
     expect(
       await screen.findByText(/Le retour à la version précédente n'a pas marché/),
     ).toBeVisible();
-    expect(screen.getByText(/Détail technique : The previous pack is not valid/)).toBeVisible();
+    expect(
+      screen.getByText(/Détail technique \(en anglais\)\s: The previous pack is not valid/),
+    ).toBeVisible();
     expect(screen.getByRole('list', { name: 'Contenu de la base' })).toHaveTextContent(
       real.version,
     );

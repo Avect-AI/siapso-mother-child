@@ -199,7 +199,7 @@ describe('Contacts', () => {
     expect(awa).toHaveTextContent('Appeler');
     expect(
       within(rows[1] as HTMLElement).getByRole('link', {
-        name: 'Appeler Infirmier chef de poste (ICP), +999 000 002',
+        name: 'Appeler Infirmier chef de poste, ICP, +999 000 002',
       }),
     ).toHaveAttribute('href', 'tel:+999000002');
     // The one primary action stays "Ajouter un contact".

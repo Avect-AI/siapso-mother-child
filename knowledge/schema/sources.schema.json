@@ -16,11 +16,17 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "publisher", "licence", "url", "notice"],
+      "required": ["id", "name", "publisher", "licence", "url", "notice", "documents", "fr"],
       "anyOf": [
         { "required": ["version"], "properties": { "version": true } },
         { "required": ["accessed"], "properties": { "accessed": true } }
       ],
+      "if": { "required": ["version"] },
+      "then": {
+        "properties": {
+          "fr": { "type": "object", "required": ["version"], "properties": { "version": true } }
+        }
+      },
       "properties": {
         "id": { "$ref": "#/$defs/id" },
         "name": { "$ref": "#/$defs/text" },
@@ -29,7 +35,22 @@
         "url": { "type": "string", "format": "uri" },
         "version": { "$ref": "#/$defs/text" },
         "accessed": { "type": "string", "format": "date" },
-        "notice": { "$ref": "#/$defs/text" }
+        "notice": { "$ref": "#/$defs/text" },
+        "documents": {
+          "description": "The language the documents of the source are written in, said beside a citation in the other language.",
+          "enum": ["fr", "en"]
+        },
+        "fr": {
+          "description": "The name, licence and version in French, for the French interface.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "licence"],
+          "properties": {
+            "name": { "$ref": "#/$defs/text" },
+            "licence": { "$ref": "#/$defs/text" },
+            "version": { "$ref": "#/$defs/text" }
+          }
+        }
       }
     },
     "forbidden": {

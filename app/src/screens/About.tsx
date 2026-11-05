@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 import { useLocation } from 'wouter';
 import { REPOSITORY_URL } from '../domain/repository.js';
-import { useT } from '../i18n/index.js';
+import { sourceWords } from '../domain/sources.js';
+import { useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
 
@@ -13,11 +14,14 @@ function isWebAddress(url: string): boolean {
 /**
  * About: what the app is for (the intended use shared with the README and the
  * medical disclaimer), the fixed sentence, the licences, the sources the pack
- * declares, the third-party software, and where the code is. No profile data,
- * so it opens locked or not. There is no contact line: none exists yet.
+ * declares (in the language of the screen, with the language of their
+ * documents when it is another), the third-party software, and where the code
+ * is. No profile data, so it opens locked or not. There is no contact line:
+ * none exists yet.
  */
 export function About() {
   const t = useT();
+  const lang = useLang();
   const { pack, packOrigin, acceptsUnsigned } = useApp();
   const [, navigate] = useLocation();
 
@@ -56,24 +60,31 @@ export function About() {
               <p>{t('offline.linksNeedInternet')}</p>
             ) : null}
             <ul aria-label={t('about.sourcesTitle')} className="about__sources">
-              {pack.sources.map((source) => (
-                <li key={source.id}>
-                  {isWebAddress(source.url) ? (
-                    <a href={source.url} target="_blank" rel="noopener noreferrer">
-                      {source.name}
-                      <span className="sr-only"> {t('about.newWindow')}</span>
-                    </a>
-                  ) : (
-                    <span>{source.name}</span>
-                  )}
-                  <span className="meta">
-                    <span>{t('about.sourceLicence', { licence: source.licence })}</span>
-                    {source.version === undefined ? null : (
-                      <span>{t('about.sourceVersion', { version: source.version })}</span>
+              {pack.sources.map((source) => {
+                // In the language of the screen; its documents keep their own language, said.
+                const words = sourceWords(source, lang);
+                return (
+                  <li key={source.id}>
+                    {isWebAddress(source.url) ? (
+                      <a href={source.url} target="_blank" rel="noopener noreferrer">
+                        {words.name}
+                        <span className="sr-only"> {t('about.newWindow')}</span>
+                      </a>
+                    ) : (
+                      <span>{words.name}</span>
                     )}
-                  </span>
-                </li>
-              ))}
+                    <span className="meta">
+                      {words.documents === undefined ? null : (
+                        <span>({t(`sourceDocuments.${words.documents}`)})</span>
+                      )}
+                      <span>{t('about.sourceLicence', { licence: words.licence })}</span>
+                      {words.version === undefined ? null : (
+                        <span>{t('about.sourceVersion', { version: words.version })}</span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </>
         )}

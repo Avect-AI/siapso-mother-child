@@ -191,7 +191,8 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await expect(
     page.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
   ).toBeVisible();
-  // The breastfeeding rule on codeine applies, as for a baby of unknown age.
+  // The breastfeeding rule on codeine applies, as for a baby of unknown age (under "Pourquoi ?").
+  await page.getByText('Pourquoi ?').click();
   await expect(page.getByText('Règle : codeine-breastfeeding')).toBeVisible();
   await expectNoSeriousViolation(page);
 });
@@ -342,7 +343,7 @@ test('one profile is deleted with its history after a last yes; the others stay'
   await expect.poll(async () => (await storedAll(page, 'history')).length).toBe(1);
 
   await page.goto('/#/');
-  await list.getByRole('link', { name: 'Modifier le profil de Awa' }).click();
+  await list.getByRole('link', { name: "Modifier le profil d'Awa" }).click();
   await page.getByRole('button', { name: 'Supprimer ce profil' }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: /^Supprimer le profil Awa/ }),
@@ -374,7 +375,7 @@ test('the danger signs now start unticked at each check, and a sign ticked after
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
-  await expect(page.getByText(/^Terme retenu/)).toHaveText(/environ 28 semaines/);
+  await expect(page.getByText(/^Terme utilisé pour ce résultat/)).toHaveText(/environ 28 semaines/);
 
   // Back: asked again, nothing ticked; a fever ticked then is in the result Forward opens.
   await page.goBack();

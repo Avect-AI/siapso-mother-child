@@ -39,7 +39,7 @@ describe('Profiles', () => {
       'Femme 2',
       'Femme 10',
     ]);
-    expect(within(list).getByRole('link', { name: 'Modifier le profil de Awa' })).toHaveAttribute(
+    expect(within(list).getByRole('link', { name: "Modifier le profil d'Awa" })).toHaveAttribute(
       'href',
       '#/profile/edit',
     );
@@ -102,7 +102,7 @@ describe('Profiles', () => {
     const user = userEvent.setup();
     await renderApp({ settings: accompanied, hash: '#/' });
 
-    await user.click(await screen.findByRole('link', { name: 'Modifier le profil de Awa' }));
+    await user.click(await screen.findByRole('link', { name: "Modifier le profil d'Awa" }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Modifier le profil' }),

@@ -125,7 +125,11 @@ describe('whoOf', () => {
 
   it('names a contact by name and role, or by its role alone', () => {
     expect(whoOf({ name: 'Awa', role: 'relay' }, t)).toBe('Awa (Relais)');
-    expect(whoOf({ name: '', role: 'icp' }, t)).toBe('Infirmier chef de poste (ICP)');
+    expect(whoOf({ name: '', role: 'icp' }, t)).toBe('Infirmier chef de poste, ICP');
+    // Never brackets inside brackets ("Mamadou (Infirmier chef de poste (ICP))").
+    expect(whoOf({ name: 'Mamadou', role: 'icp' }, t)).toBe(
+      'Mamadou (Infirmier chef de poste, ICP)',
+    );
     expect(whoOf({ name: 'Fatou', role: 'midwife' }, (k, v) => translate('en', k, v))).toBe(
       'Fatou (Midwife)',
     );

@@ -182,7 +182,9 @@ export const fr = {
     termUnknown: 'Je ne sais pas',
     lmpDate: 'Premier jour des dernières règles',
     weeks: 'Nombre de semaines',
-    weeksHint: "Semaines d'aménorrhée (depuis les dernières règles), de 0 à 42.",
+    // Plain words for a woman who is not a health worker (weeks of amenorrhoea).
+    weeksHint:
+      'Semaines de grossesse, comptées depuis le premier jour des dernières règles, de 0 à 42.',
     // The day the weeks were known (an ultrasound, the booklet): the term moves on from it.
     weeksGivenOn: 'Ce terme date de quand ?',
     weeksGivenOnHint: "Aujourd'hui, ou le jour de l'échographie ou de la visite où il a été noté.",
@@ -200,7 +202,7 @@ export const fr = {
     monthsAsWeeks: 'Ce sont {weeks} semaines',
     // Accompanied mode: the question is about the woman, as "Ce qu'elle prend".
     monthsAccompanied: 'Dans quel mois de grossesse est-elle ? (le mois en cours, du 1er au 9e)',
-    termShown: 'Terme retenu',
+    termShown: 'Terme calculé',
     term: {
       underOne: "Moins d'une semaine",
       one: 'Environ 1 semaine',
@@ -212,7 +214,7 @@ export const fr = {
     },
     termCorrect: 'Corriger le nombre de semaines',
     // The baby's age read back in the weeks the rules use (months are converted).
-    babyAgeShown: 'Âge retenu',
+    babyAgeShown: 'Âge calculé',
     breastfeeding: 'Allaite ?',
     babyAge: 'Âge du bébé',
     babyAgeHint: 'Choisissez ce que vous connaissez.',
@@ -338,6 +340,9 @@ export const fr = {
     found: 'Choisissez celui qui correspond.',
     noneFound: 'Aucun produit ne correspond à ce nom.',
     noneFoundPlant: 'Aucun remède ne correspond à ce nom.',
+    // A French or English name is another name, never a local one (local-name.ts).
+    otherName: 'Autre nom : {name}',
+    otherNameLang: 'Autre nom : {name} ({lang})',
     localName: 'Nom local : {name} ({lang})',
     // The brand a candidate was found by, when its name shown does not say it ("cytotek").
     boxName: 'Nom sur la boîte : {name}',
@@ -375,11 +380,17 @@ export const fr = {
     en: 'anglais',
     wo: 'wolof',
   },
+  // The language of the documents of a source, said beside its name when it is
+  // not the language of the screen (an English label cited on a French screen).
+  sourceDocuments: {
+    fr: 'documents en français',
+    en: 'documents en anglais',
+  },
   confirm: {
     titleProduct: 'Est-ce bien ce produit ?',
     titlePlant: 'Est-ce bien ce remède ?',
     strength: 'Quel dosage est écrit sur la boîte ?',
-    strengthHint: 'Sur la boîte ou sur la plaquette : le nombre suivi de mg.',
+    strengthHint: 'Sur la boîte ou sur la plaquette : le nombre suivi de mg ou de g.',
     dontKnow: 'Je ne sais pas',
     chooseStrength: 'Choisissez un dosage, ou « Je ne sais pas ».',
     units: "Combien d'unités par jour ?",
@@ -429,6 +440,31 @@ export const fr = {
       // Who and when (PRODUCT.md principle 2), in words that suit both modes.
       unknown: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
     },
+    // Accompanied mode, before the next dose: said to the person helping, at a
+    // home visit or a sale at a depot (the depot keeper is not the pharmacist):
+    // before she takes it again, to a health worker, never read as an order to
+    // start. The other levels keep the defaults above, the words of the grey
+    // messages of the pack, so two cards never name different people.
+    orientationAccompanied:
+      "Montrez ce produit à la sage-femme ou à l'infirmier avant qu'elle en reprenne.",
+    orientationProductsAccompanied:
+      "Montrez ces produits à la sage-femme ou à l'infirmier avant qu'elle en reprenne.",
+    // A danger held at "before the next dose" because the name typed only looks
+    // like the product (possible-matches.ts): never a lower urgency when it may
+    // have been taken, so it branches on intake (go now if taken, else show it
+    // before any to find out whether it is the product).
+    orientationHeld: {
+      product:
+        "S'il a déjà été pris, allez au poste de santé maintenant et montrez-le. Sinon, montrez-le à la sage-femme ou à l'infirmier avant d'en prendre, pour savoir si c'est bien ce produit.",
+      plant:
+        "S'il a déjà été pris, allez au poste de santé maintenant et montrez-le. Sinon, montrez-le à la sage-femme ou à l'infirmier avant d'en prendre, pour savoir si c'est bien ce remède.",
+      productAccompanied:
+        "Si elle en a déjà pris, elle doit aller au poste de santé maintenant et montrer ce produit. Sinon, montrez-le à la sage-femme ou à l'infirmier avant qu'elle en prenne, pour savoir si c'est bien ce produit.",
+      plantAccompanied:
+        "Si elle en a déjà pris, elle doit aller au poste de santé maintenant et montrer ce remède. Sinon, montrez-le à la sage-femme ou à l'infirmier avant qu'elle en prenne, pour savoir si c'est bien ce remède.",
+    },
+    // Under a card whose orientation says to go now if something happens.
+    callNow: 'Voir qui appeler',
     // The level name of a danger that comes from a product rule, not from a
     // danger sign (DESIGN.md, Levels): a product is never called a sign.
     dangerProductLevel: 'Danger : à montrer maintenant',
@@ -440,12 +476,17 @@ export const fr = {
     situations: 'Situations non prises en compte',
     // "On ne sait pas" without an orientation of its own: these come first (spec section 10),
     // each unless what the card has just said contains its phrase (unknownSaid, lowercase).
+    // Said positively: a listener who hears only the end never hears "sans risque".
     unknown: {
       noInformation: "Nous n'avons pas d'information fiable.",
-      notRiskFree: "Cela ne veut pas dire que c'est sans risque.",
+      mayHarm: 'On ne sait pas si ce produit peut faire du mal.',
     },
     unknownSaid: {
       noInformation: "pas d'information fiable",
+      // "On ne sait pas si ... peut faire du mal" says both.
+      unknown: 'on ne sait pas si',
+      mayHarm: 'peut faire du mal',
+      // The wording of an older knowledge base still on the phone.
       notRiskFree: 'ne veut pas dire',
     },
     // Before the next dose, for a finding about several products (a duplicate, an interaction).
@@ -453,8 +494,9 @@ export const fr = {
       "Montrez ces produits à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
     // The danger banner's action: the referral circuit on the danger signs screen.
     dangerAction: 'Voir qui appeler',
-    // After the first sentence of "nothing found" (spec section 2).
-    versionInline: '(version {version} du {date})',
+    // Text she typed, quoted under its label, never said as the app's own words.
+    typedLabel: 'Vous avez écrit :',
+    quoted: '« {text} »',
     // A name typed as not recognised that looks like a product or remedy of the base.
     possibleProduct: "Ce nom ressemble à {name}. Si c'est ce produit :",
     possiblePlant: "Ce nom ressemble à {name}. Si c'est ce remède :",
@@ -467,7 +509,7 @@ export const fr = {
       unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',
     },
     // Under the title: the term the result was worked out on, in plain words.
-    termUsed: 'Terme retenu : {term}',
+    termUsed: 'Terme utilisé pour ce résultat : {term}',
     // The engine looks TERM_LOOKAHEAD_DAYS ahead of the term: a treatment goes on.
     lookahead: 'Ce résultat tient compte aussi des {weeks} semaines à venir.',
     // The phone's date before a day the app has already seen: the term read as
@@ -494,6 +536,9 @@ export const fr = {
       '0': "pas d'information fiable",
     },
     capped: 'Niveau limité parce que la preuve est faible.',
+    // Accompanied mode: the fact, the detailed risks, the evidence, the sources
+    // and the rules of a card, behind one disclosure, so the card stays short.
+    why: 'Pourquoi ?',
     sources: 'Sources :',
     // Said after a source link, for a screen reader.
     newWindow: "(s'ouvre dans une autre fenêtre)",
@@ -504,6 +549,8 @@ export const fr = {
     noChange: 'Ne changez rien à votre traitement sans en parler à un professionnel.',
     version: 'Base de connaissances {version} du {date}',
     notValidated: "Contenu non validé cliniquement : ne l'utilisez pas seul pour décider.",
+    // The same as notValidated, short, near the top of the result (the full line closes it).
+    notValidatedShort: 'Contenu non validé cliniquement.',
     closing: 'Cet outil ne remplace pas un soignant.',
     // The check is kept: a forgotten product can still be added.
     backToList: 'Revenir à la liste',
@@ -512,7 +559,7 @@ export const fr = {
   level: {
     danger: 'Signe de danger',
     'before-next-dose': 'À montrer avant la prochaine prise',
-    'next-contact': 'À signaler au prochain contact',
+    'next-contact': 'À dire à la prochaine visite',
     unknown: 'On ne sait pas',
   },
   danger: {
@@ -600,7 +647,8 @@ export const fr = {
     roles: {
       relay: 'Relais',
       'bajenu-gox': 'Bajenu Gox',
-      icp: 'Infirmier chef de poste (ICP)',
+      // No brackets: a contact is said "name (role)", never with brackets inside brackets.
+      icp: 'Infirmier chef de poste, ICP',
       midwife: 'Sage-femme',
       other: 'Autre contact',
     },
@@ -660,7 +708,9 @@ export const fr = {
     rules: 'Règles',
     products: 'Produits',
     remedies: 'Remèdes',
-    stale: 'Base périmée : plus de 90 jours. Faites-la mettre à jour au poste de santé.',
+    // Not "périmée": beside medicine names it reads as an expired medicine.
+    stale:
+      'Base de connaissances ancienne : plus de 90 jours. Faites-la mettre à jour au poste de santé.',
     sourceTitle: 'Provenance de cette base',
     fromNetwork: "Cette base est celle chargée avec l'application.",
     fromCopy: 'Cette base est la copie gardée sur ce téléphone.',
@@ -670,7 +720,8 @@ export const fr = {
       'Une nouvelle base a été refusée par ce téléphone. La copie gardée sur ce téléphone est utilisée.',
     rolledBack:
       "La version précédente a été remise sur ce téléphone. Une version plus récente sera prise dès qu'elle sera disponible.",
-    reason: 'Détail technique : {reason}',
+    // The reason is the code's own message, in English: said so on a French screen.
+    reason: 'Détail technique (en anglais) : {reason}',
     notStored:
       "Ce téléphone n'a pas pu garder cette base. Elle marche pour le moment. Ouvrez l'application avec Internet pour qu'elle soit gardée.",
     unsigned: 'Version de test : base de connaissances non signée.',
@@ -691,7 +742,7 @@ export const fr = {
     title: 'À propos',
     intendedUseTitle: "À quoi sert l'application",
     intendedUse:
-      "SIAPSO Mother-Child donne des informations générales sur la santé, de l'éducation à la santé et une orientation vers un professionnel de santé aux femmes enceintes et allaitantes au Sénégal et aux personnes qui les accompagnent. Il ne pose pas de diagnostic, ne prescrit pas et ne fixe pas de dose, et il ne remplace pas un professionnel de santé.",
+      "SIAPSO Mère-Enfant donne des informations générales sur la santé, de l'éducation à la santé et une orientation vers un professionnel de santé aux femmes enceintes et allaitantes au Sénégal et aux personnes qui les accompagnent. Il ne pose pas de diagnostic, ne prescrit pas et ne fixe pas de dose, et il ne remplace pas un professionnel de santé.",
     licencesTitle: 'Licences',
     licenceCode: 'Code : licence MIT.',
     licenceContent: 'Contenus (connaissances et registre) : licence CC BY 4.0.',

@@ -23,11 +23,27 @@ export function interpolate(text: string, vars: Vars = {}): string {
   });
 }
 
+/** A word starting with a vowel sound that French elides before ("Aminata", "Éva", "ADVIL"). */
+const VOWEL_START = /^[aeiouàâäéèêëîïôöùûü]/i;
+
+/**
+ * French elides "de" and "que" before a value that starts with a vowel ("le
+ * profil d'Aminata", "la même qu'ADVIL"); a number or a consonant keeps them.
+ */
+function elide(text: string, vars: Vars | undefined): string {
+  return text.replace(/(?<![\p{L}])(de|que) \{(\w+)\}/gu, (whole, word: string, name: string) => {
+    const value = vars?.[name];
+    if (typeof value !== 'string' || !VOWEL_START.test(value)) return whole;
+    return `${word === 'de' ? 'd' : 'qu'}'{${name}}`;
+  });
+}
+
 /** The string of `key` in `lang`, with its placeholders filled. */
 export function translate(lang: Lang, key: MessageKey, vars?: Vars): string {
   let node: unknown = DICTIONARIES[lang];
   for (const part of key.split('.')) {
     node = (node as Record<string, unknown>)[part];
   }
-  return interpolate(node as string, vars);
+  const text = node as string;
+  return interpolate(lang === 'fr' ? elide(text, vars) : text, vars);
 }

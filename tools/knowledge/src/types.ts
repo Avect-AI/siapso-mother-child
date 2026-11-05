@@ -2,6 +2,7 @@
 import type {
   ConditionId,
   Evidence,
+  Lang,
   Level,
   LocalName,
   Localized,
@@ -90,6 +91,10 @@ export interface AuthoredSource {
   accessed?: string;
   /** The attribution line for NOTICE. */
   notice: string;
+  /** The language its documents are written in. */
+  documents: Lang;
+  /** Its name, licence and version in French (the fields above are English). */
+  fr: { name: string; licence: string; version?: string };
 }
 
 export interface AuthoredForbiddenSource {

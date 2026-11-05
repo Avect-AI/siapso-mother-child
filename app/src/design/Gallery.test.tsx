@@ -34,7 +34,7 @@ it('leads every summary row with the level name, the product second', () => {
   expect(rows.length).toBe(3);
   const levels = [
     'À montrer avant la prochaine prise',
-    'À signaler au prochain contact',
+    'À dire à la prochaine visite',
     'On ne sait pas',
   ];
   rows.forEach((row, i) => {

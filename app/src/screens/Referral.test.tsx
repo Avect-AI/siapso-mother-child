@@ -97,7 +97,7 @@ describe('Who to call', () => {
     expect(first).toHaveClass('button--primary');
     // No name: the role names the contact; a leading plus is dialled.
     const second = within(rows[1] as HTMLElement).getByRole('link', {
-      name: 'Appeler Infirmier chef de poste (ICP), +999 000 002',
+      name: 'Appeler Infirmier chef de poste, ICP, +999 000 002',
     });
     expect(second).toHaveAttribute('href', 'tel:+999000002');
     expect(second).toHaveClass('button--secondary');

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { useLocation } from 'wouter';
+import { todayIso } from '../domain/dates.js';
+import { isStale } from '../domain/staleness.js';
 import { useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
@@ -9,7 +11,8 @@ import { profileNoteText, useProfileNote } from './saved-note.js';
 
 /**
  * Home in woman mode (accompanied mode opens on the list of profiles): what
- * the app is for and its one primary action, held together, then the way to
+ * the app is for and its one primary action, held together (with, before the
+ * action, a notice when the knowledge base is out of date), then the way to
  * her profile and whether the phone opens the app without the Internet yet,
  * then the settings, the knowledge base status and the about screen.
  * The primary action opens the check for her profile (the check screen opens
@@ -18,7 +21,7 @@ import { profileNoteText, useProfileNote } from './saved-note.js';
  */
 export function Home() {
   const t = useT();
-  const { packError, settingsUnavailable, online } = useApp();
+  const { pack, packError, settingsUnavailable, online } = useApp();
   const [, navigate] = useLocation();
   const note = useProfileNote();
 
@@ -36,6 +39,10 @@ export function Home() {
         )}
         {settingsUnavailable ? <Notice>{t('settings.unavailable')}</Notice> : null}
         {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
+        {/* An old base is said before she looks at a product, not only on the status screen. */}
+        {pack !== null && isStale(pack.date, todayIso(new Date())) ? (
+          <Notice>{t('status.stale')}</Notice>
+        ) : null}
         <Button
           variant="primary"
           className="home__check"

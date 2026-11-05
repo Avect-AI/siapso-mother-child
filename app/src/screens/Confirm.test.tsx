@@ -189,7 +189,8 @@ describe('Confirm: the strength on the box', () => {
 
     const question = screen.getByRole('group', { name: STRENGTH });
     expect(question).toHaveAccessibleDescription(
-      `Sur la boîte ou sur la plaquette${NBSP}: le nombre suivi de mg.`,
+      // A strength may be written in g ("1 g") or with ml ("125 mg/5 ml").
+      `Sur la boîte ou sur la plaquette${NBSP}: le nombre suivi de mg ou de g.`,
     );
     const answers = within(question).getAllByRole('radio');
     expect(answers.every((answer) => !(answer as HTMLInputElement).checked)).toBe(true);
@@ -348,7 +349,9 @@ describe('Confirm: the name she typed', () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'cytotec');
 
     expect(product()).toHaveTextContent('Misoprostol (générique)');
-    expect(product()).toHaveTextContent('Vous avez écrit : cytotec');
+    // Her words quoted under their label, as on the result.
+    expect(product()).toHaveTextContent('Vous avez écrit : « cytotec »');
+    expect(within(product() as HTMLElement).getByText('« cytotec »')).toHaveClass('typed');
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
@@ -359,7 +362,8 @@ describe('Confirm: the name she typed', () => {
       'listitem',
     );
     expect(row).toHaveTextContent('Misoprostol (générique)');
-    expect(row).toHaveTextContent('Vous avez écrit : cytotec');
+    expect(row).toHaveTextContent('Vous avez écrit : « cytotec »');
+    expect(within(row).getByText('« cytotec »')).toHaveClass('typed');
   });
 
   it('says nothing more when the name shown is the one typed', async () => {
@@ -536,7 +540,7 @@ function ruleIdsOf(items: CheckedItem[]): (string | undefined)[] {
 
 // The first of its strength by name: the forms of a brand are sorted the same way for every brand.
 const EFFERALGAN_1000 = 'efferalgan-1000-mg-67058605';
-const SAME_BOX = `Est-ce la même boîte que EFFERALGAN 1000${NBSP}mg, comprimé effervescent${NBSP}?`;
+const SAME_BOX = `Est-ce la même boîte qu'EFFERALGAN 1000${NBSP}mg, comprimé effervescent${NBSP}?`;
 
 describe('Confirm: "I do not know" for a family already listed with a known strength', () => {
   async function listEfferalgan1000Times4() {
@@ -613,7 +617,7 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
 });
 
 describe('Confirm: a known strength for a family listed with its strength unknown', () => {
-  const SAME_AS_UNKNOWN = `Est-ce la même boîte que EFFERALGAN${NBSP}?`;
+  const SAME_AS_UNKNOWN = `Est-ce la même boîte qu'EFFERALGAN${NBSP}?`;
 
   async function listEfferalganUnknownTwice() {
     const flow = await confirmFirst('Ajouter un médicament', 'efferalgan');

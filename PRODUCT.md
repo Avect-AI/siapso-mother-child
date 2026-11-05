@@ -36,7 +36,7 @@ The only open, offline tool focused on the safety of medicines and traditional r
 
 ## Capabilities and Constraints
 
-- Four result levels: danger sign (go now), show before the next dose, mention at the next contact, unknown (grey). Never green, never "safe", "verified" or "no risk".
+- Four result levels: danger sign (go now), show before the next dose, tell at the next visit, unknown (grey). Never green, never "safe", "verified" or "no risk".
 - The app never tells anyone to start, stop or change a treatment, gives no dose and no alternative, and never states that a plant treats anything.
 - Models propose, rules decide: the speech model and the name resolver only suggest a product; the user always confirms it; the deterministic engine alone sets the alert level.
 - Evidence level (A to E, 0) is shown separately from severity.
@@ -50,7 +50,7 @@ The only open, offline tool focused on the safety of medicines and traditional r
 
 - Name: SIAPSO Mère-Enfant (French), SIAPSO Mother-Child (English).
 - Voice: plain, calm, respectful words. Short sentences. Allowed verbs: show, tell, ask, go, call. Never blame traditional medicine: "we do not know enough" rather than "dangerous".
-- Every result ends with its source, its evidence level, the knowledge base version and "Cet outil ne remplace pas un soignant." ("This tool does not take the place of a health worker.")
+- Every finding of an accompanied-mode result keeps its source and evidence level under "Pourquoi ?"; every result says the knowledge base version near its top and ends with it and "Cet outil ne remplace pas un soignant." ("This tool does not take the place of a health worker.")
 
 ## Evidence on Hand
 

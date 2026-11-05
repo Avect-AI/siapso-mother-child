@@ -36,6 +36,7 @@ export type {
   RuleWhen,
   Source,
   SourceRef,
+  SourceWords,
   Subject,
   Substance,
   SubstanceClass,

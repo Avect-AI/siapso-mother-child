@@ -12,6 +12,7 @@ import { historyEntryOf, latestHistoryAt, recordHistoryOnce } from '../data/hist
 import { getProfile } from '../data/profiles.js';
 import { contextFromProfile } from '../domain/context.js';
 import { todayIso } from '../domain/dates.js';
+import { isStale } from '../domain/staleness.js';
 import { babyLine } from '../domain/profile-summary.js';
 import {
   cappedEvaluation,
@@ -43,6 +44,7 @@ import { Notice } from '../ui/Notice.js';
 import { ResultCard } from '../ui/ResultCard.js';
 import { backToCheck, flowState } from './check-flow.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+import { Typed } from './Typed.js';
 import { CALL_PATH } from './Referral.js';
 
 type Loaded =
@@ -111,7 +113,7 @@ function ProfileLines({
   );
 }
 
-/** The words with a lower-case first letter, to sit inside a sentence ("Terme retenu : environ…"). */
+/** The words with a lower-case first letter, to sit inside a sentence ("Terme utilisé pour ce résultat : environ…"). */
 function lowerFirst(text: string): string {
   return text.charAt(0).toLocaleLowerCase() + text.slice(1);
 }
@@ -144,13 +146,20 @@ function hasDetail({ detail, evidence, cappedNote }: RiskView): boolean {
   return detail !== undefined || evidence !== undefined || cappedNote !== undefined;
 }
 
+interface SourceGroup {
+  name: string;
+  /** The language of its documents, in words, when it is not the screen's. */
+  documents: string | undefined;
+  records: SourceView[];
+}
+
 /** The sources of a finding by source, in their order: each source named once, then its records. */
-function bySource(sources: readonly SourceView[]): { name: string; records: SourceView[] }[] {
-  const groups: { name: string; records: SourceView[] }[] = [];
+function bySource(sources: readonly SourceView[]): SourceGroup[] {
+  const groups: SourceGroup[] = [];
   for (const source of sources) {
     const group = groups.find((g) => g.name === source.name);
     if (group) group.records.push(source);
-    else groups.push({ name: source.name, records: [source] });
+    else groups.push({ name: source.name, documents: source.documents, records: [source] });
   }
   return groups;
 }
@@ -171,20 +180,35 @@ function FindingMeta({ finding }: { finding: FindingView }) {
           <ul>
             {bySource(sources).map((group) => (
               <li key={group.name}>
-                <p className="result-card__source-name">{group.name}</p>
+                <p className="result-card__source-name">
+                  {group.name}
+                  {/* Its records keep their own titles: a French screen says they are in English. */}
+                  {group.documents === undefined ? null : (
+                    <span className="result-card__documents">, {group.documents}</span>
+                  )}
+                </p>
                 <ul>
-                  {group.records.map((record) => (
-                    <li key={`${record.locator}|${record.url ?? ''}`}>
-                      {record.url === undefined ? (
+                  {group.records.map((record) => {
+                    // A record in the other language is read in it by a screen reader.
+                    const locator =
+                      record.documentsLang === undefined ? (
                         record.locator
                       ) : (
-                        <a href={record.url} target="_blank" rel="noopener noreferrer">
-                          {record.locator}
-                          <span className="sr-only"> {t('result.newWindow')}</span>
-                        </a>
-                      )}
-                    </li>
-                  ))}
+                        <span lang={record.documentsLang}>{record.locator}</span>
+                      );
+                    return (
+                      <li key={`${record.locator}|${record.url ?? ''}`}>
+                        {record.url === undefined ? (
+                          locator
+                        ) : (
+                          <a href={record.url} target="_blank" rel="noopener noreferrer">
+                            {locator}
+                            <span className="sr-only"> {t('result.newWindow')}</span>
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
             ))}
@@ -205,11 +229,23 @@ function FindingMeta({ finding }: { finding: FindingView }) {
 /**
  * The names of a finding, each product on its own line so that one product is
  * never read as two, nor two as one: the language's list words ("et") start
- * the next line, light; a comma between names is only said, not shown.
+ * the next line, light; a comma between names is only said, not shown. A name
+ * she typed (`typed`) is quoted (Typed): under its label when `labelled` (the
+ * card), with the label for a screen reader alone otherwise (the summary).
  */
-function Names({ names }: { names: readonly string[] }) {
+function Names({
+  names,
+  typed = [],
+  labelled = false,
+}: {
+  names: readonly string[];
+  typed?: readonly string[] | undefined;
+  labelled?: boolean;
+}) {
   const lang = useLang();
-  if (names.length < 2) return <>{names[0]}</>;
+  const shown = (name: string): ReactNode =>
+    typed.includes(name) ? <Typed text={name} label={labelled ? 'shown' : 'hidden'} /> : name;
+  if (names.length < 2) return <>{shown(names[0] ?? '')}</>;
   const parts = new Intl.ListFormat(lang, { type: 'conjunction', style: 'long' }).formatToParts(
     names,
   );
@@ -237,7 +273,7 @@ function Names({ names }: { names: readonly string[] }) {
       <span key={index} className="result__name">
         {word === '' ? null : <span className="result__and">{word}</span>}
         {word === '' ? null : ' '}
-        {part.value}
+        {shown(part.value)}
       </span>,
     );
     between = '';
@@ -245,7 +281,21 @@ function Names({ names }: { names: readonly string[] }) {
   return <>{lines}</>;
 }
 
+/**
+ * Under a card whose orientation says to go now if something happens: who to
+ * call, one tap away, quiet (the screen keeps its one primary action).
+ */
+function CallNow() {
+  const t = useT();
+  return (
+    <a className="button button--quiet" href={`#${CALL_PATH}`}>
+      {t('result.callNow')}
+    </a>
+  );
+}
+
 function Finding({ finding }: { finding: FindingView }) {
+  const t = useT();
   // Accompanied mode: the fact, then each risk's detailed risk with its own
   // evidence level and capped note, after who to show and when, so both modes
   // say the same lines first. In a card of several risks each of these blocks
@@ -272,15 +322,17 @@ function Finding({ finding }: { finding: FindingView }) {
     <ResultCard
       level={finding.level}
       levelLabel={finding.levelLabel}
-      title={<Names names={finding.names} />}
+      title={<Names names={finding.names} typed={finding.typed} labelled />}
       headingLevel={2}
       orientation={typeof finding.orientation === 'string' ? finding.orientation : null}
+      {...(finding.callNow === true ? { action: <CallNow /> } : {})}
       {...(details === undefined ? {} : { details })}
       {...(hasMeta(finding) ? { meta: <FindingMeta finding={finding} /> } : {})}
+      whyLabel={t('result.why')}
     >
-      {(finding.written ?? []).map((line) => (
-        <p key={line} className="meta">
-          {line}
+      {(finding.written ?? []).map((text) => (
+        <p key={text} className="meta">
+          <Typed text={text} label="shown" />
         </p>
       ))}
       {finding.possible === undefined ? null : (
@@ -319,7 +371,7 @@ function Summary({ view }: { view: ResultView }) {
             {finding.resembles === undefined ? null : ` (${finding.resembles})`}
             <span className="sr-only">.</span>{' '}
             <span>
-              <Names names={finding.names} />
+              <Names names={finding.names} typed={finding.typed} />
             </span>
           </span>
         </li>
@@ -348,6 +400,22 @@ function Notes({ heading, notes }: { heading: MessageKey; notes: ResultView['not
   );
 }
 
+/**
+ * Near the top, under the banner or the summary: the knowledge base version
+ * and "not clinically validated", short, so a reader who stops at the first
+ * screen still sees them (the closing lines say them in full).
+ */
+function Basis({ view }: { view: ResultView }) {
+  return (
+    <div className="result__basis">
+      <p className="meta">{view.versionLine}</p>
+      {view.notValidatedShortLine === undefined ? null : (
+        <p className="result__not-validated">{view.notValidatedShortLine}</p>
+      )}
+    </div>
+  );
+}
+
 function Closing({ view }: { view: ResultView }) {
   return (
     <div className="result__closing">
@@ -366,13 +434,17 @@ function Closing({ view }: { view: ResultView }) {
 /**
  * Result: what to do about each product, read aloud to the woman. When a
  * finding is a danger, the danger banner leads, with the screen's one
- * primary action (who to call). Then, when there are several findings, a
- * summary (level, then product, most urgent first), then the situations of
+ * primary action (who to call). Then, when the base is more than 90 days
+ * old, a notice; when there are several findings, a summary (level, then
+ * product, most urgent first); then the version and "not clinically
+ * validated", short, so the first screen says them; then the situations of
  * the profile that the base does not read yet (both modes), then one card per
- * item set and check (the highest level of each), then the notes and, in
- * accompanied mode, the reminders, then the fixed sentences, the knowledge
- * base version and "not clinically validated", then the way back to the
- * list, which keeps the check so a forgotten product can be added.
+ * item set and check (the highest level of each; in accompanied mode its
+ * details, evidence, sources and rules behind "Pourquoi ?"), then the notes
+ * and, in accompanied mode, the reminders, then the fixed sentences, the
+ * knowledge base version and "not clinically validated" in full, then the way
+ * back to the list, which keeps the check so a forgotten product can be added.
+ * Text she typed is always quoted, never said as the app's own words.
  *
  * Every evaluation is kept in the history on the phone. While the pack or
  * the profile loads, the screen says so; when either cannot be read, or the
@@ -534,6 +606,14 @@ export function Result() {
     loaded.status === 'ready' && term !== null && ready !== null ? (
       <ProfileLines profile={loaded.profile} today={loaded.today} term={term} mode={mode} />
     ) : null;
+  // A knowledge base out of date is said where the decision is read: at the
+  // top of the result, after the danger banner when there is one.
+  const stale =
+    ready !== null &&
+    pack !== null &&
+    loaded.status === 'ready' &&
+    isStale(pack.date, loaded.today);
+  const staleNotice = stale ? <Notice>{t('status.stale')}</Notice> : null;
 
   return (
     <main className="screen result">
@@ -541,6 +621,7 @@ export function Result() {
         <h1 tabIndex={-1}>{title}</h1>
         {ready?.danger === true ? null : profileLines}
       </div>
+      {ready?.danger === true ? null : staleNotice}
       {problem === null ? null : <Notice>{t(problem)}</Notice>}
       {problem === null && ready === null ? (
         <p className="result__loading" role="status">
@@ -569,7 +650,9 @@ export function Result() {
             />
           ) : null}
           {ready.danger ? profileLines : null}
+          {ready.danger ? staleNotice : null}
           {ready.findings.length > 1 ? <Summary view={ready} /> : null}
+          <Basis view={ready} />
           {/* The situations the result leaves out, said before any card. */}
           <Notes heading="result.situations" notes={ready.situations} />
           <div className="result__findings">

@@ -1,14 +1,17 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Built-in message of a product that no rule of the base reads (spec section
-# 2 wording, with its subject); the app adds the version and date of the
-# knowledge base after the first sentence. A product that a rule reads gets
-# nothing-applies instead.
+# 2 wording, with its subject); the app reads the fact, then the risk. The
+# version and date of the knowledge base are on the result, at the top and at
+# the end, never inside her sentence. A product that a rule reads gets
+# nothing-applies instead. The risk is said positively, so that a listener who
+# hears only the end never hears "sans risque". It speaks of the base, not of
+# what anyone knows: another source may know more.
 id: nothing-found
 fr:
   fact: "Rien n'a été trouvé sur ce produit dans notre base."
-  risk: "Cela ne veut pas dire qu'il est sans risque."
+  risk: 'Notre base ne dit pas si ce produit peut faire du mal.'
   orientation: 'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.'
 en:
   fact: 'Nothing was found on this product in our knowledge base.'
-  risk: 'This does not mean it is risk-free.'
+  risk: 'Our knowledge base does not say whether this product can cause harm.'
   orientation: 'Show this screen to the midwife or the pharmacist at the next visit.'

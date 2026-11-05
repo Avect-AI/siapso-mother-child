@@ -86,10 +86,18 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   await expect(page.locator('.result__closing p').last()).toHaveText(
     'Cet outil ne remplace pas un soignant.',
   );
-  await expect(
-    page.getByText(/^Base de connaissances \d+\.\d+\.\d+ du \d{2}\/\d{2}\/\d{4}$/),
-  ).toBeVisible();
-  await expect(page.getByText(/^Contenu non validé cliniquement/)).toBeVisible();
+  // The version and "not clinically validated": short before the card, in full at the end.
+  const version = page.getByText(/^Base de connaissances \d+\.\d+\.\d+ du \d{2}\/\d{2}\/\d{4}$/);
+  await expect(version).toHaveCount(2);
+  const basis = page.locator('.result__basis');
+  await expect(basis).toContainText(/^Base de connaissances .*Contenu non validé cliniquement\.$/);
+  // Above the card, in the first screen.
+  const top = await basis.boundingBox();
+  const first = await card.boundingBox();
+  expect(top?.y ?? Infinity).toBeLessThan(first?.y ?? 0);
+  await expect(page.locator('.result__closing')).toContainText(
+    /Contenu non validé cliniquement\s: ne l'utilisez pas seul pour décider\./,
+  );
   await expectNoSeriousViolation(page);
 
   // Back keeps the list, so a forgotten product can be added.
@@ -107,8 +115,11 @@ test('kinkeliba without a danger sign: we do not know, and who to show it to', a
   const card = page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' });
   await expect(card).toBeVisible();
   await expect(card.locator('.result-card__level')).toHaveText('On ne sait pas');
+  // Its risk says that nobody knows whether it can harm: the orientation says who and when.
+  await expect(card).toContainText('On ne sait pas si le kinkéliba peut faire du mal');
+  await expect(card).not.toContainText('sans risque');
   await expect(card.locator('.result-card__orientation')).toHaveText(
-    "Nous n'avons pas d'information fiable. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
+    'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
   );
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expectNoSeriousViolation(page);
@@ -122,10 +133,19 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
   await seeResult(page);
 
   const card = page.getByRole('article');
-  await expect(card.locator('.result-card__details')).toContainText('anti-inflammatoire');
+  // The details, evidence, sources and rules wait behind one "Pourquoi ?".
+  const details = card.locator('.result-card__details');
+  await expect(details).toBeHidden();
+  await card.getByText('Pourquoi ?').click();
+  await expect(details).toBeVisible();
+  await expect(details).toContainText('anti-inflammatoire');
   // The evidence level sits with the detailed risk it belongs to.
   await expect(card.locator('.result-card__risk')).toContainText('Niveau de preuve A');
   await expect(card.getByRole('link').first()).toHaveAttribute('href', /^https:\/\//);
+  // Sources in French, an English document said as such.
+  await expect(card.locator('.result-card__meta')).toContainText(
+    'Notices de médicaments des États-Unis (openFDA), documents en anglais',
+  );
   await expect(page.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
   await expectNoSeriousViolation(page);
 

@@ -125,6 +125,27 @@ describe('translate', () => {
     expect(translate('en', 'danger.orientation')).toBe('Go to the health post now.');
   });
 
+  it('elides "de" and "que" in French before a name that starts with a vowel', () => {
+    expect(translate('fr', 'profiles.editNamed', { name: 'Aminata' })).toBe(
+      "Modifier le profil d'Aminata",
+    );
+    expect(translate('fr', 'profiles.editNamed', { name: 'Éva' })).toBe("Modifier le profil d'Éva");
+    expect(translate('fr', 'profiles.editNamed', { name: 'Fatou' })).toBe(
+      'Modifier le profil de Fatou',
+    );
+    expect(translate('fr', 'confirm.sameBoxYesNamed', { name: 'ADVIL 400 mg' })).toBe(
+      "Oui, la même qu'ADVIL 400 mg",
+    );
+    // A number is not a name: "bébé de 11 semaines".
+    expect(translate('fr', 'profileStatus.babyWeeks', { weeks: 11 })).toBe(
+      'Allaite, bébé de 11 semaines',
+    );
+    // English has no such elision.
+    expect(translate('en', 'profiles.editNamed', { name: 'Aminata' })).toBe(
+      'Edit the profile of Aminata',
+    );
+  });
+
   it('fills placeholders and leaves unknown ones visible', () => {
     expect(interpolate('{count} of {total}', { count: 2, total: 5 })).toBe('2 of 5');
     expect(interpolate('Hello {name}', {})).toBe('Hello {name}');

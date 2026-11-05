@@ -74,12 +74,18 @@ test('huile de ricin typed among the medicines at term with a scar: asked first,
   await expect(page.getByRole('alert')).toContainText('Danger');
   await expect(page.getByRole('button', { name: 'Voir qui appeler' })).toBeVisible();
   await expect(
-    page.getByRole('article', { name: `Danger${NBSP}: à montrer maintenant. huile de ricin` }),
+    page.getByRole('article', {
+      name: /^Danger\s: à montrer maintenant\. Vous avez écrit\s:\s«\shuile de ricin\s»$/,
+    }),
   ).toContainText(
     `Ce nom ressemble à Huile de ricin (Ricinus communis). Si c'est ce remède${NBSP}:`,
   );
   // The name typed keeps its own grey card: it is still not recognised.
-  await expect(page.getByRole('article', { name: 'On ne sait pas. huile de ricin' })).toBeVisible();
+  await expect(
+    page.getByRole('article', {
+      name: /^On ne sait pas\. Vous avez écrit\s:\s«\shuile de ricin\s»$/,
+    }),
+  ).toBeVisible();
   await expectNoSeriousViolation(page);
 });
 
@@ -91,15 +97,21 @@ test('Advil typed as free text at 28 weeks: the card of what it looks like, befo
   await addAsTyped(page, 'Advil 400 mg comprimé pelliculé', /^ADVIL 400\smg/);
   await seeResult(page);
 
+  // The name as she typed it, quoted under its label.
   const possible = page.getByRole('article', {
-    name: 'À montrer avant la prochaine prise. Advil 400 mg comprimé pelliculé',
+    name: /^À montrer avant la prochaine prise\. Vous avez écrit\s:\s«\sAdvil 400 mg comprimé pelliculé\s»$/,
   });
   await expect(possible).toContainText('Ce nom ressemble à ADVIL 400 mg, comprimé enrobé');
   await expect(possible.locator('.result-card__orientation')).toHaveText(
     "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
   );
+  await expect(possible.locator('.typed')).toHaveText(
+    `«${NBSP}Advil 400 mg comprimé pelliculé${NBSP}»`,
+  );
   await expect(
-    page.getByRole('article', { name: 'On ne sait pas. Advil 400 mg comprimé pelliculé' }),
+    page.getByRole('article', {
+      name: /^On ne sait pas\. Vous avez écrit\s:\s«\sAdvil 400 mg comprimé pelliculé\s»$/,
+    }),
   ).toBeVisible();
   await expectNoSeriousViolation(page);
 });
@@ -109,13 +121,18 @@ test('a brand typed for a generic keeps the name typed, up to the result', async
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.keyboard.type('cytotec');
   await page.locator('.candidate').first().click();
-  await expect(page.locator('.confirm__product')).toContainText(`Vous avez écrit${NBSP}: cytotec`);
+  await expect(page.locator('.confirm__product')).toContainText(
+    `Vous avez écrit${NBSP}: «${NBSP}cytotec${NBSP}»`,
+  );
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText(
-    `Vous avez écrit${NBSP}: cytotec`,
+    `Vous avez écrit${NBSP}: «${NBSP}cytotec${NBSP}»`,
   );
   await seeResult(page);
-  await expect(page.getByRole('article')).toContainText(`Vous avez écrit${NBSP}: cytotec`);
+  // On the result, quoted: what she typed, never the app's own words.
+  await expect(page.getByRole('article')).toContainText(
+    `Vous avez écrit${NBSP}: «${NBSP}cytotec${NBSP}»`,
+  );
 });
 
 /** Types `name` among the medicines and keeps it as typed: through the question when one is asked. */
@@ -154,7 +171,7 @@ test('weak resemblances kept as typed never alert: oils, a first name, close spe
   // The abbreviations of the box are read: the effervescent EFFERALGAN 1000 mg, not Efferalgan codéine.
   await expect(
     page
-      .getByRole('article', { name: /Efferalgan 1g cpr eff$/ })
+      .getByRole('article', { name: /Efferalgan 1g cpr eff\s»$/ })
       .filter({ hasText: 'Ce nom ressemble' }),
   ).toContainText('EFFERALGAN 1000 mg, comprimé effervescent');
 });

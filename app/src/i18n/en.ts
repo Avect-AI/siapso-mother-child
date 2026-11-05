@@ -161,7 +161,7 @@ export const en: Dictionary = {
     termUnknown: "I don't know",
     lmpDate: 'First day of the last period',
     weeks: 'Number of weeks',
-    weeksHint: 'Weeks of amenorrhoea (since the last period), from 0 to 42.',
+    weeksHint: 'Weeks of pregnancy, counted from the first day of the last period, from 0 to 42.',
     weeksGivenOn: 'When was this term given?',
     weeksGivenOnHint: 'Today, or the day of the ultrasound or visit where it was noted.',
     monthsNearTermWeeks: 'Give the number of weeks',
@@ -174,7 +174,7 @@ export const en: Dictionary = {
     months: 'Which month of pregnancy are you in? (the current month, 1st to 9th)',
     monthsAsWeeks: 'It is {weeks} weeks',
     monthsAccompanied: 'Which month of pregnancy is she in? (the current month, 1st to 9th)',
-    termShown: 'Term used',
+    termShown: 'Term worked out',
     term: {
       underOne: 'Less than a week',
       one: 'About 1 week',
@@ -184,7 +184,7 @@ export const en: Dictionary = {
       since: '{term} today ({weeks} weeks on {date})',
     },
     termCorrect: 'Correct the number of weeks',
-    babyAgeShown: 'Age used',
+    babyAgeShown: 'Age worked out',
     breastfeeding: 'Breastfeeding?',
     babyAge: "Baby's age",
     babyAgeHint: 'Choose what you know.',
@@ -299,6 +299,8 @@ export const en: Dictionary = {
     found: 'Choose the one that matches.',
     noneFound: 'No product matches this name.',
     noneFoundPlant: 'No remedy matches this name.',
+    otherName: 'Other name: {name}',
+    otherNameLang: 'Other name: {name} ({lang})',
     localName: 'Local name: {name} ({lang})',
     boxName: 'Name on the box: {name}',
     notFound: "I can't find this product",
@@ -329,11 +331,15 @@ export const en: Dictionary = {
     en: 'English',
     wo: 'Wolof',
   },
+  sourceDocuments: {
+    fr: 'documents in French',
+    en: 'documents in English',
+  },
   confirm: {
     titleProduct: 'Is this the product?',
     titlePlant: 'Is this the remedy?',
     strength: 'Which strength is written on the box?',
-    strengthHint: 'On the box or the blister strip: the number followed by mg.',
+    strengthHint: 'On the box or the blister strip: the number followed by mg or g.',
     dontKnow: "I don't know",
     chooseStrength: 'Choose a strength, or "I don\'t know".',
     units: 'How many units a day?',
@@ -374,6 +380,21 @@ export const en: Dictionary = {
       'next-contact': 'Tell the midwife at the next visit.',
       unknown: 'Show it to the midwife or the pharmacist at the next visit.',
     },
+    orientationAccompanied:
+      'Show this product to the midwife or the nurse before she takes any more.',
+    orientationProductsAccompanied:
+      'Show these products to the midwife or the nurse before she takes any more.',
+    orientationHeld: {
+      product:
+        'If it has already been taken, go to the health post now and show it. If not, show it to the midwife or the nurse before taking any, to find out whether it is this product.',
+      plant:
+        'If it has already been taken, go to the health post now and show it. If not, show it to the midwife or the nurse before taking any, to find out whether it is this remedy.',
+      productAccompanied:
+        'If she has already taken some, she must go to the health post now and show this product. If not, show it to the midwife or the nurse before she takes any, to find out whether it is this product.',
+      plantAccompanied:
+        'If she has already taken some, she must go to the health post now and show this remedy. If not, show it to the midwife or the nurse before she takes any, to find out whether it is this remedy.',
+    },
+    callNow: 'See who to call',
     dangerProductLevel: 'Danger: show now',
     conditionNote:
       '{situation}: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
@@ -381,16 +402,19 @@ export const en: Dictionary = {
     situations: 'Situations not taken into account',
     unknown: {
       noInformation: 'We have no reliable information.',
-      notRiskFree: 'This does not mean it is risk-free.',
+      mayHarm: 'We do not know whether this product can cause harm.',
     },
     unknownSaid: {
       noInformation: 'no reliable information',
+      unknown: 'we do not know whether',
+      mayHarm: 'can cause harm',
       notRiskFree: 'does not mean',
     },
     orientationProducts:
       'Show these products to the midwife, the nurse or the pharmacist before the next dose.',
     dangerAction: 'See who to call',
-    versionInline: '(version {version} of {date})',
+    typedLabel: 'You wrote:',
+    quoted: '“{text}”',
     possibleProduct: 'This name looks like {name}. If it is this product:',
     possiblePlant: 'This name looks like {name}. If it is this remedy:',
     possibleNotProduct: 'If it is not this product:',
@@ -400,7 +424,7 @@ export const en: Dictionary = {
       estimated: 'Estimated term: this result takes every possible week into account.',
       unknown: 'Unknown term: this result takes the whole pregnancy into account.',
     },
-    termUsed: 'Term used: {term}',
+    termUsed: 'Term used for this result: {term}',
     lookahead: 'This result also covers the next {weeks} weeks.',
     termClockWoman:
       "Term unknown: the phone's date is before a day the app was already used. Your baby may be born: this result covers the whole pregnancy and breastfeeding. Look at the phone's date.",
@@ -420,6 +444,7 @@ export const en: Dictionary = {
       '0': 'no reliable information',
     },
     capped: 'Level limited because the evidence is weak.',
+    why: 'Why?',
     sources: 'Sources:',
     newWindow: '(opens in another window)',
     rule: 'Rule: {id}',
@@ -429,6 +454,7 @@ export const en: Dictionary = {
     noChange: 'Do not change anything in your treatment without talking to a professional.',
     version: 'Knowledge base {version} of {date}',
     notValidated: 'Content not clinically validated: do not use it alone to decide.',
+    notValidatedShort: 'Content not clinically validated.',
     // "replace" is a forbidden word in English: the tool does not take the place of a person.
     closing: 'This tool does not take the place of a health worker.',
     backToList: 'Back to the list',
@@ -436,7 +462,7 @@ export const en: Dictionary = {
   level: {
     danger: 'Danger sign',
     'before-next-dose': 'Show before the next dose',
-    'next-contact': 'Mention at the next contact',
+    'next-contact': 'Tell at the next visit',
     unknown: 'We do not know',
   },
   danger: {
@@ -508,7 +534,7 @@ export const en: Dictionary = {
     roles: {
       relay: 'Community relay',
       'bajenu-gox': 'Bajenu Gox',
-      icp: 'Head nurse of the health post (ICP)',
+      icp: 'Head nurse of the health post, ICP',
       midwife: 'Midwife',
       other: 'Other contact',
     },

@@ -49,7 +49,14 @@ const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
 const ADVIL: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
 const CODEINE: CheckedItem = { ref: { kind: 'product', id: 'codeine-generic' } };
+/** A strength keeps its unit on its line in a product name ("400 mg"). */
+const NO_BREAK = ' ';
 let pack: Pack;
+
+/** Opens the "Pourquoi ?" of a card: its evidence, sources and rules (accompanied mode). */
+async function openWhy(card: HTMLElement) {
+  await userEvent.setup().click(within(card).getByText('Pourquoi ?'));
+}
 
 beforeAll(async () => {
   pack = await knowledgePack();
@@ -140,9 +147,10 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     expect(within(cards[0] as HTMLElement).queryByText(goForTest)).toBeNull();
     expect(cards[0]?.querySelector('.result-card__orientation')).toBeNull();
     expect(within(cards[1] as HTMLElement).getByText(/rien ne prouve qu'il guérit/)).toBeVisible();
+    // Its risk already says that nobody knows: who and when, said once.
     expect(
       within(cards[1] as HTMLElement).getByText(
-        "Nous n'avons pas d'information fiable. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
+        'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
       ),
     ).toHaveClass('result-card__orientation');
     // Woman mode: no source, no evidence, no rule, no reminder.
@@ -200,14 +208,17 @@ describe('Result: a name typed as not recognised that looks like a known one', (
     await openResult({ items: [typed] });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/^Danger : à montrer maintenant/);
+    // Named as she typed it, quoted.
     const possible = await screen.findByRole('article', {
-      name: /^Danger\s: à montrer maintenant\. huile de ricin$/,
+      name: /^Danger\s: à montrer maintenant\. Vous avez écrit\s:\s«\shuile de ricin\s»$/,
     });
     expect(possible).toHaveTextContent(
       "Ce nom ressemble à Huile de ricin (Ricinus communis). Si c'est ce remède :",
     );
     // The text typed keeps its own grey card.
-    const own = screen.getByRole('article', { name: 'On ne sait pas. huile de ricin' });
+    const own = screen.getByRole('article', {
+      name: /^On ne sait pas\. Vous avez écrit\s:\s«\shuile de ricin\s»$/,
+    });
     expect(own).not.toHaveTextContent('Ce nom ressemble');
 
     // The history keeps the items as they were checked, and the level shown.
@@ -229,7 +240,10 @@ describe('Result: a name typed as not recognised that looks like a known one', (
 
     expect(await screen.findByRole('alert')).toHaveTextContent('(ressemble à Huile de ricin)');
     const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
-    expect(rows[0]).toHaveTextContent(/\(ressemble à Huile de ricin\)\. huile de ricin$/);
+    // The quote alone on the row; its label is said to a screen reader only.
+    expect(rows[0]).toHaveTextContent(
+      /\(ressemble à Huile de ricin\)\. Vous avez écrit : « huile de ricin »$/,
+    );
   });
 
   it('keeps no weak resemblance of a name she said was none of the products proposed', async () => {
@@ -286,7 +300,9 @@ describe('Result: a name typed as not recognised that looks like a known one', (
     });
 
     const card = await screen.findByRole('article', { name: /Misoprostol \(générique\)$/ });
-    expect(card).toHaveTextContent('Vous avez écrit : cytotec');
+    // Quoted under its label: what she typed, never the app's own words.
+    expect(card).toHaveTextContent('Vous avez écrit : « cytotec »');
+    expect(within(card).getByText('« cytotec »')).toHaveClass('typed');
   });
 });
 
@@ -303,14 +319,14 @@ describe('Result: several products in one finding', () => {
     };
     await openResult({ items: [doliprane, sachet] });
 
-    const name =
-      'À montrer avant la prochaine prise. DOLIPRANE 1000 mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)';
+    // A strength keeps its unit on its line (a no-break space).
+    const name = `À montrer avant la prochaine prise. DOLIPRANE 1000${NO_BREAK}mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)`;
     // A duplicate and a daily maximum: two cards about the same two products.
     const cards = await screen.findAllByRole('article', { name });
     expect(cards).toHaveLength(2);
     const lines = [...(cards[0]?.querySelectorAll('.result__name') ?? [])];
     expect(lines.map((line) => line.textContent)).toEqual([
-      'DOLIPRANE 1000 mg, comprimé',
+      `DOLIPRANE 1000${NO_BREAK}mg, comprimé`,
       'et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
     ]);
     const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
@@ -403,6 +419,7 @@ describe('Result: accompanied mode', () => {
       await screen.findByRole('heading', { level: 1, name: 'Résultat pour Awa' }),
     ).toBeVisible();
     const card = await screen.findByRole('article');
+    await openWhy(card);
     expect(within(card).getByText('Niveau de preuve A : « peut provoquer »')).toBeVisible();
     // Who to show and when before the fact and the detailed risk, as in woman mode.
     const orientation = card.querySelector('.result-card__orientation');
@@ -428,6 +445,7 @@ describe('Result: accompanied mode', () => {
     await openResult({ items: [ADVIL], settings: accompanied });
 
     const card = await screen.findByRole('article');
+    await openWhy(card);
     const sources = within(card).getByText('Sources :').closest('.result-card__sources');
     expect(sources).not.toBeNull();
     expect(
@@ -478,7 +496,7 @@ describe('Result: one finding, the way back', () => {
     await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
 
     const card = await screen.findByRole('article', {
-      name: 'À montrer avant la prochaine prise. ADVIL 400 mg, comprimé enrobé',
+      name: `À montrer avant la prochaine prise. ADVIL 400${NO_BREAK}mg, comprimé enrobé`,
     });
     expect(
       within(card).getByText(
@@ -518,7 +536,9 @@ describe('Result: the term it was worked out on', () => {
 
     await screen.findByRole('article');
     // Inside the sentence the term starts in lower case.
-    expect(screen.getByText(/^Terme retenu\s: environ 19 semaines$/)).toBeVisible();
+    expect(
+      screen.getByText(/^Terme utilisé pour ce résultat\s: environ 19 semaines$/),
+    ).toBeVisible();
     expect(screen.getByText(/2 semaines à venir/)).toBeVisible();
     // 20 weeks are reached within the look-ahead: the rule from 20 weeks gives the level.
     expect(
@@ -531,7 +551,7 @@ describe('Result: the term it was worked out on', () => {
     await openResult({ items: [KINKELIBA], signs: ['fever'] });
 
     const banner = await screen.findByRole('button', { name: 'Voir qui appeler' });
-    const term = screen.getByText(/^Terme retenu/);
+    const term = screen.getByText(/^Terme utilisé pour ce résultat/);
     expect(banner.compareDocumentPosition(term) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -586,7 +606,7 @@ describe('Result: the term it was worked out on', () => {
       ),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
-    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeVisible();
+    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeInTheDocument();
     expect(screen.queryByText(/^Allaite, bébé de/)).toBeNull();
   });
 
@@ -618,7 +638,7 @@ describe('Result: the term it was worked out on', () => {
       screen.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
-    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeVisible();
+    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeInTheDocument();
   });
 
   it('says "votre bébé" in woman mode when the baby may be born', async () => {
@@ -650,7 +670,9 @@ describe('Result: the term it was worked out on', () => {
     vi.setSystemTime(new Date(2026, 10, 10, 23, 59, 30));
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 19, givenOn: '2026-11-04' } }));
     await openResult({ items: [ADVIL] });
-    expect(await screen.findByText(/^Terme retenu\s: environ 19 semaines$/)).toBeVisible();
+    expect(
+      await screen.findByText(/^Terme utilisé pour ce résultat\s: environ 19 semaines$/),
+    ).toBeVisible();
 
     // A minute later the day has changed: the phone taken out of a pocket.
     vi.setSystemTime(new Date(2026, 10, 11, 0, 0, 30));
@@ -658,7 +680,9 @@ describe('Result: the term it was worked out on', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
 
-    expect(await screen.findByText(/^Terme retenu\s: environ 20 semaines$/)).toBeVisible();
+    expect(
+      await screen.findByText(/^Terme utilisé pour ce résultat\s: environ 20 semaines$/),
+    ).toBeVisible();
   });
 
   it('works nothing out on an outdated term: it asks whether the baby is born instead', async () => {
@@ -673,6 +697,128 @@ describe('Result: the term it was worked out on', () => {
     expect(screen.getByRole('button', { name: 'Oui, le bébé est né' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Non, toujours enceinte' })).toBeVisible();
     expect(await listHistory('p1')).toEqual([]);
+  });
+});
+
+describe('Result: what a reader in a hurry sees first', () => {
+  const TRAMADOL: CheckedItem = { ref: { kind: 'product', id: 'tramadol-generic' } };
+
+  /** Whether `first` comes before `second` in the page. */
+  const before = (first: Node, second: Node) =>
+    (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+  it('says the version and "not clinically validated" near the top, and in full at the end', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL, KINKELIBA] });
+
+    const [card] = await screen.findAllByRole('article');
+    const top = document.querySelector('.result__basis');
+    expect(top).not.toBeNull();
+    expect([...(top?.children ?? [])].map((p) => p.textContent)).toEqual([
+      `Base de connaissances ${pack.version} du 04/11/2026`,
+      'Contenu non validé cliniquement.',
+    ]);
+    // Under the summary, before the first card.
+    const summary = screen.getByRole('list', { name: 'Résumé' });
+    expect(before(summary, top as Node)).toBe(true);
+    expect(before(top as Node, card as Node)).toBe(true);
+    // The closing lines keep the full sentence.
+    expect(document.querySelector('.result__closing')).toHaveTextContent(
+      /Contenu non validé cliniquement\s: ne l'utilisez pas seul pour décider\./,
+    );
+    // Not out of date: no notice.
+    expect(screen.queryByText(/^Base de connaissances ancienne/)).toBeNull();
+  });
+
+  it('says at the top when the knowledge base is out of date, before any card', async () => {
+    // Seven months after the pack date.
+    vi.setSystemTime(new Date(2027, 5, 1, 10, 0));
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 20, givenOn: '2027-06-01' } }));
+    await openResult({ items: [ADVIL] });
+
+    const card = await screen.findByRole('article');
+    const stale = screen.getByText(/^Base de connaissances ancienne\s: plus de 90 jours/);
+    expect(stale).toBeVisible();
+    expect(before(stale, card)).toBe(true);
+    expect(before(screen.getByRole('heading', { level: 1 }), stale)).toBe(true);
+  });
+
+  it('quotes a name she typed under its label, never as its own words, in the card and the summary', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
+    const typed: CheckedItem = {
+      ref: { kind: 'unrecognised', text: 'Tisane bébé naturelle sans danger' },
+    };
+    await openResult({ items: [ADVIL, typed] });
+
+    const card = await screen.findByRole('article', {
+      name: /^On ne sait pas\. Vous avez écrit\s:\s«\sTisane bébé naturelle sans danger\s»$/,
+    });
+    const quote = within(card).getByText('« Tisane bébé naturelle sans danger »');
+    expect(quote).toHaveClass('typed');
+    expect(within(card).getByText('Vous avez écrit :')).toHaveClass('typed__label');
+    const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
+    // The row shows the quote alone; a screen reader hears the label too.
+    expect(rows[1]).toHaveTextContent(
+      'On ne sait pas. Vous avez écrit : « Tisane bébé naturelle sans danger »',
+    );
+    expect(within(rows[1] as HTMLElement).getByText('Vous avez écrit :')).toHaveClass('sr-only');
+    expect(within(rows[1] as HTMLElement).getByText(/^« Tisane/)).toHaveClass('typed');
+  });
+
+  it('offers who to call on a card that says to go now if something happens', async () => {
+    await saveProfile(
+      profileOf({
+        pregnant: false,
+        breastfeeding: true,
+        babyAgeWeeks: 2,
+        babyAgeGivenOn: '2026-11-04',
+        premature: false,
+      }),
+    );
+    await openResult({ items: [TRAMADOL] });
+
+    const card = await screen.findByRole('article', { name: /^À dire à la prochaine visite\./ });
+    const call = within(card).getByRole('link', { name: 'Voir qui appeler' });
+    expect(call).toHaveAttribute('href', '#/danger/call');
+    expect(call).toHaveClass('button--quiet');
+    // The one primary action stays the way back.
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+  });
+
+  it('keeps the evidence, sources and rules of a card behind one "Pourquoi ?" in accompanied mode', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
+    const { user } = await openResult({ items: [ADVIL], settings: accompanied });
+
+    const card = await screen.findByRole('article');
+    const why = within(card).getByText('Pourquoi ?');
+    expect(why.tagName).toBe('SUMMARY');
+    const disclosure = why.closest('details');
+    expect(disclosure).not.toHaveAttribute('open');
+    const evidence = within(card).getByText('Niveau de preuve A : « peut provoquer »');
+    const rule = within(card).getByText('Règle : nsaid-pregnancy-from-20-weeks');
+    expect(evidence).not.toBeVisible();
+    expect(rule).not.toBeVisible();
+    // The orientation stays in sight, before it.
+    expect(card.querySelector('.result-card__orientation')).toBeVisible();
+
+    await user.click(why);
+    expect(evidence).toBeVisible();
+    expect(rule).toBeVisible();
+    // The sources in French, an English document said as such.
+    const openfda = within(card).getByText('Notices de médicaments des États-Unis (openFDA)');
+    expect(openfda).toBeVisible();
+    expect(openfda.closest('p')).toHaveTextContent(
+      'Notices de médicaments des États-Unis (openFDA), documents en anglais',
+    );
+    // Its English records are marked as English, so a screen reader reads them so.
+    const record = openfda.closest('li')?.querySelector('a');
+    expect(record?.querySelector('[lang="en"]')).not.toBeNull();
+    // Each "Pourquoi ?" is told apart by its card.
+    expect(why).toHaveAccessibleDescription(
+      `À montrer avant la prochaine prise. ADVIL 400${NO_BREAK}mg, comprimé enrobé`,
+    );
+    // Its state shows: a mark turned when it is open.
+    expect(why.querySelector('.result-card__why-mark')).not.toBeNull();
   });
 });
 

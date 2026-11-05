@@ -3,11 +3,21 @@ import { describe, expect, it } from 'vitest';
 import {
   addDays,
   daysBetween,
+  formatDate,
   isIsoDate,
   todayIso,
   weeksSince,
   wholeWeeksBetween,
 } from './dates.js';
+
+describe('formatDate', () => {
+  it('writes a date as each language reads it, the same on every screen, whatever the time zone', () => {
+    expect(formatDate('2026-11-05', 'fr')).toBe('05/11/2026');
+    expect(formatDate('2026-11-05', 'en')).toBe('5 November 2026');
+    expect(formatDate('not a date', 'en')).toBe('not a date');
+    expect(formatDate('2026-02-30', 'fr')).toBe('2026-02-30');
+  });
+});
 
 describe('todayIso', () => {
   it('gives the calendar date of the device clock, in local time', () => {

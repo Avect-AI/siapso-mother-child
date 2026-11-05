@@ -60,6 +60,23 @@ export function weeksSince(givenOn: string, todayIso: string): number {
   return weeks;
 }
 
+/**
+ * A calendar date as the language writes it, the same on every screen:
+ * "05/11/2026" in French (day, month, year), "5 November 2026" in English (a
+ * month name, so a day and a month are never mixed up). Read as a calendar
+ * date, whatever the phone's time zone; a value that is not one is returned
+ * as it is.
+ */
+export function formatDate(iso: string, lang: 'fr' | 'en'): string {
+  const ms = utcMidnight(iso);
+  if (ms === undefined) return iso;
+  const options: Intl.DateTimeFormatOptions =
+    lang === 'fr'
+      ? { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }
+      : { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' };
+  return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', options).format(ms);
+}
+
 /** The calendar date `days` after `iso` (before it when negative). */
 export function addDays(iso: string, days: number): string {
   const date = new Date((dayNumber(iso) + days) * DAY_MS);

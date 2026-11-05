@@ -142,12 +142,22 @@ export interface DangerSign {
   message?: string;
   sources: SourceRef[];
 }
+/** The words of a source in another language than its own entry: name, licence, version. */
+export interface SourceWords {
+  name: string;
+  licence: string;
+  version?: string;
+}
 export interface Source {
   id: string;
   name: string;
   licence: string;
   url: string;
   version?: string;
+  /** The language its documents are written in, so a screen can say so beside a citation. */
+  documents?: Lang;
+  /** Its name, licence and version in French, for the French interface. */
+  fr?: SourceWords;
 }
 export interface Message {
   fact: string;

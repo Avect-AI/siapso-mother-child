@@ -2,9 +2,9 @@
 id: not-recognised
 fr:
   fact: "Ce produit n'a pas été reconnu."
-  risk: "Nous n'avons pas d'information fiable sur ce produit. Cela ne veut pas dire qu'il est sans risque."
+  risk: "Nous n'avons pas d'information fiable sur ce produit. On ne sait pas s'il peut faire du mal."
   orientation: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.'
 en:
   fact: 'This product was not recognised.'
-  risk: 'We have no reliable information on this product. This does not mean it is risk-free.'
+  risk: 'We have no reliable information on this product. We do not know whether it can cause harm.'
   orientation: 'Show it to the midwife or the pharmacist at the next visit.'

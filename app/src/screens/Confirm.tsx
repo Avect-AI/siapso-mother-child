@@ -26,6 +26,8 @@ import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
 import { WarningMark } from '../ui/WarningMark.js';
 import { backToCheck, flowState, searchPath, type FlowState } from './check-flow.js';
+import { localNameKey } from './local-name.js';
+import { Typed } from './Typed.js';
 
 /** The radio value of "I do not know"; never a product id (ids have no colon). */
 const DONT_KNOW = ':dont-know';
@@ -408,14 +410,16 @@ function ConfirmForm({
         ) : null}
         {local === undefined ? null : (
           <p className="meta">
-            {tNodes('search.localName', {
+            {tNodes(localNameKey(local, lang), {
               name: <span lang={local.lang}>{local.text}</span>,
               lang: t(`nameLang.${local.lang}`),
             })}
           </p>
         )}
         {written === undefined ? null : (
-          <p className="meta">{t('check.writtenAs', { text: written })}</p>
+          <p className="meta">
+            <Typed text={written} label="shown" />
+          </p>
         )}
       </div>
 

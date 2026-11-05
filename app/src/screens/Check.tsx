@@ -18,6 +18,7 @@ import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { flowEntry, searchPath } from './check-flow.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+import { Typed } from './Typed.js';
 
 /** How long her profile may take to read before the screen says it is loading. */
 const CHECK_LOADING_DELAY_MS = 600;
@@ -61,7 +62,10 @@ function Item({
   return (
     <li className="check__item">
       <div className="check__item-text">
-        <p className="check__item-name">{shown.name}</p>
+        <p className="check__item-name">
+          {/* A name kept as typed is her words: quoted, the line under it says it is not recognised. */}
+          {item.ref.kind === 'unrecognised' ? <Typed text={shown.name} label="none" /> : shown.name}
+        </p>
         {item.ref.kind === 'unrecognised' ? (
           <p className="meta">
             {t(list === 'plant' ? 'check.notRecognisedPlant' : 'check.notRecognised')}
@@ -77,7 +81,9 @@ function Item({
         ) : null}
         {/* Last in the product block, as on the confirm screen. */}
         {written === undefined ? null : (
-          <p className="meta">{t('check.writtenAs', { text: written })}</p>
+          <p className="meta">
+            <Typed text={written} label="shown" />
+          </p>
         )}
         {units === undefined ? null : (
           <p className="meta">
@@ -207,6 +213,11 @@ export function Check() {
     pack === null
       ? { name: item.ref.kind === 'unrecognised' ? item.ref.text : item.ref.id, detail: undefined }
       : displayOf(pack, item.ref, lang, item.strengthUnknown === true);
+  // In a sentence of the app ("... est ajouté à la liste."), a name she typed is quoted.
+  const saidOf = (item: CheckedItem): string =>
+    item.ref.kind === 'unrecognised'
+      ? t('result.quoted', { text: shownOf(item).name })
+      : shownOf(item).name;
 
   const openSearch = (kind: 'product' | 'plant') => {
     // One entry after this one: adding an item comes back here (check-flow.ts).
@@ -295,9 +306,7 @@ export function Check() {
       )}
       {/* What just changed in the list, in words; a removal can be undone (no time limit). */}
       <p className="check__status" role="status">
-        {change === null
-          ? ''
-          : t(CHANGE_MESSAGES[change.kind], { name: shownOf(change.item).name })}
+        {change === null ? '' : t(CHANGE_MESSAGES[change.kind], { name: saidOf(change.item) })}
       </p>
       {change?.kind === 'removed' ? (
         <Button

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Grey message of the remedies without reliable data. Woman mode hides the
-# fact, so the risk names its subject and stands alone.
+# fact, so the risk names its subject and stands alone, said positively.
 id: evidence-0
 fr:
   fact: "Nous n'avons pas d'information fiable sur ce produit pendant la grossesse ou l'allaitement."
-  risk: "Le manque d'information sur ce produit ne veut pas dire qu'il est sans risque."
+  risk: 'On ne sait pas si ce produit peut faire du mal.'
   orientation: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.'
 en:
   fact: 'We have no reliable information on this product during pregnancy or breastfeeding.'
-  risk: 'The lack of information on this product does not mean it is risk-free.'
+  risk: 'We do not know whether this product can cause harm.'
   orientation: 'Show it to the midwife or the pharmacist at the next visit.'

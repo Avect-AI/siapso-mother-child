@@ -270,6 +270,12 @@ const DOSE_UNITS: readonly string[] = [
   'mcg',
   'ui',
   'iu',
+  'milligrammes?',
+  'milligrams?',
+  'millilitres?',
+  'milliliters?',
+  'grammes?',
+  'grams?',
   'comprimés?',
   'tablets?',
   'gélules?',
@@ -283,10 +289,14 @@ const DOSE_UNITS: readonly string[] = [
   'doses?',
   'fois\\s+par\\s+jour',
   'par\\s+jour',
-  'times\\s+a\\s+day',
+  'times\\s+(?:a|per)\\s+day',
+  'times\\s+daily',
   'per\\s+day',
 ];
-/** A number followed by a dose unit: "500 mg", "2 comprimés", "3 fois par jour", "100mg". */
+/**
+ * A number followed by a dose unit: "500 mg", "2 comprimés", "3 fois par jour",
+ * "100mg", "2 times daily".
+ */
 const DOSE = new RegExp(
   `\\p{Nd}+(?:[.,]\\p{Nd}+)?\\s*(?:${DOSE_UNITS.join('|')})(?![\\p{L}\\p{N}])`,
   'iu',
@@ -307,37 +317,80 @@ function plain(text: string): string {
     .replace(/\s+/gu, ' ');
 }
 
+/** What a drink is measured in: a cup, a glass, a bowl (unaccented). */
+const DRINK_UNITS = 'tasses?|verres?|bols?|cups?|glass(?:es)?|bowls?|mugs?';
 /** Units a count in words makes an amount of (unaccented). */
-const AMOUNT_UNITS =
-  'prises?|doses?|comprimes?|tablets?|gelules?|capsules?|cuillerees?|cuilleres?|spoons?|spoonfuls?|teaspoons?|sachets?|gouttes?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|fois par jour|times (?:a|per) day|par jour|per day';
+const AMOUNT_UNITS = `prises?|doses?|comprimes?|tablets?|gelules?|capsules?|cuillerees?|cuilleres?|spoons?|spoonfuls?|teaspoons?|sachets?|gouttes?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par jour|times (?:(?:a|per) day|daily)|par jour|per day`;
+/**
+ * An amount unit, but not "prises de sang" (blood tests): "deux prises de
+ * sang" and "une seule prise de sang" are not doses.
+ */
+const AMOUNT = `(?!prises? de sang)(?:${AMOUNT_UNITS})`;
 /**
  * Units whose singular after an article is always an amount ("un comprimé",
- * "a tablet"), unlike "une dose" or "une prise" ("à une dose plus forte").
+ * "a tablet", "un verre", "a cup"), unlike "une dose" or "une prise" ("à une
+ * dose plus forte").
  */
-const UNIT_OBJECTS =
-  'comprimes?|gelules?|sachets?|cuillerees?|cuilleres?|gouttes?|tablets?|capsules?|spoons?|spoonfuls?|teaspoons?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|fois par jour';
-/** Number words from two to twenty (unaccented), and "one". */
+const UNIT_OBJECTS = `comprimes?|gelules?|sachets?|cuillerees?|cuilleres?|gouttes?|tablets?|capsules?|spoons?|spoonfuls?|teaspoons?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|milligrammes?|milligrams?|millilitres?|milliliters?|${DRINK_UNITS}|fois par jour`;
+/** The times of day a dose is taken at: "matin et soir", "morning and evening". */
+const TIMES_OF_DAY =
+  '(?:le )?matin(?:,? (?:le )?midi)? et (?:le )?soir|morning and (?:evening|night)|(?:evening|night) and morning';
+/**
+ * Number words from two up (unaccented), and "one". "Un" and "une" are
+ * articles too ("une dose plus forte"), so they only count inside a number.
+ */
 const NUMBER_WORDS =
-  'deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|dix[ -]sept|dix[ -]huit|dix[ -]neuf|vingt|one|two|three|four|five|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty';
+  'deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|vingts?|trente|quarante|cinquante|soixante|cents?|mille|one|two|three|four|five|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundreds?|thousands?';
+/**
+ * A number in words: number words joined by a space, a hyphen, "et" or "and"
+ * are one number ("vingt et une", "quatre-vingt-dix", "one hundred and
+ * twenty"), so that the dose quoted is the whole number.
+ */
+const NUMBER = `(?:${NUMBER_WORDS})(?:(?: et | and |-et-| |-)(?:${NUMBER_WORDS}|un|une))*`;
 const WORD_START = '(?<![\\p{L}\\p{N}])';
 const WORD_END = '(?![\\p{L}\\p{N}])';
 /**
+ * The time between two doses: "toutes les six heures", "toutes les quatre à
+ * six heures", "every 6 hours". Only with "toutes les" or "every": "pendant
+ * six heures" is a duration, not a dose.
+ */
+const INTERVAL_NUMBER = `(?:${NUMBER}|\\p{Nd}+(?:[.,]\\p{Nd}+)?)`;
+const INTERVAL = `(?:toutes les|every) ${INTERVAL_NUMBER}(?:(?: (?:a|ou|to|or) | ?[-–] ?)${INTERVAL_NUMBER})? ?(?:heures?|hours?|h)`;
+/**
+ * An article and a unit that are not an amount: "a drop in blood pressure" or
+ * "in the amount of fluid" is a fall, "un sachet de poudre" a form, "une
+ * pilule contraceptive" a method. "A drop in each eye" is still an amount,
+ * and so is a count of sachets ("deux sachets de poudre").
+ */
+const NOT_AN_AMOUNT =
+  `a drop in (?:(?:the|her|his|their) )?(?:blood|pressure|heart|sugar|glucose|levels?|rate|count|temperature|weight|milk|amount|volume|number|fluid)${WORD_END}` +
+  `|(?:un|une|a|an) sachets? (?:de |d'|of )(?:poudres?|granules?|powders?)${WORD_END}` +
+  `|(?:un|une) pilules? (?:contraceptives?|du lendemain)${WORD_END}`;
+/**
  * A dose in words, read on the plain text: "une seule prise", "a single dose";
- * a number word and a unit ("deux comprimés", "twelve tablets"); an article
- * and a unit that is always an amount ("un comprimé", "une fois par jour",
- * "a drop"); "once a day", "twice daily"; half a unit ("un demi-comprimé",
- * "half a tablet"). The digit check cannot see them. "Une dose plus forte",
- * "une seule fois" and "deux à trois fois plus" are not doses.
+ * a single dose with "unique" ("une prise unique", "en prise unique", "à dose
+ * unique"); a number in words and a unit ("deux comprimés", "vingt et une
+ * gouttes", "twelve tablets"); an article and a unit that is always an amount
+ * ("un comprimé", "une fois par jour", "a drop"); "once a day", "twice daily";
+ * half a unit ("un demi-comprimé", "half a tablet"); the time between doses
+ * ("toutes les six heures", "every 6 hours"); a drink measured in cups,
+ * glasses or bowls ("deux tasses par jour", "un verre", "a cup of tea");
+ * the times of day ("matin et soir"). The digit check cannot see them. "Une
+ * dose plus forte", "une seule fois", "deux à trois fois plus" and "deux
+ * prises de sang" are not doses.
  */
 const WORD_DOSE = new RegExp(
   WORD_START +
     '(?:' +
     [
-      `(?:un|une|a|an|one) (?:seul|seule|single) (?:${AMOUNT_UNITS})`,
-      `(?:${NUMBER_WORDS}) (?:${AMOUNT_UNITS})`,
-      `(?:un|une|a|an) (?:${UNIT_OBJECTS})`,
+      `(?:un|une|a|an|one) (?:seul|seule|single|unique) ${AMOUNT}`,
+      `(?:un|une|des|le|la|les|en|a) ${AMOUNT} uniques?`,
+      `${NUMBER} ${AMOUNT}`,
+      `(?!${NOT_AN_AMOUNT})(?:un|une|a|an) (?:${UNIT_OBJECTS})`,
       '(?:once|twice) (?:(?:a|per) day|daily)',
-      `(?:demi|half)(?:[ -](?:a|an|une?))?[ -](?:${AMOUNT_UNITS})`,
+      `(?:demi|half)(?:[ -](?:a|an|une?))?[ -]${AMOUNT}`,
+      INTERVAL,
+      TIMES_OF_DAY,
     ].join('|') +
     ')' +
     WORD_END,
@@ -349,7 +402,7 @@ const WORD_DOSE = new RegExp(
  * exception to the dose-in-words check, for the messages of reminders only.
  */
 const REMINDER_SCHEDULE = new RegExp(
-  `${WORD_START}(?:(?:au\\s+moins|at\\s+least)\\s+)?(?:${NUMBER_WORDS}|\\p{Nd}+)\\s+doses?\\s+(?:de|of)\\s+(?:la\\s+)?sp${WORD_END}`,
+  `${WORD_START}(?:(?:au\\s+moins|at\\s+least)\\s+)?(?:${NUMBER}|\\p{Nd}+)\\s+doses?\\s+(?:de|of)\\s+(?:la\\s+)?sp${WORD_END}`,
   'giu',
 );
 
@@ -418,6 +471,82 @@ function checkMessageText(message: Entry<AuthoredMessage>, reminder: boolean): P
   return problems;
 }
 
+/**
+ * An instruction, read on the plain text: a French imperative ("dites-le",
+ * "allez", "montrez", "parlez-en", "ne le donnez pas", "n'attendez pas"), or an
+ * English one at the start of a sentence or after a colon ("tell the
+ * midwife", "do not give"). What a label or a test says is not one: "la notice
+ * ne la recommande pas", "only a test can tell".
+ */
+const INSTRUCTION: Readonly<Record<Lang, RegExp>> = {
+  fr: new RegExp(
+    `${WORD_START}(?:(?:dites|allez|montrez|arretez|parlez|demandez|appelez|prenez|donnez|evitez|faites|consultez|attendez|venez|cessez|gardez|continuez)(?:-(?:le|la|les|lui|en|y))?|(?:ne (?:le |la |les |l'|lui |leur |en |y )?|n')\\p{L}+ez pas)${WORD_END}`,
+    'u',
+  ),
+  en: new RegExp(
+    `(?:^|[.:;!?] )(?:tell|go|show|ask|call|talk|stop|take|give|avoid|keep|bring|come|never|do not|don't)${WORD_END}`,
+    'u',
+  ),
+};
+
+/**
+ * The fields a result keeps behind "Pourquoi ?", in accompanied mode only:
+ * the detailed risk of every message, and the fact of a message of a rule
+ * that gives findings or of a remedy. The fact of "nothing found", "nothing
+ * applies" and "not recognised" is read with the risk, and a danger sign's
+ * fact leads its card: both are read in both modes.
+ */
+function hiddenFields(content: Content): Map<string, Set<'fact' | 'risk-detail'>> {
+  const shown = new Set<string>([
+    BUILTIN_MESSAGES.nothingFound,
+    BUILTIN_MESSAGES.nothingApplies,
+    BUILTIN_MESSAGES.notRecognised,
+    ...content.dangerSigns.flatMap((s) => (s.data.message === undefined ? [] : [s.data.message])),
+  ]);
+  const withFact = new Set<string>([
+    ...content.rules
+      .filter((r) => r.data.kind !== 'reminder' && r.data.kind !== 'contraception-info')
+      .map((r) => r.data.message),
+    ...content.plants.map((p) => p.data.message),
+  ]);
+  const hidden = new Map<string, Set<'fact' | 'risk-detail'>>();
+  for (const message of content.messages) {
+    const id = message.data.id;
+    const fields = new Set<'fact' | 'risk-detail'>(['risk-detail']);
+    if (withFact.has(id) && !shown.has(id)) fields.add('fact');
+    hidden.set(id, fields);
+  }
+  return hidden;
+}
+
+/**
+ * Check 7 (instructions): who to show and when is said in the orientation,
+ * the line both modes read. An instruction in a field kept behind "Pourquoi ?"
+ * would be read by a health worker who opens it, and never by the woman.
+ */
+function checkHiddenInstructions(content: Content): Problem[] {
+  const problems: Problem[] = [];
+  const hidden = hiddenFields(content);
+  for (const message of content.messages) {
+    for (const field of hidden.get(message.data.id) ?? []) {
+      for (const lang of LANGS) {
+        const written = message.data[lang][field];
+        if (written === undefined) continue;
+        const found = INSTRUCTION[lang].exec(plain(written));
+        if (found === null) continue;
+        problems.push(
+          problem(
+            message,
+            `${lang}.${field}`,
+            `gives an instruction ("${found[0].replace(/^[.:;!?] /, '')}") in a field kept behind "Pourquoi ?": put it in the orientation, the line both modes read`,
+          ),
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 /** Later than before the next dose, so later than a danger too (plain text). */
 const LATER: Readonly<Record<Lang, readonly string[]>> = {
   fr: [
@@ -454,6 +583,29 @@ const LATER_THAN: Readonly<Partial<Record<Level, Record<Lang, readonly string[]>
     en: [...LATER.en, 'today', 'next dose', 'soon'],
   },
   'before-next-dose': LATER,
+};
+
+/** An appointment word followed, within two words, by `deadline` (plain text). */
+function boundedAppointment(deadline: string): RegExp {
+  return new RegExp(
+    `${WORD_START}(?:consultation|rendez-vous|appointment)s?(?=(?:[ ,]+[\\p{L}'-]+){0,2}[ ,]+${deadline}${WORD_END})`,
+    'gu',
+  );
+}
+
+/**
+ * An appointment that the level's own deadline bounds is not later: before
+ * the next dose, "en consultation prénatale avant la prochaine prise" keeps
+ * the deadline. Within two words only, so that "à la consultation de la
+ * maternité avant la prochaine prise" stays later. Only the appointment word
+ * is set aside: another later word in the same text still counts. A danger
+ * has no such deadline: a consultation is always later than now.
+ */
+const BOUNDED_APPOINTMENT: Readonly<Partial<Record<Level, Record<Lang, RegExp>>>> = {
+  'before-next-dose': {
+    fr: boundedAppointment('avant la prochaine prise'),
+    en: boundedAppointment('before the next dose'),
+  },
 };
 
 /** A danger orientation says one of these (plain text). */
@@ -499,7 +651,8 @@ function checkTiming(content: Content): Problem[] {
     for (const lang of LANGS) {
       const orientation = message.data[lang].orientation;
       if (orientation === undefined) continue;
-      const text = plain(orientation);
+      const bounded = BOUNDED_APPOINTMENT[level]?.[lang];
+      const text = bounded ? plain(orientation).replace(bounded, ' ') : plain(orientation);
       const where = `${lang}.orientation`;
       const word = later[lang].find((w) => sayWord(text, w));
       if (word !== undefined) {
@@ -566,6 +719,7 @@ export function checkContent(content: Content, raw: RawContent): Problem[] {
     ...checkReferences(content, knownIds(raw)),
     ...checkRules(content),
     ...checkMessages(content, raw),
+    ...checkHiddenInstructions(content),
     ...checkTiming(content),
   ];
 }

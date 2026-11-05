@@ -242,7 +242,7 @@ describe('ResultCard', () => {
     render(
       <ResultCard
         level="next-contact"
-        levelLabel="À signaler au prochain contact"
+        levelLabel="À dire à la prochaine visite"
         title="Moringa"
         headingLevel={2}
         orientation="Dites-le à la sage-femme à la prochaine visite."
@@ -262,6 +262,35 @@ describe('ResultCard', () => {
     expect(before(details, source)).toBe(true);
     expect(details.closest('.result-card__details')).not.toBeNull();
     expect(source.closest('.result-card__meta')).not.toBeNull();
+  });
+
+  it('keeps the details and the source lines behind one closed disclosure, with an action under who and when', () => {
+    render(
+      <ResultCard
+        level="next-contact"
+        levelLabel="À dire à la prochaine visite"
+        title="Moringa"
+        headingLevel={2}
+        orientation="Dites-le à la sage-femme à la prochaine visite."
+        action={<a href="#/danger/call">Voir qui appeler</a>}
+        details={<p>Une étude chez des volontaires a montré un effet.</p>}
+        meta={<p>Source : exemple.</p>}
+        whyLabel="Pourquoi ?"
+      >
+        <p>Le moringa peut changer l’effet d’un médicament.</p>
+      </ResultCard>,
+    );
+    const orientation = screen.getByText('Dites-le à la sage-femme à la prochaine visite.');
+    const action = screen.getByRole('link', { name: 'Voir qui appeler' });
+    expect(before(orientation, action)).toBe(true);
+    const why = screen.getByText('Pourquoi ?');
+    expect(why.tagName).toBe('SUMMARY');
+    expect(before(action, why)).toBe(true);
+    const disclosure = why.closest('details');
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(screen.getByText(/volontaires/).closest('details')).toBe(disclosure);
+    expect(screen.getByText('Source : exemple.').closest('details')).toBe(disclosure);
+    expect(screen.getByText(/volontaires/)).not.toBeVisible();
   });
 
   it('makes who to show and when the clearest line of the reserve, apart from the product name', () => {

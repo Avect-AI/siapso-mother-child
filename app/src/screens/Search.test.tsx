@@ -84,6 +84,16 @@ describe('Search', () => {
     );
   });
 
+  it('calls a French name another name, never a local name', async () => {
+    const { user, field } = await openSearch('Ajouter un remède');
+    await user.type(field, 'argile');
+
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent('Autre nom : argile');
+    });
+    expect(candidates()[0]).not.toHaveTextContent('Nom local');
+  });
+
   it('shows a product with paracetamol in its detail for doliprane, and still for doliprann', async () => {
     const { user, field } = await openSearch('Ajouter un médicament');
     await user.type(field, 'doliprane');
@@ -233,8 +243,15 @@ describe('Search', () => {
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'poudre du marché' } },
     ]);
-    expect(screen.getByText('poudre du marché')).toBeVisible();
+    // On the list, quoted: her words, never a name the app confirmed.
+    const name = screen.getByText('« poudre du marché »');
+    expect(name).toBeVisible();
+    expect(name).toHaveClass('typed');
     expect(screen.getByText('Produit non reconnu')).toBeVisible();
+    // The line that says it was added quotes it too.
+    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
+      '« poudre du marché » est ajouté à la liste.',
+    );
   });
 
   it('adds nothing when a candidate is chosen: the confirm screen opens', async () => {

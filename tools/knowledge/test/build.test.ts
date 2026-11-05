@@ -83,6 +83,20 @@ describe('buildPack', () => {
     expect(pack.dangerSigns[1]?.message).toBe('bleeding-sign');
     expect(pack.dangerSigns[0]).not.toHaveProperty('message');
     expect(pack.sources.map((s) => s.id)).toEqual(['lactmed', 'literature', 'openfda', 'who']);
+    // The language of its documents and its words in French go with each source.
+    expect(pack.sources.find((s) => s.id === 'openfda')).toStrictEqual({
+      id: 'openfda',
+      name: 'openFDA drug labels',
+      licence: 'CC0 1.0 / public domain',
+      url: 'https://open.fda.gov/',
+      version: 'Label version or access date, given in each citation',
+      documents: 'en',
+      fr: {
+        name: 'Notices de médicaments des États-Unis (openFDA)',
+        licence: 'CC0 1.0 / domaine public',
+        version: 'Version de la notice ou date de consultation, donnée dans chaque citation',
+      },
+    });
   });
 
   it('includes every product of a generated product list file, sorted with the others', async () => {

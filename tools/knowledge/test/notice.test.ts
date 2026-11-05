@@ -112,7 +112,8 @@ describe('pack sources', () => {
     patchEntry(raw, 'dangerSigns', 'bleeding', (d) => {
       d.sources = [ref('who')];
     });
-    expect(buildPack(raw).sources).toEqual([
+    // Their French words and the language of their documents too (build.test.ts).
+    expect(buildPack(raw).sources).toMatchObject([
       {
         id: 'lactmed',
         name: 'Drugs and Lactation Database (LactMed)',

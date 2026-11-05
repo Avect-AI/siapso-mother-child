@@ -852,8 +852,9 @@ describe('ProfileEdit: the term', () => {
     await user.click(option(/^Enceinte/, 'Oui'));
     await user.click(option('Terme de la grossesse', 'En semaines'));
 
+    // Plain words: no "aménorrhée".
     expect(screen.getByRole('textbox', { name: 'Nombre de semaines' })).toHaveAccessibleDescription(
-      "Semaines d'aménorrhée (depuis les dernières règles), de 0 à 42.",
+      'Semaines de grossesse, comptées depuis le premier jour des dernières règles, de 0 à 42.',
     );
   });
 
@@ -867,7 +868,7 @@ describe('ProfileEdit: the term', () => {
     await user.click(option('Âge du bébé', 'En mois'));
     await user.type(screen.getByRole('textbox', { name: 'Âge en mois' }), '3');
     // The months read back in the weeks the rules use.
-    expect(screen.getByText('Âge retenu')).toBeVisible();
+    expect(screen.getByText('Âge calculé')).toBeVisible();
     expect(screen.getByText('Environ 13 semaines')).toBeVisible();
     await user.click(option(/^Né avant terme/, 'Je ne sais pas'));
     await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));

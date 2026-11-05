@@ -83,6 +83,23 @@ describe('knowledge/sources.yaml', () => {
     expect(validateContent(raw).some((p) => p.file === SOURCES)).toBe(true);
   });
 
+  it('needs the language of the documents and the words in French of every source', async () => {
+    const raw = await fresh();
+    const allowed = list(dict(sourcesFile(raw).data).allowed);
+    delete dict(allowed[0]).documents;
+    dict(allowed[1]).fr = { name: 'Notices de médicaments' };
+    dict(allowed[2]).documents = 'de';
+    // A source with a version says it in French too.
+    delete sub(dict(allowed[3]), 'fr').version;
+    delete dict(allowed[4]).fr;
+    const problems = validateContent(raw);
+    expectProblem(problems, { file: SOURCES, path: 'allowed[0].documents', message: /required/ });
+    expectProblem(problems, { file: SOURCES, path: 'allowed[1].fr.licence', message: /required/ });
+    expectProblem(problems, { file: SOURCES, path: 'allowed[2].documents' });
+    expectProblem(problems, { file: SOURCES, path: 'allowed[3].fr.version', message: /required/ });
+    expectProblem(problems, { file: SOURCES, path: 'allowed[4].fr', message: /required/ });
+  });
+
   it('refuses a source declared twice or both allowed and forbidden', async () => {
     const raw = await fresh();
     const data = dict(sourcesFile(raw).data);

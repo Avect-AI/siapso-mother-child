@@ -709,6 +709,13 @@ describe('validateContent', () => {
         '1 dose',
         '2 per day',
         '50 mcg',
+        '2 times daily',
+        '2 times per day',
+        '500 milligrammes',
+        '3 grammes',
+        '5 millilitres',
+        '10 milligrams',
+        '2 milliliters',
       ]) {
         const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
           sub(d, 'fr')['risk-detail'] = text;
@@ -785,6 +792,41 @@ describe('validateContent', () => {
         ['en', 'fact', 'Three grams.'],
         ['en', 'fact', 'One single tablet.'],
         ['fr', 'fact', 'Un seul sachet.'],
+        // An interval between doses, in words or in digits where digits are allowed.
+        ['fr', 'fact', 'Toutes les six heures.'],
+        ['fr', 'risk', 'Toutes les quatre à six heures.'],
+        ['fr', 'risk-detail', 'Toutes les 6 heures.'],
+        ['en', 'fact', 'Every six hours.'],
+        ['en', 'risk', 'Every four to six hours.'],
+        ['en', 'risk-detail', 'Every 6 hours.'],
+        // A single dose written with "unique".
+        ['fr', 'fact', 'Une prise unique.'],
+        ['fr', 'fact', 'Une dose unique.'],
+        ['fr', 'risk', 'En prise unique, elle peut nuire.'],
+        ['fr', 'fact', 'À dose unique.'],
+        ['fr', 'fact', 'Un comprimé unique.'],
+        ['fr', 'fact', 'Une unique prise.'],
+        // A frequency with "times".
+        ['en', 'fact', 'Two times daily.'],
+        ['en', 'fact', 'Three times per day.'],
+        // A number in words above twenty, and units in full.
+        ['fr', 'fact', 'Trente gouttes.'],
+        ['fr', 'fact', 'Vingt et une prises.'],
+        ['fr', 'fact', 'Vingt-cinq gouttes.'],
+        ['fr', 'fact', 'Quarante comprimés.'],
+        ['fr', 'fact', 'Soixante-dix gouttes.'],
+        ['fr', 'fact', 'Quatre-vingts gouttes.'],
+        ['fr', 'fact', 'Cent milligrammes.'],
+        ['fr', 'fact', 'Deux millilitres.'],
+        ['en', 'fact', 'Thirty drops.'],
+        ['en', 'fact', 'Twenty-five drops.'],
+        ['en', 'fact', 'Forty tablets.'],
+        ['en', 'fact', 'One hundred drops.'],
+        ['en', 'fact', 'Ten milligrams or two milliliters.'],
+        // Still amounts: a drop in an eye, a count of sachets, a single sachet.
+        ['en', 'fact', 'A drop in the eye.'],
+        ['fr', 'fact', 'Deux sachets de poudre.'],
+        ['fr', 'fact', 'Un seul sachet de poudre.'],
       ];
       for (const [lang, field, text] of cases) {
         const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
@@ -798,12 +840,154 @@ describe('validateContent', () => {
       }
     });
 
+    it('reads a number in words made of several words as one number', async () => {
+      for (const [lang, text, dose] of [
+        ['fr', 'Vingt et une prises.', 'vingt et une prises'],
+        ['fr', 'Quatre-vingt-dix gouttes.', 'quatre-vingt-dix gouttes'],
+        ['fr', 'Soixante et onze gouttes.', 'soixante et onze gouttes'],
+        ['fr', 'Toutes les vingt-quatre heures.', 'toutes les vingt-quatre heures'],
+        ['en', 'Twenty-five drops.', 'twenty-five drops'],
+        ['en', 'One hundred and twenty drops.', 'one hundred and twenty drops'],
+      ] as const) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang).fact = text;
+        });
+        expectProblem(validateContent(raw), {
+          file: 'knowledge/messages/herb-drug-moringa.yaml',
+          path: `${lang}.fact`,
+          message: new RegExp(`dose in words \\("${dose}"\\)`),
+        });
+      }
+    });
+
     it('accepts a count in words that is not a dose', async () => {
       const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
         sub(d, 'fr')['risk-detail'] =
-          "La notice le contre-indique, même pris une seule fois, à une dose plus forte que la petite dose, pendant deux semaines. Une prise unique, une dose inconnue, avant la prochaine prise. Deux à trois fois plus fréquentes, dans une semaine, une fois l'accouchement passé.";
+          "La notice le contre-indique, même pris une seule fois, à une dose plus forte que la petite dose, pendant deux semaines. Une dose inconnue, avant la prochaine prise. Deux à trois fois plus fréquentes, dans une semaine, une fois l'accouchement passé.";
         sub(d, 'en')['risk-detail'] =
           'The label contraindicates it, even taken once, at a higher dose, for two weeks. A dose that is not known, before the next dose, two to three times more frequent, once the birth is over.';
+      });
+      expect(validateContent(raw)).toEqual([]);
+    });
+
+    it('accepts a drop in blood pressure, a sachet of powder and a duration in hours', async () => {
+      const cases: [string, string, string][] = [
+        // "A drop in" a measured quantity is a fall, not an amount.
+        ['en', 'risk', 'It can cause a drop in blood pressure.'],
+        ['en', 'risk-detail', 'A drop in her blood sugar.'],
+        ['en', 'risk-detail', 'A drop in the heart rate.'],
+        ['en', 'fact', 'A drop in milk supply.'],
+        ['en', 'fact', 'A drop in the level of iron.'],
+        // "Un sachet de poudre" names a form, not an amount.
+        ['fr', 'fact', "Il se présente sous forme d'un sachet de poudre."],
+        ['fr', 'fact', 'Un sachet de granulés.'],
+        ['en', 'fact', 'It comes as a sachet of powder.'],
+        ['en', 'fact', 'A sachet of granules.'],
+        // A duration in hours is not an interval between doses.
+        ['fr', 'risk-detail', "L'effet dure pendant six heures."],
+        ['en', 'risk-detail', 'The effect lasts for six hours.'],
+        ['fr', 'fact', 'Toutes les femmes enceintes.'],
+        // A fall in an amount, a contraceptive pill and blood tests are not doses.
+        ['en', 'risk-detail', 'A drop in the amount of fluid around the baby.'],
+        ['en', 'risk-detail', 'A drop in the volume of urine.'],
+        ['fr', 'fact', 'Une pilule contraceptive peut moins bien marcher.'],
+        ['fr', 'fact', 'La pilule du lendemain.'],
+        ['fr', 'risk-detail', 'Deux prises de sang ont montré une anémie.'],
+        ['fr', 'risk-detail', 'Une seule prise de sang.'],
+      ];
+      for (const [lang, field, text] of cases) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang)[field] = text;
+        });
+        expect(validateContent(raw), `${lang} ${text}`).toEqual([]);
+      }
+    });
+
+    it('rejects an amount of a drink: cups, glasses, bowls, and morning and evening', async () => {
+      const cases: [string, string, string][] = [
+        ['fr', 'fact', 'Deux tasses par jour.'],
+        ['fr', 'fact', 'Une tasse de tisane par jour.'],
+        ['fr', 'risk-detail', 'Un verre le matin.'],
+        ['fr', 'fact', "Trois verres d'infusion."],
+        ['fr', 'fact', 'Un bol de bouillie.'],
+        ['fr', 'fact', 'Le matin et le soir.'],
+        ['fr', 'fact', 'Matin et soir.'],
+        ['en', 'fact', 'Two cups a day.'],
+        ['en', 'fact', 'A cup of tea.'],
+        ['en', 'risk-detail', 'A glass in the evening.'],
+        ['en', 'fact', 'Three glasses of the infusion.'],
+        ['en', 'fact', 'A bowl of porridge.'],
+        ['en', 'fact', 'Morning and evening.'],
+      ];
+      for (const [lang, field, text] of cases) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang)[field] = text;
+        });
+        expect(
+          validateContent(raw).some(
+            (p) => p.path === `${lang}.${field}` && /dose in words/.test(p.message),
+          ),
+          `${lang} ${text}`,
+        ).toBe(true);
+      }
+    });
+
+    it('refuses an instruction in a field kept behind "Pourquoi ?": it belongs to the orientation', async () => {
+      const cases: [string, string, string][] = [
+        [
+          'fr',
+          'risk-detail',
+          'Après une césarienne, le risque est plus grand : dites-le à la sage-femme.',
+        ],
+        ['fr', 'fact', 'Allez au poste de santé si elle saigne.'],
+        ['fr', 'risk-detail', 'Montrez la boîte à la sage-femme.'],
+        ['fr', 'risk-detail', 'Parlez-en au médecin.'],
+        ['fr', 'risk-detail', "Si elle saigne, n'attendez pas."],
+        ['fr', 'risk-detail', 'Ne le donnez pas au bébé.'],
+        ['en', 'risk-detail', 'After a caesarean section, the risk is greater: tell the midwife.'],
+        ['en', 'fact', 'Go to the health post if she bleeds.'],
+        ['en', 'risk-detail', 'Show the box to the midwife.'],
+        ['en', 'risk-detail', 'Do not give it to the baby.'],
+      ];
+      for (const [lang, field, text] of cases) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang)[field] = text;
+        });
+        expect(
+          validateContent(raw).some(
+            (p) => p.path === `${lang}.${field}` && /instruction/.test(p.message),
+          ),
+          `${lang} ${text}`,
+        ).toBe(true);
+      }
+    });
+
+    it('accepts a next-contact orientation that says to go now under a condition', async () => {
+      // herb-drug-moringa is then the message of a next-contact rule only.
+      const raw = patch(await fresh(), 'rules', 'moringa-toxic', (d) => {
+        d.message = 'evidence-0';
+      });
+      patch(raw, 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr').orientation =
+          "Dites-le à la sage-femme à la prochaine visite. Après une césarienne ou une autre opération de l'utérus, allez au poste de santé maintenant.";
+        sub(d, 'en').orientation =
+          'Tell the midwife at the next visit. After a caesarean section or other surgery on the womb, go to the health post now.';
+      });
+      expect(
+        validateContent(raw).filter((p) => p.file === 'knowledge/messages/herb-drug-moringa.yaml'),
+      ).toEqual([]);
+    });
+
+    it('accepts what a label or a test says, and an instruction where it is read', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr')['risk-detail'] =
+          "La notice ne la recommande pas et demande de ne pas l'utiliser. Seul un test au poste de santé peut le dire.";
+        sub(d, 'en')['risk-detail'] =
+          'The label asks not to use it. Only a test at the health post can tell. The midwife will ask about it.';
+      });
+      // A reminder speaks to the person helping in its fact, which the result shows.
+      patch(raw, 'messages', 'iptp-reminder', (d) => {
+        sub(d, 'fr').fact = 'Demandez si elle a reçu le traitement préventif.';
       });
       expect(validateContent(raw)).toEqual([]);
     });
@@ -947,6 +1131,55 @@ describe('validateContent', () => {
           sub(d, lang).orientation = text;
         });
         expect(validateContent(before), text).toEqual([]);
+      }
+    });
+
+    it('accepts a consultation the next dose bounds, at the before-next-dose level only', async () => {
+      const moringa = 'knowledge/messages/herb-drug-moringa.yaml';
+      for (const [lang, text] of [
+        ['fr', 'Montrez-le en consultation prénatale avant la prochaine prise.'],
+        ['fr', 'Montrez-le au rendez-vous de suivi, avant la prochaine prise.'],
+        ['en', 'Show it at the appointment before the next dose.'],
+        ['en', 'Show it at the prenatal consultation before the next dose.'],
+      ] as const) {
+        const before = patch(await fresh(), 'messages', NSAID, (d) => {
+          sub(d, lang).orientation = text;
+        });
+        expect(validateContent(before), text).toEqual([]);
+        // A danger has no such deadline: a consultation is later than now.
+        const danger = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang).orientation = `${lang === 'fr' ? 'Allez maintenant.' : 'Go now.'} ${text}`;
+        });
+        expectProblem(validateContent(danger), {
+          file: moringa,
+          path: `${lang}.orientation`,
+          message:
+            /says "(consultation|rendez-vous|appointment)", which gives more time than the level danger/,
+        });
+      }
+      for (const [lang, text, word] of [
+        // More than two words between the appointment and the deadline.
+        [
+          'fr',
+          'Montrez-le à la consultation de la maternité avant la prochaine prise.',
+          'consultation',
+        ],
+        [
+          'en',
+          'Show it at the appointment at the health post before the next dose.',
+          'appointment',
+        ],
+        // Another later word still counts.
+        ['fr', 'Montrez-le demain en consultation avant la prochaine prise.', 'demain'],
+      ] as const) {
+        const raw = patch(await fresh(), 'messages', NSAID, (d) => {
+          sub(d, lang).orientation = text;
+        });
+        expectProblem(validateContent(raw), {
+          file: MESSAGE,
+          path: `${lang}.orientation`,
+          message: new RegExp(`says "${word}".*before-next-dose`),
+        });
       }
     });
 

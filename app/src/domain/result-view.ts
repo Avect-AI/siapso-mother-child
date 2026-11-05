@@ -25,16 +25,26 @@ import {
   type SourceRef,
 } from '@siapso/engine';
 import type { MessageKey, Vars } from '../i18n/translate.js';
+import { formatDate } from './dates.js';
 import type { PossibleMatch } from './possible-matches.js';
 import { displayOf } from './search-index.js';
+import { sourceWords } from './sources.js';
 import type { Mode } from './types.js';
 
 export type Translate = (key: MessageKey, vars?: Vars) => string;
 
 export interface SourceView {
+  /** In the language of the screen. */
   name: string;
   locator: string;
   url?: string;
+  /**
+   * The language of its documents, in words ("documents en anglais"), when it
+   * is not the language of the screen: its locators keep their own titles.
+   */
+  documents?: string;
+  /** The language code of its documents, with `documents`, so a screen reader reads its locators in it. */
+  documentsLang?: Lang;
 }
 
 export interface FindingView {
@@ -44,8 +54,17 @@ export interface FindingView {
   levelLabel: string;
   /** The products or remedies concerned, as confirmed, joined in the language, or the danger sign's label. */
   title: string;
-  /** The same names one by one, so a screen can set each product on its own line. */
+  /**
+   * The same names one by one, so a screen can set each product on its own
+   * line; a strength keeps its unit ("1000 mg", a no-break space).
+   */
   names: string[];
+  /**
+   * The names that are text she typed (a name kept as not recognised, a
+   * possible match named as typed): the screen quotes them under a label,
+   * never as its own words.
+   */
+  typed?: string[];
   /**
    * Read first, in both modes, when the card is about a possible match of a
    * name typed as not recognised (possible-matches.ts): what the name looks
@@ -57,7 +76,10 @@ export interface FindingView {
    * level is said alone (the summary): "ressemble à Huile de ricin".
    */
   resembles?: string;
-  /** The names typed for the products of the card shown under another name ("Vous avez écrit : cytotec"). */
+  /**
+   * The texts typed for the products of the card shown under another name
+   * ("cytotec"): the screen quotes each under "Vous avez écrit".
+   */
   written?: string[];
   /**
    * Read before the risk in both modes: the fact of a danger sign that has a
@@ -79,6 +101,12 @@ export interface FindingView {
    * is the instruction of the danger banner above it, said once there.
    */
   orientation: string | InBanner;
+  /**
+   * Below the danger level, an orientation that says to go now if something
+   * happens ("si le bébé dort beaucoup ... allez au poste de santé
+   * maintenant"): the card offers who to call too.
+   */
+  callNow?: true;
   /** "Terme estimé" or "terme inconnu", when a pregnancy window matched on a range. */
   termNote?: string;
   /** Accompanied mode only: the sources of every finding of the card, each once. */
@@ -166,6 +194,8 @@ export interface ResultView {
   notValidated: boolean;
   /** Set when the pack is not clinically validated. */
   notValidatedLine?: string;
+  /** The same, short, said near the top of the result with the version line. */
+  notValidatedShortLine?: string;
   /** The last line. */
   closing: string;
 }
@@ -203,19 +233,11 @@ function distinct<T>(values: readonly T[]): T[] {
 }
 
 /**
- * The pack date as the language writes it: "05/11/2026" in French, "5
- * November 2026" in English (a month name, so a day and a month are never
- * mixed up). Read as a calendar date, whatever the phone's time zone; a value
- * that is not a date is returned as it is.
+ * A strength held to its unit, so a line never breaks between "1000" and
+ * "mg" in a product name ("DOLIPRANE 1000 mg, comprimé").
  */
-export function formatPackDate(iso: string, lang: Lang): string {
-  const date = new Date(`${iso}T00:00:00Z`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso) || Number.isNaN(date.getTime())) return iso;
-  const options: Intl.DateTimeFormatOptions =
-    lang === 'fr'
-      ? { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }
-      : { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' };
-  return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', options).format(date);
+export function keepUnits(name: string): string {
+  return name.replace(/(\d) (mg|g|ml|µg|mcg|UI|%)(?![\p{L}\p{N}])/gu, '$1 $2');
 }
 
 /** What the result knows of the items besides the evaluation. */
@@ -244,23 +266,35 @@ function messageOf(scope: Scope, id: string): Message {
   return message;
 }
 
-/** The names a finding is about: its products and remedies as confirmed, or its danger sign. */
-function namesOf(scope: Scope, finding: Finding): string[] {
+/** A name of a card, and whether it is text she typed. */
+interface Named {
+  name: string;
+  typed: boolean;
+}
+
+/**
+ * The names a finding is about: its products and remedies as confirmed, a
+ * strength held to its unit, or its danger sign. Text she typed stays as typed.
+ */
+function namesOf(scope: Scope, finding: Finding): Named[] {
   const { pack, lang, items } = scope;
   if (finding.sign !== undefined) {
     const sign = finding.sign;
-    return [pack.dangerSigns.find((d) => d.id === sign)?.label[lang] ?? sign];
+    return [
+      { name: pack.dangerSigns.find((d) => d.id === sign)?.label[lang] ?? sign, typed: false },
+    ];
   }
-  const names = finding.items.flatMap((index) => {
+  const names = finding.items.flatMap((index): Named[] => {
     const item = items[index];
     // A possible match is named as she typed it: the card says what it looks like.
     const typed = scope.possible?.get(index)?.typed;
-    if (typed !== undefined) return [typed];
-    return item === undefined
-      ? []
-      : [displayOf(pack, item.ref, lang, item.strengthUnknown === true).name];
+    if (typed !== undefined) return [{ name: typed, typed: true }];
+    if (item === undefined) return [];
+    if (item.ref.kind === 'unrecognised') return [{ name: item.ref.text, typed: true }];
+    const shown = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
+    return [{ name: keepUnits(shown), typed: false }];
   });
-  return names.length === 0 ? [scope.t(`level.${finding.level}`)] : names;
+  return names.length === 0 ? [{ name: scope.t(`level.${finding.level}`), typed: false }] : names;
 }
 
 /** "Ce nom ressemble à ADVIL 400 mg (Ibuprofène 400 mg). Si c'est ce produit :", for a card about a possible match. */
@@ -291,15 +325,15 @@ function resemblesOf(scope: Scope, finding: Finding): string | undefined {
   return scope.t('result.resembles', { name });
 }
 
-/** "Vous avez écrit : cytotec" for each product of a card shown under another name. */
+/** The text typed ("cytotec") for each product of a card shown under another name. */
 function writtenOf(scope: Scope, finding: Finding): string[] {
-  const lines = finding.items.flatMap((index) => {
+  const texts = finding.items.flatMap((index) => {
     const item = scope.items[index];
     if (item === undefined || scope.possible?.has(index) === true) return [];
     const text = scope.writtenOf?.(item);
-    return text === undefined ? [] : [scope.t('check.writtenAs', { text })];
+    return text === undefined ? [] : [text];
   });
-  return distinct(lines);
+  return distinct(texts);
 }
 
 /** Names joined as the language says a list ("A et B", "A, B et C"). */
@@ -308,25 +342,56 @@ export function joinNames(names: readonly string[], lang: Lang): string {
 }
 
 /**
- * The level's default orientation (spec section 10). For "we do not know" it
- * first says that there is no reliable information and that this does not
- * mean risk-free, leaving out a sentence the card has just said (`said`: what
- * is read before the orientation).
+ * The level's default orientation (spec section 10): before the next dose, in
+ * accompanied mode, worded for the person helping, at a visit or at a sale
+ * (before she takes any, to a health worker); the other levels say the same
+ * in both modes, as the grey messages of the pack do. For "we do not know" it
+ * first says that there is no reliable information and that nobody knows
+ * whether the product can harm, leaving out what the card has just said
+ * (`said`: what is read before the orientation).
  */
 function defaultOrientation(scope: Scope, finding: Finding, said: string): string {
-  const { t } = scope;
-  if (finding.level === 'before-next-dose' && finding.items.length > 1) {
-    return t('result.orientationProducts');
+  const { t, mode } = scope;
+  const accompanied = mode === 'accompanied';
+  if (finding.level === 'before-next-dose') {
+    const several = finding.items.length > 1;
+    if (accompanied) {
+      return t(several ? 'result.orientationProductsAccompanied' : 'result.orientationAccompanied');
+    }
+    return t(several ? 'result.orientationProducts' : 'result.orientation.before-next-dose');
   }
-  if (finding.level !== 'unknown') return t(`result.orientation.${finding.level}`);
+  const orientation = t(`result.orientation.${finding.level}`);
+  if (finding.level !== 'unknown') return orientation;
   const text = said.toLowerCase().replace(/[’]/g, "'");
+  const says = (...keys: MessageKey[]) => keys.some((key) => text.includes(t(key)));
   const lead: string[] = [];
-  if (!text.includes(t('result.unknownSaid.noInformation')))
+  if (!says('result.unknownSaid.noInformation', 'result.unknownSaid.unknown')) {
     lead.push(t('result.unknown.noInformation'));
-  if (!text.includes(t('result.unknownSaid.notRiskFree')))
-    lead.push(t('result.unknown.notRiskFree'));
-  return [...lead, t('result.orientation.unknown')].join(' ');
+  }
+  if (!says('result.unknownSaid.mayHarm', 'result.unknownSaid.notRiskFree')) {
+    lead.push(t('result.unknown.mayHarm'));
+  }
+  return [...lead, orientation].join(' ');
 }
+
+/**
+ * For a danger held at "before the next dose" because the name typed only
+ * looks like its product or remedy (possible-matches.ts: its rule is a danger
+ * rule and it reads a possible match), the kind of what it looks like.
+ */
+function heldDanger(scope: Scope, finding: Finding): 'product' | 'plant' | undefined {
+  if (finding.level === 'danger' || finding.ruleId === undefined) return undefined;
+  if (scope.pack.rules.find((r) => r.id === finding.ruleId)?.level !== 'danger') return undefined;
+  const index = finding.items.find((i) => scope.possible?.has(i) === true);
+  const kind = index === undefined ? undefined : scope.items[index]?.ref.kind;
+  return kind === 'product' || kind === 'plant' ? kind : undefined;
+}
+
+/** The words that say now in an orientation (whole words, any case). */
+const NOW: Readonly<Record<Lang, RegExp>> = {
+  fr: /(?<![\p{L}\p{N}])(?:maintenant|immédiatement)(?![\p{L}\p{N}])/iu,
+  en: /(?<![\p{L}\p{N}])(?:now|immediately)(?![\p{L}\p{N}])/iu,
+};
 
 /** A card as built, before the banner takes over the danger instruction. */
 type CardView = FindingView & { orientation: string };
@@ -358,6 +423,14 @@ function dangerInstruction(
   };
 }
 
+/** A card under a danger banner leaves who to call to the banner's action. */
+function withoutCall(card: FindingView): FindingView {
+  if (card.callNow === undefined) return card;
+  const rest: FindingView = { ...card };
+  delete rest.callNow;
+  return rest;
+}
+
 /** A danger card whose orientation is the banner's instruction leaves it to the banner. */
 function saidInBanner(card: CardView, instruction: string): FindingView {
   return card.level === 'danger' && card.orientation === instruction
@@ -366,13 +439,16 @@ function saidInBanner(card: CardView, instruction: string): FindingView {
 }
 
 /**
- * "Nothing found" (no rule reads the product) and "nothing applies" (no rule
- * applies to this situation): their fact is said in the risk, with the version.
+ * "Nothing found" (no rule reads the product), "nothing applies" (no rule
+ * applies to this situation) and "not recognised" (a name typed as it is):
+ * their fact is said in the risk, in both modes, since it is what she must
+ * know first, never behind "Pourquoi ?".
  */
 function aboutTheBase(finding: Finding): boolean {
   return (
     finding.message === BUILTIN_MESSAGES.nothingFound ||
-    finding.message === BUILTIN_MESSAGES.nothingApplies
+    finding.message === BUILTIN_MESSAGES.nothingApplies ||
+    finding.message === BUILTIN_MESSAGES.notRecognised
   );
 }
 
@@ -386,11 +462,13 @@ function levelLabelOf(t: Translate, finding: Finding): string {
     : t(`level.${finding.level}`);
 }
 
-/** The risk as read: for a message about the base, its first sentence first, with the version and date. */
-function riskOf(scope: Scope, finding: Finding, message: Message): string {
-  if (!aboutTheBase(finding)) return message.risk;
-  const version = scope.t('result.versionInline', { version: scope.version, date: scope.date });
-  return `${message.fact.replace(/\.\s*$/, '')} ${version}. ${message.risk}`;
+/**
+ * The risk as read: for a message about the base, its fact first. The version
+ * and date are not put inside her sentence: the result says them at the top
+ * and at the end.
+ */
+function riskOf(finding: Finding, message: Message): string {
+  return aboutTheBase(finding) ? `${message.fact} ${message.risk}` : message.risk;
 }
 
 /** The sources of a finding; a danger sign's finding carries none, so the sign's own. */
@@ -407,16 +485,20 @@ function sourcesOf(scope: Scope, group: readonly Finding[]): SourceView[] {
   const seen = new Set<string>();
   const sources: SourceView[] = [];
   for (const ref of refs) {
-    const name = scope.pack.sources.find((s) => s.id === ref.source)?.name ?? ref.source;
+    const source = scope.pack.sources.find((s) => s.id === ref.source);
+    const words = source === undefined ? undefined : sourceWords(source, scope.lang);
+    const name = words?.name ?? ref.source;
     const key = `${name}|${ref.locator}|${ref.url ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
     // Never the quote: it is provenance, and some quotes give a dose.
-    sources.push(
-      ref.url === undefined
-        ? { name, locator: ref.locator }
-        : { name, locator: ref.locator, url: ref.url },
-    );
+    const view: SourceView = { name, locator: ref.locator };
+    if (ref.url !== undefined) view.url = ref.url;
+    if (words?.documents !== undefined) {
+      view.documents = scope.t(`sourceDocuments.${words.documents}`);
+      view.documentsLang = words.documents;
+    }
+    sources.push(view);
   }
   return sources;
 }
@@ -427,7 +509,7 @@ function sourcesOf(scope: Scope, group: readonly Finding[]): SourceView[] {
  */
 function riskView(scope: Scope, finding: Finding, message: Message): RiskView {
   const { t } = scope;
-  const risk: RiskView = { text: riskOf(scope, finding, message) };
+  const risk: RiskView = { text: riskOf(finding, message) };
   if (scope.mode === 'woman') return risk;
   if (message.riskDetail !== undefined) risk.detail = message.riskDetail;
   const level = finding.evidence;
@@ -462,16 +544,32 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
       all.findIndex((other) => JSON.stringify(other) === JSON.stringify(risk)) === index,
   );
   const said = [signFact ? message.fact : '', ...distinct(risks.map((r) => r.text))].join(' ');
+  const shown = names.map((n) => n.name);
+  // A danger held down to "before the next dose" for a resemblance branches on
+  // intake: go now if it was taken, else show it first to find out whether it
+  // is the product (committee question N-3). Its urgency is never lowered.
+  const held = heldDanger(scope, finding);
+  const orientation =
+    held === undefined
+      ? (message.orientation ?? defaultOrientation(scope, finding, said))
+      : t(
+          scope.mode === 'accompanied'
+            ? `result.orientationHeld.${held}Accompanied`
+            : `result.orientationHeld.${held}`,
+        );
   const view: CardView = {
     key: `${keyOf(finding)}|${finding.ruleId ?? finding.message}`,
     level: finding.level,
     levelLabel: levelLabelOf(t, finding),
-    title: joinNames(names, scope.lang),
-    names,
+    title: joinNames(shown, scope.lang),
+    names: shown,
     risks,
-    orientation: message.orientation ?? defaultOrientation(scope, finding, said),
+    orientation,
     capped: finding.capped,
   };
+  const typed = names.filter((n) => n.typed).map((n) => n.name);
+  if (typed.length > 0) view.typed = typed;
+  if (finding.level !== 'danger' && NOW[scope.lang].test(orientation)) view.callNow = true;
   if (signFact) view.lead = message.fact;
   const possible = possibleOf(scope, finding);
   if (possible !== undefined) view.possible = possible;
@@ -484,7 +582,7 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   }
   if (mode === 'woman') return view;
 
-  // A message about the base reads its fact in the risk, with the version; a sign's fact is the lead or nothing.
+  // A message about the base reads its fact in the risk; a sign's fact is the lead or nothing.
   if (!aboutTheBase(finding) && !sign) view.fact = message.fact;
   const sources = sourcesOf(scope, group);
   if (sources.length > 0) view.sources = sources;
@@ -563,7 +661,7 @@ export function buildResultView(
     lang,
     t,
     version: evaluation.pack.version,
-    date: formatPackDate(evaluation.pack.date, lang),
+    date: formatDate(evaluation.pack.date, lang),
   };
   const levelLabel = resultLevelLabel(t, evaluation);
   const danger = evaluation.level === 'danger';
@@ -576,8 +674,9 @@ export function buildResultView(
     levelLabel,
     headline,
     danger,
-    // The danger instruction is said once, in the banner.
-    findings: danger ? cards.map((card) => saidInBanner(card, headline)) : cards,
+    // The danger instruction is said once, in the banner, and who to call is its
+    // action alone: it carries the danger and the signs, a card's link would not.
+    findings: danger ? cards.map((card) => withoutCall(saidInBanner(card, headline))) : cards,
     reminders:
       mode === 'accompanied'
         ? evaluation.reminders.map((reminder) => noteView(scope, reminder, 'reminder'))
@@ -589,7 +688,10 @@ export function buildResultView(
     notValidated: !evaluation.pack.clinicallyValidated,
     closing: t('result.closing'),
   };
-  if (view.notValidated) view.notValidatedLine = t('result.notValidated');
+  if (view.notValidated) {
+    view.notValidatedLine = t('result.notValidated');
+    view.notValidatedShortLine = t('result.notValidatedShort');
+  }
   if (instruction !== null) view.headlineSource = instruction.source;
   // A danger that only a resemblance gives says so next to its level.
   const dangers = cards.filter((card) => card.level === 'danger');

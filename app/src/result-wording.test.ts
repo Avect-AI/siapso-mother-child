@@ -21,12 +21,8 @@ import {
 } from '@siapso/engine';
 import { contextOf, loadCases, type ReferenceCase } from '@siapso/pack-tools';
 import { beforeAll, describe, expect, it } from 'vitest';
-import {
-  buildResultView,
-  cardGroups,
-  formatPackDate,
-  type ResultView,
-} from './domain/result-view.js';
+import { formatDate } from './domain/dates.js';
+import { buildResultView, cardGroups, type ResultView } from './domain/result-view.js';
 import type { Mode } from './domain/types.js';
 import { translate, type MessageKey, type Vars } from './i18n/translate.js';
 import { knowledgePack } from './test/knowledge-pack.js';
@@ -91,6 +87,31 @@ describe('result wording over the reference cases', () => {
     });
   });
 
+  it('never says "sans risque" or "risk-free", not even inside a negation', () => {
+    // The checks allow it in a negation, but a listener may catch only the end.
+    eachView((view, label) => {
+      for (const [at, text] of shown(view)) {
+        expect(text, `${label} ${at}`).not.toMatch(/sans risque|risk-free/i);
+      }
+    });
+  });
+
+  it('never says text she typed inside a sentence of its own: only as a name, quoted', () => {
+    let typed = 0;
+    eachView((view, label) => {
+      const texts = view.findings.flatMap((f) => f.typed ?? []);
+      typed += texts.length;
+      for (const [at, text] of shown(view)) {
+        if (/\.(title|names\[\d+\]|typed\[\d+\])$/.test(at)) continue;
+        for (const typedText of texts) {
+          expect(text.includes(typedText), `${label} ${at}: ${text}`).toBe(false);
+        }
+      }
+    });
+    // Not vacuous: a reference case adds a name that is not recognised.
+    expect(typed).toBeGreaterThan(0);
+  });
+
   it('gives no number in woman mode but the version and the dates', () => {
     let accompaniedNumbers = 0;
     eachView((view, label, mode, lang) => {
@@ -102,10 +123,11 @@ describe('result wording over the reference cases', () => {
         return;
       }
       const version = pack.version;
-      const date = formatPackDate(pack.date, lang);
+      const date = formatDate(pack.date, lang);
       for (const [at, text] of shown(view)) {
-        // A product keeps the name she confirmed, strength included (spec section 10).
-        if (/\.(title|names\[\d+\])$/.test(at)) continue;
+        // A product keeps the name she confirmed, strength included (spec section 10),
+        // and text she typed stays as typed.
+        if (/\.(title|names\[\d+\]|typed\[\d+\]|written\[\d+\])$/.test(at)) continue;
         const rest = text.replaceAll(version, '').replaceAll(date, '');
         expect(rest, `${label} ${at}: ${text}`).not.toMatch(/\d/);
       }

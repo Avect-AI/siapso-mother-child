@@ -6,10 +6,10 @@ fr:
   # The term may be estimated or unknown: the fact does not assert it.
   fact: "Ce produit contient une substance qui fait contracter l'utérus, et la grossesse est peut-être avancée."
   risk: "En fin de grossesse, ce type de produit peut provoquer des contractions trop fortes, et des ruptures de l'utérus ont été rapportées : la vie de la mère et du bébé peut être en danger."
-  risk-detail: "La notice américaine indique que le risque de rupture de l'utérus augmente avec l'avancée de la grossesse, et que des contractions trop fortes peuvent gêner le passage du sang vers le bébé. Après une césarienne ou une autre opération de l'utérus, le risque est plus grand : dites-le à la sage-femme."
+  risk-detail: "La notice américaine indique que le risque de rupture de l'utérus augmente avec l'avancée de la grossesse, et que des contractions trop fortes peuvent gêner le passage du sang vers le bébé. Après une césarienne ou une autre opération de l'utérus, le risque est plus grand."
   orientation: 'Allez au poste de santé maintenant, et montrez à la sage-femme ce qui a été pris.'
 en:
   fact: 'This product contains a substance that makes the womb contract, and the pregnancy may be well advanced.'
   risk: 'Late in pregnancy, this type of product can cause contractions that are too strong, and ruptures of the womb have been reported: the life of the mother and the baby can be in danger.'
-  risk-detail: 'The US label says that the risk of rupture of the womb rises as the pregnancy advances, and that contractions that are too strong can hinder the blood flow to the baby. After a caesarean section or other surgery on the womb, the risk is greater: tell the midwife.'
+  risk-detail: 'The US label says that the risk of rupture of the womb rises as the pregnancy advances, and that contractions that are too strong can hinder the blood flow to the baby. After a caesarean section or other surgery on the womb, the risk is greater.'
   orientation: 'Go to the health post now, and show the midwife what was taken.'

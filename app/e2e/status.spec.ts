@@ -57,7 +57,10 @@ test('Status and About open from Home and the settings, offline, with the versio
   ).toBeVisible();
   const facts = page.getByRole('list', { name: 'Contenu de la base' });
   await expect(facts).toContainText(manifest.version);
-  await expect(facts).toContainText(manifest.date);
+  // The date as the result writes it: day, month, year.
+  const [year, month, day] = manifest.date.split('-');
+  await expect(facts).toContainText(`${day ?? ''}/${month ?? ''}/${year ?? ''}`);
+  await expect(facts).not.toContainText(manifest.date);
   await expect(page.getByText(/^Contenu non validé cliniquement/)).toBeVisible();
   await expectNoSeriousViolation(page);
 
@@ -105,11 +108,11 @@ test('the warning appears at 91 days after the pack date, not at 90', async ({ p
   await page.goto('/#/status');
   await page.reload();
   await expect(page.getByRole('list', { name: 'Contenu de la base' })).toBeVisible();
-  await expect(page.getByText(/Base périmée/)).toHaveCount(0);
+  await expect(page.getByText(/Base de connaissances ancienne/)).toHaveCount(0);
 
   await page.clock.setFixedTime(daysAfter(manifest.date, 91));
   await page.reload();
-  await expect(page.getByText(/Base périmée/)).toBeVisible();
+  await expect(page.getByText(/Base de connaissances ancienne/)).toBeVisible();
   await expectNoSeriousViolation(page);
 });
 
@@ -217,7 +220,10 @@ test('accompanied mode: the previous version kept on the phone is put back, and 
   await expect(facts).toContainText('0.0.9');
   await expect(page.getByRole('button', { name: /Revenir à la version/ })).toHaveCount(0);
   await expect(page.getByText(/La version précédente a été remise sur ce téléphone/)).toBeVisible();
-  await expect(page.getByText(/Détail technique : .*was rolled back on this device/)).toBeVisible();
+  // The reason is the code's own English message, said so on a French screen.
+  await expect(
+    page.getByText(/Détail technique \(en anglais\)\s: .*was rolled back on this device/),
+  ).toBeVisible();
 });
 
 test('a demo build says what it is: its build-info.json marker and the test version line', async ({

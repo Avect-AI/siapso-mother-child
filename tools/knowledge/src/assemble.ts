@@ -59,7 +59,10 @@ function plant({ data }: Entry<AuthoredPlant>): Plant {
   };
 }
 
-/** The sources actually cited (allowed and fact-only), sorted by id. */
+/**
+ * The sources actually cited (allowed and fact-only), sorted by id, each with
+ * the language of its documents and its words in French.
+ */
 function sources(content: Content): Source[] {
   const { allowed, factOnly } = citedSources(content);
   return [...allowed, ...factOnly]
@@ -67,7 +70,12 @@ function sources(content: Content): Source[] {
     .map((s) => {
       const version = s.version ?? s.accessed;
       const base = { id: s.id, name: s.name, licence: s.licence, url: s.url };
-      return version === undefined ? base : { ...base, version };
+      const fr = { name: s.fr.name, licence: s.fr.licence };
+      return {
+        ...(version === undefined ? base : { ...base, version }),
+        documents: s.documents,
+        fr: s.fr.version === undefined ? fr : { ...fr, version: s.fr.version },
+      };
     });
 }
 

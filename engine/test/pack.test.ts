@@ -46,6 +46,19 @@ describe('parsePack', () => {
     expect(json).toStrictEqual(fixturePack());
   });
 
+  it('accepts a source with the language of its documents and its words in French', () => {
+    const pack = fixturePack();
+    pack.sources = [
+      {
+        ...at(pack.sources, 0),
+        version: 'Given in each citation',
+        documents: 'en',
+        fr: { name: 'Source de test', licence: 'CC-BY-4.0', version: 'Dans chaque citation' },
+      },
+    ];
+    expect(parsePack(JSON.parse(JSON.stringify(pack)))).toStrictEqual(pack);
+  });
+
   it('accepts the fixture pack after a JSON round trip', () => {
     const json: unknown = JSON.parse(JSON.stringify(fixturePack()));
     expect(parsePack(json)).toStrictEqual(fixturePack());
@@ -627,6 +640,24 @@ describe('parsePack', () => {
           set(at(p.sources, 0), 'version', 2);
         },
         /sources "fixture-source".*version/,
+      ],
+      [
+        (p) => {
+          set(at(p.sources, 0), 'documents', 'de');
+        },
+        /sources "fixture-source".*documents/,
+      ],
+      [
+        (p) => {
+          set(at(p.sources, 0), 'fr', { name: 'Source', licence: 3 });
+        },
+        /sources "fixture-source".*fr\.licence/,
+      ],
+      [
+        (p) => {
+          set(at(p.sources, 0), 'fr', { name: 'Source', licence: 'CC-BY-4.0', version: false });
+        },
+        /sources "fixture-source".*fr\.version/,
       ],
     ];
     for (const [change, pattern] of changes) {
