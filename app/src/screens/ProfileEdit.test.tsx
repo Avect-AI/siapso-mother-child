@@ -94,7 +94,7 @@ describe('ProfileEdit: the common case', () => {
       await screen.findByRole('heading', { level: 1, name: /^Un médicament ou un remède/ }),
     ).toBeVisible();
     // The note names the profile saved (a no-break space before the colon).
-    expect(screen.getByText('Profil enregistré : Moi.')).toBeVisible();
+    expect(await screen.findByText('Profil enregistré : Moi.')).toBeVisible();
     const profiles = await listProfiles();
     expect(profiles).toHaveLength(1);
     expect(profiles[0]).toMatchObject({
@@ -886,7 +886,7 @@ describe('ProfileEdit: deleting a profile', () => {
     await user.click(screen.getByRole('button', { name: 'Supprimer le profil' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
-    expect(screen.getByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();
+    expect(await screen.findByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();
     expect((await listProfiles()).map((p) => p.id)).toEqual(['b']);
     expect(await listHistory('a')).toEqual([]);
   });
