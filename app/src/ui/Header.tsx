@@ -17,7 +17,9 @@ export type HeaderPage = 'home' | 'danger' | null;
  * one (once the code is given, and before it on the danger signs and who to
  * call). On a narrow phone, or at large text, the name shows as the mark alone
  * (still the link's name) and the shortcut's words wrap inside it rather than
- * leave the first row. Takes its text from the caller.
+ * leave the first row. On a wide band (base.css) the two rows show as one, the
+ * shortcut still ending it; the order of the markup, which screen readers and
+ * the keyboard follow, stays this one. Takes its text from the caller.
  */
 export function Header({
   appName,

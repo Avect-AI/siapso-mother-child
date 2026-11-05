@@ -99,6 +99,12 @@ export interface CheckState {
   writtenOf: (item: CheckedItem) => string | undefined;
   /** Whether she said an unrecognised text is none of the products proposed ("Non, aucun de ces..."). */
   declinedOf: (item: CheckedItem) => boolean;
+  /**
+   * Whether the voice heard the name of an item (the name she said for a
+   * product shown under another name, or a text kept as she said it): it is
+   * labelled "Vous avez dit", not "Vous avez écrit".
+   */
+  saidOf: (item: CheckedItem) => boolean;
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
@@ -131,6 +137,11 @@ export interface AddOptions {
    * said under its own name only.
    */
   written?: string;
+  /**
+   * The voice heard the name: `written`, or the unrecognised text. Without it,
+   * the name was typed.
+   */
+  said?: boolean;
 }
 
 /**
@@ -163,6 +174,8 @@ interface CheckData {
   written: Readonly<Record<string, string>>;
   /** The unrecognised texts she said were none of the products proposed, by refKey. */
   declined: Readonly<Record<string, true>>;
+  /** The items whose name the voice heard (written, or the unrecognised text), by refKey. */
+  said: Readonly<Record<string, true>>;
   /** The unfinished lists of the other women of the visit, by profile id. */
   others: Readonly<Record<string, KeptList>>;
   /** The passer-by's answers, when the check is hers. */
@@ -170,7 +183,7 @@ interface CheckData {
 }
 
 /** A list waiting while another woman is looked at: its items and what was said about them. */
-type KeptList = Pick<CheckData, 'items' | 'lists' | 'families' | 'written' | 'declined'>;
+type KeptList = Pick<CheckData, 'items' | 'lists' | 'families' | 'written' | 'declined' | 'said'>;
 
 type Action =
   | { type: 'start'; profileId: string }
@@ -197,6 +210,7 @@ const EMPTY: CheckData = {
   families: {},
   written: {},
   declined: {},
+  said: {},
   others: {},
   quick: null,
 };
@@ -216,8 +230,8 @@ function switched(state: CheckData, profileId: string, quick: Profile | null): C
   const left = state.profileId;
   let others = without(state.others, profileId);
   if (left !== null && state.quick?.id !== left && state.items.length > 0) {
-    const { items, lists, families, written, declined } = state;
-    others = { ...others, [left]: { items, lists, families, written, declined } };
+    const { items, lists, families, written, declined, said } = state;
+    others = { ...others, [left]: { items, lists, families, written, declined, said } };
   }
   const kept = quick === null ? state.others[profileId] : undefined;
   return { ...EMPTY, ...kept, profileId, quick, others };
@@ -270,10 +284,10 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
     item.ref.kind === 'product' && options.family !== undefined
       ? { ...base.families, [item.ref.id]: options.family }
       : base.families;
+  const key = refKey(item.ref);
   // The name typed goes with the product or remedy as it was last confirmed.
   let written = base.written;
   if (item.ref.kind !== 'unrecognised') {
-    const key = refKey(item.ref);
     const others = Object.entries(base.written).filter(([listed]) => listed !== key);
     written = Object.fromEntries(
       options.written === undefined ? others : [...others, [key, options.written]],
@@ -283,9 +297,12 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
     item.ref.kind === 'unrecognised' && options.declined === true
       ? { ...base.declined, [refKey(item.ref)]: true as const }
       : base.declined;
-  const state = { ...base, lists, families, written, declined };
-  const key = identity(item, families);
-  let index = state.items.findIndex((listed) => identity(listed, families) === key);
+  // Heard or typed, as it was last confirmed.
+  const said =
+    options.said === true ? { ...base.said, [key]: true as const } : without(base.said, key);
+  const state = { ...base, lists, families, written, declined, said };
+  const same = identity(item, families);
+  let index = state.items.findIndex((listed) => identity(listed, families) === same);
   if (index < 0 && options.anotherBox !== true) index = unknownToReplace(state, item);
   if (index < 0) {
     return { ...state, items: [...state.items, item], changed: { kind: 'added', item } };
@@ -427,8 +444,19 @@ export function useCheckStore(): CheckState {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
-  const { profileId, items, signs, signsGiven, changed, lists, written, declined, others, quick } =
-    data;
+  const {
+    profileId,
+    items,
+    signs,
+    signsGiven,
+    changed,
+    lists,
+    written,
+    declined,
+    said,
+    others,
+    quick,
+  } = data;
   const pendingOf = useCallback(
     (id: string) => (id === profileId ? items.length : (others[id]?.items.length ?? 0)),
     [profileId, items, others],
@@ -443,6 +471,7 @@ export function useCheckStore(): CheckState {
     (item: CheckedItem) => declined[refKey(item.ref)] === true,
     [declined],
   );
+  const saidOf = useCallback((item: CheckedItem) => said[refKey(item.ref)] === true, [said]);
   return useMemo(
     () => ({
       profileId,
@@ -465,6 +494,7 @@ export function useCheckStore(): CheckState {
       listOf,
       writtenOf,
       declinedOf,
+      saidOf,
       clearChanged,
       setSigns,
       clearSigns,
@@ -491,6 +521,7 @@ export function useCheckStore(): CheckState {
       listOf,
       writtenOf,
       declinedOf,
+      saidOf,
       clearChanged,
       setSigns,
       clearSigns,

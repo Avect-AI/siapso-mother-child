@@ -228,12 +228,10 @@ export function createVoiceService(port: SpeechPort): VoiceService {
         change({ activity: { kind: 'cancelled', lang } });
         return;
       }
+      // The reason as it is: the voice screen tells a voice the server does
+      // not give from a download cut short (installFailureOf).
       const found = failureOf(error, 'transcribe');
-      // Installing, a pack the server does not answer with is a download that failed.
-      const failure: VoiceFailure =
-        found === 'unavailable' || found === 'transcribe' || found === 'denied'
-          ? 'download'
-          : found;
+      const failure: VoiceFailure = found === 'denied' ? 'download' : found;
       change({ activity: { kind: 'failed', lang, failure } });
     }
   }

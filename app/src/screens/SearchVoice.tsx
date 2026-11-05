@@ -4,16 +4,25 @@
 // seconds, thinking, what it heard, what went wrong), and the whole list of
 // a kind to choose from when a name finds nothing.
 import type { EntryKind } from '@siapso/resolver';
-import { useEffect, useId, useMemo, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MAX_RECORDING_SECONDS, type VoiceLang } from '../config/voice.js';
-import { browseEntriesOf, browseGroupsOf, type BrowseEntry } from '../domain/search-index.js';
+import {
+  browseEntriesOf,
+  browseGroupsOf,
+  filterBrowseEntries,
+  type BrowseEntry,
+} from '../domain/search-index.js';
+import { APP_NAME } from '../config.js';
 import { failureMessage, type VoiceState } from '../domain/voice-flow.js';
-import { useLang, useT } from '../i18n/index.js';
+import { useLang, useT, useTNodes, type MessageKey } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
 import { Chevron } from '../ui/Chevron.js';
 import { FinishMark, MicMark } from '../ui/MicMark.js';
+import { TextField } from '../ui/TextField.js';
 import { WarningMark } from '../ui/WarningMark.js';
+import { isInstalledApp } from '../voice/display-mode.js';
+import { localNameKey } from './local-name.js';
 
 /**
  * The microphone: a large square button beside the field. Recording, it
@@ -44,7 +53,7 @@ export interface VoicePanelActions {
   onType: () => void;
   /** The whole list of the kind searched. */
   onBrowse: () => void;
-  /** The voice screen, to install the voice again. */
+  /** The voice screen, to install the voice again (or remove it first). */
   onInstall: () => void;
 }
 
@@ -108,8 +117,13 @@ export function VoicePanel({
       message = t('voice.heard', { text: state.text });
       break;
     case 'heard-none':
-      message =
-        state.text === '' ? t('voice.heardNothing') : t('voice.heard', { text: state.text });
+      if (state.text === '') {
+        // No name at all: one message, and the keyboard (the microphone tries again).
+        message = t('voice.heardNothing');
+        details = <div className="voice__actions">{typeButton}</div>;
+        break;
+      }
+      message = t('voice.heard', { text: state.text });
       details = (
         <>
           {/* What is wrong first, then what to do; the results below do not say it again. */}
@@ -136,20 +150,36 @@ export function VoicePanel({
               {t('voice.install')}
             </Button>
           ) : null}
+          {/* A voice that will not start, or whose files are damaged: removed and installed again there. */}
+          {state.failure === 'load' || state.failure === 'invalid' ? (
+            <Button variant="secondary" onClick={actions.onInstall}>
+              {t('voice.reinstall')}
+            </Button>
+          ) : null}
           {typeButton}
         </div>
       );
       break;
-    case 'denied':
+    case 'denied': {
       message = t('voice.denied');
       warning = true;
+      // The installed app has no browser menu: the phone's settings allow it there.
+      const steps: MessageKey[] = isInstalledApp()
+        ? ['voice.deniedApp1', 'voice.deniedApp2', 'voice.deniedApp3']
+        : ['voice.deniedBrowser1', 'voice.deniedBrowser2', 'voice.deniedBrowser3'];
       details = (
         <>
-          <p>{t('voice.deniedHow')}</p>
+          <ol className="voice__steps" aria-label={t('voice.deniedSteps')}>
+            {steps.map((step) => (
+              <li key={step}>{t(step, { app: APP_NAME })}</li>
+            ))}
+          </ol>
+          <p>{t('voice.deniedWait')}</p>
           <div className="voice__actions">{typeButton}</div>
         </>
       );
       break;
+    }
     case 'cancelled':
       message = t('voice.cancelled');
       break;
@@ -173,12 +203,16 @@ export function VoicePanel({
 }
 
 /**
- * Every remedy, or every medicine family, to choose from when a name finds
- * nothing, by first letter (a heading each, so a screen reader goes from
- * letter to letter), each with its local names (the Wolof name she said is
- * found again). Each opens its confirm screen, as a candidate does: nothing
- * is added from here. The heading takes the focus, so a screen reader starts
- * with what the list is.
+ * Every remedy, or every medicine family once, to choose from when a name
+ * finds nothing, by first letter (a heading each, so a screen reader goes
+ * from letter to letter), each with its local names (the Wolof name she said
+ * is found again; a French or English name is another name, local-name.ts).
+ * The names on the boxes of the generics are entries of their own ("Cytotec",
+ * under C), each saying the generic it opens. A filter keeps the names that
+ * hold what she types, and a row of letters jumps to a letter's heading, so a
+ * list of two hundred names is never scrolled whole. Each entry opens its
+ * confirm screen, as a candidate does: nothing is added from here. The
+ * heading takes the focus, so a screen reader starts with what the list is.
  */
 export function BrowseList({
   kind,
@@ -188,28 +222,82 @@ export function BrowseList({
   onChoose: (entry: BrowseEntry) => void;
 }) {
   const t = useT();
+  const tNodes = useTNodes();
   const lang = useLang();
   const { pack } = useApp();
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
-  const groups = useMemo(
-    () => (pack === null ? [] : browseGroupsOf(browseEntriesOf(pack, kind, lang))),
+  const [filter, setFilter] = useState('');
+  const entries = useMemo(
+    () => (pack === null ? [] : browseEntriesOf(pack, kind, lang)),
     [pack, kind, lang],
+  );
+  const groups = useMemo(
+    () => browseGroupsOf(filterBrowseEntries(entries, filter)),
+    [entries, filter],
   );
   useEffect(() => {
     heading.current?.focus();
   }, []);
+  const letterId = (letter: string) => `${id}-${letter === '#' ? 'other' : letter}`;
+  // A letter's heading comes to the top and takes the focus, so the next Tab is its first name.
+  const jumpTo = (letter: string) => {
+    const target = document.getElementById(letterId(letter));
+    if (target === null) return;
+    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'start' });
+    target.focus();
+  };
   return (
     <section className="search__browse" aria-labelledby={id}>
       <h2 id={id} ref={heading} tabIndex={-1}>
         {t(kind === 'product' ? 'voice.listProduct' : 'voice.listPlant')}
       </h2>
+      <TextField
+        type="search"
+        className="search__filter"
+        label={t('voice.filter')}
+        hint={t('voice.filterHint')}
+        value={filter}
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        enterKeyHint="search"
+        onChange={(event) => {
+          setFilter(event.target.value);
+        }}
+      />
+      {groups.length > 1 ? (
+        <nav className="search__letters" aria-label={t('voice.letters')}>
+          <ul>
+            {groups.map((group) => (
+              <li key={group.letter}>
+                <button
+                  type="button"
+                  className="search__jump"
+                  aria-label={t('voice.letter', { letter: group.letter })}
+                  onClick={() => {
+                    jumpTo(group.letter);
+                  }}
+                >
+                  {group.letter}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
+      <p className="search__filtered" role="status">
+        {groups.length === 0 ? t('voice.filterNone', { text: filter.trim() }) : ''}
+      </p>
       {groups.map((group) => (
         <div className="search__letter" key={group.letter}>
-          <h3 id={`${id}-${group.letter}`}>{group.letter}</h3>
-          <ul className="candidates" aria-labelledby={`${id}-${group.letter}`}>
+          <h3 id={letterId(group.letter)} tabIndex={-1}>
+            {group.letter}
+          </h3>
+          <ul className="candidates" aria-labelledby={letterId(group.letter)}>
             {group.entries.map((entry) => (
-              <li key={entry.id}>
+              <li key={`${entry.id}:${entry.name}`}>
                 <button
                   type="button"
                   className="candidate"
@@ -219,10 +307,15 @@ export function BrowseList({
                 >
                   <span className="candidate__text">
                     <span className="candidate__name">{entry.name}</span>
+                    {entry.brandOf === undefined ? null : (
+                      <span className="candidate__local">
+                        {t('voice.brandOf', { name: entry.brandOf })}
+                      </span>
+                    )}
                     {entry.local.map((local) => (
                       <span className="candidate__local" key={local.lang}>
-                        {t('search.localName', {
-                          name: local.names.join(', '),
+                        {tNodes(localNameKey(local, lang), {
+                          name: <span lang={local.lang}>{local.names.join(', ')}</span>,
                           lang: t(`nameLang.${local.lang}`),
                         })}
                       </span>

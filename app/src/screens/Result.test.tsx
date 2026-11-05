@@ -87,6 +87,7 @@ async function openResult({
   settings = woman,
   packLoader = loaderOf(pack),
   heading = /^Résultat/,
+  said = false,
 }: {
   items: CheckedItem[];
   signs?: string[];
@@ -94,6 +95,8 @@ async function openResult({
   packLoader?: () => Promise<LoadedPack>;
   /** The title the screen opens with. */
   heading?: RegExp;
+  /** The voice heard the names of the items. */
+  said?: boolean;
 }) {
   const probe = probeCheck();
   const view = await renderApp({ settings, hash: '#/', packLoader, children: probe.element });
@@ -101,7 +104,7 @@ async function openResult({
   act(() => {
     const check = probe.current();
     check.start('p1');
-    for (const item of items) check.add(item);
+    for (const item of items) check.add(item, said ? { said: true } : {});
     check.setSigns(signs);
   });
   act(() => {
@@ -229,6 +232,30 @@ describe('Result: a name typed as not recognised that looks like a known one', (
     });
     const [kept] = await listHistory('p1');
     expect(kept).toMatchObject({ level: 'danger', items: [typed] });
+  });
+
+  it('says "Vous avez dit" for a name the voice heard, never "Vous avez écrit"', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-04' },
+        conditions: ['uterine-scar'],
+      }),
+    );
+    await openResult({
+      items: [{ ref: { kind: 'unrecognised', text: 'huile de ricin' } }],
+      said: true,
+    });
+    expect(
+      await screen.findByRole('article', {
+        name: /^On ne sait pas\. Vous avez dit\s:\s«\shuile de ricin\s»$/,
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('article', {
+        name: /^Danger\s: à montrer maintenant\. Vous avez dit\s:\s«\shuile de ricin\s»$/,
+      }),
+    ).toBeVisible();
+    expect(screen.queryByText(/Vous avez écrit/)).toBeNull();
   });
 
   it('says in the banner and the summary that the danger is a resemblance', async () => {

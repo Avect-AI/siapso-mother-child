@@ -28,7 +28,9 @@ export interface FlowState {
   id?: string;
   /**
    * On the search entry, the text in the field is what the voice heard, not
-   * yet edited: it is never added as typed, even after Back.
+   * yet edited: with candidates on offer it is not added as typed, even
+   * after Back. On the confirm entry, the query was heard: the name she said
+   * is labelled "Vous avez dit".
    */
   heard?: boolean;
 }

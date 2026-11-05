@@ -4,12 +4,16 @@ import { describe, expect, it } from 'vitest';
 import { translate } from '../i18n/translate.js';
 import {
   IDLE,
+  INSTALL_FAILURES,
   VOICE_FAILURES,
   cleanTranscript,
   failureMessage,
   failureOf,
+  installFailureMessage,
+  installFailureOf,
   isBusy,
   voiceFlow,
+  type InstallFailure,
   type VoiceEvent,
   type VoiceState,
 } from './voice-flow.js';
@@ -213,5 +217,71 @@ describe('failureMessage', () => {
       }
     }
     expect(new Set(VOICE_FAILURES.map(failureMessage)).size).toBe(VOICE_FAILURES.length);
+  });
+
+  it('never sends her to a button that is not there, nor to the health post to report it', () => {
+    for (const failure of VOICE_FAILURES) {
+      for (const lang of ['fr', 'en'] as const) {
+        const text = translate(lang, failureMessage(failure));
+        expect(text, `${lang} ${failure}`).not.toMatch(
+          /Reprendre|Resume|poste de santé|health post/,
+        );
+      }
+    }
+  });
+});
+
+describe('installFailureOf', () => {
+  it('tells a voice the server does not give (or no Internet) from files that came damaged', () => {
+    expect(installFailureOf('unavailable', 0)).toBe('unavailable');
+    expect(installFailureOf('invalid', 0)).toBe('damaged');
+    expect(installFailureOf('storage', 0)).toBe('storage');
+  });
+
+  it('says a download cut short only when part of the voice is kept, to resume', () => {
+    expect(installFailureOf('download', 1000)).toBe('interrupted');
+    // Nothing came: the server or the Internet did not give the voice.
+    expect(installFailureOf('download', 0)).toBe('unavailable');
+  });
+
+  it('keeps apart a damaged file dropped while the files before it are kept (review of #58)', () => {
+    expect(installFailureOf('invalid', 1000)).toBe('damagedKept');
+  });
+
+  it('reads any other failure as a voice that could not be downloaded', () => {
+    expect(installFailureOf('transcribe', 0)).toBe('unavailable');
+    expect(installFailureOf('unsupported', 0)).toBe('unavailable');
+  });
+
+  it('has a plain message for each, that sends her somewhere useful', () => {
+    for (const failure of INSTALL_FAILURES) {
+      for (const lang of ['fr', 'en'] as const) {
+        const text = translate(lang, installFailureMessage(failure));
+        expect(text.length).toBeGreaterThan(20);
+        expect(text).not.toMatch(/dites-le|tell the health post/i);
+      }
+    }
+    // Only the failures that keep part of the voice name the button that resumes it, by its words.
+    const resumable = ['interrupted', 'damagedKept'];
+    for (const failure of resumable) {
+      expect(translate('fr', installFailureMessage(failure as InstallFailure))).toMatch(
+        /«\sReprendre l'installation\s»/,
+      );
+      expect(translate('en', installFailureMessage(failure as InstallFailure))).toMatch(
+        /"Resume the installation"/,
+      );
+    }
+    for (const failure of INSTALL_FAILURES.filter((f) => !resumable.includes(f))) {
+      expect(translate('fr', installFailureMessage(failure))).not.toMatch(/Reprendre/);
+    }
+    expect(translate('fr', installFailureMessage('unavailable'))).toMatch(/écrivez le nom/);
+  });
+
+  it('says what was kept as it is: nothing for damaged files, the files before for one damaged file', () => {
+    expect(translate('fr', installFailureMessage('damaged'))).toMatch(/ils n'ont pas été gardés/);
+    const kept = translate('fr', installFailureMessage('damagedKept'));
+    expect(kept).toMatch(/^Un fichier de la voix reçu était abîmé/);
+    expect(kept).toMatch(/Ce qui est déjà téléchargé est gardé/);
+    expect(kept).not.toMatch(/ils n'ont pas été gardés/);
   });
 });

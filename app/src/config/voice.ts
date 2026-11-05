@@ -3,8 +3,8 @@
 // the voice screen says how much there is to download before anything is
 // downloaded. The folders are VOICE_PACKS of @siapso/speech (checked in
 // voice.test.ts), repeated here so the main bundle does not load the speech
-// package: it is loaded only when the voice is used.
-import type { Lang } from '@siapso/engine';
+// package: it is loaded only when the voice is used. No language is chosen
+// for her: the voice screen asks it (live test round 2).
 
 export type VoiceLang = 'wo' | 'fr';
 
@@ -25,14 +25,6 @@ export const VOICE_PACK_OPTIONS: readonly VoicePackOption[] = [
 
 /** A recording ends by itself after this many seconds (MAX_RECORDING_MS of @siapso/speech). */
 export const MAX_RECORDING_SECONDS = 8;
-
-/**
- * The pack chosen at first: the interface language when a pack has it,
- * French otherwise (no English pack; French is the language of the boxes).
- */
-export function defaultVoiceLang(lang: Lang): VoiceLang {
-  return VOICE_PACK_OPTIONS.some((option) => option.lang === lang) ? (lang as VoiceLang) : 'fr';
-}
 
 /** A size in whole megabytes (10^6 bytes), as a phone shows it; at least 1 for any data. */
 export function megabytes(bytes: number): number {

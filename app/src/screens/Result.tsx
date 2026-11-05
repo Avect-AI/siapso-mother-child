@@ -232,20 +232,27 @@ function FindingMeta({ finding }: { finding: FindingView }) {
  * never read as two, nor two as one: the language's list words ("et") start
  * the next line, light; a comma between names is only said, not shown. A name
  * she typed (`typed`) is quoted (Typed): under its label when `labelled` (the
- * card), with the label for a screen reader alone otherwise (the summary).
+ * card), with the label for a screen reader alone otherwise (the summary);
+ * "Vous avez dit" for one the voice heard (`said`).
  */
 function Names({
   names,
   typed = [],
+  said = [],
   labelled = false,
 }: {
   names: readonly string[];
   typed?: readonly string[] | undefined;
+  said?: readonly string[] | undefined;
   labelled?: boolean;
 }) {
   const lang = useLang();
   const shown = (name: string): ReactNode =>
-    typed.includes(name) ? <Typed text={name} label={labelled ? 'shown' : 'hidden'} /> : name;
+    typed.includes(name) ? (
+      <Typed text={name} label={labelled ? 'shown' : 'hidden'} said={said.includes(name)} />
+    ) : (
+      name
+    );
   if (names.length < 2) return <>{shown(names[0] ?? '')}</>;
   const parts = new Intl.ListFormat(lang, { type: 'conjunction', style: 'long' }).formatToParts(
     names,
@@ -323,7 +330,7 @@ function Finding({ finding }: { finding: FindingView }) {
     <ResultCard
       level={finding.level}
       levelLabel={finding.levelLabel}
-      title={<Names names={finding.names} typed={finding.typed} labelled />}
+      title={<Names names={finding.names} typed={finding.typed} said={finding.said} labelled />}
       headingLevel={2}
       orientation={typeof finding.orientation === 'string' ? finding.orientation : null}
       {...(finding.callNow === true ? { action: <CallNow /> } : {})}
@@ -333,7 +340,7 @@ function Finding({ finding }: { finding: FindingView }) {
     >
       {(finding.written ?? []).map((text) => (
         <p key={text} className="meta">
-          <Typed text={text} label="shown" />
+          <Typed text={text} label="shown" said={finding.said?.includes(text) === true} />
         </p>
       ))}
       {finding.possible === undefined ? null : (
@@ -372,7 +379,7 @@ function Summary({ view }: { view: ResultView }) {
             {finding.resembles === undefined ? null : ` (${finding.resembles})`}
             <span className="sr-only">.</span>{' '}
             <span>
-              <Names names={finding.names} typed={finding.typed} />
+              <Names names={finding.names} typed={finding.typed} said={finding.said} />
             </span>
           </span>
         </li>
@@ -579,13 +586,13 @@ export function Result() {
         lang,
         t,
         evaluated.conditions,
-        { possible: evaluated.possible, writtenOf: check.writtenOf },
+        { possible: evaluated.possible, writtenOf: check.writtenOf, saidOf: check.saidOf },
       );
     } catch (failure) {
       console.warn('The result could not be shown', failure);
       return 'failed';
     }
-  }, [evaluated, pack, mode, lang, t, check.writtenOf]);
+  }, [evaluated, pack, mode, lang, t, check.writtenOf, check.saidOf]);
 
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
