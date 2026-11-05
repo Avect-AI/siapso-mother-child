@@ -15,7 +15,9 @@ export function PostTermAdvice({ mode }: { mode: Mode }) {
   const t = useT();
   return (
     <div className="post-term">
-      <Notice>{t(mode === 'accompanied' ? 'postTerm.adviceAccompanied' : 'postTerm.adviceWoman')}</Notice>
+      <Notice>
+        {t(mode === 'accompanied' ? 'postTerm.adviceAccompanied' : 'postTerm.adviceWoman')}
+      </Notice>
       <a className="button button--secondary post-term__call" href={`#${CALL_PATH}`}>
         {t('postTerm.call')}
       </a>

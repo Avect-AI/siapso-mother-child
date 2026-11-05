@@ -714,7 +714,10 @@ describe('ProfileEdit: an outdated term', () => {
     await user.click(screen.getByRole('link', { name: 'Mettre à jour le profil de Bineta' }));
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: /^Le terme noté a peut-être passé 42 semaines/ }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /^Le terme noté a peut-être passé 42 semaines/,
+      }),
     ).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Non, toujours enceinte' }));
     expect(await screen.findByText("Donnez le terme d'aujourd'hui.")).toBeVisible();

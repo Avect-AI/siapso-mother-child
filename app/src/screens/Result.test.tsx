@@ -693,7 +693,9 @@ describe('Result: the term it was worked out on', () => {
 
     const card = await screen.findByRole('article');
     expect(
-      screen.getByText(/^La date du téléphone semble fausse\s: elle est avant un jour où l'application a déjà servi/),
+      screen.getByText(
+        /^La date du téléphone semble fausse\s: elle est avant un jour où l'application a déjà servi/,
+      ),
     ).toBeVisible();
     expect(
       within(card).getByText(/^Terme inconnu\s: ce résultat tient compte de toute la grossesse/),
@@ -730,7 +732,9 @@ describe('Result: the term it was worked out on', () => {
 
     await screen.findByRole('article');
     expect(
-      screen.getByText(/le terme est inconnu et votre bébé est peut-être né\s: ce résultat tient compte/),
+      screen.getByText(
+        /le terme est inconnu et votre bébé est peut-être né\s: ce résultat tient compte/,
+      ),
     ).toBeVisible();
   });
 
@@ -744,9 +748,10 @@ describe('Result: the term it was worked out on', () => {
         /^Allez au poste de santé aujourd'hui\s: une grossesse de plus de 42 semaines doit être vue\.$/,
       ),
     ).toBeVisible();
-    expect(
-      screen.getAllByRole('link', { name: 'Voir qui appeler' })[0],
-    ).toHaveAttribute('href', '#/danger/call');
+    expect(screen.getAllByRole('link', { name: 'Voir qui appeler' })[0]).toHaveAttribute(
+      'href',
+      '#/danger/call',
+    );
     expect(
       screen.getByText(/^Terme utilisé pour ce résultat\s: plus de 42 semaines$/),
     ).toBeVisible();
@@ -791,9 +796,7 @@ describe('Result: the term it was worked out on', () => {
     await openResult({ items: [ADVIL] });
 
     const card = await screen.findByRole('article');
-    expect(
-      screen.getByText(/^La date du téléphone semble fausse/),
-    ).toBeVisible();
+    expect(screen.getByText(/^La date du téléphone semble fausse/)).toBeVisible();
     expect(within(card).getByText(/^Terme inconnu\s: ce résultat tient compte/)).toBeVisible();
   });
 

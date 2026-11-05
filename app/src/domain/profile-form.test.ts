@@ -938,9 +938,19 @@ describe('updating an outdated profile', () => {
 
   it('"still pregnant" past 42 weeks: read as more than 42 weeks from today', () => {
     const form = postTermForm(formFromProfile(outdated, TODAY, 'woman'));
-    expect(form).toMatchObject({ pregnant: 'yes', termKind: 'post-term', months: '', keptTerm: null });
+    expect(form).toMatchObject({
+      pregnant: 'yes',
+      termKind: 'post-term',
+      months: '',
+      keptTerm: null,
+    });
     expect(validateForm(form, TODAY, 'woman')).toEqual({});
-    const profile = profileFromForm(form, { base: outdated, id: 'x', nowIso: NOW, todayIso: TODAY });
+    const profile = profileFromForm(form, {
+      base: outdated,
+      id: 'x',
+      nowIso: NOW,
+      todayIso: TODAY,
+    });
     expect(profile.term).toEqual({ kind: 'post-term', givenOn: TODAY });
     // The rules read 42 weeks and over, never an unknown term.
     expect(contextFromProfile(profile, { items: [], signs: [] }, TODAY).pregnancy).toEqual({

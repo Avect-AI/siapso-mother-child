@@ -525,7 +525,10 @@ export function pseudonymWarning(
     const numbered = /\p{N}/u.test(key);
     const near = taken.find((other) => {
       const otherKey = compactKey(other);
-      if (otherKey === '' || otherKey === key && pseudonymKey(other) === pseudonymKey(pseudonym)) {
+      if (
+        otherKey === '' ||
+        (otherKey === key && pseudonymKey(other) === pseudonymKey(pseudonym))
+      ) {
         return false;
       }
       // "Femme 1" and "Femme 2": the numbers tell them apart.

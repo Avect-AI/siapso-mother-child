@@ -101,15 +101,18 @@ export const en: Dictionary = {
     confirmTitle: 'Type the new code a second time',
     same: 'The new code is the same as the current one: choose another one.',
     changing: 'The new code is being prepared.',
-    failed: 'The code could not be changed on this phone: the current code is still the one. Try again.',
+    failed:
+      'The code could not be changed on this phone: the current code is still the one. Try again.',
     doneTitle: 'The code is changed',
-    doneLead: 'The new code opens the app and the saved answers. The old code opens nothing any more.',
+    doneLead:
+      'The new code opens the app and the saved answers. The old code opens nothing any more.',
     back: 'Back to settings',
     cancel: 'Keep the current code',
   },
   autoLock: {
     soon: 'The app is about to lock: touch the screen to continue.',
-    soonPasserBy: 'The app is about to lock: her answers will be cleared. Touch the screen to continue.',
+    soonPasserBy:
+      'The app is about to lock: her answers will be cleared. Touch the screen to continue.',
     stay: 'Continue',
     restored: 'Your answers are back, but they are not saved yet.',
   },
@@ -302,7 +305,8 @@ export const en: Dictionary = {
     notFound: 'This profile is not on this phone. Go back to the home screen.',
     warning: {
       near: 'A close nickname is already on this phone: {name}. Choose a clearly different one, so they are not mixed up.',
-      realName: 'This nickname looks like a first name and a family name: a nickname, never the real name.',
+      realName:
+        'This nickname looks like a first name and a family name: a nickname, never the real name.',
     },
     error: {
       pseudonym: 'Write a nickname.',

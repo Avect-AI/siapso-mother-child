@@ -274,14 +274,7 @@ export function SessionProvider({
   startUnlocked = false,
 }: SessionOptions & { children: ReactNode }) {
   const { settings, setSettings, storageTimeoutMs } = useApp();
-  const {
-    reset,
-    forget,
-    forgetOthers,
-    forgetQuick,
-    quick,
-    profileId: checkProfileId,
-  } = useCheck();
+  const { reset, forget, forgetOthers, forgetQuick, quick, profileId: checkProfileId } = useCheck();
   // Whether the check on screen is a passer-by's, read by the lock.
   const passerBy = useRef(false);
   useEffect(() => {

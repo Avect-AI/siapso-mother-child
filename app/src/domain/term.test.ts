@@ -266,7 +266,12 @@ describe('termDisplay: past 42 weeks, still pregnant', () => {
 
   it('may be born from the next day, and is asked again after a week', () => {
     const at = (days: number) => statusAfter({ kind: 'post-term' }, days);
-    expect([at(0), at(1), at(7), at(8)]).toEqual(['ok', 'possibly-past', 'possibly-past', 'outdated']);
+    expect([at(0), at(1), at(7), at(8)]).toEqual([
+      'ok',
+      'possibly-past',
+      'possibly-past',
+      'outdated',
+    ]);
     expect(readTerm({ kind: 'post-term', givenOn: addDays(TODAY, 1) }, TODAY).status).toBe('clock');
   });
 
@@ -278,9 +283,7 @@ describe('termDisplay: past 42 weeks, still pregnant', () => {
     // Within 42 weeks: the term as given.
     expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -42 * 7) }, TODAY)).toBe('no');
     // 45 weeks or more: no pregnancy lasts so long, the date is looked at again.
-    expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -45 * 7) }, TODAY)).toBe(
-      'too-long',
-    );
+    expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -45 * 7) }, TODAY)).toBe('too-long');
   });
 });
 

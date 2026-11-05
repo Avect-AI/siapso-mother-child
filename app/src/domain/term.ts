@@ -219,7 +219,11 @@ export function pastTermToday(
 }
 
 /** "Past 42 weeks, still pregnant", read by how long ago it was said. */
-function readPostTerm(givenOn: string | undefined, todayIso: string, fallback?: string): TermReading {
+function readPostTerm(
+  givenOn: string | undefined,
+  todayIso: string,
+  fallback?: string,
+): TermReading {
   const days = daysSince(givenOn, todayIso, fallback);
   if (days === null) return { status: 'outdated' };
   if (days < 0) return { status: 'clock' };

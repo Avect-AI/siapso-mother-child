@@ -121,22 +121,25 @@ describe('Quick exit', () => {
     ['#/about', 'À propos'],
     ['#/status', 'Base de connaissances'],
     ['#/voice', "Parler au lieu d'écrire"],
-  ])('is on %s before the code (it says what the app is for), and leaves the neutral screen', async (hash, title) => {
-    await renderApp({
-      settings: woman,
-      hash,
-      locked: true,
-      packLoader: loaderOf(pack),
-      voice: createVoiceService(fakeSpeech().port),
-    });
-    expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible();
-    const user = userEvent.setup();
+  ])(
+    'is on %s before the code (it says what the app is for), and leaves the neutral screen',
+    async (hash, title) => {
+      await renderApp({
+        settings: woman,
+        hash,
+        locked: true,
+        packLoader: loaderOf(pack),
+        voice: createVoiceService(fakeSpeech().port),
+      });
+      expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible();
+      const user = userEvent.setup();
 
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }));
+      await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
-    expect(window.location.hash).toBe('#/');
-  });
+      expect(await screen.findByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+      expect(window.location.hash).toBe('#/');
+    },
+  );
 
   it('is not on the code screen, which says nothing of what the app is for', async () => {
     await renderApp({ settings: woman, locked: true });

@@ -180,12 +180,12 @@ export function Check() {
       const active = activeProfile(profiles, mode, profileId);
       // The last result kept for her: a phone date before it is a clock set back.
       const lastAt = active === undefined ? undefined : await latestHistoryAt(active.id);
-      return { profiles, active, lastAt };
+      return { active, lastAt };
     };
     // What is done with the profile is in the chain too: an error there says
     // the profiles could not be read, never leaves the screen empty.
     withTimeout(load(), storageTimeoutMs)
-      .then(({ profiles, active, lastAt }) => {
+      .then(({ active, lastAt }) => {
         if (!live) return;
         if (active === undefined) {
           // Accompanied mode, none chosen: she is chosen in the list (a

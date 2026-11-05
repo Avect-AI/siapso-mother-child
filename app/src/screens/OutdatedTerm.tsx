@@ -20,7 +20,9 @@ export type ProfileUpdate = 'born' | 'term' | 'post-term' | 'ask';
  * was known (a last period, weeks, months or past 42 weeks already); a term
  * unknown, or a pregnancy not known, says nothing of 42 weeks: given again.
  */
-export function stillPregnantUpdate(profile: Pick<Profile, 'term' | 'pregnancyUnsure'>): ProfileUpdate {
+export function stillPregnantUpdate(
+  profile: Pick<Profile, 'term' | 'pregnancyUnsure'>,
+): ProfileUpdate {
   const known = profile.pregnancyUnsure !== true && profile.term !== undefined;
   return known && profile.term?.kind !== 'unknown' ? 'post-term' : 'term';
 }

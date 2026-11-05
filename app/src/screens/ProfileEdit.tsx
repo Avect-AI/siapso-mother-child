@@ -292,7 +292,8 @@ export function ProfileQuestions({
 
   const allErrors = validateForm(form, today, mode, taken, seen);
   // What may mislead in the pseudonym typed: said, never refused.
-  const pseudonymNote = form.pseudonym.trim() === '' ? null : pseudonymWarning(form.pseudonym, taken);
+  const pseudonymNote =
+    form.pseudonym.trim() === '' ? null : pseudonymWarning(form.pseudonym, taken);
   const errors = attempts > 0 ? allErrors : typedErrors(form, allErrors);
   // Neither pregnant nor breastfeeding on a saved profile (the baby is born, not
   // breastfed): said plainly with the way to delete it, never as a refusal.
@@ -496,7 +497,9 @@ export function ProfileQuestions({
           value={form.pregnant}
           onChange={answerPregnant}
         />
-        {form.pregnant === 'yes' && clockBehind ? <Notice>{t('profile.clockBehind')}</Notice> : null}
+        {form.pregnant === 'yes' && clockBehind ? (
+          <Notice>{t('profile.clockBehind')}</Notice>
+        ) : null}
         {form.pregnant === 'yes' ? (
           <>
             <RadioGroup<TermInput['kind']>
@@ -591,7 +594,11 @@ export function ProfileQuestions({
             {monthsPastNine(form) ? (
               <div className="inline-question" role="group" aria-labelledby={`${weeksId}-nine`}>
                 <p id={`${weeksId}-nine`}>
-                  {t(mode === 'accompanied' ? 'postTerm.pastNineAccompanied' : 'postTerm.pastNineWoman')}
+                  {t(
+                    mode === 'accompanied'
+                      ? 'postTerm.pastNineAccompanied'
+                      : 'postTerm.pastNineWoman',
+                  )}
                 </p>
                 <div className="inline-question__actions">
                   <Button
@@ -813,7 +820,9 @@ export function ProfileQuestions({
       <div className="profile__save">
         <div role="alert">
           {saveFailed === false ? null : (
-            <Notice>{t(saveFailed === 'gone' ? 'profile.goneOnSave' : 'profile.saveFailed')}</Notice>
+            <Notice>
+              {t(saveFailed === 'gone' ? 'profile.goneOnSave' : 'profile.saveFailed')}
+            </Notice>
           )}
         </div>
         {/* Never a save that does nothing: while the app no longer covers her, the

@@ -38,9 +38,7 @@ describe('ChangeCode', () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole('link', { name: 'Changer le code' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Changer le code' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Changer le code' })).toBeVisible();
     expect(screen.getByLabelText('Code actuel')).toBeVisible();
   });
 

@@ -96,8 +96,9 @@ const KEYPAD_COLUMNS = ['147', '258', '369'] as const;
 /** Days in each month, 29 for February (a birth date can be the 29th). */
 const MONTH_DAYS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 
+/** ASCII digits only: each code unit is one digit. */
 function reversed(text: string): string {
-  return [...text].reverse().join('');
+  return Array.from({ length: text.length }, (_, i) => text.charAt(text.length - 1 - i)).join('');
 }
 
 /**

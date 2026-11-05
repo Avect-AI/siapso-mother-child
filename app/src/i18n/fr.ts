@@ -200,7 +200,8 @@ export const fr = {
     updateNamed: 'Mettre à jour le profil de {name}',
     deleted: 'Profil supprimé : {name}.',
     // A lock let a passer-by go: said once, so the keeper knows why her answers are gone.
-    passerByCleared: 'Pour sa confidentialité, les réponses de la femme de passage ont été effacées.',
+    passerByCleared:
+      'Pour sa confidentialité, les réponses de la femme de passage ont été effacées.',
   },
   // Where a profile stands, in plain words: on the list, the check and the result.
   profileStatus: {
