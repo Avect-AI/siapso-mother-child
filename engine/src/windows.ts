@@ -10,6 +10,16 @@ export const WINDOWS: readonly { id: WindowId; from: number; to: number }[] = Ob
 ]);
 
 /**
+ * Days past the upper end of the term that a finding looks ahead to: a course
+ * of treatment goes on over the coming days, so a window the woman reaches
+ * within this time is looked up as well. A whole number of weeks, so a term
+ * in whole weeks stays in whole weeks. A conservative engineering default, to
+ * be confirmed by the clinical committee (open question 1 in section 13 of
+ * docs/superpowers/specs/2026-11-03-implementation-design.md).
+ */
+export const TERM_LOOKAHEAD_DAYS = 14;
+
+/**
  * Every window intersecting the closed range [weeksMin, weeksMax], in window
  * order. Throws a RangeError for a range that is not finite, negative or empty,
  * so that a bad term can never silently match no window.

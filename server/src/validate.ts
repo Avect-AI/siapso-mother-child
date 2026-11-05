@@ -12,8 +12,9 @@ export const MAX_UNRECOGNISED_TEXT = 80;
 
 const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', minLength: 1, maxLength: 64 };
 /**
- * The app reads a month estimate moved on by the weeks since it was given, so
- * weeksMax can pass 45 (about 54); weeksMin stays within 45 weeks. 60 leaves room.
+ * The app sends no term past 42 weeks (an outdated term is updated before any
+ * result), but the API accepts other callers' ranges: weeksMin within 45
+ * weeks, weeksMax up to 60.
  */
 const WEEKS_MIN = { type: 'integer', minimum: 0, maximum: 45 };
 const WEEKS_MAX = { type: 'integer', minimum: 0, maximum: 60 };

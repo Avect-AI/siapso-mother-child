@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Pack } from '@siapso/engine';
 import { buildPack, loadContent } from '@siapso/pack-tools';
+import { todayIso } from '../domain/dates.js';
 import type { Profile } from '../domain/types.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -17,13 +18,17 @@ export function knowledgePack(): Promise<Pack> {
   return built;
 }
 
-/** A stored profile: pregnant at 26 weeks, no situation, unless `patch` says otherwise. */
+/**
+ * A stored profile: pregnant at 26 weeks given today (the phone's clock, faked
+ * or not, so the term never grows outdated as the calendar moves on), no
+ * situation, unless `patch` says otherwise.
+ */
 export function profileOf(patch: Partial<Profile> = {}): Profile {
   return {
     id: 'p1',
     pseudonym: 'Awa',
     pregnant: true,
-    term: { kind: 'weeks', weeks: 26, givenOn: '2026-11-04' },
+    term: { kind: 'weeks', weeks: 26, givenOn: todayIso(new Date()) },
     breastfeeding: false,
     conditions: [],
     longTermItems: [],

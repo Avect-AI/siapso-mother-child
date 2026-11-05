@@ -4,16 +4,19 @@ import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { HistoryEntry } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
+import { profileOf } from '../test/knowledge-pack.js';
 import { verifierOf } from '../test/verifier.js';
 import { closeAppDb, storeVerifier } from './db.js';
 import {
   forgetVisit,
   HISTORY_PER_PROFILE,
   historyEntryOf,
+  latestHistoryAt,
   listHistory,
   recordHistory,
   recordHistoryOnce,
 } from './history.js';
+import { deleteProfile, saveProfile } from './profiles.js';
 
 // Profile data is written only while a code is on the phone (code-guard.ts).
 beforeEach(async () => {
@@ -34,7 +37,27 @@ function entry(profileId: string, n: number): HistoryEntry {
   };
 }
 
+// History is kept only for a profile that is on the phone.
+beforeEach(async () => {
+  for (const id of ['p1', 'p2', 'p3']) await saveProfile(profileOf({ id }));
+});
+
 describe('recordHistory', () => {
+  it('keeps nothing for a profile no longer on the phone (deleted meanwhile)', async () => {
+    await deleteProfile('p2');
+    expect(await recordHistory(entry('p2', 1))).toBe(false);
+    expect(await listHistory('p2')).toEqual([]);
+    expect(await recordHistoryOnce(entry('p2', 2))).toBe(false);
+    expect(await listHistory('p2')).toEqual([]);
+  });
+
+  it('gives the day of the latest evaluation kept for a profile', async () => {
+    expect(await latestHistoryAt('p1')).toBeUndefined();
+    await recordHistory(entry('p1', 2));
+    await recordHistory(entry('p1', 1));
+    expect(await latestHistoryAt('p1')).toBe(entry('p1', 2).at);
+  });
+
   it('keeps an evaluation on the phone, newest first', async () => {
     await recordHistory(entry('p1', 1));
     await recordHistory(entry('p1', 2));
@@ -120,7 +143,9 @@ describe('recordHistoryOnce', () => {
     await expect(recordHistoryOnce(entry('p3', 1))).rejects.toThrow('storage refused');
     globalThis.indexedDB = new IDBFactory();
     closeAppDb();
+    // A new, empty storage: the code, then her profile, are saved there first.
     await storeVerifier(await verifierOf('2468'));
+    await saveProfile(profileOf({ id: 'p3' }));
     expect(await recordHistoryOnce(entry('p3', 2))).toBe(true);
   });
 });

@@ -1280,6 +1280,35 @@ a {
   overflow-wrap: break-word;
 }
 
+/* The pseudonym, then where she stands, each on its own line, in the reading order. */
+.profiles__label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.profiles__name {
+  font-weight: var(--font-weight-strong);
+}
+
+.profiles__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-body);
+}
+
+/* "To be updated": in ink, with the triangle, never in a level colour. */
+.profiles__status--update {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  color: var(--color-text);
+  font-weight: var(--font-weight-strong);
+}
+
+.profiles__status--update svg {
+  flex: none;
+}
+
 /* At the end of the row, and at the end of its own line when large text wraps it. */
 .profiles__edit {
   margin-inline: auto calc(-1 * var(--space-3));
@@ -1488,6 +1517,35 @@ a {
 
 .profile__submit {
   width: 100%;
+}
+
+/* Why the screen opened from the outdated-term step: the strongest line of the lead. */
+.profile__why {
+  font-weight: var(--font-weight-strong);
+}
+
+/* Deleting is a quiet way out under the save, lined up with the column. */
+.profile__delete {
+  justify-self: start;
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+/*
+ * The last step before a profile is deleted, laid out as the forgotten code's:
+ * what goes, then the two answers, whole width, apart. Never red.
+ */
+.profile__delete-step,
+.profile__delete-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.profile__delete-step {
+  gap: var(--space-5);
+}
+
+.profile__delete-actions {
+  gap: var(--space-3);
 }
 
 .home__closing {
@@ -1830,6 +1888,39 @@ html:has(.sticky-action) {
   gap: var(--space-2);
 }
 
+/* Who the check is for and where she stands: one line each. */
+.check__profile {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/*
+ * An outdated term: the question as the title, who it is about, then the two
+ * answers, whole width and of the same weight (neither is the primary one).
+ */
+.outdated,
+.outdated__intro,
+.outdated__answers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.outdated {
+  gap: var(--space-5);
+}
+
+.outdated__intro {
+  gap: var(--space-2);
+}
+
+.outdated__answers {
+  gap: var(--space-3);
+}
+
+.outdated__answers > .button {
+  min-height: var(--touch-target-large);
+}
+
 /*
  * minmax(0, 1fr) on every grid that holds a product name: an auto track
  * sizes to the longest word ("ACETYLSALICYLIQUE" at 200 percent text) and
@@ -2140,6 +2231,21 @@ html:has(.sticky-action) {
 
 .result__loading {
   color: var(--color-text-muted);
+}
+
+/* The title, then what the result was worked out on (the term, the baby): one line each. */
+.result__intro,
+.result__profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.result__intro {
+  gap: var(--space-2);
+}
+
+.result__profile {
+  gap: var(--space-1);
 }
 
 /*

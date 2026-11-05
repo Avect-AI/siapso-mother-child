@@ -18,7 +18,7 @@ import type {
   Reminder,
   Rule,
 } from './types.js';
-import { windowsCovered } from './windows.js';
+import { TERM_LOOKAHEAD_DAYS, windowsCovered } from './windows.js';
 
 const CHECK_ORDER: readonly CheckId[] = [
   'C1',
@@ -115,10 +115,12 @@ function checkContextNumbers(context: EvaluationContext): void {
 export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
   checkContextNumbers(context);
   const pregnancy = context.pregnancy;
+  const lookahead = TERM_LOOKAHEAD_DAYS / 7;
   const scope: RuleScope = {
     pack,
     context,
-    covered: pregnancy ? windowsCovered(pregnancy.weeksMin, pregnancy.weeksMax) : [],
+    covered: pregnancy ? windowsCovered(pregnancy.weeksMin, pregnancy.weeksMax + lookahead) : [],
+    coveredToday: pregnancy ? windowsCovered(pregnancy.weeksMin, pregnancy.weeksMax) : [],
     keys: context.items.map((item) => entryKey(pack, item)),
   };
 

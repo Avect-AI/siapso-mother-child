@@ -26,7 +26,7 @@ Status codes of `POST /v1/evaluate`, in the order the server checks them:
 | 409    | `pack_version` differs from the loaded pack; `packVersion` gives the one the server has.   |
 | 200    | The engine `Evaluation`.                                                                   |
 
-pregnancy.weeksMax goes up to 60 (the app can report about 54 weeks for a month estimate moved on by the weeks since), weeksMin up to 45.
+pregnancy.weeksMax goes up to 60 and weeksMin up to 45, so other callers can send their own ranges; the app itself never sends a term past 42 weeks (it asks to update an outdated profile first). As in the app, the engine looks 14 days past the upper end of the term (`TERM_LOOKAHEAD_DAYS`) for the rules that give a finding.
 
 Other answers: 404 (unknown path), 405 (wrong method, with Allow), 400 for a request target that is not valid, 408 for a request that is too slow, 500 for an internal failure, including any engine error other than a RangeError (generic body, nothing from the failure is returned). Every refusal sent before the body is read (401, 404, 405, 413, 415, 429) closes the connection. Limits: request 10 s, headers 5 s, keep-alive 5 s, 256 connections.
 

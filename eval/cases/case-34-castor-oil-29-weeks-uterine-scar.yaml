@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-34-castor-oil-29-weeks-uterine-scar
+title: '29 weeks, uterine scar, castor oil: 30 weeks is reached within the 14-day look-ahead, so the danger rule applies'
+context:
+  pregnancy: { weeks: 29 }
+  conditions: [uterine-scar]
+  items:
+    - { plant: castor-oil }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C5,
+        rule: castor-oil-term-uterine-scar,
+        message: castor-oil-term-uterine-scar,
+        level: danger,
+        evidence: C,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

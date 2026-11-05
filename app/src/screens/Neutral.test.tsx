@@ -37,7 +37,7 @@ async function openAwasCheck() {
     children: probe.element,
   });
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: 'Awa' }));
+  await user.click(await screen.findByRole('button', { name: /^Awa / }));
   expect(await screen.findByText('Profil : Awa')).toBeVisible();
   return { user, probe };
 }
@@ -111,7 +111,7 @@ describe('Quick exit', () => {
       expect(window.location.hash).toBe('#/');
     });
     // The check was forgotten: Awa is chosen again from the list.
-    expect(screen.getByRole('button', { name: 'Awa' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /^Awa / })).toBeVisible();
   });
 
   it('keeps the danger signs one tap away from the neutral screen', async () => {

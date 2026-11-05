@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-33-ibuprofen-19-weeks
+title: '19 weeks, ibuprofen: 20 weeks is reached within the 14-day look-ahead, so both NSAID rules apply'
+context:
+  pregnancy: { weeks: 19 }
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-from-20-weeks,
+        message: nsaid-pregnancy-from-20-weeks,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C1,
+        rule: nsaid-pregnancy-before-20-weeks,
+        message: nsaid-pregnancy-before-20-weeks,
+        level: next-contact,
+        evidence: C,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

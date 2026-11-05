@@ -5,7 +5,7 @@ import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
 import { OfflineReadiness } from './OfflineReadiness.js';
-import { useSavedNote } from './saved-note.js';
+import { profileNoteText, useProfileNote } from './saved-note.js';
 
 /**
  * Home in woman mode (accompanied mode opens on the list of profiles): what
@@ -13,14 +13,14 @@ import { useSavedNote } from './saved-note.js';
  * her profile and whether the phone opens the app without the Internet yet,
  * then the settings, the knowledge base status and the about screen.
  * The primary action opens the check for her profile (the check screen opens
- * the profile screen first when there is none). After a save it says the
- * profile was saved, once.
+ * the profile screen first when there is none). After a save or a deletion it
+ * says so, once.
  */
 export function Home() {
   const t = useT();
   const { packError, settingsUnavailable, online } = useApp();
   const [, navigate] = useLocation();
-  const saved = useSavedNote();
+  const note = useProfileNote();
 
   return (
     <main className="screen home">
@@ -29,9 +29,9 @@ export function Home() {
           <h1 tabIndex={-1}>{t('home.title')}</h1>
           <p>{t('home.lead')}</p>
         </div>
-        {saved === null ? null : (
+        {note === null ? null : (
           <p className="home__saved" role="status">
-            {t('home.profileSaved', { name: saved })}
+            {profileNoteText(note, t)}
           </p>
         )}
         {settingsUnavailable ? <Notice>{t('settings.unavailable')}</Notice> : null}

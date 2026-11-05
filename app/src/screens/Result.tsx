@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: MIT
-import { evaluate, type CheckedItem, type ConditionId, type Evaluation } from '@siapso/engine';
+import {
+  evaluate,
+  TERM_LOOKAHEAD_DAYS,
+  type CheckedItem,
+  type ConditionId,
+  type Evaluation,
+} from '@siapso/engine';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Redirect, useLocation } from 'wouter';
-import { historyEntryOf, recordHistoryOnce } from '../data/history.js';
+import { historyEntryOf, latestHistoryAt, recordHistoryOnce } from '../data/history.js';
 import { getProfile } from '../data/profiles.js';
 import { contextFromProfile } from '../domain/context.js';
 import { todayIso } from '../domain/dates.js';
+import { babyLine } from '../domain/profile-summary.js';
 import {
   cappedEvaluation,
   withPossibleMatches,
@@ -18,6 +25,12 @@ import {
   type RiskView,
   type SourceView,
 } from '../domain/result-view.js';
+import {
+  babyMayBeBorn,
+  latestDay,
+  profileTermStatus,
+  type ProfileTermStatus,
+} from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
@@ -29,13 +42,79 @@ import { LevelIcon } from '../ui/LevelIcon.js';
 import { Notice } from '../ui/Notice.js';
 import { ResultCard } from '../ui/ResultCard.js';
 import { backToCheck, flowState } from './check-flow.js';
+import { OutdatedTerm } from './OutdatedTerm.js';
 import { CALL_PATH } from './Referral.js';
 
 type Loaded =
   | { status: 'loading' }
-  | { status: 'ready'; profile: Profile }
+  /**
+   * The profile, today on the phone's clock when it was read, and when her
+   * last result was kept (a phone date before it is a clock set back).
+   */
+  | { status: 'ready'; profile: Profile; today: string; lastAt: string | undefined }
   | { status: 'missing' }
   | { status: 'failed' };
+
+/**
+ * Under the title, what the result was worked out on: the term used (and the
+ * coming weeks the engine looks ahead to), why it is unknown when the phone's
+ * clock is behind a day the app has seen, that a pregnancy is only possible,
+ * or that the baby may be born (breastfeeding taken into account too); then
+ * the baby's age when she breastfeeds.
+ */
+function ProfileLines({
+  profile,
+  today,
+  term,
+  mode,
+}: {
+  profile: Profile;
+  today: string;
+  term: ProfileTermStatus;
+  mode: Mode;
+}) {
+  const t = useT();
+  const lines: string[] = [];
+  const read = term.status === 'ok' || term.status === 'possibly-past' ? term : null;
+  if (read?.unsure === true) lines.push(t('profileStatus.maybePregnant'));
+  if (read !== null && !read.unsure) {
+    const words = t(read.term.label.key, read.term.label.vars);
+    lines.push(t('result.termUsed', { term: lowerFirst(words) }));
+    // An unknown term already covers every week: nothing more to look ahead to.
+    if (read.term.precision !== 'unknown') {
+      lines.push(t('result.lookahead', { weeks: TERM_LOOKAHEAD_DAYS / 7 }));
+    }
+  }
+  if (term.status === 'possibly-past') {
+    lines.push(t(mode === 'accompanied' ? 'result.mayBeBornAccompanied' : 'result.mayBeBornWoman'));
+  }
+  // The baby's age is not what the result used when the baby may be born (any age).
+  if (profile.breastfeeding && !babyMayBeBorn(term)) {
+    const baby = babyLine(profile, today);
+    lines.push(t(baby.key, baby.vars));
+  }
+  if (lines.length === 0 && term.status !== 'clock') return null;
+  return (
+    <div className="result__profile">
+      {/* A problem she can act on (the phone's date): ink with the triangle. */}
+      {term.status === 'clock' ? (
+        <Notice>
+          {t(mode === 'accompanied' ? 'result.termClockAccompanied' : 'result.termClockWoman')}
+        </Notice>
+      ) : null}
+      {lines.map((line) => (
+        <p key={line} className="meta">
+          {line}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/** The words with a lower-case first letter, to sit inside a sentence ("Terme retenu : environ…"). */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLocaleLowerCase() + text.slice(1);
+}
 
 /**
  * The evaluation of the check, with the items it read: the items of the
@@ -313,12 +392,32 @@ export function Result() {
   const { profileId, items, signs, signsGiven } = check;
   const recorded = useRef<Evaluation | null>(null);
 
+  // Each reading of the profile and the phone's date; a new one when the app
+  // comes back to the front (a result left open for days must not keep its term).
+  const [reading, setReading] = useState(0);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'hidden') setReading((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   useEffect(() => {
     if (profileId === null) return;
     let live = true;
-    withTimeout(getProfile(profileId), storageTimeoutMs).then(
-      (profile) => {
-        if (live) setLoaded(profile ? { status: 'ready', profile } : { status: 'missing' });
+    const load = async () => {
+      const profile = await getProfile(profileId);
+      return { profile, lastAt: profile ? await latestHistoryAt(profileId) : undefined };
+    };
+    withTimeout(load(), storageTimeoutMs).then(
+      ({ profile, lastAt }) => {
+        // Today from the phone's clock, handed to pure code (the term and the context).
+        const today = todayIso(new Date());
+        if (!live) return;
+        setLoaded(profile ? { status: 'ready', profile, today, lastAt } : { status: 'missing' });
       },
       (failure: unknown) => {
         console.warn('Profile not read on this device', failure);
@@ -328,13 +427,19 @@ export function Result() {
     return () => {
       live = false;
     };
-  }, [profileId, storageTimeoutMs]);
+  }, [profileId, storageTimeoutMs, reading]);
+
+  // A day the app has already seen: the knowledge pack's date, her last result.
+  const notBefore = loaded.status === 'ready' ? latestDay(pack?.date, loaded.lastAt) : undefined;
+  const term =
+    loaded.status === 'ready' ? profileTermStatus(loaded.profile, loaded.today, notBefore) : null;
+  const outdated = term?.status === 'outdated';
 
   const evaluated = useMemo((): Evaluated | null => {
-    if (pack === null || loaded.status !== 'ready') return null;
+    // An outdated term is updated first: no result is worked out on it.
+    if (pack === null || loaded.status !== 'ready' || outdated) return null;
     try {
-      // Today from the phone's clock, handed to pure code.
-      const context = contextFromProfile(loaded.profile, { items, signs }, todayIso(new Date()));
+      const context = contextFromProfile(loaded.profile, { items, signs }, loaded.today, notBefore);
       // A name typed as not recognised is evaluated as what it clearly names
       // too; a resemblance short of a clear name is not kept after she said
       // "none of these", and never makes the result a danger.
@@ -354,7 +459,7 @@ export function Result() {
       console.warn('The check could not be evaluated', failure);
       return { status: 'failed' };
     }
-  }, [pack, loaded, items, signs, check.declinedOf]);
+  }, [pack, loaded, outdated, notBefore, items, signs, check.declinedOf]);
 
   const view = useMemo((): ResultView | 'failed' | null => {
     if (evaluated === null || pack === null) return null;
@@ -398,6 +503,14 @@ export function Result() {
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
   // The signs present now are asked before any result (a typed address, an old entry).
   if (!signsGiven) return <Redirect to="/signs" replace />;
+  // The guard on the result: an outdated term asks whether the baby is born instead.
+  if (outdated && loaded.status === 'ready') {
+    return (
+      <main className="screen result">
+        <OutdatedTerm mode={mode} profile={loaded.profile} />
+      </main>
+    );
+  }
 
   const back = () => {
     backToCheck(navigate, entry.stepsToCheck);
@@ -415,9 +528,19 @@ export function Result() {
       ? t('result.titleFor', { name: loaded.profile.pseudonym })
       : t('result.title');
 
+  // What the result was worked out on: under the title, or under the danger
+  // banner when there is one (the danger instruction comes first).
+  const profileLines =
+    loaded.status === 'ready' && term !== null && ready !== null ? (
+      <ProfileLines profile={loaded.profile} today={loaded.today} term={term} mode={mode} />
+    ) : null;
+
   return (
     <main className="screen result">
-      <h1 tabIndex={-1}>{title}</h1>
+      <div className="result__intro">
+        <h1 tabIndex={-1}>{title}</h1>
+        {ready?.danger === true ? null : profileLines}
+      </div>
       {problem === null ? null : <Notice>{t(problem)}</Notice>}
       {problem === null && ready === null ? (
         <p className="result__loading" role="status">
@@ -445,6 +568,7 @@ export function Result() {
               }}
             />
           ) : null}
+          {ready.danger ? profileLines : null}
           {ready.findings.length > 1 ? <Summary view={ready} /> : null}
           {/* The situations the result leaves out, said before any card. */}
           <Notes heading="result.situations" notes={ready.situations} />

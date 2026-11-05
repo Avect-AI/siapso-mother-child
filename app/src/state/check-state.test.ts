@@ -296,15 +296,55 @@ describe('useCheckStore', () => {
       result.current.setSigns([]);
     });
     expect(result.current).toMatchObject({ signs: [], signsGiven: true });
-    // The answer stays while the list changes; a check for another profile asks again.
-    act(() => {
-      result.current.add(paracetamol);
-    });
-    expect(result.current.signsGiven).toBe(true);
     act(() => {
       result.current.start('p2');
     });
     expect(result.current.signsGiven).toBe(false);
+  });
+
+  it('asks the signs again once the list changes: the answer was about the list as it was', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const answered = () => {
+      act(() => {
+        result.current.setSigns(['fever']);
+      });
+      expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
+    };
+    act(() => {
+      result.current.start('p1');
+    });
+    answered();
+    act(() => {
+      result.current.add(paracetamol);
+    });
+    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
+    answered();
+    act(() => {
+      result.current.remove(0);
+    });
+    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
+    answered();
+    act(() => {
+      result.current.restore(0, paracetamol);
+    });
+    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
+    // The same item given again changes nothing: the answer stays.
+    answered();
+    act(() => {
+      result.current.add(paracetamol);
+    });
+    expect(result.current.signsGiven).toBe(true);
+  });
+
+  it('forgets the signs answer on clearSigns, keeping the list', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('p1');
+      result.current.add(paracetamol);
+      result.current.setSigns(['fever']);
+      result.current.clearSigns();
+    });
+    expect(result.current).toMatchObject({ items: [paracetamol], signs: [], signsGiven: false });
   });
 
   it('keeps the check when it starts again for the same profile, and empties it for another', () => {
@@ -366,8 +406,28 @@ describe('activeProfile', () => {
     expect(activeProfile([], 'accompanied', 'a')).toBeUndefined();
   });
 
-  it('is her profile in woman mode', () => {
-    expect(activeProfile([older, newer], 'woman', null)).toBe(older);
+  it('is her own profile in woman mode, marked as hers, wherever it is in the list', () => {
+    const mine = { ...newer, self: true };
+    expect(activeProfile([older, mine], 'woman', null)).toBe(mine);
+    expect(activeProfile([{ ...older, self: false }, mine], 'woman', 'a')).toBe(mine);
+  });
+
+  it("never opens another woman's profile in woman mode", () => {
+    // Profiles made in accompanied mode, none of them hers.
+    expect(
+      activeProfile(
+        [
+          { ...older, self: false },
+          { ...newer, self: false },
+        ],
+        'woman',
+        null,
+      ),
+    ).toBeUndefined();
+    expect(activeProfile([{ ...older, self: false }], 'woman', null)).toBeUndefined();
+    // Older records, unmarked: one alone is hers; among several, none is taken.
+    expect(activeProfile([older], 'woman', null)).toBe(older);
+    expect(activeProfile([older, newer], 'woman', null)).toBeUndefined();
   });
 
   it('is the profile chosen for the check in accompanied mode, never one picked by default', () => {

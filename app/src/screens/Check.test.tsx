@@ -90,7 +90,11 @@ describe('Check', () => {
     await user.click(
       within(screen.getByRole('group', { name: /^Enceinte/ })).getByRole('radio', { name: 'Oui' }),
     );
-    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
+    await user.click(
+      within(screen.getByRole('group', { name: 'Terme de la grossesse' })).getByRole('radio', {
+        name: 'Je ne sais pas',
+      }),
+    );
     await user.click(
       within(screen.getByRole('group', { name: /^Allaite/ })).getByRole('radio', { name: 'Non' }),
     );
@@ -123,14 +127,112 @@ describe('Check', () => {
     const user = userEvent.setup();
     const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
 
-    await user.click(within(list).getByRole('button', { name: 'Awa' }));
+    await user.click(within(list).getByRole('button', { name: /^Awa / }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
     ).toBeVisible();
     // Text matchers read the no-break space before the colon as a space.
     expect(await screen.findByText('Profil : Awa')).toBeVisible();
+    // The term used, so the right woman and term are seen before the result.
+    expect(screen.getByText('Environ 26 semaines')).toBeVisible();
     expect(probe.current().profileId).toBe('a');
+  });
+
+  it('asks first whether the baby is born when her term is past 42 weeks, and lists nothing', async () => {
+    await saveProfile(
+      profileOf({
+        id: 'a',
+        pseudonym: 'Bineta',
+        term: { kind: 'months', months: 7, givenOn: '2026-07-01' },
+      }),
+    );
+    const probe = probeCheck();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    expect(within(list).getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+      'Bineta À mettre à jour',
+    );
+
+    await user.click(within(list).getByRole('button', { name: /^Bineta/ }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /^Le terme noté a passé 42 semaines\. Le bébé est-il né/,
+      }),
+    ).toBeVisible();
+    // The question takes the focus, so a screen reader starts there.
+    expect(
+      screen.getByRole('heading', { level: 1, name: /^Le terme noté a passé 42 semaines/ }),
+    ).toHaveFocus();
+    expect(screen.getByText('Profil : Bineta')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Voir le résultat' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ajouter un médicament' })).toBeNull();
+    // Danger signs stay one tap away.
+    expect(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Signes de danger' }),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Non, toujours enceinte' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Modifier le profil' }),
+    ).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ })).toHaveValue('');
+    // Her id is never in the address (edit-route.ts).
+    expect(window.location.hash).toBe('#/profile/edit');
+  });
+
+  it('asks her in her own words in woman mode, and "the baby is born" opens her profile', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-07-01' } }));
+    const { user } = await openCheckFromHome();
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: /^Votre terme noté a passé 42 semaines\. Votre bébé est-il né/,
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Oui, le bébé est né' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+    expect(
+      within(screen.getByRole('group', { name: /^Enceinte/ })).getByRole('radio', { name: 'Non' }),
+    ).toBeChecked();
+  });
+
+  it('goes on when the baby may only be born (month 9 a week ago), and says to confirm it', async () => {
+    await saveProfile(
+      profileOf({
+        id: 'a',
+        pseudonym: 'Bineta',
+        term: { kind: 'months', months: 9, givenOn: '2026-10-27' },
+      }),
+    );
+    await renderApp({ settings: accompanied, hash: '#/', packLoader: loaderOf(pack) });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    expect(within(list).getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+      /^Bineta Entre 37 et 42 semaines \(estimé\) À confirmer\s: le bébé est peut-être né$/,
+    );
+    // Her id goes in the entry's state, never in the address (edit-route.ts).
+    expect(
+      within(list).getByRole('link', { name: 'Mettre à jour le profil de Bineta' }),
+    ).toHaveAttribute('href', '#/profile/edit');
+
+    await user.click(within(list).getByRole('button', { name: /^Bineta/ }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    expect(screen.getByText(/^À confirmer\s: le bébé est peut-être né$/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
   });
 
   it('sends accompanied mode to the list when no woman is chosen, never to one by default', async () => {

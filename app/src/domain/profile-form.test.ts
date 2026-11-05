@@ -3,12 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { contextFromProfile } from './context.js';
 import { addDays } from './dates.js';
 import {
+  afterBirth,
   conditionsShown,
   emptyForm,
   formFromProfile,
+  monthsAsWeeks,
+  monthsLookLikeWeeks,
+  monthsNearTerm,
   profileFromForm,
+  PSEUDONYM_MAX,
+  pseudonymKey,
+  reenterTerm,
   termFromForm,
+  typedWeeks,
   validateForm,
+  weeksReadback,
   type ProfileForm,
 } from './profile-form.js';
 import type { Profile } from './types.js';
@@ -16,13 +25,14 @@ import type { Profile } from './types.js';
 const TODAY = '2026-11-04';
 const NOW = '2026-11-04T09:30:00.000Z';
 
-/** The common case: 26 weeks, not breastfeeding, no situation. */
+/** The common case: 26 weeks given today, not breastfeeding, no situation. */
 function common(patch: Partial<ProfileForm> = {}): ProfileForm {
   return {
-    ...emptyForm('Moi'),
-    pregnant: true,
+    ...emptyForm('Moi', TODAY),
+    pregnant: 'yes',
     termKind: 'weeks',
     weeks: '26',
+    weeksDay: 'today',
     breastfeeding: false,
     noCondition: true,
     ...patch,
@@ -69,7 +79,7 @@ describe('validateForm', () => {
   });
 
   it('asks every question of an empty form, in the order of the screen', () => {
-    const errors = validateForm(emptyForm(''), TODAY, 'woman');
+    const errors = validateForm(emptyForm('', TODAY), TODAY, 'woman');
     expect(errors).toEqual({
       pseudonym: 'profile.error.pseudonym',
       pregnant: 'profile.error.yesNo',
@@ -89,10 +99,42 @@ describe('validateForm', () => {
     expect(validateForm(common({ pseudonym: 'Femme 12' }), TODAY, 'woman')).toEqual({});
   });
 
+  it('refuses a pseudonym longer than 40 characters instead of cutting it', () => {
+    expect(PSEUDONYM_MAX).toBe(40);
+    expect(validateForm(common({ pseudonym: 'a'.repeat(40) }), TODAY, 'woman')).toEqual({});
+    expect(
+      validateForm(
+        common({ pseudonym: 'Awa Diop Ndiaye fille de Moussa du quartier HLM' }),
+        TODAY,
+        'woman',
+      ),
+    ).toEqual({ pseudonym: 'profile.error.pseudonymLong' });
+    // Spaces around do not count.
+    expect(validateForm(common({ pseudonym: `  ${'a'.repeat(40)}  ` }), TODAY, 'woman')).toEqual(
+      {},
+    );
+  });
+
+  it('refuses a pseudonym already used on the phone, whatever its case, accents and spaces', () => {
+    const taken = ['Awa', 'Fatou Diop'];
+    for (const pseudonym of ['Awa', ' awa ', 'AWA', 'Àwa', 'fatou  diop']) {
+      expect(validateForm(common({ pseudonym }), TODAY, 'accompanied', taken), pseudonym).toEqual({
+        pseudonym: 'profile.error.pseudonymTaken',
+      });
+    }
+    expect(validateForm(common({ pseudonym: 'Awa 2' }), TODAY, 'accompanied', taken)).toEqual({});
+  });
+
   it('asks how the term is known once pregnant', () => {
     expect(validateForm(common({ termKind: null }), TODAY, 'woman')).toEqual({
       termKind: 'profile.error.choose',
     });
+  });
+
+  it('needs no term when she does not know whether she is pregnant', () => {
+    expect(
+      validateForm(common({ pregnant: 'unknown', termKind: null, weeks: '' }), TODAY, 'woman'),
+    ).toEqual({});
   });
 
   it('accepts whole weeks from 0 to 42 only', () => {
@@ -106,38 +148,78 @@ describe('validateForm', () => {
     }
   });
 
+  it('takes weeks known at a past date, and names a date that cannot be used', () => {
+    const other = (patch: Partial<ProfileForm>) => common({ weeksDay: 'other', ...patch });
+    // 16 weeks at an ultrasound on 1 September: about 25 weeks today.
+    expect(
+      validateForm(other({ weeks: '16', weeksGivenOn: '2026-09-01' }), TODAY, 'woman'),
+    ).toEqual({});
+    expect(validateForm(other({ weeksGivenOn: '' }), TODAY, 'woman')).toEqual({
+      weeksGivenOn: 'profile.error.date',
+    });
+    expect(validateForm(other({ weeksGivenOn: '2026-11-05' }), TODAY, 'woman')).toEqual({
+      weeksGivenOn: 'profile.error.dateFuture',
+    });
+    // 30 weeks on 1 August: past 42 weeks today.
+    expect(
+      validateForm(other({ weeks: '30', weeksGivenOn: '2026-08-01' }), TODAY, 'woman'),
+    ).toEqual({ weeks: 'profile.error.weeksMovedOn' });
+  });
+
+  it('asks the day the weeks were known until it is answered, today or another day', () => {
+    expect(validateForm(common({ weeksDay: null }), TODAY, 'accompanied')).toEqual({
+      weeksDay: 'profile.error.choose',
+    });
+    expect(validateForm(common({ weeksDay: 'today', weeksGivenOn: '' }), TODAY, 'woman')).toEqual(
+      {},
+    );
+  });
+
   it('accepts whole months from 1 to 9 only', () => {
     expect(validateForm(common({ termKind: 'months', months: '9' }), TODAY, 'woman')).toEqual({});
-    for (const months of ['', '0', '10', '4.5']) {
+    for (const months of ['', '0', '4.5', 'de', '99']) {
       expect(validateForm(common({ termKind: 'months', months }), TODAY, 'woman'), months).toEqual({
         months: 'profile.error.months',
       });
     }
   });
 
-  it('says a month given so long ago that the term is now past 45 weeks must be given again', () => {
+  it('says a month of 10 to 42 looks like weeks', () => {
+    for (const months of ['10', '24', '34', '42']) {
+      expect(validateForm(common({ termKind: 'months', months }), TODAY, 'woman'), months).toEqual({
+        months: 'profile.error.monthsLooksLikeWeeks',
+      });
+    }
+  });
+
+  it('says a month given so long ago that its start is past 42 weeks must be given again', () => {
     const form = common({
       termKind: 'months',
       months: '9',
       keptTerm: { kind: 'months', months: 9, givenOn: '2026-08-26' },
     });
     expect(validateForm(form, TODAY, 'woman')).toEqual({ months: 'profile.error.monthsOutdated' });
-    const recent = { ...form, keptTerm: { kind: 'months', months: 9, givenOn: '2026-09-02' } };
+    // Month 9 a week ago may be past term, but is not refused: the screens say so.
+    const recent = { ...form, keptTerm: { kind: 'months', months: 9, givenOn: '2026-10-28' } };
     expect(validateForm(recent as ProfileForm, TODAY, 'woman')).toEqual({});
   });
 
-  it('says weeks given earlier that have moved past 42 must be given again', () => {
-    // 40 weeks given 21 days ago: 43 today.
+  it('suggests weeks or the last period when month 8 or 9 is given', () => {
+    expect(monthsNearTerm(common({ termKind: 'months', months: '8' }))).toBe(true);
+    expect(monthsNearTerm(common({ termKind: 'months', months: ' 9 ' }))).toBe(true);
+    for (const months of ['7', '', '10', '1']) {
+      expect(monthsNearTerm(common({ termKind: 'months', months })), months).toBe(false);
+    }
+    expect(monthsNearTerm(common({ termKind: 'weeks', months: '9' }))).toBe(false);
+  });
+
+  it('says a stored month dated after today is a phone clock set back', () => {
     const form = common({
-      weeks: '43',
-      keptTerm: { kind: 'weeks', weeks: 40, givenOn: '2026-10-14' },
+      termKind: 'months',
+      months: '5',
+      keptTerm: { kind: 'months', months: 5, givenOn: '2026-12-01' },
     });
-    expect(validateForm(form, TODAY, 'woman')).toEqual({ weeks: 'profile.error.weeksMovedOn' });
-    const within = common({
-      weeks: '42',
-      keptTerm: { kind: 'weeks', weeks: 39, givenOn: '2026-10-14' },
-    });
-    expect(validateForm(within, TODAY, 'woman')).toEqual({});
+    expect(validateForm(form, TODAY, 'woman')).toEqual({ months: 'profile.error.clockBehind' });
   });
 
   it('says a baby age given earlier that has moved past 104 weeks must be given again', () => {
@@ -153,15 +235,15 @@ describe('validateForm', () => {
     });
   });
 
-  it('accepts a last period from today back to 45 weeks, and names the problem otherwise', () => {
+  it('accepts a last period from today back to 42 weeks, and names the problem otherwise', () => {
     const lmp = (lmpDate: string) =>
       validateForm(common({ termKind: 'lmp', lmpDate }), TODAY, 'woman');
     expect(lmp(TODAY)).toEqual({});
-    expect(lmp('2025-12-18')).toEqual({});
+    expect(lmp(addDays(TODAY, -42 * 7))).toEqual({});
     expect(lmp('')).toEqual({ lmpDate: 'profile.error.date' });
     expect(lmp('2026-02-30')).toEqual({ lmpDate: 'profile.error.date' });
     expect(lmp('2026-11-05')).toEqual({ lmpDate: 'profile.error.dateFuture' });
-    expect(lmp('2025-12-17')).toEqual({ lmpDate: 'profile.error.lmpTooOld' });
+    expect(lmp(addDays(TODAY, -(42 * 7 + 1)))).toEqual({ lmpDate: 'profile.error.lmpTooOld' });
   });
 
   it('needs no term field for an unknown term, and none at all when not pregnant', () => {
@@ -174,7 +256,7 @@ describe('validateForm', () => {
     } as const;
     expect(
       validateForm(
-        common({ pregnant: false, termKind: 'weeks', weeks: '99', ...breastfeeding }),
+        common({ pregnant: 'no', termKind: 'weeks', weeks: '99', ...breastfeeding }),
         TODAY,
         'woman',
       ),
@@ -183,8 +265,12 @@ describe('validateForm', () => {
 
   it('refuses "no" to both pregnant and breastfeeding: one mis-tap would drop every pregnancy rule', () => {
     expect(
-      validateForm(common({ pregnant: false, breastfeeding: false }), TODAY, 'accompanied'),
+      validateForm(common({ pregnant: 'no', breastfeeding: false }), TODAY, 'accompanied'),
     ).toEqual({ breastfeeding: 'profile.error.neither' });
+    // "Je ne sais pas" keeps the pregnancy rules.
+    expect(
+      validateForm(common({ pregnant: 'unknown', breastfeeding: false }), TODAY, 'accompanied'),
+    ).toEqual({});
   });
 
   it('asks the baby age and prematurity once breastfeeding', () => {
@@ -192,6 +278,16 @@ describe('validateForm', () => {
       babyAgeKind: 'profile.error.choose',
       premature: 'profile.error.choose',
     });
+  });
+
+  it('accepts "Je ne sais pas" for the baby age', () => {
+    expect(
+      validateForm(
+        common({ breastfeeding: true, babyAgeKind: 'unknown', premature: 'no' }),
+        TODAY,
+        'woman',
+      ),
+    ).toEqual({});
   });
 
   it('accepts a baby age from 0 to 104 weeks, in weeks, months or as a birth date', () => {
@@ -241,9 +337,75 @@ describe('validateForm', () => {
   });
 });
 
+describe('pseudonymKey', () => {
+  it('compares pseudonyms without case, accents or extra spaces', () => {
+    expect(pseudonymKey('  Àwa   Diop ')).toBe(pseudonymKey('awa diop'));
+    expect(pseudonymKey('Awa')).not.toBe(pseudonymKey('Awa 2'));
+  });
+});
+
+describe('a month that looks like weeks', () => {
+  it('is a whole number from 10 to 42 typed as months', () => {
+    expect(monthsLookLikeWeeks(common({ termKind: 'months', months: '24' }))).toBe(true);
+    expect(monthsLookLikeWeeks(common({ termKind: 'months', months: ' 34 ' }))).toBe(true);
+    for (const months of ['9', '1', '', '43', 'ab']) {
+      expect(monthsLookLikeWeeks(common({ termKind: 'months', months })), months).toBe(false);
+    }
+    expect(monthsLookLikeWeeks(common({ termKind: 'weeks', months: '24' }))).toBe(false);
+  });
+
+  it('moves to "En semaines" with the number typed, given today', () => {
+    const form = monthsAsWeeks(
+      common({
+        termKind: 'months',
+        months: '24',
+        weeks: '',
+        weeksDay: null,
+        weeksGivenOn: '2026-01-01',
+      }),
+    );
+    expect(form).toMatchObject({
+      termKind: 'weeks',
+      weeks: '24',
+      weeksDay: 'today',
+      weeksGivenOn: '',
+      months: '',
+    });
+    expect(validateForm(form, TODAY, 'accompanied')).toEqual({});
+  });
+});
+
+describe('typing weeks', () => {
+  it('clears the day they were known: it is asked again', () => {
+    const before = common({ weeksDay: 'other', weeksGivenOn: '2026-09-24' });
+    expect(typedWeeks(before, '32', true)).toMatchObject({
+      weeks: '32',
+      weeksDay: null,
+      weeksGivenOn: '',
+    });
+    // A new profile in woman mode keeps today, as said by default.
+    expect(typedWeeks(common({ weeksDay: 'today' }), '32', false)).toMatchObject({
+      weeks: '32',
+      weeksDay: 'today',
+    });
+  });
+});
+
+describe('weeksReadback', () => {
+  it('says the term today and the weeks on the day given when it is not today', () => {
+    const form = common({ weeks: '26', weeksDay: 'other', weeksGivenOn: '2026-09-24' });
+    expect(weeksReadback(form, TODAY)).toEqual({ weeks: 26, givenOn: '2026-09-24' });
+    expect(weeksReadback(common(), TODAY)).toBeUndefined();
+    expect(weeksReadback(common({ termKind: 'months', months: '5' }), TODAY)).toBeUndefined();
+  });
+});
+
 describe('termFromForm', () => {
-  it('gives the term being entered, dated today for weeks and months', () => {
+  it('gives the term being entered: weeks with their day, months and unknown dated today', () => {
     expect(termFromForm(common(), TODAY)).toEqual({ kind: 'weeks', weeks: 26, givenOn: TODAY });
+    expect(
+      termFromForm(common({ weeks: '16', weeksDay: 'other', weeksGivenOn: '2026-09-01' }), TODAY),
+    ).toEqual({ kind: 'weeks', weeks: 16, givenOn: '2026-09-01' });
     expect(termFromForm(common({ termKind: 'months', months: '5' }), TODAY)).toEqual({
       kind: 'months',
       months: 5,
@@ -253,18 +415,24 @@ describe('termFromForm', () => {
       kind: 'lmp',
       date: '2026-05-06',
     });
-    expect(termFromForm(common({ termKind: 'unknown' }), TODAY)).toEqual({ kind: 'unknown' });
+    expect(termFromForm(common({ termKind: 'unknown' }), TODAY)).toEqual({
+      kind: 'unknown',
+      givenOn: TODAY,
+    });
   });
 
-  it('gives the stored term exactly while its field is not typed in, so a save never moves it', () => {
+  it('keeps the day an unknown term was given while it is not answered again', () => {
+    const kept = { kind: 'unknown', givenOn: '2026-10-07' } as const;
+    expect(termFromForm(common({ termKind: 'unknown', keptTerm: kept }), TODAY)).toEqual(kept);
+  });
+
+  it('gives the stored month exactly while its field is not typed in, so a save never moves it', () => {
     const kept = { kind: 'months', months: 5, givenOn: '2026-10-07' } as const;
     // The field shows today's month (6); the term stays month 5 given on 7 October.
     expect(
       termFromForm(common({ termKind: 'months', months: '6', keptTerm: kept }), TODAY),
     ).toEqual(kept);
-    const keptWeeks = { kind: 'weeks', weeks: 20, givenOn: '2026-10-01' } as const;
-    expect(termFromForm(common({ weeks: '24', keptTerm: keptWeeks }), TODAY)).toEqual(keptWeeks);
-    // A kept term of the other kind does not answer for this one.
+    // A kept month does not answer for weeks.
     expect(termFromForm(common({ weeks: '24', keptTerm: kept }), TODAY)).toEqual({
       kind: 'weeks',
       weeks: 24,
@@ -274,6 +442,8 @@ describe('termFromForm', () => {
 
   it('gives nothing while the field cannot be read', () => {
     expect(termFromForm(common({ weeks: '' }), TODAY)).toBeUndefined();
+    expect(termFromForm(common({ weeksDay: null }), TODAY)).toBeUndefined();
+    expect(termFromForm(common({ weeksDay: 'other', weeksGivenOn: '' }), TODAY)).toBeUndefined();
     expect(termFromForm(common({ termKind: 'lmp', lmpDate: '' }), TODAY)).toBeUndefined();
     expect(termFromForm(common({ termKind: null }), TODAY)).toBeUndefined();
   });
@@ -295,13 +465,56 @@ describe('profileFromForm', () => {
   });
 
   it('trims the pseudonym and keeps no term when not pregnant', () => {
-    const profile = profileFromForm(common({ pseudonym: '  Awa  ', pregnant: false }), {
+    const profile = profileFromForm(common({ pseudonym: '  Awa  ', pregnant: 'no' }), {
       id: 'x',
       nowIso: NOW,
       todayIso: TODAY,
     });
     expect(profile.pseudonym).toBe('Awa');
+    expect(profile.pregnant).toBe(false);
     expect(profile).not.toHaveProperty('term');
+    expect(profile).not.toHaveProperty('pregnancyUnsure');
+  });
+
+  it('stores "Je ne sais pas" to the pregnancy as pregnant, unsure, dated, with no term', () => {
+    const profile = profileFromForm(common({ pregnant: 'unknown' }), {
+      id: 'x',
+      nowIso: NOW,
+      todayIso: TODAY,
+    });
+    expect(profile).toMatchObject({
+      pregnant: true,
+      pregnancyUnsure: true,
+      pregnancyUnsureOn: TODAY,
+    });
+    expect(profile).not.toHaveProperty('term');
+    // Saved again unchanged, it keeps the day it was said.
+    const again = profileFromForm(
+      formFromProfile({ ...profile, pregnancyUnsureOn: '2026-10-20' }, TODAY, 'woman'),
+      {
+        base: profile,
+        id: 'x',
+        nowIso: NOW,
+        todayIso: TODAY,
+      },
+    );
+    expect(again.pregnancyUnsureOn).toBe('2026-10-20');
+  });
+
+  it('marks her own profile in woman mode, and keeps the mark of a profile it edits', () => {
+    const mine = profileFromForm(common(), { id: 'x', nowIso: NOW, todayIso: TODAY, self: true });
+    expect(mine.self).toBe(true);
+    const theirs = profileFromForm(common(), {
+      id: 'y',
+      nowIso: NOW,
+      todayIso: TODAY,
+      self: false,
+    });
+    expect(theirs.self).toBe(false);
+    expect(
+      profileFromForm(common(), { base: mine, id: 'z', nowIso: NOW, todayIso: TODAY, self: false })
+        .self,
+    ).toBe(true);
   });
 
   it('stores a birth date, or an age in weeks; months become whole weeks (x 4.345, rounded down)', () => {
@@ -319,6 +532,16 @@ describe('profileFromForm', () => {
     expect(baby({ babyAgeKind: 'months', babyMonths: '24' }).babyAgeWeeks).toBe(104);
     expect(baby({ babyAgeKind: 'months', babyMonths: '0' }).babyAgeWeeks).toBe(0);
     expect(baby({ babyAgeKind: 'weeks', babyWeeks: '6' })).not.toHaveProperty('babyBirthDate');
+  });
+
+  it('stores "Je ne sais pas" to the baby age with no age at all', () => {
+    const profile = profileFromForm(
+      common({ breastfeeding: true, babyAgeKind: 'unknown', babyWeeks: '6', premature: 'no' }),
+      { id: 'x', nowIso: NOW, todayIso: TODAY },
+    );
+    expect(profile).toMatchObject({ breastfeeding: true, babyAgeUnknown: true, premature: false });
+    expect(profile).not.toHaveProperty('babyAgeWeeks');
+    expect(profile).not.toHaveProperty('babyBirthDate');
   });
 
   it('dates an age given in weeks or months, so it moves on (a birth date needs no date)', () => {
@@ -359,6 +582,7 @@ describe('profileFromForm', () => {
     );
     expect(profile).not.toHaveProperty('babyAgeWeeks');
     expect(profile).not.toHaveProperty('premature');
+    expect(profile).not.toHaveProperty('babyAgeUnknown');
   });
 
   it('keeps the id, creation date and long-term items of the profile it edits', () => {
@@ -391,12 +615,15 @@ describe('profileFromForm', () => {
 
 describe('formFromProfile', () => {
   it('starts a new profile with the given pseudonym and nothing answered', () => {
-    expect(emptyForm('Femme 3')).toEqual({
+    expect(emptyForm('Femme 3', TODAY)).toEqual({
       pseudonym: 'Femme 3',
       pregnant: null,
+      keptUnsureOn: null,
       termKind: null,
       lmpDate: '',
       weeks: '',
+      weeksDay: null,
+      weeksGivenOn: '',
       months: '',
       keptTerm: null,
       breastfeeding: null,
@@ -409,6 +636,8 @@ describe('formFromProfile', () => {
       conditions: [],
       noCondition: false,
     });
+    // A new profile of her own may take today as the day the weeks are known.
+    expect(emptyForm('Moi', TODAY, 'today').weeksDay).toBe('today');
   });
 
   it('round-trips a saved profile', () => {
@@ -422,17 +651,66 @@ describe('formFromProfile', () => {
       conditions: ['epilepsy-treatment'],
     });
     const profile = profileFromForm(form, { id: 'x', nowIso: NOW, todayIso: TODAY });
-    // The weeks come back with the stored term kept, so saving again leaves it as it is.
-    expect(formFromProfile(profile, TODAY, 'woman')).toEqual({
-      ...form,
-      keptTerm: { kind: 'weeks', weeks: 26, givenOn: TODAY },
-    });
+    expect(formFromProfile(profile, TODAY, 'woman')).toEqual(form);
   });
 
-  it('shows the weeks reached today for weeks given earlier, and keeps the stored term', () => {
+  it('round-trips "Je ne sais pas" to the pregnancy and to the baby age', () => {
+    const form = common({
+      pregnant: 'unknown',
+      termKind: null,
+      weeks: '',
+      weeksDay: null,
+      breastfeeding: true,
+      babyAgeKind: 'unknown',
+      premature: 'no',
+    });
+    const profile = profileFromForm(form, { id: 'x', nowIso: NOW, todayIso: TODAY });
+    // The day "Je ne sais pas" was said is kept, so saving again does not move it.
+    expect(formFromProfile(profile, TODAY, 'woman')).toEqual({ ...form, keptUnsureOn: TODAY });
+  });
+
+  it('shows weeks as given, with the day they were given', () => {
     const term = { kind: 'weeks', weeks: 18, givenOn: '2026-08-09' } as const;
     const form = formFromProfile(stored({ pregnant: true, term }), TODAY, 'woman');
-    expect(form).toMatchObject({ termKind: 'weeks', weeks: '30', keptTerm: term });
+    expect(form).toMatchObject({
+      termKind: 'weeks',
+      weeks: '18',
+      weeksDay: 'other',
+      weeksGivenOn: '2026-08-09',
+    });
+    expect(termFromForm(form, TODAY)).toEqual(term);
+    const today = formFromProfile(
+      stored({ pregnant: true, term: { ...term, givenOn: TODAY } }),
+      TODAY,
+      'woman',
+    );
+    expect(today).toMatchObject({ weeksDay: 'today', weeksGivenOn: '' });
+  });
+
+  it('dates stored weeks without a day by the last save, and leaves a day that cannot be read empty', () => {
+    expect(
+      formFromProfile(
+        stored({ pregnant: true, term: { kind: 'weeks', weeks: 18 } }),
+        TODAY,
+        'woman',
+      ),
+    ).toMatchObject({ weeks: '18', weeksDay: 'other', weeksGivenOn: '2026-10-01' });
+    expect(
+      formFromProfile(
+        stored({ pregnant: true, term: { kind: 'weeks', weeks: 18, givenOn: 'not a date' } }),
+        TODAY,
+        'woman',
+      ),
+    ).toMatchObject({ weeks: '18', weeksDay: 'other', weeksGivenOn: '' });
+  });
+
+  it('keeps the day of an unknown term, the last save for an older record', () => {
+    expect(
+      formFromProfile(stored({ pregnant: true, term: { kind: 'unknown' } }), TODAY, 'woman'),
+    ).toMatchObject({ termKind: 'unknown', keptTerm: { kind: 'unknown', givenOn: '2026-10-01' } });
+    expect(
+      formFromProfile(stored({ pregnant: true, pregnancyUnsure: true }), TODAY, 'woman'),
+    ).toMatchObject({ pregnant: 'unknown', keptUnsureOn: '2026-10-01' });
   });
 
   it("shows today's month for a month given earlier, agreeing with the term read back", () => {
@@ -449,12 +727,6 @@ describe('formFromProfile', () => {
   it('shows month 9 for a month given so long ago that it no longer holds', () => {
     const term = { kind: 'months', months: 9, givenOn: '2026-08-26' } as const;
     expect(formFromProfile(stored({ pregnant: true, term }), TODAY, 'woman').months).toBe('9');
-  });
-
-  it('keeps nothing from a term whose day cannot be read, and shows it as given', () => {
-    const term = { kind: 'weeks', weeks: 18, givenOn: 'not a date' } as const;
-    const form = formFromProfile(stored({ pregnant: true, term }), TODAY, 'woman');
-    expect(form).toMatchObject({ weeks: '18', keptTerm: null });
   });
 
   it('shows the age a baby has reached today, from an age given weeks ago', () => {
@@ -508,27 +780,62 @@ describe('formFromProfile', () => {
     ).toBe(false);
   });
 
-  it('takes a value typed again as given today, whatever was stored', () => {
-    const term = { kind: 'weeks', weeks: 18, givenOn: '2026-08-09' } as const;
-    const form = formFromProfile(stored({ pregnant: true, term }), TODAY, 'woman');
-    // The screen clears the kept term when the field is typed in.
-    const typed = { ...form, weeks: '31', keptTerm: null };
-    expect(termFromForm(typed, TODAY)).toEqual({ kind: 'weeks', weeks: 31, givenOn: TODAY });
-  });
-
   it('never loses a situation the mode does not show', () => {
     const base = stored({ conditions: ['sickle-cell', 'renal-failure'] });
     const form = formFromProfile(base, TODAY, 'woman');
     const saved = profileFromForm(
-      { ...form, pregnant: true, termKind: 'unknown' },
+      { ...form, pregnant: 'yes', termKind: 'unknown' },
       { base, id: 'x', nowIso: NOW, todayIso: TODAY },
     );
     expect(saved.conditions).toEqual(['renal-failure', 'sickle-cell']);
   });
 });
 
+describe('updating an outdated profile', () => {
+  const outdated = stored({
+    pregnant: true,
+    term: { kind: 'months', months: 7, givenOn: '2026-07-01' },
+    conditions: ['uterine-scar'],
+  });
+
+  it('"the baby is born": not pregnant, the breastfeeding and baby age questions to answer', () => {
+    const form = afterBirth(formFromProfile(outdated, TODAY, 'woman'));
+    expect(form).toMatchObject({
+      pseudonym: 'Awa',
+      pregnant: 'no',
+      termKind: null,
+      months: '',
+      keptTerm: null,
+      breastfeeding: null,
+      babyAgeKind: null,
+      premature: null,
+      conditions: ['uterine-scar'],
+    });
+    expect(validateForm(form, TODAY, 'woman')).toEqual({ breastfeeding: 'profile.error.yesNo' });
+  });
+
+  it('"still pregnant": the term is to be given again, the way it was given', () => {
+    const form = reenterTerm(formFromProfile(outdated, TODAY, 'woman'));
+    expect(form).toMatchObject({
+      pregnant: 'yes',
+      termKind: 'months',
+      months: '',
+      keptTerm: null,
+      weeks: '',
+      weeksDay: null,
+      weeksGivenOn: '',
+      lmpDate: '',
+    });
+    expect(validateForm(form, TODAY, 'woman')).toEqual({ months: 'profile.error.months' });
+  });
+});
+
 describe('re-saving a profile', () => {
   const DAY_0 = '2026-09-01';
+  const SAVED_ON_DAY_0 = {
+    createdAt: `${DAY_0}T08:00:00.000Z`,
+    updatedAt: `${DAY_0}T08:00:00.000Z`,
+  };
 
   /** Opens the profile on `today` and saves it without touching anything, as the screen does. */
   function resave(profile: Profile, today: string): Profile {
@@ -548,7 +855,11 @@ describe('re-saving a profile', () => {
     contextFromProfile(profile, { items: [], signs: [] }, today).breastfeeding?.babyAgeWeeks;
 
   it('leaves a weeks term as it was: saved on day 13, the same term on day 14 as without the save', () => {
-    const original = stored({ pregnant: true, term: { kind: 'weeks', weeks: 20, givenOn: DAY_0 } });
+    const original = stored({
+      ...SAVED_ON_DAY_0,
+      pregnant: true,
+      term: { kind: 'weeks', weeks: 20, givenOn: DAY_0 },
+    });
     const saved = resave(original, addDays(DAY_0, 13));
 
     expect(pregnancyOn(saved, addDays(DAY_0, 14))).toEqual(
@@ -559,6 +870,7 @@ describe('re-saving a profile', () => {
 
   it('never moves a term or an age, however often the profile is saved', () => {
     let weeks = stored({
+      ...SAVED_ON_DAY_0,
       pregnant: true,
       term: { kind: 'weeks', weeks: 20, givenOn: DAY_0 },
       breastfeeding: true,
@@ -567,6 +879,7 @@ describe('re-saving a profile', () => {
       premature: false,
     });
     let months = stored({
+      ...SAVED_ON_DAY_0,
       pregnant: true,
       term: { kind: 'months', months: 4, givenOn: DAY_0 },
       breastfeeding: true,
@@ -581,8 +894,8 @@ describe('re-saving a profile', () => {
     }
 
     const day60 = addDays(DAY_0, 60);
-    // 60 days are 8 whole weeks: 20 weeks become 28, not 20.
-    expect(pregnancyOn(weeks, day60)).toEqual({ weeksMin: 28, weeksMax: 28, precision: 'exact' });
+    // 60 days are 8 weeks and 4 days: 20 weeks become 28 to 29, not 20.
+    expect(pregnancyOn(weeks, day60)).toEqual({ weeksMin: 28, weeksMax: 29, precision: 'exact' });
     expect(babyAgeOn(weeks, day60)).toBe(14);
     expect(weeks.term).toEqual({ kind: 'weeks', weeks: 20, givenOn: DAY_0 });
     expect(months.term).toEqual({ kind: 'months', months: 4, givenOn: DAY_0 });

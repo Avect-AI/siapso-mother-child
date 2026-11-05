@@ -125,14 +125,48 @@ export const fr = {
     add: 'Ajouter un profil',
     edit: 'Modifier',
     editNamed: 'Modifier le profil de {name}',
+    // The way to a profile whose term is to be updated or confirmed.
+    update: 'Mettre à jour',
+    updateNamed: 'Mettre à jour le profil de {name}',
+    deleted: 'Profil supprimé : {name}.',
+  },
+  // Where a profile stands, in plain words: on the list, the check and the result.
+  profileStatus: {
+    // The start of the term is past 42 weeks: the profile is updated first.
+    outdated: 'À mettre à jour',
+    // Its end only is past 42 weeks, or "Je ne sais pas" is old: the check goes on.
+    mayBeBorn: 'À confirmer : le bébé est peut-être né',
+    maybePregnant: 'Grossesse possible, terme inconnu',
+    clock: 'Terme inconnu (date du téléphone)',
+    babyUnknown: 'Allaite, âge du bébé inconnu',
+    babyUnderOne: "Allaite, bébé de moins d'une semaine",
+    babyOneWeek: 'Allaite, bébé de 1 semaine',
+    babyWeeks: 'Allaite, bébé de {weeks} semaines',
+    babyOneMonth: 'Allaite, bébé de 1 mois',
+    babyMonths: 'Allaite, bébé de {months} mois',
+  },
+  // A pregnancy profile whose term is past 42 weeks: asked before any check.
+  outdated: {
+    titleWoman: 'Votre terme noté a passé 42 semaines. Votre bébé est-il né ?',
+    titleAccompanied: 'Le terme noté a passé 42 semaines. Le bébé est-il né ?',
+    leadWoman: 'Mettez votre profil à jour avant de regarder un produit.',
+    leadAccompanied: 'Mettez son profil à jour avant de regarder un produit.',
+    born: 'Oui, le bébé est né',
+    notBorn: 'Non, toujours enceinte',
   },
   profile: {
     titleMine: 'Mon profil',
     titleNew: 'Nouveau profil',
     titleEdit: 'Modifier le profil',
     lead: 'Ces réponses restent sur ce téléphone.',
+    // Opened from the outdated-term step: why, and the way out when she does not breastfeed.
+    leadBornWoman:
+      "Votre bébé est né : dites si vous allaitez, et son âge. Si vous n'allaitez pas, vous pouvez supprimer votre profil en bas de l'écran.",
+    leadBornAccompanied:
+      "Le bébé est né : dites si elle allaite, et l'âge du bébé. Si elle n'allaite pas, vous pouvez supprimer son profil en bas de l'écran.",
+    leadTerm: "Donnez le terme d'aujourd'hui.",
     pseudonym: 'Surnom',
-    pseudonymHint: 'Un surnom, jamais le vrai nom.',
+    pseudonymHint: 'Un surnom, jamais le vrai nom. 40 caractères au plus.',
     // Filled in for a new profile, so the common case types only the term.
     pseudonymMine: 'Moi',
     pseudonymNumbered: 'Femme {number}',
@@ -149,8 +183,21 @@ export const fr = {
     lmpDate: 'Premier jour des dernières règles',
     weeks: 'Nombre de semaines',
     weeksHint: "Semaines d'aménorrhée (depuis les dernières règles), de 0 à 42.",
+    // The day the weeks were known (an ultrasound, the booklet): the term moves on from it.
+    weeksGivenOn: 'Ce terme date de quand ?',
+    weeksGivenOnHint: "Aujourd'hui, ou le jour de l'échographie ou de la visite où il a été noté.",
+    monthsNearTermWeeks: 'Donner le nombre de semaines',
+    monthsNearTermLmp: 'Donner la date des dernières règles',
+    weeksToday: "Aujourd'hui",
+    weeksOtherDay: 'Un autre jour',
+    weeksDate: 'Jour où ce nombre de semaines a été noté',
+    // Near term a month is several weeks wide: weeks or the last period say more.
+    monthsNearTerm:
+      'Près du terme, un mois couvre plusieurs semaines. Si vous les connaissez, donnez le nombre de semaines ou la date des dernières règles.',
     // The month in progress; the term read back covers "months completed" too.
     months: 'Dans quel mois de grossesse êtes-vous ? (le mois en cours, du 1er au 9e)',
+    // A number of 10 or more typed as months: one tap gives it as weeks.
+    monthsAsWeeks: 'Ce sont {weeks} semaines',
     // Accompanied mode: the question is about the woman, as "Ce qu'elle prend".
     monthsAccompanied: 'Dans quel mois de grossesse est-elle ? (le mois en cours, du 1er au 9e)',
     termShown: 'Terme retenu',
@@ -160,6 +207,8 @@ export const fr = {
       exact: 'Environ {weeks} semaines',
       estimated: 'Entre {min} et {max} semaines (estimé)',
       unknown: 'Terme inconnu',
+      // Weeks known another day: the term today, then as noted ("26 semaines le 24/09").
+      since: "{term} aujourd'hui ({weeks} semaines le {date})",
     },
     termCorrect: 'Corriger le nombre de semaines',
     // The baby's age read back in the weeks the rules use (months are converted).
@@ -190,18 +239,44 @@ export const fr = {
     noCondition: 'Aucune de ces situations',
     save: 'Enregistrer',
     saveFailed: "Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
+    // Deleting one profile and its history, after a last yes. Never red: not a danger sign.
+    delete: 'Supprimer ce profil',
+    deleteTitle: 'Supprimer le profil {name} ?',
+    deleteTitleMine: 'Supprimer votre profil ?',
+    deleteLeadWoman:
+      "Votre profil et l'historique de vos résultats seront supprimés de ce téléphone. Cela ne peut pas être annulé.",
+    deleteLeadAccompanied:
+      "Son profil et l'historique de ses résultats seront supprimés de ce téléphone. Cela ne peut pas être annulé.",
+    deleteConfirm: 'Supprimer le profil',
+    deleteCancel: 'Garder le profil',
+    deleting: 'Suppression en cours.',
+    deleteFailed: "Ce profil n'a pas pu être supprimé sur ce téléphone. Essayez encore.",
+    deletedMine: 'Votre profil est supprimé.',
+    // Neither pregnant nor breastfeeding any more (after "the baby is born"): said plainly.
+    notCoveredWoman:
+      "L'application sert pendant la grossesse et l'allaitement. Si vous n'êtes plus enceinte et n'allaitez pas, elle ne vous concerne plus : vous pouvez supprimer votre profil.",
+    notCoveredDeleteWoman: 'Supprimer mon profil',
+    notCoveredDeleteAccompanied: 'Supprimer son profil',
+    notCoveredAccompanied:
+      "L'application sert pendant la grossesse et l'allaitement. Si elle n'est plus enceinte et n'allaite pas, elle ne la concerne plus : vous pouvez supprimer son profil.",
     loadFailed:
       "Les profils n'ont pas pu être lus sur ce téléphone. Fermez l'application, puis rouvrez-la.",
     notFound: "Ce profil n'est pas sur ce téléphone. Revenez à l'accueil.",
     error: {
       pseudonym: 'Écrivez un surnom.',
       pseudonymNumber: 'Pas de numéro de téléphone : écrivez un surnom.',
+      pseudonymLong: 'Écrivez un surnom de 40 caractères au plus.',
+      pseudonymTaken: 'Ce surnom est déjà sur ce téléphone : écrivez-en un autre.',
       yesNo: 'Répondez oui ou non.',
       choose: 'Choisissez une réponse.',
       date: 'Écrivez une date.',
       dateFuture: "Cette date est après aujourd'hui : choisissez aujourd'hui ou une date passée.",
       lmpTooOld:
-        'Cette date remonte à plus de 45 semaines. Choisissez une date plus récente, ou Je ne sais pas.',
+        'Cette date remonte à plus de 42 semaines : le terme est dépassé. Si le bébé est né, répondez Non à Enceinte. Sinon, choisissez Je ne sais pas.',
+      clockBehind:
+        "Ce terme a été noté après la date du téléphone. Regardez la date du téléphone, ou écrivez le mois d'aujourd'hui.",
+      monthsLooksLikeWeeks:
+        'Ce nombre ressemble à des semaines : un mois de grossesse va de 1 à 9.',
       birthTooOld:
         'Cette date remonte à plus de 2 ans. Pour un enfant de plus de 2 ans, choisissez En semaines et écrivez 104.',
       weeksMovedOn:
@@ -389,6 +464,21 @@ export const fr = {
       estimated: 'Terme estimé : ce résultat tient compte de toutes les semaines possibles.',
       unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',
     },
+    // Under the title: the term the result was worked out on, in plain words.
+    termUsed: 'Terme retenu : {term}',
+    // The engine looks TERM_LOOKAHEAD_DAYS ahead of the term: a treatment goes on.
+    lookahead: 'Ce résultat tient compte aussi des {weeks} semaines à venir.',
+    // The phone's date before a day the app has already seen: the term read as
+    // unknown, breastfeeding as possible (the real date is later), and said why.
+    termClockWoman:
+      "Terme inconnu : la date du téléphone est avant un jour où l'application a déjà servi. Votre bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement. Regardez la date du téléphone.",
+    termClockAccompanied:
+      "Terme inconnu : la date du téléphone est avant un jour où l'application a déjà servi. Le bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement. Regardez la date du téléphone.",
+    // The baby may be born (possibly past term): breastfeeding is read as possible too.
+    mayBeBornWoman:
+      "Nous ne savons pas si votre bébé est né : ce résultat tient compte de la grossesse et de l'allaitement.",
+    mayBeBornAccompanied:
+      "Nous ne savons pas si le bébé est né : ce résultat tient compte de la grossesse et de l'allaitement.",
     // Accompanied mode: the evidence level and the wording it sets (knowledge/README.md).
     // The wording in quotes: it is how the messages of that level are written.
     evidence: 'Niveau de preuve {level} : « {wording} »',
@@ -539,7 +629,7 @@ export const fr = {
     modeHint: 'Changer de mode ne supprime aucune donnée.',
     // Woman mode opens one profile: the first one made. The others stay on the phone.
     modeWomanNote:
-      "En mode « Je suis enceinte ou j'allaite », seul le premier profil s'ouvre. Les autres restent sur ce téléphone.",
+      "En mode « Je suis enceinte ou j'allaite », seul votre profil s'ouvre. Les autres restent sur ce téléphone.",
     changed: 'Réglage enregistré.',
     done: "Revenir à l'accueil",
   },

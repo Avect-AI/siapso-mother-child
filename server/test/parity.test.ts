@@ -56,7 +56,7 @@ describe('parity with the library', () => {
             today,
           );
         } catch {
-          continue; // the app refuses a term past 45 weeks
+          continue; // past 42 weeks the term is outdated: the app asks before any result
         }
         const context = {
           conditions: [],
@@ -78,7 +78,70 @@ describe('parity with the library', () => {
       }
     }
     expect(tried).toBeGreaterThan(60);
-    expect(widest).toBeGreaterThan(45);
+    // The app never works out a result past 42 weeks (profileTermStatus: outdated).
+    expect(widest).toBe(42);
+  });
+
+  it('gives the same result for weeks given 0 to 8 days ago (N weeks and 0 to 6 days)', async () => {
+    const today = '2026-11-05';
+    let tried = 0;
+    for (let weeks = 0; weeks <= 42; weeks += 1) {
+      // The days where a bound moves on: the same day, the next, the last of the week, then on.
+      for (const days of [0, 1, 6, 7, 8]) {
+        let term;
+        try {
+          term = termDisplay({ kind: 'weeks', weeks, givenOn: addDays(today, -days) }, today);
+        } catch {
+          continue; // outdated: the app asks before any result
+        }
+        const context = {
+          conditions: ['uterine-scar' as const],
+          signs: [],
+          items: [{ ref: { kind: 'plant' as const, id: 'castor-oil' } }],
+          pregnancy: {
+            weeksMin: term.weeksMin,
+            weeksMax: term.weeksMax,
+            precision: term.precision,
+          },
+        };
+        const response = await post(running, { pack_version: pack.version, context });
+        expect(response.status, `${String(weeks)} weeks, ${String(days)} days on`).toBe(200);
+        expect(await response.json()).toStrictEqual(
+          JSON.parse(JSON.stringify(evaluate(pack, context))),
+        );
+        tried += 1;
+      }
+    }
+    expect(tried).toBeGreaterThan(200);
+  });
+
+  it('gives the same result at every exact week, across the 14-day look-ahead', async () => {
+    const ibuprofen = pack.products.find((p) =>
+      p.components.some((c) => c.substance === 'ibuprofen'),
+    );
+    expect(ibuprofen).toBeDefined();
+    const levels = new Set<string>();
+    for (let weeks = 0; weeks <= 42; weeks += 1) {
+      const context = {
+        conditions: ['uterine-scar' as const],
+        signs: [],
+        items: [
+          { ref: { kind: 'product' as const, id: ibuprofen?.id ?? '' } },
+          { ref: { kind: 'plant' as const, id: 'castor-oil' } },
+        ],
+        pregnancy: { weeksMin: weeks, weeksMax: weeks, precision: 'exact' as const },
+      };
+      const response = await post(running, { pack_version: pack.version, context });
+      expect(response.status, `${String(weeks)} weeks`).toBe(200);
+      const overHttp = (await response.json()) as { level: string };
+      expect(overHttp, `${String(weeks)} weeks`).toStrictEqual(
+        JSON.parse(JSON.stringify(evaluate(pack, context))),
+      );
+      levels.add(`${String(weeks)}:${overHttp.level}`);
+    }
+    // The look-ahead reaches 30 weeks from 28: castor oil with a scar is a danger there.
+    expect(levels.has('28:danger')).toBe(true);
+    expect(levels.has('27:danger')).toBe(false);
   });
 
   it('gives the same result with the strength unknown and the unit count set', async () => {

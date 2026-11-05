@@ -111,14 +111,42 @@ export const en: Dictionary = {
     add: 'Add a profile',
     edit: 'Edit',
     editNamed: 'Edit the profile of {name}',
+    update: 'Update',
+    updateNamed: 'Update the profile of {name}',
+    deleted: 'Profile deleted: {name}.',
+  },
+  profileStatus: {
+    outdated: 'To be updated',
+    mayBeBorn: 'To confirm: the baby may be born',
+    maybePregnant: 'Pregnancy possible, term unknown',
+    clock: "Term unknown (phone's date)",
+    babyUnknown: "Breastfeeding, baby's age unknown",
+    babyUnderOne: 'Breastfeeding, baby under 1 week old',
+    babyOneWeek: 'Breastfeeding, baby 1 week old',
+    babyWeeks: 'Breastfeeding, baby {weeks} weeks old',
+    babyOneMonth: 'Breastfeeding, baby 1 month old',
+    babyMonths: 'Breastfeeding, baby {months} months old',
+  },
+  outdated: {
+    titleWoman: 'Your noted term has passed 42 weeks. Is your baby born?',
+    titleAccompanied: 'The noted term has passed 42 weeks. Is the baby born?',
+    leadWoman: 'Update your profile before looking up a product.',
+    leadAccompanied: 'Update her profile before looking up a product.',
+    born: 'Yes, the baby is born',
+    notBorn: 'No, still pregnant',
   },
   profile: {
     titleMine: 'My profile',
     titleNew: 'New profile',
     titleEdit: 'Edit the profile',
     lead: 'These answers stay on this phone.',
+    leadBornWoman:
+      "Your baby is born: say whether you breastfeed, and the baby's age. If you do not breastfeed, you can delete your profile at the bottom of the screen.",
+    leadBornAccompanied:
+      "The baby is born: say whether she breastfeeds, and the baby's age. If she does not breastfeed, you can delete her profile at the bottom of the screen.",
+    leadTerm: "Give today's term.",
     pseudonym: 'Nickname',
-    pseudonymHint: 'A nickname, never the real name.',
+    pseudonymHint: 'A nickname, never the real name. 40 characters at most.',
     pseudonymMine: 'Me',
     pseudonymNumbered: 'Woman {number}',
     yes: 'Yes',
@@ -134,7 +162,17 @@ export const en: Dictionary = {
     lmpDate: 'First day of the last period',
     weeks: 'Number of weeks',
     weeksHint: 'Weeks of amenorrhoea (since the last period), from 0 to 42.',
+    weeksGivenOn: 'When was this term given?',
+    weeksGivenOnHint: 'Today, or the day of the ultrasound or visit where it was noted.',
+    monthsNearTermWeeks: 'Give the number of weeks',
+    monthsNearTermLmp: 'Give the date of the last period',
+    weeksToday: 'Today',
+    weeksOtherDay: 'Another day',
+    weeksDate: 'Day this number of weeks was noted',
+    monthsNearTerm:
+      'Near term, a month covers several weeks. If you know them, give the number of weeks or the date of the last period.',
     months: 'Which month of pregnancy are you in? (the current month, 1st to 9th)',
+    monthsAsWeeks: 'It is {weeks} weeks',
     monthsAccompanied: 'Which month of pregnancy is she in? (the current month, 1st to 9th)',
     termShown: 'Term used',
     term: {
@@ -143,6 +181,7 @@ export const en: Dictionary = {
       exact: 'About {weeks} weeks',
       estimated: 'Between {min} and {max} weeks (estimated)',
       unknown: 'Term unknown',
+      since: '{term} today ({weeks} weeks on {date})',
     },
     termCorrect: 'Correct the number of weeks',
     babyAgeShown: 'Age used',
@@ -172,16 +211,40 @@ export const en: Dictionary = {
     noCondition: 'None of these situations',
     save: 'Save',
     saveFailed: 'This profile could not be saved on this phone. Try again.',
+    delete: 'Delete this profile',
+    deleteTitle: 'Delete the profile {name}?',
+    deleteTitleMine: 'Delete your profile?',
+    deleteLeadWoman:
+      'Your profile and the history of your results will be deleted from this phone. This cannot be undone.',
+    deleteLeadAccompanied:
+      'Her profile and the history of her results will be deleted from this phone. This cannot be undone.',
+    deleteConfirm: 'Delete the profile',
+    deleteCancel: 'Keep the profile',
+    deleting: 'Deleting.',
+    deleteFailed: 'This profile could not be deleted on this phone. Try again.',
+    deletedMine: 'Your profile is deleted.',
+    notCoveredWoman:
+      'The app is for pregnancy and breastfeeding. If you are no longer pregnant and do not breastfeed, it no longer covers you: you can delete your profile.',
+    notCoveredDeleteWoman: 'Delete my profile',
+    notCoveredDeleteAccompanied: 'Delete her profile',
+    notCoveredAccompanied:
+      'The app is for pregnancy and breastfeeding. If she is no longer pregnant and does not breastfeed, it no longer covers her: you can delete her profile.',
     loadFailed: 'The profiles could not be read on this phone. Close the app, then open it again.',
     notFound: 'This profile is not on this phone. Go back to the home screen.',
     error: {
       pseudonym: 'Write a nickname.',
       pseudonymNumber: 'No phone number: write a nickname.',
+      pseudonymLong: 'Write a nickname of 40 characters at most.',
+      pseudonymTaken: 'This nickname is already on this phone: write another one.',
       yesNo: 'Answer yes or no.',
       choose: 'Choose an answer.',
       date: 'Write a date.',
       dateFuture: 'This date is after today: choose today or an earlier date.',
-      lmpTooOld: "This date is more than 45 weeks ago. Choose a more recent date, or I don't know.",
+      lmpTooOld:
+        "This date is more than 42 weeks ago: the due date has passed. If the baby is born, answer No to Pregnant. Otherwise, choose I don't know.",
+      clockBehind:
+        "This term was noted after the phone's date. Look at the phone's date, or write the current month.",
+      monthsLooksLikeWeeks: 'This number looks like weeks: a month of pregnancy goes from 1 to 9.',
       birthTooOld:
         'This date is more than 2 years ago. For a child over 2, choose In weeks and write 104.',
       weeksMovedOn:
@@ -336,6 +399,16 @@ export const en: Dictionary = {
       estimated: 'Estimated term: this result takes every possible week into account.',
       unknown: 'Unknown term: this result takes the whole pregnancy into account.',
     },
+    termUsed: 'Term used: {term}',
+    lookahead: 'This result also covers the next {weeks} weeks.',
+    termClockWoman:
+      "Term unknown: the phone's date is before a day the app was already used. Your baby may be born: this result covers the whole pregnancy and breastfeeding. Look at the phone's date.",
+    termClockAccompanied:
+      "Term unknown: the phone's date is before a day the app was already used. The baby may be born: this result covers the whole pregnancy and breastfeeding. Look at the phone's date.",
+    mayBeBornWoman:
+      'We do not know whether your baby is born: this result takes into account pregnancy and breastfeeding.',
+    mayBeBornAccompanied:
+      'We do not know whether the baby is born: this result takes into account pregnancy and breastfeeding.',
     evidence: 'Evidence level {level}: “{wording}”',
     evidenceWording: {
       A: 'can cause',
@@ -461,7 +534,7 @@ export const en: Dictionary = {
     mode: 'Who is using the app?',
     modeHint: 'Changing the mode deletes no data.',
     modeWomanNote:
-      'In "I am pregnant or breastfeeding" mode, only the first profile opens. The others stay on this phone.',
+      'In "I am pregnant or breastfeeding" mode, only your profile opens. The others stay on this phone.',
     changed: 'Setting saved.',
     done: 'Back to the start',
   },

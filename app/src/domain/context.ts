@@ -1,35 +1,48 @@
 // SPDX-License-Identifier: MIT
 // The evaluation context the engine reads, built from a profile and the
 // current check. Pure: today is a parameter. The engine refuses invalid
-// numbers with a RangeError; this mapping never hands it one. A stored value
-// that no longer holds (a last period now too far back, an age that cannot be
-// read) becomes "unknown", which the engine treats as the riskier case: every
-// pregnancy window, every age-bounded rule. It never lowers a level.
-import {
-  UNKNOWN_TERM,
-  type BreastfeedingContext,
-  type CheckedItem,
-  type EvaluationContext,
-  type PregnancyContext,
+// numbers with a RangeError; this mapping never hands it one. A value that
+// cannot be read (an age, a term given after today on a clock set back)
+// becomes "unknown", which the engine treats as the riskier case: every
+// pregnancy window, every age-bounded rule. It never lowers a level. An
+// outdated pregnancy (past 42 weeks: the baby may be born) is refused: the
+// profile is updated first.
+import type {
+  BreastfeedingContext,
+  CheckedItem,
+  EvaluationContext,
+  PregnancyContext,
 } from '@siapso/engine';
 import { weeksSince, wholeWeeksBetween } from './dates.js';
-import { termDisplay } from './term.js';
-import type { Profile, TermInput } from './types.js';
+import { babyMayBeBorn, profileTermStatus } from './term.js';
+import type { Profile } from './types.js';
 
-const UNKNOWN_PREGNANCY: PregnancyContext = {
-  weeksMin: UNKNOWN_TERM.weeksMin,
-  weeksMax: UNKNOWN_TERM.weeksMax,
-  precision: 'unknown',
-};
-
-function pregnancyOf(term: TermInput | undefined, todayIso: string): PregnancyContext {
-  if (term === undefined) return { ...UNKNOWN_PREGNANCY };
-  try {
-    const { weeksMin, weeksMax, precision } = termDisplay(term, todayIso);
-    return { weeksMin, weeksMax, precision };
-  } catch {
-    return { ...UNKNOWN_PREGNANCY };
+/** The profile's term is outdated: it is updated before any result (screens show the step). */
+export class OutdatedTermError extends RangeError {
+  constructor() {
+    super('The pregnancy term of this profile is outdated: update the profile first');
+    this.name = 'OutdatedTermError';
   }
+}
+
+/**
+ * The pregnancy of the profile today (undefined when not pregnant), and
+ * whether the baby may be born (babyMayBeBorn: a possibly past term, a phone
+ * clock set back; breastfeeding is then read as possible too).
+ */
+function pregnancyOf(
+  profile: Profile,
+  todayIso: string,
+  notBefore: string | undefined,
+): { pregnancy: PregnancyContext | undefined; mayBeBorn: boolean } {
+  const status = profileTermStatus(profile, todayIso, notBefore);
+  if (status.status === 'not-pregnant') return { pregnancy: undefined, mayBeBorn: false };
+  if (status.status === 'outdated') throw new OutdatedTermError();
+  const { weeksMin, weeksMax, precision } = status.term;
+  return {
+    pregnancy: { weeksMin, weeksMax, precision },
+    mayBeBorn: babyMayBeBorn(status),
+  };
 }
 
 function isAge(weeks: number | undefined): weeks is number {
@@ -52,9 +65,11 @@ function ageMovedOn(givenOn: string | undefined, todayIso: string): number {
 
 /**
  * Whole weeks from the birth date when it can be read, else the stored age
- * moved on since the day it was given; undefined when neither holds.
+ * moved on since the day it was given; undefined when neither holds, and for
+ * an age answered "Je ne sais pas".
  */
-function babyAgeWeeksOf(profile: Profile, todayIso: string): number | undefined {
+export function babyAgeWeeksOf(profile: Profile, todayIso: string): number | undefined {
+  if (profile.babyAgeUnknown === true) return undefined;
   if (profile.babyBirthDate !== undefined) {
     try {
       const weeks = wholeWeeksBetween(profile.babyBirthDate, todayIso);
@@ -133,20 +148,31 @@ function itemsOf(checked: readonly CheckedItem[], longTerm: readonly CheckedItem
  * The engine context for a check: a pregnancy only when the profile is
  * pregnant, breastfeeding only when it breastfeeds, the profile's conditions,
  * the checked items then the long-term ones, and the danger signs of the check.
- * Throws a RangeError for a unit count the engine would refuse (the check
- * screen validates them; dropping one could hide a maximum-dose excess).
+ * When the baby may be born (possibly past term), the term is held at 42
+ * weeks and breastfeeding is added with no age and no prematurity, so every
+ * breastfeeding rule applies. `notBefore` is a day the app has already seen
+ * (the knowledge pack's date, the last result kept): a phone date before it
+ * reads the term as unknown and, the real date being later, breastfeeding
+ * as possible too. Throws a RangeError for a unit count the engine
+ * would refuse (the check screen validates them; dropping one could hide a
+ * maximum-dose excess), and an OutdatedTermError for an outdated pregnancy
+ * (profileTermStatus): no result is ever worked out on it.
  */
 export function contextFromProfile(
   profile: Profile,
   check: { items: CheckedItem[]; signs: string[] },
   todayIso: string,
+  notBefore?: string,
 ): EvaluationContext {
   const context: EvaluationContext = {
     conditions: [...new Set(profile.conditions)],
     items: itemsOf(check.items, profile.longTermItems),
     signs: [...check.signs],
   };
-  if (profile.pregnant) context.pregnancy = pregnancyOf(profile.term, todayIso);
-  if (profile.breastfeeding) context.breastfeeding = breastfeedingOf(profile, todayIso);
+  const { pregnancy, mayBeBorn } = pregnancyOf(profile, todayIso, notBefore);
+  if (pregnancy) context.pregnancy = pregnancy;
+  // A baby that may be born is of unknown age: the youngest, riskiest reading.
+  if (mayBeBorn) context.breastfeeding = {};
+  else if (profile.breastfeeding) context.breastfeeding = breastfeedingOf(profile, todayIso);
   return context;
 }

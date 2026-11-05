@@ -3,7 +3,7 @@ import type { CheckedItem, Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { listHistory } from '../data/history.js';
+import { listHistory, recordHistory } from '../data/history.js';
 import type { LoadedPack } from '../data/pack-loader.js';
 import { saveProfile } from '../data/profiles.js';
 import type { Profile, Settings } from '../domain/types.js';
@@ -129,13 +129,81 @@ describe('Danger signs now, before the result', () => {
       expect((await listHistory('p1'))[0]?.signs).toEqual(['fever']);
     });
 
-    // Back from the result finds the answer given; back again, the list.
+    // Back from the result asks again, nothing ticked ("now" may have changed); back again, the list.
     window.history.back();
-    expect(await screen.findByRole('checkbox', { name: label('fever') })).toBeChecked();
+    expect(await screen.findByRole('checkbox', { name: label('fever') })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
     window.history.back();
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
+  });
+
+  it('never ticks an earlier answer: each check asks again, with nothing ticked', async () => {
+    const { user } = await openSigns();
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    await user.click(await screen.findByRole('button', { name: 'Revenir à la liste' }));
+    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+
+    const none = await screen.findByRole('checkbox', { name: 'Aucun de ces signes' });
+    expect(none).not.toBeChecked();
+    // One tap cannot reuse the earlier answer.
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    expect(screen.getByText(/^Répondez/)).toBeVisible();
+    expect(window.location.hash).toBe('#/signs');
+  });
+
+  it('keeps a sign ticked after Back when the browser goes Forward to the result', async () => {
+    const { user, probe } = await openSigns();
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+
+    window.history.back();
+    await user.click(await screen.findByRole('checkbox', { name: label('fever') }));
+    window.history.forward();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+    // The cards come once the profile is read.
+    expect((await screen.findAllByRole('article'))[0]).toHaveClass('level--danger');
+    expect(probe.current().signs).toEqual(['fever']);
+  });
+
+  it('asks again on Forward when nothing was answered after Back', async () => {
+    const { user } = await openSigns();
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+
+    window.history.back();
+    await screen.findByRole('checkbox', { name: 'Aucun de ces signes' });
+    // Forward arrives as an event; the result then sends back to the question.
+    await act(async () => {
+      window.history.forward();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^Avez-vous un de ces signes/ }),
+    ).toBeVisible();
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(screen.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
+  });
+
+  it('goes to the result once, however fast "Voir le résultat" is pressed twice', async () => {
+    const { user } = await openSigns();
+    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
+    const length = window.history.length;
+    const go = screen.getByRole('button', { name: 'Voir le résultat' });
+
+    go.click();
+    go.click();
+
+    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+    expect(window.history.length).toBe(length + 1);
   });
 
   it('gives "none" and a sign as answers that exclude each other', async () => {
@@ -180,6 +248,43 @@ describe('Danger signs now, before the result', () => {
     expect(within(question).getByRole('group', { name: 'Pendant la grossesse' })).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Voir tous les signes' })).toBeNull();
     expect(within(question).getAllByRole('checkbox')).toHaveLength(pack.dangerSigns.length + 1);
+  });
+
+  it('asks about after the birth and the baby up front when the baby may be born: a possibly past term', async () => {
+    // "Je ne sais pas" to the term, 40 days ago: the check reads breastfeeding as possible.
+    const unknown = profileOf({ term: { kind: 'unknown', givenOn: '2026-09-25' } });
+    await openSigns({ settings: accompanied, profile: unknown });
+
+    const question = await screen.findByRole('group', {
+      name: 'A-t-elle un de ces signes maintenant ?',
+    });
+    expect(within(question).getByRole('group', { name: 'Pendant la grossesse' })).toBeVisible();
+    expect(within(question).getByRole('group', { name: "Après l'accouchement" })).toBeVisible();
+    expect(within(question).getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Voir tous les signes' })).toBeNull();
+  });
+
+  it('asks about every group when the phone date is before a result already kept, as the check reads it', async () => {
+    const pregnant = profileOf();
+    await saveProfile(pregnant);
+    await recordHistory({
+      id: 'h1',
+      profileId: pregnant.id,
+      at: '2026-11-20T10:00:00.000Z',
+      packVersion: '0.1.0',
+      level: 'unknown',
+      ruleIds: [],
+      items: [KINKELIBA],
+      signs: [],
+    });
+    await openSigns({ profile: pregnant });
+
+    const question = await screen.findByRole('group', {
+      name: 'Avez-vous un de ces signes maintenant ?',
+    });
+    expect(within(question).getByRole('group', { name: 'Pendant la grossesse' })).toBeVisible();
+    expect(within(question).getByRole('group', { name: "Après l'accouchement" })).toBeVisible();
+    expect(within(question).getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
   });
 
   it('comes before the result: a result opened without an answer goes to this step', async () => {

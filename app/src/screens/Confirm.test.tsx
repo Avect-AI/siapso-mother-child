@@ -80,6 +80,22 @@ describe('Confirm: a remedy', () => {
     expect(window.location.hash).toBe('#/check');
   });
 
+  it('goes back to the check once, however fast "yes" is pressed twice', async () => {
+    const { probe } = await confirmFirst('Ajouter un remède', 'nebeday');
+    const yes = screen.getByRole('button', { name: "Oui, c'est ce remède" });
+
+    // Two clicks in the same task, before any render.
+    yes.click();
+    yes.click();
+
+    expect(await backOnCheck()).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    // Still on the check: a second way back would have gone past it.
+    expect(window.location.hash).toBe('#/check');
+    expect(screen.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
+  });
+
   it('adds nothing on no, and goes back to the search with the text typed', async () => {
     const { user, probe } = await confirmFirst('Ajouter un remède', 'kinkeliba');
 

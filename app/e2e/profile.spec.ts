@@ -63,6 +63,8 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
   await expect(weeks).toHaveValue('26');
   await expect(page.getByRole('checkbox', { name: 'Aucune de ces situations' })).toBeChecked();
   await weeks.fill('27');
+  // A new number on her saved profile: the day it was known is asked again.
+  await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
   await page.getByText("Ancienne césarienne (cicatrice sur l'utérus)").click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();

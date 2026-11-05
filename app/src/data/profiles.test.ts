@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { Profile } from '../domain/types.js';
+import type { HistoryEntry, Profile } from '../domain/types.js';
 import { verifierOf } from '../test/verifier.js';
+import { codeOpened, NoCodeError } from './code-guard.js';
 import { closeAppDb, storeVerifier } from './db.js';
+import { listHistory, recordHistory } from './history.js';
 import { deleteProfile, getProfile, listProfiles, saveProfile } from './profiles.js';
 
 // Profile data is written only while a code is on the phone (code-guard.ts).
@@ -75,5 +77,51 @@ describe('profiles', () => {
     await deleteProfile('missing');
 
     expect((await listProfiles()).map((p) => p.id)).toEqual(['b']);
+  });
+
+  it('deletes the history of the profile with it, and only hers', async () => {
+    await saveProfile(profile('a', '2026-11-01T08:00:00.000Z'));
+    await saveProfile(profile('b', '2026-11-02T08:00:00.000Z'));
+    const entry = (id: string, profileId: string): HistoryEntry => ({
+      id,
+      profileId,
+      at: '2026-11-04T10:00:00.000Z',
+      packVersion: '0.1.0',
+      level: 'unknown',
+      ruleIds: [],
+      items: [{ ref: { kind: 'product', id: 'doliprane-500' } }],
+      signs: [],
+    });
+    await recordHistory(entry('h1', 'a'));
+    await recordHistory(entry('h2', 'a'));
+    await recordHistory(entry('h3', 'b'));
+
+    await deleteProfile('a');
+
+    expect(await getProfile('a')).toBeUndefined();
+    expect(await listHistory('a')).toEqual([]);
+    expect((await listHistory('b')).map((h) => h.id)).toEqual(['h3']);
+  });
+
+  it('deletes nothing from a tab whose code is no longer the one on the phone', async () => {
+    const hers = await verifierOf('2468');
+    codeOpened(hers);
+    await saveProfile(profile('a', '2026-11-01T08:00:00.000Z'));
+    await recordHistory({
+      id: 'h1',
+      profileId: 'a',
+      at: '2026-11-04T10:00:00.000Z',
+      packVersion: '0.1.0',
+      level: 'unknown',
+      ruleIds: [],
+      items: [{ ref: { kind: 'product', id: 'doliprane-500' } }],
+      signs: [],
+    });
+    // Another code made since (after an erase, from another tab).
+    await storeVerifier(await verifierOf('1111'));
+
+    await expect(deleteProfile('a')).rejects.toBeInstanceOf(NoCodeError);
+    expect(await getProfile('a')).toBeDefined();
+    expect(await listHistory('a')).toHaveLength(1);
   });
 });

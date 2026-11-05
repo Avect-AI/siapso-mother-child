@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem } from '@siapso/engine';
-import { useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
+import { latestHistoryAt } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
+import { todayIso } from '../domain/dates.js';
+import { profileSummary } from '../domain/profile-summary.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
+import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
@@ -12,6 +16,7 @@ import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
 import { flowEntry, searchPath } from './check-flow.js';
+import { OutdatedTerm } from './OutdatedTerm.js';
 
 /** The last change to the list, said under it. */
 type Change =
@@ -94,8 +99,12 @@ function Item({
  * signs present now, once at least one item is listed.
  *
  * The check is for the active profile: hers in woman mode, the one chosen in
- * the list of profiles in accompanied mode (without a choice, the list opens).
- * Without any profile, the profile screen opens first, then comes back here.
+ * the list of profiles in accompanied mode (without a choice, the list opens),
+ * named with where she stands (the term used, the baby's age). Without any
+ * profile, the profile screen opens first, then comes back here. When her term
+ * is outdated (past 42 weeks), the check asks first whether the baby is born
+ * (OutdatedTerm), and nothing can be added or looked at until the profile is
+ * updated.
  */
 export function Check() {
   const t = useT();
@@ -104,7 +113,11 @@ export function Check() {
   const check = useCheck();
   const [, navigate] = useLocation();
   const mode: Mode = settings.mode ?? 'woman';
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<{
+    profile: Profile;
+    today: string;
+    lastAt: string | undefined;
+  } | null>(null);
   const [failed, setFailed] = useState(false);
   const [change, setChange] = useState<Change | null>(null);
   // After a removal or an undo, the row whose button takes the focus (else the first add button).
@@ -131,10 +144,16 @@ export function Check() {
 
   useEffect(() => {
     let live = true;
-    withTimeout(listProfiles(), storageTimeoutMs).then(
-      (profiles) => {
+    const load = async () => {
+      const profiles = await listProfiles();
+      const active = activeProfile(profiles, mode, profileId);
+      // The last result kept for her: a phone date before it is a clock set back.
+      const lastAt = active === undefined ? undefined : await latestHistoryAt(active.id);
+      return { profiles, active, lastAt };
+    };
+    withTimeout(load(), storageTimeoutMs).then(
+      ({ profiles, active, lastAt }) => {
         if (!live) return;
-        const active = activeProfile(profiles, mode, profileId);
         if (active === undefined) {
           // Accompanied mode with profiles, none chosen: she is chosen in the list.
           if (mode === 'accompanied' && profiles.length > 0) {
@@ -146,7 +165,8 @@ export function Check() {
           return;
         }
         start(active.id);
-        setProfile(active);
+        // Today from the phone's clock, handed to pure code.
+        setProfile({ profile: active, today: todayIso(new Date()), lastAt });
       },
       (failure: unknown) => {
         console.warn('Profiles not read on this device', failure);
@@ -183,6 +203,19 @@ export function Check() {
     navigate(searchPath(kind), { state: flowEntry({ stepsToCheck: 1 }) });
   };
 
+  // A day the app has already seen: the knowledge pack's date, her last result.
+  const notBefore = profile === null ? undefined : latestDay(pack?.date, profile.lastAt);
+  if (
+    profile &&
+    profileTermStatus(profile.profile, profile.today, notBefore).status === 'outdated'
+  ) {
+    return (
+      <main className="screen check">
+        <OutdatedTerm mode={mode} profile={profile.profile} />
+      </main>
+    );
+  }
+
   const empty = check.items.length === 0;
   return (
     <main className="screen check">
@@ -191,9 +224,20 @@ export function Check() {
           {t(mode === 'accompanied' ? 'check.titleAccompanied' : 'check.titleWoman')}
         </h1>
         <p>{t('check.lead')}</p>
-        {mode === 'accompanied' && profile !== null ? (
-          <p className="meta">{t('check.profile', { name: profile.pseudonym })}</p>
-        ) : null}
+        {profile === null ? null : (
+          <p className="meta check__profile">
+            {mode === 'accompanied' ? (
+              <span>{t('check.profile', { name: profile.profile.pseudonym })}</span>
+            ) : null}
+            {profileSummary(profile.profile, profile.today, notBefore).map((line) => (
+              // The space keeps the lines apart when read aloud (the grid shows one a line).
+              <Fragment key={line.key}>
+                {' '}
+                <span>{t(line.key, line.vars)}</span>
+              </Fragment>
+            ))}
+          </p>
+        )}
       </div>
       {failed ? <Notice>{t('profile.loadFailed')}</Notice> : null}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}

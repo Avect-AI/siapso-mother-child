@@ -42,5 +42,5 @@ export type {
   TermPrecision,
   WindowId,
 } from './types.js';
-export { WINDOWS, windowsCovered } from './windows.js';
+export { TERM_LOOKAHEAD_DAYS, WINDOWS, windowsCovered } from './windows.js';
 export { findForbiddenWording } from './wording.js';

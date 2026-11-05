@@ -2,27 +2,37 @@
 import type { ConditionId } from '@siapso/engine';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { getProfile, listProfiles, saveProfile } from '../data/profiles.js';
+import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
 import { addDays, todayIso } from '../domain/dates.js';
 import {
+  afterBirth,
   babyAgeFromForm,
   conditionsShown,
   emptyForm,
   formFromProfile,
+  monthsAsWeeks,
+  monthsLookLikeWeeks,
+  monthsNearTerm,
   profileFromForm,
+  pseudonymKey,
+  reenterTerm,
   termFromForm,
+  typedWeeks,
   validateForm,
+  weeksReadback,
   type BabyAgeKind,
   type FieldName,
   type FormErrors,
+  type PregnantAnswer,
   type PrematureAnswer,
   type ProfileForm,
+  type WeeksDay,
 } from '../domain/profile-form.js';
-import { termDisplay, weeksLabel, type TermDisplay } from '../domain/term.js';
+import { MAX_TERM_WEEKS, termDisplay, weeksLabel, type TermDisplay } from '../domain/term.js';
 import type { Mode, Profile, TermInput } from '../domain/types.js';
-import { useT, type MessageKey } from '../i18n/index.js';
+import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
-import { useCheck } from '../state/check-state.js';
+import { ownProfile, useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { CheckboxGroup, RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
@@ -33,12 +43,15 @@ export type ProfileTarget = { kind: 'mine' } | { kind: 'new' } | { kind: 'edit';
 
 /**
  * Fields whose error shows as soon as something is typed in them, before any
- * save: a number out of range or a date that cannot be used is said at once.
- * A question not answered yet is only marked once a save was tried.
+ * save: a number out of range, a date that cannot be used or a pseudonym too
+ * long or already used is said at once. A question not answered yet is only
+ * marked once a save was tried.
  */
 const TYPED_FIELDS = [
+  'pseudonym',
   'lmpDate',
   'weeks',
+  'weeksGivenOn',
   'months',
   'babyBirthDate',
   'babyWeeks',
@@ -54,16 +67,25 @@ function typedErrors(form: ProfileForm, all: FormErrors): FormErrors {
   return errors;
 }
 
-/** The oldest last period accepted: 45 weeks and 6 days (weeksFromLmp). */
-const LMP_MAX_DAYS = 45 * 7 + 6;
+/** The oldest last period accepted: 42 weeks and 0 days, past it the term is outdated. */
+const LMP_MAX_DAYS = MAX_TERM_WEEKS * 7;
+/** The oldest day weeks can be dated: as for a last period. */
+const WEEKS_GIVEN_MAX_DAYS = LMP_MAX_DAYS;
 /** The oldest birth date accepted: 104 weeks and 6 days. */
 const BIRTH_MAX_DAYS = 104 * 7 + 6;
 
 type Loaded =
   | { status: 'loading' }
-  | { status: 'ready'; today: string; base: Profile; form: ProfileForm }
+  | { status: 'ready'; today: string; base: Profile; form: ProfileForm; taken: string[] }
   /** A new profile: `number` is the count of profiles plus one, for its default pseudonym. */
-  | { status: 'ready'; today: string; base: undefined; form: null; number: number }
+  | {
+      status: 'ready';
+      today: string;
+      base: undefined;
+      form: null;
+      number: number;
+      taken: string[];
+    }
   | { status: 'missing' }
   | { status: 'failed' };
 
@@ -91,15 +113,38 @@ function shownTerm(form: ProfileForm, today: string): TermDisplay | undefined {
   }
 }
 
-/**
- * Where a save goes when the profile screen was opened on the way to another
- * screen: the check opens it when there is no profile yet, and leaves
- * `next: '/check'` on the history entry. Null: home, which says it was saved.
- */
-function nextAfterSave(): string | null {
+/** What the history entry of this screen asks: where a save goes, and what to update. */
+interface EntryAsk {
+  /**
+   * Where a save goes when the screen was opened on the way to another one:
+   * the check opens it when there is no profile yet or her term is outdated,
+   * and leaves `next: '/check'`. Null: home, which says it was saved.
+   */
+  next: string | null;
+  /** An outdated term: the baby is born, or she is still pregnant (the term again). */
+  update: 'born' | 'term' | null;
+}
+
+function entryAsk(): EntryAsk {
   const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null || !('next' in state)) return null;
-  return state.next === '/check' ? '/check' : null;
+  if (typeof state !== 'object' || state === null) return { next: null, update: null };
+  const next = 'next' in state && state.next === '/check' ? '/check' : null;
+  const update =
+    'update' in state && (state.update === 'born' || state.update === 'term') ? state.update : null;
+  return { next, update };
+}
+
+/** Why the screen opened from the outdated-term step, in words. */
+function updateLead(update: 'born' | 'term', mode: Mode): MessageKey {
+  if (update === 'term') return 'profile.leadTerm';
+  return mode === 'accompanied' ? 'profile.leadBornAccompanied' : 'profile.leadBornWoman';
+}
+
+/** The answers a screen opened to update an outdated term starts from. */
+function updatedForm(form: ProfileForm, update: EntryAsk['update']): ProfileForm {
+  if (update === 'born') return afterBirth(form);
+  if (update === 'term') return reenterTerm(form);
+  return form;
 }
 
 /**
@@ -132,35 +177,65 @@ function Readback({ label, value }: { label: string; value: string | undefined }
   );
 }
 
+/** A day without the year, as the language writes it: "24/09", "24 Sept". */
+function shortDate(iso: string, lang: 'fr' | 'en'): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return iso;
+  const options: Intl.DateTimeFormatOptions =
+    lang === 'fr'
+      ? { day: '2-digit', month: '2-digit', timeZone: 'UTC' }
+      : { day: 'numeric', month: 'short', timeZone: 'UTC' };
+  return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', options).format(date);
+}
+
 function Form({
   mode,
   today,
   base,
+  self,
   initial,
+  taken,
   onSaved,
+  onDelete,
 }: {
   mode: Mode;
   today: string;
   base: Profile | undefined;
+  /** A new profile is her own (woman mode) or another woman's (accompanied mode). */
+  self: boolean;
   /** Read once, when the form mounts: later renders (a language change) keep the answers typed. */
   initial: ProfileForm;
+  /** The pseudonyms of the other profiles of the phone. */
+  taken: readonly string[];
   onSaved: (profile: Profile) => void;
+  /** Asks to delete the profile edited; absent for a profile not saved yet. */
+  onDelete?: (() => void) | undefined;
 }) {
   const t = useT();
+  const lang = useLang();
   const { storageTimeoutMs } = useApp();
+  // A new weeks number asks again the day it was known: always in accompanied
+  // mode, and on her own profile once saved (a new one keeps today).
+  const asksDay = mode === 'accompanied' || base !== undefined;
   const [form, setForm] = useState(initial);
   // Each failed save attempt; from the first one, every error follows the answers live.
   const [attempts, setAttempts] = useState(0);
-  const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  // A ref, not state: two taps in the same task both see it at once.
+  const saving = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const focusAfterRender = useRef<string | null>(null);
   const weeksId = useId();
 
-  const allErrors = validateForm(form, today, mode);
+  const allErrors = validateForm(form, today, mode, taken);
   const errors = attempts > 0 ? allErrors : typedErrors(form, allErrors);
+  // Neither pregnant nor breastfeeding on a saved profile (the baby is born, not
+  // breastfed): said plainly with the way to delete it, never as a refusal.
+  const notCovered =
+    onDelete !== undefined && form.pregnant === 'no' && form.breastfeeding === false;
   const error = (field: FieldName) => {
     const key = errors[field];
+    if (notCovered && key === 'profile.error.neither') return undefined;
     return key === undefined ? undefined : t(key);
   };
 
@@ -187,13 +262,9 @@ function Form({
   const update = (patch: Partial<ProfileForm>) => {
     setForm((current) => ({ ...current, ...patch }));
   };
-  // Typed in: the value is given today, and the stored one of that kind is let go.
-  const typeTerm = (kind: 'weeks' | 'months', patch: Partial<ProfileForm>) => {
-    setForm((current) => ({
-      ...current,
-      ...patch,
-      keptTerm: current.keptTerm?.kind === kind ? null : current.keptTerm,
-    }));
+  // Typed in: the month is given today, and the stored one is let go.
+  const typeMonths = (months: string) => {
+    setForm((current) => ({ ...current, months, keptTerm: null }));
   };
   const typeBabyAge = (patch: Partial<ProfileForm>) => {
     setForm((current) => ({ ...current, ...patch, keptBabyAge: null }));
@@ -220,24 +291,62 @@ function Form({
     }));
   };
 
-  const term = form.pregnant ? shownTerm(form, today) : undefined;
+  const typeWeeks = (weeks: string) => {
+    setForm((current) => typedWeeks(current, weeks, asksDay));
+  };
+  // Another answer to "Enceinte ?" lets the day of a stored "Je ne sais pas" go.
+  const answerPregnant = (pregnant: PregnantAnswer) => {
+    setForm((current) =>
+      current.pregnant === pregnant ? current : { ...current, pregnant, keptUnsureOn: null },
+    );
+  };
+  // Another way of giving the term lets the day of a stored unknown term go.
+  const chooseTermKind = (termKind: TermInput['kind']) => {
+    setForm((current) => ({
+      ...current,
+      termKind,
+      keptTerm: current.keptTerm?.kind === 'unknown' ? null : current.keptTerm,
+    }));
+  };
+
+  const term = form.pregnant === 'yes' ? shownTerm(form, today) : undefined;
   const babyAge = form.breastfeeding ? babyAgeFromForm(form, today) : undefined;
   const words = (label: TermDisplay['label']) => t(label.key, label.vars);
+  let termWords: string | undefined;
+  if (form.pregnant === 'unknown') termWords = t('profileStatus.maybePregnant');
+  else if (term) {
+    // Weeks known another day: the term today, then the weeks on that day.
+    const since = weeksReadback(form, today);
+    termWords =
+      since === undefined
+        ? words(term.label)
+        : t('profile.term.since', {
+            term: words(term.label),
+            weeks: since.weeks,
+            date: shortDate(since.givenOn, lang),
+          });
+  }
 
   const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving.current) return;
+    // Nothing to save (Enter in the name): the way out, deleting, takes the focus.
+    if (notCovered) {
+      formRef.current?.querySelector<HTMLButtonElement>('.profile__not-covered button')?.focus();
+      return;
+    }
     if (Object.keys(allErrors).length > 0) {
       setAttempts((n) => n + 1);
       return;
     }
-    setSaving(true);
+    saving.current = true;
     setSaveFailed(false);
     const profile = profileFromForm(form, {
       ...(base ? { base } : {}),
       id: crypto.randomUUID(),
       nowIso: new Date().toISOString(),
       todayIso: today,
+      self,
     });
     try {
       await withTimeout(saveProfile(profile), storageTimeoutMs);
@@ -245,7 +354,7 @@ function Form({
     } catch (failure) {
       console.warn('Profile not stored on this device', failure);
       setSaveFailed(true);
-      setSaving(false);
+      saving.current = false;
     }
   };
 
@@ -253,6 +362,8 @@ function Form({
     { value: 'yes', label: t('profile.yes') },
     { value: 'no', label: t('profile.no') },
   ] as const;
+
+  const asWeeks = monthsLookLikeWeeks(form) ? form.months.trim() : null;
 
   return (
     <form
@@ -268,7 +379,6 @@ function Form({
         hint={t('profile.pseudonymHint')}
         error={error('pseudonym')}
         value={form.pseudonym}
-        maxLength={40}
         autoComplete="off"
         spellCheck={false}
         onChange={(event) => {
@@ -277,18 +387,20 @@ function Form({
       />
 
       <section className="profile__group">
-        <RadioGroup
+        <RadioGroup<PregnantAnswer>
           question
           row
           legend={t('profile.pregnant')}
           error={error('pregnant')}
-          options={yesNoOptions}
-          value={yesNo(form.pregnant)}
-          onChange={(answer) => {
-            update({ pregnant: answer === 'yes' });
-          }}
+          options={[
+            { value: 'yes', label: t('profile.yes') },
+            { value: 'no', label: t('profile.no') },
+            { value: 'unknown', label: t('profile.dontKnow') },
+          ]}
+          value={form.pregnant}
+          onChange={answerPregnant}
         />
-        {form.pregnant ? (
+        {form.pregnant === 'yes' ? (
           <>
             <RadioGroup<TermInput['kind']>
               legend={t('profile.termQuestion')}
@@ -301,9 +413,7 @@ function Form({
                 { value: 'unknown', label: t('profile.termUnknown') },
               ]}
               value={form.termKind}
-              onChange={(termKind) => {
-                update({ termKind });
-              }}
+              onChange={chooseTermKind}
             />
             {form.termKind === 'lmp' ? (
               <TextField
@@ -319,45 +429,120 @@ function Form({
               />
             ) : null}
             {form.termKind === 'weeks' ? (
-              <TextField
-                id={weeksId}
-                label={t('profile.weeks')}
-                hint={t('profile.weeksHint')}
-                error={error('weeks')}
-                {...NUMBER_INPUT}
-                value={form.weeks}
-                onChange={(event) => {
-                  typeTerm('weeks', { weeks: event.target.value });
-                }}
-              />
+              <>
+                <TextField
+                  id={weeksId}
+                  label={t('profile.weeks')}
+                  hint={t('profile.weeksHint')}
+                  error={error('weeks')}
+                  {...NUMBER_INPUT}
+                  value={form.weeks}
+                  onChange={(event) => {
+                    typeWeeks(event.target.value);
+                  }}
+                />
+                <RadioGroup<WeeksDay>
+                  row
+                  legend={t('profile.weeksGivenOn')}
+                  hint={t('profile.weeksGivenOnHint')}
+                  error={error('weeksDay')}
+                  options={[
+                    { value: 'today', label: t('profile.weeksToday') },
+                    { value: 'other', label: t('profile.weeksOtherDay') },
+                  ]}
+                  value={form.weeksDay}
+                  onChange={(weeksDay) => {
+                    update({ weeksDay });
+                  }}
+                />
+                {form.weeksDay === 'other' ? (
+                  <TextField
+                    type="date"
+                    label={t('profile.weeksDate')}
+                    error={error('weeksGivenOn')}
+                    value={form.weeksGivenOn}
+                    min={addDays(today, -WEEKS_GIVEN_MAX_DAYS)}
+                    max={today}
+                    onChange={(event) => {
+                      update({ weeksGivenOn: event.target.value });
+                    }}
+                  />
+                ) : null}
+              </>
             ) : null}
             {form.termKind === 'months' ? (
               <TextField
                 label={t(mode === 'accompanied' ? 'profile.monthsAccompanied' : 'profile.months')}
                 error={error('months')}
                 {...NUMBER_INPUT}
-                maxLength={1}
+                // Two digits: "34" stays 34 (and is said to look like weeks), never 3.
+                maxLength={2}
                 value={form.months}
                 onChange={(event) => {
-                  typeTerm('months', { months: event.target.value });
+                  typeMonths(event.target.value);
                 }}
               />
             ) : null}
-            <Readback label={t('profile.termShown')} value={term ? words(term.label) : undefined} />
-            {form.termKind === 'lmp' && term ? (
+            {asWeeks === null ? null : (
               <Button
-                variant="quiet"
-                className="profile__correct"
+                variant="secondary"
+                className="profile__as-weeks"
                 onClick={() => {
                   focusAfterRender.current = weeksId;
-                  // Given today, from the date: never a weeks term kept from storage.
-                  update({ termKind: 'weeks', weeks: String(term.weeksMin), keptTerm: null });
+                  setForm((current) => monthsAsWeeks(current));
                 }}
               >
-                {t('profile.termCorrect')}
+                {t('profile.monthsAsWeeks', { weeks: asWeeks })}
               </Button>
+            )}
+            {monthsNearTerm(form) ? (
+              <div className="profile__near-term">
+                <p>{t('profile.monthsNearTerm')}</p>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    focusAfterRender.current = weeksId;
+                    setForm((current) => ({
+                      ...current,
+                      termKind: 'weeks',
+                      weeks: '',
+                      weeksDay: asksDay ? null : 'today',
+                      weeksGivenOn: '',
+                    }));
+                  }}
+                >
+                  {t('profile.monthsNearTermWeeks')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    update({ termKind: 'lmp', lmpDate: '' });
+                  }}
+                >
+                  {t('profile.monthsNearTermLmp')}
+                </Button>
+              </div>
             ) : null}
           </>
+        ) : null}
+        <Readback label={t('profile.termShown')} value={termWords} />
+        {form.pregnant === 'yes' && form.termKind === 'lmp' && term ? (
+          <Button
+            variant="quiet"
+            className="profile__correct"
+            onClick={() => {
+              focusAfterRender.current = weeksId;
+              // Given today, from the date.
+              update({
+                termKind: 'weeks',
+                weeks: String(term.weeksMin),
+                weeksDay: 'today',
+                weeksGivenOn: '',
+              });
+            }}
+          >
+            {t('profile.termCorrect')}
+          </Button>
         ) : null}
       </section>
 
@@ -373,6 +558,24 @@ function Form({
             update({ breastfeeding: answer === 'yes' });
           }}
         />
+        {notCovered ? (
+          <div className="profile__not-covered" role="status">
+            <Notice>
+              {t(
+                mode === 'accompanied'
+                  ? 'profile.notCoveredAccompanied'
+                  : 'profile.notCoveredWoman',
+              )}
+            </Notice>
+            <Button variant="secondary" onClick={onDelete}>
+              {t(
+                mode === 'accompanied'
+                  ? 'profile.notCoveredDeleteAccompanied'
+                  : 'profile.notCoveredDeleteWoman',
+              )}
+            </Button>
+          </div>
+        ) : null}
         {form.breastfeeding ? (
           <>
             <RadioGroup<BabyAgeKind>
@@ -383,6 +586,7 @@ function Form({
                 { value: 'birthDate', label: t('profile.babyBirthDateChoice') },
                 { value: 'weeks', label: t('profile.babyWeeksChoice') },
                 { value: 'months', label: t('profile.babyMonthsChoice') },
+                { value: 'unknown', label: t('profile.dontKnow') },
               ]}
               value={form.babyAgeKind}
               onChange={(babyAgeKind) => {
@@ -474,51 +678,166 @@ function Form({
 
       <div className="profile__save">
         <div role="alert">{saveFailed ? <Notice>{t('profile.saveFailed')}</Notice> : null}</div>
-        <Button variant="primary" type="submit" className="profile__submit">
-          {t('profile.save')}
-        </Button>
+        {/* Never a save that does nothing: while the app no longer covers her, the
+            way out is the delete offered with the notice (and below). */}
+        {notCovered ? null : (
+          <Button variant="primary" type="submit" className="profile__submit">
+            {t('profile.save')}
+          </Button>
+        )}
+        {onDelete === undefined ? null : (
+          <Button variant="quiet" className="profile__delete" onClick={onDelete}>
+            {t('profile.delete')}
+          </Button>
+        )}
       </div>
     </form>
   );
 }
 
 /**
- * Profile: who the check is for, in under 30 seconds. Pregnancy and its term
- * (date of last period, weeks, months or unknown; the term in words), breast
- * feeding with the baby's age and prematurity, and long-term situations (three
- * more in accompanied mode). Pseudonymous: a nickname, no phone number, no
+ * The last step before a profile is deleted: what goes (the profile and the
+ * history of its results, from this phone, for good), then delete or keep.
+ * Never red: it is not a danger sign.
+ */
+function DeleteStep({
+  mode,
+  profile,
+  onDeleted,
+  onCancel,
+}: {
+  mode: Mode;
+  profile: Profile;
+  onDeleted: () => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const { storageTimeoutMs } = useApp();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  // A ref, not state: two taps in the same task both see it at once.
+  const deleting = useRef(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+
+  const remove = async () => {
+    if (deleting.current) return;
+    deleting.current = true;
+    setBusy(true);
+    setFailed(false);
+    try {
+      await withTimeout(deleteProfile(profile.id), storageTimeoutMs);
+      onDeleted();
+    } catch (failure) {
+      console.warn('Profile not deleted on this device', failure);
+      deleting.current = false;
+      setBusy(false);
+      setFailed(true);
+    }
+  };
+
+  return (
+    <div className="profile__delete-step">
+      <div className="profile__intro">
+        <h1 ref={heading} tabIndex={-1}>
+          {mode === 'accompanied'
+            ? t('profile.deleteTitle', { name: profile.pseudonym })
+            : t('profile.deleteTitleMine')}
+        </h1>
+        <p>
+          {t(mode === 'accompanied' ? 'profile.deleteLeadAccompanied' : 'profile.deleteLeadWoman')}
+        </p>
+      </div>
+      {failed ? <Notice>{t('profile.deleteFailed')}</Notice> : null}
+      <p className="sr-only" role="status">
+        {busy ? t('profile.deleting') : ''}
+      </p>
+      <div className="profile__delete-actions">
+        <Button
+          variant="primary"
+          aria-disabled={busy ? true : undefined}
+          onClick={() => {
+            void remove();
+          }}
+        >
+          {t('profile.deleteConfirm')}
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          {t('profile.deleteCancel')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** "Femme n": the first number from `from` whose pseudonym is not on the phone yet. */
+function freeNumber(from: number, taken: readonly string[], name: (n: number) => string): number {
+  const used = new Set(taken.map(pseudonymKey));
+  let number = from;
+  while (used.has(pseudonymKey(name(number)))) number += 1;
+  return number;
+}
+
+/**
+ * Profile: who the check is for, in under 30 seconds. Pregnancy (yes, no or
+ * not known) and its term (date of last period, weeks with the day they were
+ * known, months or unknown; the term in words), breast feeding with the baby's
+ * age and prematurity, and long-term situations (three more in accompanied
+ * mode). Pseudonymous: a nickname used once on the phone, no phone number, no
  * address. Saving goes home (the list of profiles in accompanied mode), which
- * says the profile was saved, or on to the check that opened this screen for
- * want of a profile, then for the profile just saved.
+ * says the profile was saved, or on to the check that opened this screen (for
+ * want of a profile, or to update an outdated term), for the profile just
+ * saved. A saved profile can be deleted with its history, after a last step.
  */
 export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
   const { settings, storageTimeoutMs } = useApp();
-  const { start } = useCheck();
+  const { start, reset, profileId: checkProfileId } = useCheck();
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
-  const [next] = useState(nextAfterSave);
+  const [ask] = useState(entryAsk);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
+  const [confirming, setConfirming] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  const wasConfirming = useRef(false);
   const kind = target.kind;
   const id = target.kind === 'edit' ? target.id : null;
+
+  // Back from the last step with the profile kept: the focus returns to the way there.
+  useEffect(() => {
+    if (wasConfirming.current && !confirming) {
+      body.current?.querySelector<HTMLElement>('.profile__delete')?.focus();
+    }
+    wasConfirming.current = confirming;
+  }, [confirming]);
 
   useEffect(() => {
     let live = true;
     // Today comes from the phone's clock here, once, and is handed to pure code.
     const today = todayIso(new Date());
     const load = async (): Promise<Loaded> => {
-      if (id !== null) {
-        const base = await getProfile(id);
-        if (!base) return { status: 'missing' };
-        return { status: 'ready', today, base, form: formFromProfile(base, today, mode) };
-      }
       const profiles = await listProfiles();
-      const mine = kind === 'mine' ? profiles[0] : undefined;
-      if (mine) {
-        return { status: 'ready', today, base: mine, form: formFromProfile(mine, today, mode) };
+      const base = id !== null ? profiles.find((p) => p.id === id) : undefined;
+      if (id !== null && !base) return { status: 'missing' };
+      // Woman mode opens her own profile only, never another one kept on the phone.
+      const edited = base ?? (kind === 'mine' ? ownProfile(profiles) : undefined);
+      const taken = profiles.filter((p) => p.id !== edited?.id).map((p) => p.pseudonym);
+      if (edited) {
+        const form = updatedForm(formFromProfile(edited, today, mode), ask.update);
+        return { status: 'ready', today, base: edited, form, taken };
       }
       // A new profile: its default pseudonym is worded at render, in the language of the moment.
-      return { status: 'ready', today, base: undefined, form: null, number: profiles.length + 1 };
+      return {
+        status: 'ready',
+        today,
+        base: undefined,
+        form: null,
+        number: profiles.length + 1,
+        taken,
+      };
     };
     withTimeout(load(), storageTimeoutMs).then(
       (result) => {
@@ -534,36 +853,86 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
     };
     // Not on the language: a language change rewords the screen, it never reads
     // storage again nor resets answers being typed.
-  }, [kind, id, mode, storageTimeoutMs]);
+  }, [kind, id, mode, storageTimeoutMs, ask.update]);
 
-  const defaultPseudonym = (number: number) =>
-    kind === 'mine' ? t('profile.pseudonymMine') : t('profile.pseudonymNumbered', { number });
+  const pseudonymOf = (number: number) => t('profile.pseudonymNumbered', { number });
+  const defaultPseudonym = (number: number, taken: readonly string[]) =>
+    kind === 'mine'
+      ? t('profile.pseudonymMine')
+      : pseudonymOf(freeNumber(number, taken, pseudonymOf));
+
+  const ready = loaded.status === 'ready' ? loaded : null;
+  const base = ready?.base;
 
   return (
     <main className="screen profile">
-      <div className="profile__intro">
-        <h1 tabIndex={-1}>{t(TITLES[kind])}</h1>
-        <p>{t('profile.lead')}</p>
-      </div>
-      {loaded.status === 'missing' ? <Notice>{t('profile.notFound')}</Notice> : null}
-      {loaded.status === 'failed' ? <Notice>{t('profile.loadFailed')}</Notice> : null}
-      {loaded.status === 'ready' ? (
-        <Form
+      {confirming && base ? (
+        <DeleteStep
           mode={mode}
-          today={loaded.today}
-          base={loaded.base}
-          initial={loaded.form === null ? emptyForm(defaultPseudonym(loaded.number)) : loaded.form}
-          onSaved={(profile) => {
-            if (next !== null) {
-              start(profile.id);
-              navigate(next, { replace: true });
-              return;
-            }
-            // Home reads the pseudonym from the history entry to say which profile was saved.
-            navigate('/', { replace: true, state: { profileSaved: profile.pseudonym } });
+          profile={base}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+          onDeleted={() => {
+            // A check in progress for her is gone with her.
+            if (checkProfileId === base.id) reset();
+            navigate('/', {
+              replace: true,
+              state:
+                mode === 'woman'
+                  ? { profileDeletedMine: true }
+                  : { profileDeleted: base.pseudonym },
+            });
           }}
         />
       ) : null}
+      <div ref={body} className="profile__body" hidden={confirming}>
+        <div className="profile__intro">
+          <h1 tabIndex={-1}>{t(TITLES[kind])}</h1>
+          {/* Opened from the outdated-term step: why, before the questions. */}
+          {ask.update === null ? null : (
+            <p className="profile__why">{t(updateLead(ask.update, mode))}</p>
+          )}
+          <p>{t('profile.lead')}</p>
+        </div>
+        {loaded.status === 'missing' ? <Notice>{t('profile.notFound')}</Notice> : null}
+        {loaded.status === 'failed' ? <Notice>{t('profile.loadFailed')}</Notice> : null}
+        {ready ? (
+          <Form
+            mode={mode}
+            today={ready.today}
+            base={ready.base}
+            self={kind === 'mine'}
+            taken={ready.taken}
+            initial={
+              ready.form === null
+                ? emptyForm(
+                    defaultPseudonym(ready.number, ready.taken),
+                    ready.today,
+                    // Her own new profile takes today as the day of weeks typed.
+                    kind === 'mine' ? 'today' : null,
+                  )
+                : ready.form
+            }
+            onDelete={
+              ready.base === undefined
+                ? undefined
+                : () => {
+                    setConfirming(true);
+                  }
+            }
+            onSaved={(profile) => {
+              if (ask.next !== null) {
+                start(profile.id);
+                navigate(ask.next, { replace: true });
+                return;
+              }
+              // Home reads the pseudonym from the history entry to say which profile was saved.
+              navigate('/', { replace: true, state: { profileSaved: profile.pseudonym } });
+            }}
+          />
+        ) : null}
+      </div>
     </main>
   );
 }

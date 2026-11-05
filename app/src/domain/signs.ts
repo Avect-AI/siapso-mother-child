@@ -4,6 +4,7 @@
 // first. Pure. A sign is never hidden for good: every group is one tap away,
 // and a chosen sign keeps its group shown.
 import type { DangerSign } from '@siapso/engine';
+import { babyMayBeBorn, profileTermStatus } from './term.js';
 import type { Profile } from './types.js';
 
 export type SignGroup = DangerSign['group'];
@@ -14,12 +15,21 @@ export const SIGN_GROUPS: readonly SignGroup[] = ['pregnancy', 'postpartum', 'ba
 /**
  * The groups a check asks about first: the pregnancy for a pregnant woman,
  * after the birth and the baby for one who breastfeeds, every group when she
- * is both, or when the profile is not known or says neither.
+ * is both, or when the profile is not known or says neither. When the baby
+ * may be born (babyMayBeBorn: a possibly past term, an outdated one, a phone
+ * clock set back), the check reads breastfeeding as possible: every group.
+ * `todayIso` and `notBefore` are those of the check (profileTermStatus).
  */
 export function groupsForProfile(
-  profile: Pick<Profile, 'pregnant' | 'breastfeeding'> | null,
+  profile: Pick<
+    Profile,
+    'pregnant' | 'pregnancyUnsure' | 'pregnancyUnsureOn' | 'term' | 'updatedAt' | 'breastfeeding'
+  > | null,
+  todayIso: string,
+  notBefore?: string,
 ): SignGroup[] {
   if (profile === null) return [...SIGN_GROUPS];
+  if (babyMayBeBorn(profileTermStatus(profile, todayIso, notBefore))) return [...SIGN_GROUPS];
   const groups: SignGroup[] = [];
   if (profile.pregnant) groups.push('pregnancy');
   if (profile.breastfeeding) groups.push('postpartum', 'baby');

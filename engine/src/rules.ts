@@ -33,8 +33,18 @@ export const CHECK_OF_KIND: Readonly<Record<RuleKind, CheckId>> = Object.freeze(
 export interface RuleScope {
   pack: Pack;
   context: EvaluationContext;
-  /** Windows covered by the pregnancy range; empty without a pregnancy. */
+  /**
+   * Windows covered by the pregnancy range with its upper end moved
+   * TERM_LOOKAHEAD_DAYS on: what a rule that gives a finding is looked up in.
+   * Empty without a pregnancy.
+   */
   covered: readonly WindowId[];
+  /**
+   * Windows covered by the pregnancy range as it is today: what a reminder or
+   * a note is looked up in (they are about what has been done, not about a
+   * treatment that goes on). Empty without a pregnancy.
+   */
+  coveredToday: readonly WindowId[];
   /** entryKey of each context item; undefined for an unrecognised item. */
   keys: readonly (string | undefined)[];
 }
@@ -148,6 +158,11 @@ function populationApplies(kind: RuleKind, context: EvaluationContext): boolean 
   return true;
 }
 
+/** Whether a rule gives a finding (a level), rather than a reminder or a note. */
+function givesFinding(kind: RuleKind): boolean {
+  return kind !== 'reminder' && kind !== 'contraception-info';
+}
+
 /**
  * The conditions that do not depend on the subject: population, exceptions,
  * pregnancy windows and breastfeeding bound. Returns the term precision to
@@ -164,7 +179,8 @@ function gate(rule: Rule, scope: RuleScope): { term?: TermPrecision } | false {
   let term: TermPrecision | undefined;
   if (when.pregnancyWindows !== undefined) {
     const pregnancy = context.pregnancy;
-    if (!pregnancy || !when.pregnancyWindows.some((w) => scope.covered.includes(w))) return false;
+    const covered = givesFinding(rule.kind) ? scope.covered : scope.coveredToday;
+    if (!pregnancy || !when.pregnancyWindows.some((w) => covered.includes(w))) return false;
     if (pregnancy.precision !== 'exact') term = pregnancy.precision;
   }
   if (when.breastfeeding && !breastfeedingApplies(when.breastfeeding, context.breastfeeding)) {

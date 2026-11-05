@@ -44,6 +44,8 @@ async function fillProfile(page: Page) {
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('20');
+  // The day the weeks were known: asked in accompanied mode, today by default for her own.
+  await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
@@ -311,7 +313,7 @@ test('changing the mode in the settings needs the code and deletes nothing', asy
   await expect(
     page
       .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
-      .getByRole('button', { name: 'Moi' }),
+      .getByRole('button', { name: /^Moi / }),
   ).toBeVisible();
 });
 

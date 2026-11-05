@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
 import { AUTO_LOCK_MS } from '../domain/code.js';
+import { addDays, todayIso } from '../domain/dates.js';
 import type { Settings } from '../domain/types.js';
 import { enterCode } from '../test/code-steps.js';
 import { profileOf } from '../test/knowledge-pack.js';
@@ -33,7 +34,7 @@ describe('Profiles', () => {
     const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
     const rows = within(list).getAllByRole('listitem');
     // In the order of the pseudonyms, numbers read as numbers.
-    expect(rows.map((row) => within(row).getAllByRole('button')[0]?.textContent)).toEqual([
+    expect(rows.map((row) => row.querySelector('.profiles__name')?.textContent)).toEqual([
       'Awa',
       'Femme 2',
       'Femme 10',
@@ -48,6 +49,52 @@ describe('Profiles', () => {
 
     await user.click(add);
     expect(await screen.findByRole('heading', { level: 1, name: 'Nouveau profil' })).toBeVisible();
+  });
+
+  it('says under each pseudonym where she stands: the term used, the baby, or an update to make', async () => {
+    const today = todayIso(new Date());
+    await saveProfile(
+      profileOf({ id: 'a', pseudonym: 'Awa', term: { kind: 'weeks', weeks: 32, givenOn: today } }),
+    );
+    await saveProfile(
+      profileOf({
+        id: 'b',
+        pseudonym: 'Bineta',
+        // Month 7 starts at 27 weeks: 120 days later, past 42 weeks.
+        term: { kind: 'months', months: 7, givenOn: addDays(today, -120) },
+        updatedAt: `${addDays(today, -120)}T08:00:00.000Z`,
+      }),
+    );
+    await saveProfile(
+      profileOf({
+        id: 'c',
+        pseudonym: 'Coumba',
+        pregnant: false,
+        breastfeeding: true,
+        babyAgeWeeks: 13,
+        babyAgeMonths: 3,
+        babyAgeGivenOn: today,
+        premature: false,
+      }),
+    );
+    await renderApp({ settings: accompanied, hash: '#/' });
+
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    const open = (name: RegExp) => within(list).getByRole('button', { name });
+    expect(open(/^Awa/)).toHaveAccessibleName('Awa Environ 32 semaines');
+    expect(open(/^Bineta/)).toHaveAccessibleName('Bineta À mettre à jour');
+    expect(open(/^Coumba/)).toHaveAccessibleName('Coumba Allaite, bébé de 3 mois');
+  });
+
+  it('says a profile was deleted, once', async () => {
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Binta' }));
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      entryState: { profileDeleted: 'Awa' },
+    });
+
+    expect(await screen.findByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();
   });
 
   it('opens her profile without its id in the address, and again after a lock', async () => {
@@ -114,6 +161,6 @@ describe('Profiles', () => {
 
     await enterCode(user);
     const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
-    expect(within(list).getByRole('button', { name: 'Awa' })).toBeVisible();
+    expect(within(list).getByRole('button', { name: /^Awa / })).toBeVisible();
   });
 });

@@ -27,7 +27,20 @@ export async function saveProfile(profile: Profile): Promise<void> {
   await tx.done;
 }
 
-/** Removes the profile with this id; nothing happens when there is none. */
+/**
+ * Removes the profile with this id and every history entry of it, in one
+ * transaction (nothing of hers is left on the phone, or nothing is removed);
+ * nothing happens when there is none. NoCodeError, and nothing removed, while
+ * the code this tab opened is not on the phone (code-guard.ts).
+ */
 export async function deleteProfile(id: string): Promise<void> {
-  await (await openAppDb()).delete('profiles', id);
+  const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
+  await requireCode(tx);
+  const history = tx.objectStore('history');
+  const entries = await history.index('profileId').getAllKeys(id);
+  await Promise.all([
+    tx.objectStore('profiles').delete(id),
+    ...entries.map((key) => history.delete(key)),
+  ]);
+  await tx.done;
 }

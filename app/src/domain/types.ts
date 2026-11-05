@@ -19,15 +19,35 @@ export type TermInput =
   | { kind: 'lmp'; date: string } // ISO date
   | { kind: 'weeks'; weeks: number; givenOn?: string }
   | { kind: 'months'; months: number; givenOn?: string }
-  | { kind: 'unknown' };
+  // Dated too: "Je ne sais pas" said long ago no longer tells where she stands.
+  | { kind: 'unknown'; givenOn?: string };
 
 export interface Profile {
   /** Random id from crypto.randomUUID(). */
   id: string;
+  /**
+   * The woman's own profile, made in woman mode (true), or a profile made in
+   * accompanied mode (false). Woman mode opens hers only; a record older than
+   * this field opens in woman mode only when it is the only profile.
+   */
+  self?: boolean;
   pseudonym: string;
+  /** Pregnant, or maybe pregnant (`pregnancyUnsure`): every check reads her as pregnant. */
   pregnant: boolean;
+  /**
+   * "Je ne sais pas" to "Enceinte ?": `pregnant` is true and the term is read
+   * as unknown (every week of a pregnancy, the riskier case), whatever `term`.
+   */
+  pregnancyUnsure?: boolean;
+  /** The ISO date "Je ne sais pas" was answered (an older record: its updatedAt). */
+  pregnancyUnsureOn?: string;
   term?: TermInput;
   breastfeeding: boolean;
+  /**
+   * "Je ne sais pas" to the baby's age: no age is stored, and every rule bound
+   * to an age applies (as for the youngest babies, the riskier case).
+   */
+  babyAgeUnknown?: boolean;
   babyBirthDate?: string;
   babyAgeWeeks?: number;
   /** The ISO date babyAgeWeeks was given: the age moves on from it, as the term does. */

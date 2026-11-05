@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useId, useRef, useState } from 'react';
 import { Redirect, useLocation } from 'wouter';
+import { latestHistoryAt } from '../data/history.js';
 import { getProfile } from '../data/profiles.js';
-import { groupsForProfile, shownGroups, signsByGroup, type SignGroup } from '../domain/signs.js';
-import type { Mode } from '../domain/types.js';
+import { todayIso } from '../domain/dates.js';
+import { groupsForProfile, shownGroups, signsByGroup } from '../domain/signs.js';
+import { latestDay } from '../domain/term.js';
+import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
@@ -21,10 +24,16 @@ type Answer = null | 'none' | string[];
  * reaches the evaluation. "Aucun de ces signes" is the first answer, explicit:
  * a sign left unticked is never read as none. Then the signs in their groups,
  * those of the profile first (during pregnancy; after the birth and the baby
- * when she breastfeeds), every group one tap away ("Voir tous les signes"),
+ * when she breastfeeds, or when the baby may be born: a possibly past term, a
+ * phone clock set back), every group one tap away ("Voir tous les signes"),
  * and a chosen sign always keeps its group shown. An answer is needed to go
- * on to the result; the answer given is kept with the check, so coming back
- * here finds it.
+ * on to the result.
+ *
+ * The question is about now: it always opens with nothing ticked, never with
+ * an earlier answer (a sign may have started since), even on Back from the
+ * result. What is ticked goes into the check as it changes, so a sign ticked
+ * after Back is in the result the browser's Forward opens; with nothing
+ * ticked, that result asks this question again.
  */
 export function SignsNow() {
   const t = useT();
@@ -35,28 +44,45 @@ export function SignsNow() {
   // Read once: how many history entries back the check is.
   const [entry] = useState(flowState);
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, signs, signsGiven, setSigns } = check;
-  const [answer, setAnswer] = useState<Answer>(() => {
-    if (!signsGiven) return null;
-    return signs.length === 0 ? 'none' : [...signs];
-  });
-  const [relevant, setRelevant] = useState<SignGroup[] | null>(null);
+  const { profileId, items, setSigns, clearSigns } = check;
+  const [answer, setAnswer] = useState<Answer>(null);
+  // The profile (null when it cannot be read), the phone's date, her last result kept.
+  const [loaded, setLoaded] = useState<{
+    profile: Profile | null;
+    today: string;
+    lastAt: string | undefined;
+  } | null>(null);
   const [all, setAll] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
+  // A ref, not state: two taps in the same task both see it at once.
+  const submitted = useRef(false);
   const titleId = useId();
 
-  // The profile says which groups come first; when it cannot be read, every group.
+  // The answer on screen is the check's answer, from the first render (none yet) on.
+  useEffect(() => {
+    if (answer === null) clearSigns();
+    else setSigns(answer === 'none' ? [] : answer);
+  }, [answer, clearSigns, setSigns]);
+
+  // The profile says which groups come first, read as the check reads it (its
+  // term today, the days the app has already seen); when it cannot be read,
+  // every group.
   useEffect(() => {
     if (profileId === null) return;
     let live = true;
-    withTimeout(getProfile(profileId), storageTimeoutMs).then(
-      (profile) => {
-        if (live) setRelevant(groupsForProfile(profile ?? null));
+    const load = async () => {
+      const profile = await getProfile(profileId);
+      return { profile, lastAt: profile ? await latestHistoryAt(profileId) : undefined };
+    };
+    withTimeout(load(), storageTimeoutMs).then(
+      ({ profile, lastAt }) => {
+        // Today from the phone's clock, handed to pure code.
+        if (live) setLoaded({ profile: profile ?? null, today: todayIso(new Date()), lastAt });
       },
       (failure: unknown) => {
         console.warn('Profile not read on this device', failure);
-        if (live) setRelevant(groupsForProfile(null));
+        if (live) setLoaded({ profile: null, today: todayIso(new Date()), lastAt: undefined });
       },
     );
     return () => {
@@ -77,6 +103,11 @@ export function SignsNow() {
 
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
 
+  // A day the app has already seen, as on the check: the knowledge pack's date, her last result.
+  const relevant =
+    loaded === null
+      ? null
+      : groupsForProfile(loaded.profile, loaded.today, latestDay(pack?.date, loaded.lastAt));
   const listed = pack?.dangerSigns ?? [];
   const chosen = Array.isArray(answer) ? answer : [];
   const groups = shownGroups(listed, relevant ?? [], chosen, all);
@@ -103,11 +134,13 @@ export function SignsNow() {
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          if (submitted.current) return;
           // Without a pack there is no list to answer: the result says what is missing.
           if (pack !== null && answer === null) {
             setAttempts((n) => n + 1);
             return;
           }
+          submitted.current = true;
           setSigns(Array.isArray(answer) ? answer : []);
           // One entry more to the check: the result's way back goes there (check-flow.ts).
           navigate('/result', {

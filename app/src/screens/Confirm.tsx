@@ -217,7 +217,8 @@ function ConfirmForm({
   const [unitsTyped, setUnitsTyped] = useState<Record<string, string>>({});
   // Each refused confirmation; from the first one, a missing answer is said.
   const [attempts, setAttempts] = useState(0);
-  const [leaving, setLeaving] = useState(false);
+  // A ref, not state: two taps in the same task both see it at once (one way back, not two).
+  const leaving = useRef(false);
   const [announced, setAnnounced] = useState('');
   const answered = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -312,7 +313,7 @@ function ConfirmForm({
 
   const confirm = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (leaving) return;
+    if (leaving.current) return;
     if (writes === null || waitsForSameBox || (askUnits && !units.ok)) {
       setAttempts((n) => n + 1);
       return;
@@ -328,7 +329,7 @@ function ConfirmForm({
       ...(anotherBox ? { anotherBox: true } : {}),
       ...(written === undefined ? {} : { written }),
     });
-    setLeaving(true);
+    leaving.current = true;
     backToCheck(navigate, entry.stepsToCheck);
   };
 

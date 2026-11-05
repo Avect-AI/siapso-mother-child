@@ -34,7 +34,7 @@ expect:
   notes: []
 ```
 
-- `weeks` gives an exact term, `months` an estimated range, `unknown: true` the whole pregnancy with precision unknown. Leave `pregnancy` out when the woman is not pregnant.
+- `weeks` gives an exact term, `months` an estimated range, `unknown: true` the whole pregnancy with precision unknown. Leave `pregnancy` out when the woman is not pregnant. A rule that gives a finding is looked up with the term extended by the engine's 14-day look-ahead (`TERM_LOOKAHEAD_DAYS`); reminders and notes use the term as given (cases 33 and 34).
 - An item is a `product` or `plant` id of the registry, or an `unrecognised` text. `units-per-day` and `long-term` are optional.
 - `signs` lists danger sign ids; a sign gives a finding with the sign set.
 - `expect.findings` is the full ordered list the engine returns. Each finding has `check`, `message` (the message id the woman reads: the rule's message, or the built-in one of a danger sign, a name not recognised or a product without finding), `level` and `items`, plus `rule` for a finding from a rule. `evidence`, `sign` and `term` are listed when the engine sets them.
@@ -74,5 +74,10 @@ expect:
 | 27 Paracetamol, liver failure                 | `case-27-paracetamol-hepatic-failure`                                   |
 | 28 Ibuprofen, kidney failure                  | `case-28-ibuprofen-renal-failure`                                       |
 | 29 Rifampicin at 20 weeks                     | `case-29-rifampicin-20-weeks`                                           |
+| 30 Methotrexate at 10 weeks                   | `case-30-methotrexate-10-weeks`                                         |
+| 31 Methotrexate, breastfeeding                | `case-31-methotrexate-breastfeeding`                                    |
+| 32 Fluconazole at 8 weeks                     | `case-32-fluconazole-8-weeks`                                           |
+| 33 Ibuprofen at 19 weeks, look-ahead          | `case-33-ibuprofen-19-weeks`                                            |
+| 34 Castor oil at 29 weeks, look-ahead         | `case-34-castor-oil-29-weeks-uterine-scar`                              |
 
-Cases 16 to 29 come from the live test round 1 (SCRUM-49), not from the pharmacist's annex: they pin the test rules added then, which the clinical committee must still review. Cases 20 and 21 pin two deliberate gaps of those rules (misoprostol is red from 30 weeks without a scar and from 12 weeks with one), case 23 the start of the second trimester, case 25 the low-dose threshold before 20 weeks, and case 29 a product that only a contraception note reads ("nothing found"). The other terms are kept away from the window boundaries (12, 20 and 30 weeks).
+Cases 16 to 29 come from the live test round 1 (SCRUM-49), not from the pharmacist's annex: they pin the test rules added then, which the clinical committee must still review. Cases 20 and 21 pin two deliberate gaps of those rules (misoprostol is red from 30 weeks without a scar and from 12 weeks with one), case 23 the start of the second trimester, case 25 the low-dose threshold before 20 weeks, and case 29 a product that only a contraception note reads ("nothing found"). The other terms are kept away from the window boundaries (12, 20 and 30 weeks). Cases 33 and 34 (SCRUM-45) pin the 14-day look-ahead of the engine: 20 and 30 weeks are reached within it.

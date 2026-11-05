@@ -50,17 +50,30 @@ export function historyEntryOf({
 
 /**
  * Stores an evaluation, then keeps only the last HISTORY_PER_PROFILE of its
- * profile; NoCodeError while no code is on the phone.
+ * profile, in one transaction with the profiles and the code: nothing is
+ * kept for a profile no longer on the phone (deleted while its result was
+ * open), so a deletion never leaves part of her behind. Resolves whether it
+ * stored; NoCodeError while the code this tab opened is not on the phone.
  */
-export async function recordHistory(entry: HistoryEntry): Promise<void> {
-  const tx = (await openAppDb()).transaction(['history', 'settings'], 'readwrite');
+export async function recordHistory(entry: HistoryEntry): Promise<boolean> {
+  const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
   await requireCode(tx);
-  const store = tx.objectStore('history');
-  await store.put(entry);
-  const all = await store.index('profileId').getAll(entry.profileId);
+  const history = tx.objectStore('history');
+  if ((await tx.objectStore('profiles').getKey(entry.profileId)) === undefined) {
+    await tx.done;
+    return false;
+  }
+  await history.put(entry);
+  const all = await history.index('profileId').getAll(entry.profileId);
   const old = all.sort(newestFirst).slice(HISTORY_PER_PROFILE);
-  await Promise.all(old.map((stale) => store.delete(stale.id)));
+  await Promise.all(old.map((stale) => history.delete(stale.id)));
   await tx.done;
+  return true;
+}
+
+/** When the latest evaluation of a profile was kept (an ISO instant), or undefined. */
+export async function latestHistoryAt(profileId: string): Promise<string | undefined> {
+  return (await listHistory(profileId))[0]?.at;
 }
 
 /** The checks recorded since the app was opened (a visit), by checkKey. */
@@ -105,8 +118,7 @@ export async function recordHistoryOnce(entry: HistoryEntry): Promise<boolean> {
   if (recordedThisVisit.has(key)) return false;
   recordedThisVisit.add(key);
   try {
-    await recordHistory(entry);
-    return true;
+    return await recordHistory(entry);
   } catch (error) {
     recordedThisVisit.delete(key);
     throw error;

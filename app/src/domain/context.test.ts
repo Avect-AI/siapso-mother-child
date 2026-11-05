@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem } from '@siapso/engine';
 import { describe, expect, it } from 'vitest';
-import { contextFromProfile } from './context.js';
+import { contextFromProfile, OutdatedTermError } from './context.js';
 import type { Profile } from './types.js';
 
 const TODAY = '2026-11-04';
@@ -58,7 +58,7 @@ describe('contextFromProfile: pregnancy', () => {
         NO_CHECK,
         TODAY,
       ).pregnancy,
-    ).toEqual({ weeksMin: 30, weeksMax: 30, precision: 'exact' });
+    ).toEqual({ weeksMin: 30, weeksMax: 31, precision: 'exact' });
   });
 
   it('gives the estimated range from months', () => {
@@ -81,22 +81,108 @@ describe('contextFromProfile: pregnancy', () => {
     );
   });
 
-  it('falls back to the unknown range (every window) when the stored term no longer holds', () => {
-    // A last period now more than 45 weeks ago, weeks out of range, a corrupted month.
+  it('refuses an outdated profile: no result is worked out on a term that no longer holds', () => {
+    // A last period more than 42 weeks ago, weeks out of range, a corrupted month,
+    // 42 weeks given 28 days ago, month 9 given 70 days ago.
     for (const term of [
       { kind: 'lmp', date: '2025-11-01' },
       { kind: 'weeks', weeks: 50 },
       { kind: 'weeks', weeks: Number.NaN },
       { kind: 'months', months: 12 },
-      // 42 weeks given 28 days ago: 46 today; month 9 given 70 days ago: from 46 today.
       { kind: 'weeks', weeks: 42, givenOn: '2026-10-07' },
       { kind: 'months', months: 9, givenOn: '2026-08-26' },
     ] as const) {
       expect(
-        contextFromProfile(profile({ pregnant: true, term }), NO_CHECK, TODAY).pregnancy,
+        () => contextFromProfile(profile({ pregnant: true, term }), NO_CHECK, TODAY),
         JSON.stringify(term),
-      ).toEqual({ weeksMin: 0, weeksMax: 42, precision: 'unknown' });
+      ).toThrow(OutdatedTermError);
     }
+  });
+
+  it('reads a possibly past term as the term held at 42 weeks, and breastfeeding as possible', () => {
+    const at42 = contextFromProfile(
+      profile({ pregnant: true, term: { kind: 'weeks', weeks: 42, givenOn: TODAY } }),
+      NO_CHECK,
+      TODAY,
+    );
+    expect(at42.pregnancy).toEqual({ weeksMin: 42, weeksMax: 42, precision: 'exact' });
+    // No age, no prematurity: every breastfeeding rule applies.
+    expect(at42.breastfeeding).toEqual({});
+    // Month 9 given 8 days ago; a known older baby does not narrow it.
+    const month9 = contextFromProfile(
+      profile({
+        pregnant: true,
+        term: { kind: 'months', months: 9, givenOn: '2026-10-27' },
+        breastfeeding: true,
+        babyAgeWeeks: 60,
+        babyAgeGivenOn: TODAY,
+        premature: false,
+      }),
+      NO_CHECK,
+      TODAY,
+    );
+    expect(month9.pregnancy).toEqual({ weeksMin: 37, weeksMax: 42, precision: 'estimated' });
+    expect(month9.breastfeeding).toEqual({});
+  });
+
+  it('reads any term as unknown when today is before a day the app has already seen', () => {
+    expect(
+      contextFromProfile(
+        profile({ pregnant: true, term: { kind: 'lmp', date: '2026-05-06' } }),
+        NO_CHECK,
+        TODAY,
+        '2026-11-20',
+      ).pregnancy,
+    ).toEqual({ weeksMin: 0, weeksMax: 42, precision: 'unknown' });
+  });
+
+  it('reads a term given after today (a phone clock set back) as unknown: every window', () => {
+    expect(
+      contextFromProfile(
+        profile({ pregnant: true, term: { kind: 'weeks', weeks: 30, givenOn: '2026-12-01' } }),
+        NO_CHECK,
+        TODAY,
+      ).pregnancy,
+    ).toEqual({ weeksMin: 0, weeksMax: 42, precision: 'unknown' });
+  });
+
+  it('reads breastfeeding as possible too when the phone clock is set back: the baby may be born', () => {
+    // Before a day the app has already seen: the real date is later.
+    const seen = contextFromProfile(
+      profile({ pregnant: true, term: { kind: 'lmp', date: '2026-05-06' } }),
+      NO_CHECK,
+      TODAY,
+      '2026-11-20',
+    );
+    expect(seen.breastfeeding).toEqual({});
+    // Before the day the term was given; a known older baby does not narrow it.
+    const given = contextFromProfile(
+      profile({
+        pregnant: true,
+        term: { kind: 'weeks', weeks: 30, givenOn: '2026-12-01' },
+        breastfeeding: true,
+        babyAgeWeeks: 60,
+        babyAgeGivenOn: '2026-11-01',
+        premature: false,
+      }),
+      NO_CHECK,
+      TODAY,
+    );
+    expect(given.breastfeeding).toEqual({});
+  });
+
+  it('reads "Je ne sais pas" to the pregnancy as a pregnancy of unknown term', () => {
+    expect(
+      contextFromProfile(
+        profile({
+          pregnant: true,
+          pregnancyUnsure: true,
+          term: { kind: 'weeks', weeks: 8, givenOn: TODAY },
+        }),
+        NO_CHECK,
+        TODAY,
+      ).pregnancy,
+    ).toEqual({ weeksMin: 0, weeksMax: 42, precision: 'unknown' });
   });
 });
 
@@ -182,6 +268,16 @@ describe('contextFromProfile: breastfeeding', () => {
         JSON.stringify(patch),
       ).toEqual({});
     }
+  });
+
+  it('passes no age for "Je ne sais pas", whatever age is stored: every age-bounded rule applies', () => {
+    expect(
+      contextFromProfile(
+        profile({ breastfeeding: true, babyAgeUnknown: true, babyAgeWeeks: 30, premature: false }),
+        NO_CHECK,
+        TODAY,
+      ).breastfeeding,
+    ).toEqual({ premature: false });
   });
 
   it('falls back to a valid stored age when the birth date cannot be read', () => {

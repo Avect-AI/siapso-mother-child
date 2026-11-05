@@ -29,13 +29,15 @@ async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
+  // The day the weeks were known: asked in accompanied mode, today by default for her own.
+  await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   if (mode === 'accompanied') {
     await page
       .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
-      .getByRole('button', { name: 'Femme 1' })
+      .getByRole('button', { name: /^Femme 1 / })
       .click();
   }
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();

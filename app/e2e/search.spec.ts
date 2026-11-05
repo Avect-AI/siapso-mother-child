@@ -91,8 +91,9 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
   await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
+  // Back from the result asks the signs again, with nothing ticked ("now" may have changed).
   await page.goBack();
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
   await page.goBack();

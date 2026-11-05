@@ -48,6 +48,7 @@ const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
 const ADVIL: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
+const CODEINE: CheckedItem = { ref: { kind: 'product', id: 'codeine-generic' } };
 let pack: Pack;
 
 beforeAll(async () => {
@@ -76,11 +77,14 @@ async function openResult({
   signs = [],
   settings = woman,
   packLoader = loaderOf(pack),
+  heading = /^Résultat/,
 }: {
   items: CheckedItem[];
   signs?: string[];
   settings?: Settings;
   packLoader?: () => Promise<LoadedPack>;
+  /** The title the screen opens with. */
+  heading?: RegExp;
 }) {
   const probe = probeCheck();
   const view = await renderApp({ settings, hash: '#/', packLoader, children: probe.element });
@@ -95,7 +99,7 @@ async function openResult({
     window.location.hash = '#/result';
   });
   // The hash change arrives as an event: wait for the result screen itself.
-  await screen.findByRole('heading', { level: 1, name: /^Résultat/ });
+  await screen.findByRole('heading', { level: 1, name: heading });
   return { probe, view, user: userEvent.setup() };
 }
 
@@ -504,6 +508,171 @@ describe('Result: one finding, the way back', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
     expect(window.location.hash).toBe('#/check');
+  });
+});
+
+describe('Result: the term it was worked out on', () => {
+  it('says the term used and that the coming two weeks are taken into account', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 19, givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL], settings: accompanied });
+
+    await screen.findByRole('article');
+    // Inside the sentence the term starts in lower case.
+    expect(screen.getByText(/^Terme retenu\s: environ 19 semaines$/)).toBeVisible();
+    expect(screen.getByText(/2 semaines à venir/)).toBeVisible();
+    // 20 weeks are reached within the look-ahead: the rule from 20 weeks gives the level.
+    expect(
+      screen.getByRole('article', { name: /^À montrer avant la prochaine prise\./ }),
+    ).toBeVisible();
+  });
+
+  it('keeps the danger banner first: the term comes after it', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 14, givenOn: '2026-11-04' } }));
+    await openResult({ items: [KINKELIBA], signs: ['fever'] });
+
+    const banner = await screen.findByRole('button', { name: 'Voir qui appeler' });
+    const term = screen.getByText(/^Terme retenu/);
+    expect(banner.compareDocumentPosition(term) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('says the baby age used for a breastfeeding profile', async () => {
+    await saveProfile(
+      profileOf({
+        pregnant: false,
+        breastfeeding: true,
+        babyAgeWeeks: 13,
+        babyAgeMonths: 3,
+        babyAgeGivenOn: '2026-11-04',
+        premature: false,
+      }),
+    );
+    await openResult({ items: [KINKELIBA] });
+
+    await screen.findByRole('article');
+    expect(screen.getByText('Allaite, bébé de 3 mois')).toBeVisible();
+    expect(screen.queryByText(/semaines à venir/)).toBeNull();
+  });
+
+  it('says why the term is unknown when the phone clock is before the day it was given', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-12-01' } }));
+    await openResult({ items: [ADVIL] });
+
+    const card = await screen.findByRole('article');
+    expect(
+      screen.getByText(/la date du téléphone est avant un jour où l'application a déjà servi/),
+    ).toBeVisible();
+    expect(
+      within(card).getByText(/^Terme inconnu\s: ce résultat tient compte de toute la grossesse/),
+    ).toBeVisible();
+  });
+
+  it('reads breastfeeding as possible too when the phone clock is set back, and says so', async () => {
+    // A known older baby: its age is not what the result used, so it is not shown.
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 30, givenOn: '2026-12-01' },
+        breastfeeding: true,
+        babyAgeWeeks: 60,
+        babyAgeGivenOn: '2026-11-01',
+        premature: false,
+      }),
+    );
+    await openResult({ items: [CODEINE], settings: accompanied });
+
+    const card = await screen.findByRole('article');
+    expect(
+      screen.getByText(
+        /la date du téléphone est avant un jour où l'application a déjà servi\. Le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
+      ),
+    ).toBeVisible();
+    // The breastfeeding rule on codeine applies (baby of unknown age).
+    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeVisible();
+    expect(screen.queryByText(/^Allaite, bébé de/)).toBeNull();
+  });
+
+  it('says "votre bébé" in the clock notice in woman mode', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-12-01' } }));
+    await openResult({ items: [ADVIL] });
+
+    await screen.findByRole('article');
+    expect(
+      screen.getByText(/\. Votre bébé est peut-être né\s: ce résultat tient compte/),
+    ).toBeVisible();
+  });
+
+  it('says the term is unknown when she does not know whether she is pregnant', async () => {
+    await saveProfile(profileOf({ pregnancyUnsure: true }));
+    await openResult({ items: [ADVIL] });
+
+    await screen.findByRole('article');
+    expect(screen.getByText('Grossesse possible, terme inconnu')).toBeVisible();
+  });
+
+  it('reads a term that may be past the birth with breastfeeding too, and says so', async () => {
+    // Month 9 given 8 days ago: 37 to 42 weeks, perhaps already born.
+    await saveProfile(profileOf({ term: { kind: 'months', months: 9, givenOn: '2026-10-27' } }));
+    await openResult({ items: [CODEINE], settings: accompanied });
+
+    const card = await screen.findByRole('article');
+    expect(
+      screen.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
+    ).toBeVisible();
+    // The breastfeeding rule on codeine applies (baby of unknown age).
+    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeVisible();
+  });
+
+  it('says "votre bébé" in woman mode when the baby may be born', async () => {
+    await saveProfile(profileOf({ term: { kind: 'unknown', givenOn: '2026-09-20' } }));
+    await openResult({ items: [CODEINE] });
+
+    await screen.findByRole('article');
+    expect(screen.getByText(/^Nous ne savons pas si votre bébé est né/)).toBeVisible();
+  });
+
+  it('reads a last period as unknown when the phone date is before the last save, and says why', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'lmp', date: '2026-05-06' },
+        updatedAt: '2026-11-20T08:00:00.000Z',
+      }),
+    );
+    await openResult({ items: [ADVIL] });
+
+    const card = await screen.findByRole('article');
+    expect(
+      screen.getByText(/la date du téléphone est avant un jour où l'application/),
+    ).toBeVisible();
+    expect(within(card).getByText(/^Terme inconnu\s: ce résultat tient compte/)).toBeVisible();
+  });
+
+  it('reads the profile and the date again when the app comes back to the front', async () => {
+    // Just before midnight, six days after 19 weeks were given.
+    vi.setSystemTime(new Date(2026, 10, 10, 23, 59, 30));
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 19, givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL] });
+    expect(await screen.findByText(/^Terme retenu\s: environ 19 semaines$/)).toBeVisible();
+
+    // A minute later the day has changed: the phone taken out of a pocket.
+    vi.setSystemTime(new Date(2026, 10, 11, 0, 0, 30));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(await screen.findByText(/^Terme retenu\s: environ 20 semaines$/)).toBeVisible();
+  });
+
+  it('works nothing out on an outdated term: it asks whether the baby is born instead', async () => {
+    await saveProfile(profileOf({ term: { kind: 'months', months: 7, givenOn: '2026-07-01' } }));
+    await openResult({
+      items: [ADVIL],
+      settings: accompanied,
+      heading: /^Le terme noté a passé 42 semaines/,
+    });
+
+    expect(screen.queryByRole('article')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Oui, le bébé est né' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Non, toujours enceinte' })).toBeVisible();
+    expect(await listHistory('p1')).toEqual([]);
   });
 });
 

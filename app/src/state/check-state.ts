@@ -64,6 +64,8 @@ export interface CheckState {
   clearChanged: () => void;
   /** The answer to the signs question: the signs present now, or none (empty). */
   setSigns: (signs: string[]) => void;
+  /** No answer to the signs question (yet): the result asks it first. */
+  clearSigns: () => void;
   /** Back to no check at all, for no profile. */
   reset: () => void;
 }
@@ -130,6 +132,7 @@ type Action =
   | { type: 'restore'; index: number; item: CheckedItem }
   | { type: 'clearChanged' }
   | { type: 'signs'; signs: string[] }
+  | { type: 'clearSigns' }
   | { type: 'reset' };
 
 const EMPTY: CheckData = {
@@ -219,7 +222,23 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
   return { ...state, items, changed: { kind: 'updated', item } };
 }
 
+/** No answer to the signs question: they are asked again before the result. */
+function withoutSigns(state: CheckData): CheckData {
+  return state.signsGiven || state.signs.length > 0
+    ? { ...state, signs: [], signsGiven: false }
+    : state;
+}
+
+/**
+ * A change to the list asks the signs again: the answer given was about the
+ * list as it was (a sign that started since must not be read as none).
+ */
 function reduce(state: CheckData, action: Action): CheckData {
+  const next = reduceList(state, action);
+  return next.items === state.items ? next : withoutSigns(next);
+}
+
+function reduceList(state: CheckData, action: Action): CheckData {
   switch (action.type) {
     case 'start':
       if (state.profileId === action.profileId) return state;
@@ -246,6 +265,8 @@ function reduce(state: CheckData, action: Action): CheckData {
       return state.changed === null ? state : { ...state, changed: null };
     case 'signs':
       return { ...state, signs: [...new Set(action.signs)], signsGiven: true };
+    case 'clearSigns':
+      return withoutSigns(state);
     case 'reset':
       return EMPTY;
   }
@@ -289,6 +310,9 @@ export function useCheckStore(): CheckState {
   const setSigns = useCallback((signs: string[]) => {
     dispatch({ type: 'signs', signs });
   }, []);
+  const clearSigns = useCallback(() => {
+    dispatch({ type: 'clearSigns' });
+  }, []);
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
@@ -320,6 +344,7 @@ export function useCheckStore(): CheckState {
       declinedOf,
       clearChanged,
       setSigns,
+      clearSigns,
       reset,
     }),
     [
@@ -338,6 +363,7 @@ export function useCheckStore(): CheckState {
       declinedOf,
       clearChanged,
       setSigns,
+      clearSigns,
       reset,
     ],
   );
@@ -353,17 +379,30 @@ export function useCheck(): CheckState {
 }
 
 /**
- * The profile a new look at a product is for. In woman mode, hers (the first
- * one, as the profile screen opens it). In accompanied mode, the profile of the
- * check in progress, as chosen in the list of profiles: never one picked by
- * default, so a result is never for the wrong woman. Undefined when there is
- * no profile yet, or none chosen.
+ * Her own profile on the phone: the one marked as hers (made in woman mode).
+ * A record older than the mark is hers only when it is the only profile; a
+ * profile made in accompanied mode (marked false) is never hers. Undefined
+ * when she has none yet (the profile screen then starts an empty one).
+ */
+export function ownProfile(profiles: readonly Profile[]): Profile | undefined {
+  const mine = profiles.find((profile) => profile.self === true);
+  if (mine) return mine;
+  const [only] = profiles;
+  return profiles.length === 1 && only?.self === undefined ? only : undefined;
+}
+
+/**
+ * The profile a new look at a product is for. In woman mode, her own
+ * (ownProfile): never another woman's profile kept on the phone. In
+ * accompanied mode, the profile of the check in progress, as chosen in the
+ * list of profiles: never one picked by default, so a result is never for the
+ * wrong woman. Undefined when there is no profile yet, or none chosen.
  */
 export function activeProfile(
   profiles: readonly Profile[],
   mode: Mode,
   checkProfileId: string | null,
 ): Profile | undefined {
-  if (mode === 'woman') return profiles[0];
+  if (mode === 'woman') return ownProfile(profiles);
   return profiles.find((profile) => profile.id === checkProfileId);
 }
