@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: nothing-applies
+fr:
+  fact: 'Notre base ne contient rien sur ce produit pour cette situation.'
+  risk: "Cela ne veut pas dire qu'il est sans risque."
+en:
+  fact: 'Our knowledge base holds nothing on this product for this situation.'
+  risk: 'This does not mean it is risk-free.'

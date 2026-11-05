@@ -2,9 +2,9 @@
 id: paracetamol-max-daily
 fr:
   fact: 'La quantité de paracétamol prise chaque jour semble dépasser la quantité maximale.'
-  risk: 'Trop de paracétamol peut abîmer gravement le foie.'
+  risk: 'La quantité de paracétamol prise chaque jour semble trop forte, et trop de paracétamol peut abîmer gravement le foie.'
   risk-detail: "Le calcul additionne tous les produits qui contiennent du paracétamol. Les signes d'une atteinte du foie n'apparaissent souvent qu'après un ou deux jours."
 en:
   fact: 'The amount of paracetamol taken each day seems to be above the daily maximum.'
-  risk: 'Too much paracetamol can seriously damage the liver.'
+  risk: 'The amount of paracetamol taken each day seems too high, and too much paracetamol can seriously damage the liver.'
   risk-detail: 'The count adds up every product that contains paracetamol. Signs of liver damage often appear only one or two days later.'

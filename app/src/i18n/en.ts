@@ -117,6 +117,7 @@ export const en: Dictionary = {
     weeks: 'Number of weeks',
     weeksHint: 'Weeks of amenorrhoea (since the last period), from 0 to 42.',
     months: 'Which month of pregnancy are you in? (the current month, 1st to 9th)',
+    monthsAccompanied: 'Which month of pregnancy is she in? (the current month, 1st to 9th)',
     termShown: 'Term used',
     term: {
       underOne: 'Less than a week',
@@ -273,8 +274,13 @@ export const en: Dictionary = {
       'before-next-dose':
         'Show this product to the midwife, the nurse or the pharmacist before the next dose.',
       'next-contact': 'Tell the midwife at the next visit.',
-      unknown: 'Show it to your midwife or pharmacist.',
+      unknown: 'Show it to the midwife or the pharmacist at the next visit.',
     },
+    dangerProductLevel: 'Danger: show now',
+    conditionNote:
+      '{situation}: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
+    conditionOrientation: 'Talk about it with the midwife or the doctor at the next visit.',
+    situations: 'Situations not taken into account',
     unknown: {
       noInformation: 'We have no reliable information.',
       notRiskFree: 'This does not mean it is risk-free.',
@@ -295,7 +301,7 @@ export const en: Dictionary = {
     evidenceWording: {
       A: 'can cause',
       B: 'a study in volunteers showed',
-      C: 'serious cases have been reported',
+      C: 'cases have been reported or observed',
       D: 'laboratory tests suggest it, it is not proven in women',
       E: 'it is possible, but it has not been studied',
       '0': 'no reliable information',

@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-18-misoprostol-castor-oil-9-months
+title: '9 months, previous caesarean, castor oil and Cytotec: both at the danger level'
+context:
+  pregnancy: { months: 9 }
+  conditions: [uterine-scar]
+  items:
+    - { plant: castor-oil }
+    - { product: misoprostol-generic }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy-uterine-scar,
+        message: misoprostol-pregnancy-uterine-scar,
+        level: danger,
+        evidence: C,
+        items: [1],
+        term: estimated,
+      }
+    - {
+        check: C5,
+        rule: castor-oil-term-uterine-scar,
+        message: castor-oil-term-uterine-scar,
+        level: danger,
+        evidence: C,
+        items: [0],
+        term: estimated,
+      }
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [1],
+      }
+  reminders: [iptp-reminder]
+  notes: []

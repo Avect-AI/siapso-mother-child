@@ -43,20 +43,36 @@ expect:
 
 ## Cases
 
-| Case                                     | Files                                                                   |
-| ---------------------------------------- | ----------------------------------------------------------------------- |
-| 1 Ibuprofen in pregnancy, term variants  | `case-01-ibuprofen-30-weeks`, `-10-weeks`, `-term-unknown`, `-5-months` |
-| 2 Paracetamol twice, fever               | `case-02-paracetamol-duplicate-fever`                                   |
-| 3 Cotrimoxazole and SP                   | `case-03-cotrimoxazole-sp`                                              |
-| 4 Codeine, newborn                       | `case-04-codeine-newborn`                                               |
-| 5 ASAQ and moringa                       | `case-05-asaq-moringa`                                                  |
-| 6 Quinine and bitter kola                | `case-06-quinine-bitter-kola`                                           |
-| 7 Iron and clay                          | `case-07-iron-clay`                                                     |
-| 8 Lightening cream                       | `case-08-lightening-cream`                                              |
-| 9 Castor oil, uterine scar, unrecognised | `case-09-castor-oil-uterine-scar`                                       |
-| 10 Kinkeliba, fever                      | `case-10-kinkeliba-fever`                                               |
-| 11 Unrecognised product                  | `case-11-unrecognised-product`                                          |
-| 12 Artemether-lumefantrine at 8 weeks    | `case-12-artemether-lumefantrine`                                       |
-| 13 Aspirin 75 mg and 500 mg              | `case-13-aspirin-75-mg`, `case-13-aspirin-500-mg`                       |
-| 14 Not pregnant, not breastfeeding       | `case-14-ibuprofen-not-pregnant`                                        |
-| 15 Cotrimoxazole item, no HIV condition  | `case-15-cotrimoxazole-no-condition`                                    |
+| Case                                          | Files                                                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| 1 Ibuprofen in pregnancy, term variants       | `case-01-ibuprofen-30-weeks`, `-10-weeks`, `-term-unknown`, `-5-months` |
+| 2 Paracetamol twice, fever                    | `case-02-paracetamol-duplicate-fever`                                   |
+| 3 Cotrimoxazole and SP                        | `case-03-cotrimoxazole-sp`                                              |
+| 4 Codeine, newborn                            | `case-04-codeine-newborn`                                               |
+| 5 ASAQ and moringa                            | `case-05-asaq-moringa`                                                  |
+| 6 Quinine and bitter kola                     | `case-06-quinine-bitter-kola`                                           |
+| 7 Iron and clay                               | `case-07-iron-clay`                                                     |
+| 8 Lightening cream                            | `case-08-lightening-cream`                                              |
+| 9 Castor oil, uterine scar, unrecognised      | `case-09-castor-oil-uterine-scar`                                       |
+| 10 Kinkeliba, fever                           | `case-10-kinkeliba-fever`                                               |
+| 11 Unrecognised product                       | `case-11-unrecognised-product`                                          |
+| 12 Artemether-lumefantrine at 8 weeks         | `case-12-artemether-lumefantrine`                                       |
+| 13 Aspirin 75 mg and 500 mg                   | `case-13-aspirin-75-mg`, `case-13-aspirin-500-mg`                       |
+| 14 Not pregnant, not breastfeeding            | `case-14-ibuprofen-not-pregnant`                                        |
+| 15 Cotrimoxazole item, no HIV condition       | `case-15-cotrimoxazole-no-condition`                                    |
+| 16 Misoprostol, scar, 16 weeks                | `case-16-misoprostol-uterine-scar`                                      |
+| 17 Misoprostol, 36 weeks                      | `case-17-misoprostol-36-weeks`                                          |
+| 18 Misoprostol and castor oil, scar, 9 months | `case-18-misoprostol-castor-oil-9-months`                               |
+| 19 Misoprostol, breastfeeding only            | `case-19-misoprostol-breastfeeding`                                     |
+| 20 Misoprostol, 24 weeks, no scar             | `case-20-misoprostol-24-weeks`                                          |
+| 21 Misoprostol, scar, 9 weeks                 | `case-21-misoprostol-uterine-scar-9-weeks`                              |
+| 22 Doxycycline at 8 weeks                     | `case-22-doxycycline-8-weeks`                                           |
+| 23 Doxycycline at 12 weeks                    | `case-23-doxycycline-12-weeks`                                          |
+| 24 Aspirin 500 mg at 16 weeks                 | `case-24-aspirin-500-mg-16-weeks`                                       |
+| 25 Kardegic 75 mg at 16 weeks                 | `case-25-kardegic-75-mg-16-weeks`                                       |
+| 26 Carbamazepine at 16 weeks                  | `case-26-carbamazepine-16-weeks`                                        |
+| 27 Paracetamol, liver failure                 | `case-27-paracetamol-hepatic-failure`                                   |
+| 28 Ibuprofen, kidney failure                  | `case-28-ibuprofen-renal-failure`                                       |
+| 29 Rifampicin at 20 weeks                     | `case-29-rifampicin-20-weeks`                                           |
+
+Cases 16 to 29 come from the live test round 1 (SCRUM-49), not from the pharmacist's annex: they pin the test rules added then, which the clinical committee must still review. Cases 20 and 21 pin two deliberate gaps of those rules (misoprostol is red from 30 weeks without a scar and from 12 weeks with one), case 23 the start of the second trimester, case 25 the low-dose threshold before 20 weeks, and case 29 a product that only a contraception note reads ("nothing found"). The other terms are kept away from the window boundaries (12, 20 and 30 weeks).

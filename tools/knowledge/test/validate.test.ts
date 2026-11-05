@@ -749,6 +749,249 @@ describe('validateContent', () => {
       }
     });
 
+    it('rejects a dose written in words, in any field and language', async () => {
+      const cases: [string, string, string][] = [
+        ['fr', 'risk-detail', 'La notice le déconseille, sauf pour une seule prise.'],
+        ['fr', 'risk-detail', 'Sauf pour un seul comprimé.'],
+        ['fr', 'orientation', 'Montrez-le avant de prendre deux comprimés.'],
+        ['fr', 'fact', 'Il contient trois sachets.'],
+        ['fr', 'fact', 'Prendre un comprimé le soir.'],
+        ['fr', 'fact', 'Une gélule le matin.'],
+        ['fr', 'fact', 'Une cuillerée à café.'],
+        ['fr', 'fact', 'Une goutte dans chaque œil.'],
+        ['fr', 'fact', 'Une fois par jour.'],
+        ['fr', 'fact', 'Un demi-comprimé.'],
+        ['fr', 'fact', 'Douze comprimés au plus.'],
+        ['fr', 'fact', 'Dix-huit gouttes.'],
+        ['fr', 'fact', 'Vingt gouttes.'],
+        ['fr', 'fact', 'Deux cachets.'],
+        ['fr', 'fact', 'Deux pilules.'],
+        ['fr', 'fact', 'Un suppositoire.'],
+        ['fr', 'fact', 'Trois grammes.'],
+        // Accent-insensitive: written without the accents.
+        ['fr', 'fact', 'Deux comprimes ou deux gelules.'],
+        ['en', 'risk-detail', 'Except usually for a single dose.'],
+        ['en', 'risk', 'Two tablets can harm the liver.'],
+        ['en', 'fact', 'Take a tablet at night.'],
+        ['en', 'fact', 'A capsule in the morning.'],
+        ['en', 'fact', 'A teaspoon or a spoonful.'],
+        ['en', 'fact', 'A drop in each eye.'],
+        ['en', 'fact', 'Once a day.'],
+        ['en', 'fact', 'Twice daily.'],
+        ['en', 'fact', 'Half a tablet.'],
+        ['en', 'fact', 'Twelve tablets at most.'],
+        ['en', 'fact', 'Twenty drops.'],
+        ['en', 'fact', 'Two pills.'],
+        ['en', 'fact', 'Three grams.'],
+        ['en', 'fact', 'One single tablet.'],
+        ['fr', 'fact', 'Un seul sachet.'],
+      ];
+      for (const [lang, field, text] of cases) {
+        const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang)[field] = text;
+        });
+        const problems = validateContent(raw);
+        expect(
+          problems.some((p) => p.path === `${lang}.${field}` && /dose in words/.test(p.message)),
+          `${lang} ${text}`,
+        ).toBe(true);
+      }
+    });
+
+    it('accepts a count in words that is not a dose', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr')['risk-detail'] =
+          "La notice le contre-indique, même pris une seule fois, à une dose plus forte que la petite dose, pendant deux semaines. Une prise unique, une dose inconnue, avant la prochaine prise. Deux à trois fois plus fréquentes, dans une semaine, une fois l'accouchement passé.";
+        sub(d, 'en')['risk-detail'] =
+          'The label contraindicates it, even taken once, at a higher dose, for two weeks. A dose that is not known, before the next dose, two to three times more frequent, once the birth is over.';
+      });
+      expect(validateContent(raw)).toEqual([]);
+    });
+
+    it('accepts the number of doses of an IPTp schedule in a reminder message only', async () => {
+      const schedule = (d: Dict) => {
+        sub(d, 'fr').fact = 'Demandez si elle a reçu au moins trois doses de SP.';
+        sub(d, 'en').fact = 'Ask whether she has received at least three doses of SP.';
+      };
+      // The message of a reminder rule: allowed.
+      expect(validateContent(patch(await fresh(), 'messages', 'iptp-reminder', schedule))).toEqual(
+        [],
+      );
+      // The message of a risk rule: refused.
+      const problems = validateContent(patch(await fresh(), 'messages', NSAID, schedule));
+      expectProblem(problems, { file: MESSAGE, path: 'fr.fact', message: /dose in words/ });
+      expectProblem(problems, { file: MESSAGE, path: 'en.fact', message: /dose in words/ });
+      // Only that pattern: another amount in a reminder is still refused.
+      const other = validateContent(
+        patch(await fresh(), 'messages', 'iptp-reminder', (d) => {
+          sub(d, 'fr').fact = 'Demandez si elle a pris deux comprimés de SP.';
+        }),
+      );
+      expectProblem(other, {
+        file: 'knowledge/messages/iptp-reminder.yaml',
+        path: 'fr.fact',
+        message: /dose in words/,
+      });
+    });
+
+    it('rejects an orientation that gives more time than the level of its rule', async () => {
+      const raw = patch(await fresh(), 'messages', NSAID, (d) => {
+        sub(d, 'fr').orientation = 'Montrez-le à la sage-femme dans les prochains jours.';
+        sub(d, 'en').orientation = 'Show it to the midwife at the next visit.';
+      });
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: MESSAGE,
+        path: 'fr.orientation',
+        message: /prochains jours.*before-next-dose.*nsaid-pregnancy-from-20-weeks/,
+      });
+      expectProblem(problems, {
+        file: MESSAGE,
+        path: 'en.orientation',
+        message: /next visit.*before-next-dose/,
+      });
+    });
+
+    it('rejects a danger orientation that says today, for a danger rule or a danger sign', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        // The message of moringa-toxic, a danger rule.
+        sub(d, 'fr').orientation = "Montrez-le à la sage-femme aujourd'hui.";
+        sub(d, 'en').orientation = 'Show it to the midwife today.';
+      });
+      patch(raw, 'messages', 'bleeding-sign', (d) => {
+        sub(d, 'fr').orientation = "Allez au poste de santé aujourd'hui.";
+      });
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: 'knowledge/messages/herb-drug-moringa.yaml',
+        path: 'fr.orientation',
+        message: /aujourd.hui.*danger.*moringa-toxic/,
+      });
+      expectProblem(problems, {
+        file: 'knowledge/messages/herb-drug-moringa.yaml',
+        path: 'en.orientation',
+        message: /today.*danger/,
+      });
+      expectProblem(problems, {
+        file: 'knowledge/messages/bleeding-sign.yaml',
+        path: 'fr.orientation',
+        message: /aujourd.hui.*danger.*bleeding/,
+      });
+    });
+
+    it('rejects a danger orientation that does not say now', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr').orientation = 'Allez au poste de santé.';
+        sub(d, 'en').orientation = 'Go to the health post.';
+      });
+      const problems = validateContent(raw);
+      const file = 'knowledge/messages/herb-drug-moringa.yaml';
+      expectProblem(problems, { file, path: 'fr.orientation', message: /does not say now/ });
+      expectProblem(problems, { file, path: 'en.orientation', message: /does not say now/ });
+      // "Immédiatement" and "immediately" say now too.
+      const now = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr').orientation = 'Allez immédiatement au poste de santé.';
+        sub(d, 'en').orientation = 'Go to the health post immediately.';
+      });
+      expect(validateContent(now)).toEqual([]);
+    });
+
+    it('rejects tomorrow, a week, an appointment or later at both levels, and soon for a danger', async () => {
+      const later: [string, string][] = [
+        ['fr', 'Montrez-le demain.'],
+        ['fr', 'Montrez-le dans la semaine.'],
+        ['fr', 'Montrez-le dans les prochaines semaines.'],
+        ['fr', 'Montrez-le au prochain rendez-vous.'],
+        ['fr', 'Montrez-le à la consultation.'],
+        ['fr', 'Montrez-le plus tard.'],
+        ['en', 'Show it tomorrow.'],
+        ['en', 'Show it within a week.'],
+        ['en', 'Show it at the next appointment.'],
+        ['en', 'Show it at the consultation.'],
+        ['en', 'Show it later.'],
+      ];
+      for (const [lang, text] of later) {
+        for (const [name, file] of [
+          [NSAID, MESSAGE],
+          ['herb-drug-moringa', 'knowledge/messages/herb-drug-moringa.yaml'],
+        ] as const) {
+          const raw = patch(await fresh(), 'messages', name, (d) => {
+            sub(d, lang).orientation = text;
+          });
+          expect(
+            validateContent(raw).some(
+              (p) =>
+                p.file === file &&
+                p.path === `${lang}.orientation` &&
+                /gives more time/.test(p.message),
+            ),
+            `${name} ${text}`,
+          ).toBe(true);
+        }
+      }
+      for (const [lang, text] of [
+        ['fr', 'Allez maintenant, ou rapidement, au poste de santé.'],
+        ['fr', 'Allez maintenant, ou dès que possible, au poste de santé.'],
+        ['en', 'Go now, or soon, to the health post.'],
+      ] as const) {
+        // Soon is a long-term treatment's word, never a danger's.
+        const danger = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+          sub(d, lang).orientation = text;
+        });
+        expectProblem(validateContent(danger), {
+          file: 'knowledge/messages/herb-drug-moringa.yaml',
+          path: `${lang}.orientation`,
+          message: /gives more time.*danger/,
+        });
+        const before = patch(await fresh(), 'messages', NSAID, (d) => {
+          sub(d, lang).orientation = text;
+        });
+        expect(validateContent(before), text).toEqual([]);
+      }
+    });
+
+    it('reads every apostrophe and space alike, no-break spaces included', async () => {
+      const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
+        sub(d, 'fr').orientation = 'Allez au poste de santé maintenant ou aujourd’hui.';
+      });
+      patch(raw, 'messages', NSAID, (d) => {
+        sub(d, 'fr').orientation = 'Montrez-le dans les prochains jours.';
+      });
+      const problems = validateContent(raw);
+      expectProblem(problems, {
+        file: 'knowledge/messages/herb-drug-moringa.yaml',
+        path: 'fr.orientation',
+        message: /aujourd'hui/,
+      });
+      expectProblem(problems, {
+        file: MESSAGE,
+        path: 'fr.orientation',
+        message: /prochains jours/,
+      });
+    });
+
+    it('checks the built-in danger sign message at the danger level', async () => {
+      const raw = patch(await fresh(), 'messages', 'danger-sign', (d) => {
+        sub(d, 'fr').orientation = "Allez au poste de santé aujourd'hui.";
+      });
+      expectProblem(validateContent(raw), {
+        file: 'knowledge/messages/danger-sign.yaml',
+        path: 'fr.orientation',
+        message: /danger/,
+      });
+    });
+
+    it('accepts the next visit for a next-contact rule', async () => {
+      const raw = patch(await fresh(), 'messages', 'max-dose-paracetamol', (d) => {
+        // Also the message of paracetamol-max-dose, a before-next-dose rule.
+        sub(d, 'fr').orientation = 'Montrez-le avant la prochaine prise.';
+      });
+      patch(raw, 'messages', 'iptp-reminder', (d) => {
+        sub(d, 'fr').orientation = 'Demandez-le à la prochaine visite.';
+      });
+      expect(validateContent(raw)).toEqual([]);
+    });
+
     it('rejects an em dash and an emoji', async () => {
       const raw = patch(await fresh(), 'messages', 'herb-drug-moringa', (d) => {
         sub(d, 'fr').fact = `Prudence ${String.fromCodePoint(0x2014)} plante.`;
@@ -766,6 +1009,7 @@ describe('validateContent', () => {
   describe('8. builtin messages', () => {
     it.each([
       'nothing-found',
+      'nothing-applies',
       'not-recognised',
       'danger-sign',
       'max-dose-not-computable',

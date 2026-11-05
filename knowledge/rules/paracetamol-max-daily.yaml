@@ -17,28 +17,28 @@ evidence: A
 message: paracetamol-max-daily
 sources:
   - source: bdpm
-    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.2, dosage table, row "Adulte et enfant à partir de 50 kg" (ANSM, updated 25/08/2025), CIS 60234100'
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.2, "Adulte et enfant à partir de 50 kg" (ANSM, 25/08/2025), CIS 60234100'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
     accessed: 2026-11-03
     quote: 'Adulte et enfant à partir de 50 kg (environ 15 ans) 1000 mg soit 1 g (1 comprimé) 4 heures minimum 3000 mg par jour'
   - source: bdpm
-    locator: 'EFFERALGAN 1000 mg, comprimé effervescent, RCP section 4.2, dosage table, row "Adulte et enfant à partir de 50 kg" (ANSM, updated 03/03/2025), CIS 67058605'
+    locator: 'EFFERALGAN 1000 mg, comprimé effervescent, RCP 4.2, "Adulte et enfant à partir de 50 kg" (ANSM, 03/03/2025), CIS 67058605'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=67058605&typedoc=R'
     accessed: 2026-11-03
     quote: 'Adulte et enfant à partir de 50 kg (environ 15 ans) 1000 mg soit 1 g (1 comprimé) 4 heures minimum 3000 mg par jour soit 3 g'
   - source: bdpm
-    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.2 (ANSM, updated 25/08/2025), CIS 60234100'
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.2 (ANSM, 25/08/2025), CIS 60234100'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
     accessed: 2026-11-03
     quote: "Uniquement sur avis médical et en l’absence de facteurs de risques concomitants, la posologie peut être augmentée jusqu'à 4000 mg (4 g) par jour"
   - source: bdpm
-    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.2 (ANSM, updated 25/08/2025), CIS 60234100'
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.2 (ANSM, 25/08/2025), CIS 60234100'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
     accessed: 2026-11-03
     quote: 'La dose maximale quotidienne ne doit pas dépasser 60 mg/kg/jour ni excéder 3000 mg par jour (3 g/jour) dans les situations suivantes'
   - source: bdpm
-    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, notice section 3 (ANSM, RCP updated 17/08/2026), CIS 60904643'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=R'
+    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, notice 3 (ANSM, 17/08/2026), CIS 60904643'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=N'
     accessed: 2026-11-03
     quote: 'ne doit pas excéder 60 mg/kg/jour (sans dépasser 3 g/jour) dans les situations suivantes : Adultes pesant moins de 50 kg, malnutrition chronique, déshydratation'
   - source: openfda

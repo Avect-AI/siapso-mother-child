@@ -22,18 +22,18 @@ sources:
     accessed: 2026-11-03
     quote: 'Pica was associated with 2.35 times greater odds of anemia (95% CI: 1.94-2.85, P < 0.001)'
   - source: bdpm
-    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP section 4.6 (ANSM, updated 22/04/2025), CIS 69584073'
+    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP 4.6 (ANSM, 22/04/2025), CIS 69584073'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=R'
     accessed: 2026-11-03
     quote: 'SMECTA n’est pas recommandé pendant la grossesse.'
   - source: bdpm
-    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP section 4.4 (ANSM, updated 22/04/2025), CIS 69584073'
+    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP 4.4 (ANSM, 22/04/2025), CIS 69584073'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=R'
     accessed: 2026-11-03
     quote: 'L’utilisation chronique de SMECTA doit être évitée.'
   - source: bdpm
-    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, notice section 1 (ANSM, updated 22/04/2025), CIS 69584073'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=R'
+    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, notice 1 (ANSM, 22/04/2025), CIS 69584073'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=N'
     accessed: 2026-11-03
     quote: 'La diosmectite est une argile naturelle purifiée'
 review:

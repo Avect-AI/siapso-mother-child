@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-29-rifampicin-20-weeks
+title: '20 weeks, rifampicin: only a contraception note reads it, so nothing is found on its risk in pregnancy'
+context:
+  pregnancy: { weeks: 20 }
+  items:
+    - { product: rifampicin-generic }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-found, level: unknown, items: [0] }
+  reminders: [iptp-reminder]
+  notes: [rifampicin-contraception]

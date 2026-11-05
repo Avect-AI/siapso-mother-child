@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: liver failure ticked in the profile changed nothing. The
+# French label contraindicates paracetamol in severe liver failure and lowers
+# the daily maximum in mild to moderate liver failure; the profile does not
+# say how severe it is, so the rule takes the contraindication's level. The
+# evidence is pharmacokinetic (slower clearance in chronic liver failure,
+# evidence B). The lower daily maximum lives only in the quotes: whether a
+# max-dose rule should use it is a question for the clinical committee.
+id: paracetamol-hepatic-failure
+kind: condition
+when:
+  subject: { substance: paracetamol }
+  requires:
+    - condition: hepatic-failure
+level: before-next-dose
+evidence: B
+message: paracetamol-hepatic-failure
+sources:
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.3 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Insuffisance hépatique sévère.'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.2 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Il est recommandé de réduire la dose et d’augmenter l’intervalle minimum entre deux prises. La dose quotidienne de paracétamol ne doit pas dépasser 2000 mg/jour (2 g/jour).'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 5.2 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Insuffisance hépatique : le métabolisme du paracétamol est altéré chez les patients présentant une insuffisance hépatique chronique, comme le montrent l’augmentation des concentrations plasmatiques de paracétamol et une demi-vie d’élimination plus longue'
+  - source: bdpm
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Le risque d'une intoxication grave (surdosage thérapeutique ou intoxication accidentelle) peut être particulièrement élevé chez les sujets âgés, chez les jeunes enfants, chez les patients avec une atteinte hépatique ou rénale"
+review:
+  status: draft
+  reviewers: []

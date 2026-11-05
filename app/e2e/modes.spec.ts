@@ -224,7 +224,7 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await page.getByText('Fièvre', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByRole('button', { name: 'Voir qui appeler' }).click();
-  const own = "Allez faire un test au poste de santé aujourd'hui.";
+  const own = 'Allez au poste de santé maintenant pour faire un test.';
   await expect(page.getByRole('heading', { level: 2, name: own })).toBeVisible();
   await expect(page.getByText('Fièvre', { exact: true })).toBeVisible();
 
@@ -233,12 +233,12 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await expect(
     page.getByRole('heading', { level: 2, name: 'Allez au poste de santé maintenant.' }),
   ).toBeVisible();
-  expect(await pageText(page)).not.toContain("test au poste de santé aujourd'hui");
+  expect(await pageText(page)).not.toContain('pour faire un test');
   await expect(page.getByText('Fièvre', { exact: true })).toHaveCount(0);
 
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
-  expect(await pageText(page)).not.toContain("test au poste de santé aujourd'hui");
+  expect(await pageText(page)).not.toContain('pour faire un test');
   await expect(page.getByText('Fièvre', { exact: true })).toHaveCount(0);
 });
 

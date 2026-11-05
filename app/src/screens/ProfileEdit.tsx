@@ -324,7 +324,7 @@ function Form({
             ) : null}
             {form.termKind === 'months' ? (
               <TextField
-                label={t('profile.months')}
+                label={t(mode === 'accompanied' ? 'profile.monthsAccompanied' : 'profile.months')}
                 error={error('months')}
                 {...NUMBER_INPUT}
                 maxLength={1}

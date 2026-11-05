@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Like misoprostol-pregnancy, the message names neither the substance, nor a
+# dose, nor any use. Same orientation as misoprostol-late-pregnancy and
+# castor-oil-term-uterine-scar, so one danger instruction is given.
+id: misoprostol-pregnancy-uterine-scar
+fr:
+  fact: "Ce produit contient une substance qui fait contracter l'utérus, et l'utérus porte une cicatrice (césarienne ou autre opération)."
+  risk: "Pendant la grossesse, avec un utérus déjà opéré, des ruptures de l'utérus ont été rapportées avec ce type de produit : la vie de la mère et du bébé peut être en danger."
+  risk-detail: "La notice américaine indique que le risque de rupture de l'utérus augmente avec l'avancée de la grossesse et après une césarienne ou une autre opération de l'utérus, et que ce produit ne doit pas être utilisé au troisième trimestre après une césarienne. La notice française d'un produit de la même substance demande la prudence quand l'utérus porte une cicatrice."
+  orientation: 'Allez au poste de santé maintenant, et montrez à la sage-femme ce qui a été pris.'
+en:
+  fact: 'This product contains a substance that makes the womb contract, and the womb has a scar (caesarean section or other surgery).'
+  risk: 'During pregnancy, with a womb that has had surgery, ruptures of the womb have been reported with this type of product: the life of the mother and the baby can be in danger.'
+  risk-detail: 'The US label says that the risk of rupture of the womb rises as the pregnancy advances and after a caesarean section or other surgery on the womb, and that this product should not be used in the third trimester after a caesarean section. The French label of a product with the same substance asks for caution when the womb has a scar.'
+  orientation: 'Go to the health post now, and show the midwife what was taken.'

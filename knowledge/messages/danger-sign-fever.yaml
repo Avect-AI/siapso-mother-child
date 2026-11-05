@@ -1,13 +1,14 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Message of the fever danger sign during pregnancy (reference cases 2 and 10).
+# Go now, as the danger signs screen and every danger card say.
 id: danger-sign-fever
 fr:
   fact: 'La fièvre pendant la grossesse peut être le paludisme.'
   risk: 'Le paludisme pendant la grossesse peut devenir grave pour la mère et pour le bébé.'
   risk-detail: 'Le paludisme pendant la grossesse peut provoquer une anémie de la mère et un bébé de petit poids. Seul un test au poste de santé permet de le savoir. Il peut aussi exister sans fièvre.'
-  orientation: "Allez faire un test au poste de santé aujourd'hui."
+  orientation: 'Allez au poste de santé maintenant pour faire un test.'
 en:
   fact: 'Fever during pregnancy can be malaria.'
   risk: 'Malaria during pregnancy can become serious for the mother and for the baby.'
   risk-detail: 'Malaria during pregnancy can cause anaemia in the mother and a low birth weight baby. Only a test at the health post can tell. It can also be present without fever.'
-  orientation: 'Go to the health post for a test today.'
+  orientation: 'Go to the health post now for a test.'

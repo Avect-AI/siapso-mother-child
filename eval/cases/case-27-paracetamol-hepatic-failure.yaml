@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-27-paracetamol-hepatic-failure
+title: 'Breastfeeding, liver failure, Doliprane 1000 mg: the situation changes the result'
+context:
+  breastfeeding: { baby-age-weeks: 10, premature: false }
+  conditions: [hepatic-failure]
+  items:
+    - { product: doliprane-1000-mg-60234100 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C8,
+        rule: paracetamol-hepatic-failure,
+        message: paracetamol-hepatic-failure,
+        level: before-next-dose,
+        evidence: B,
+        items: [0],
+      }
+  reminders: []
+  notes: []

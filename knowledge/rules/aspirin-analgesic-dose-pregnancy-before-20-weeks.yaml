@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: Aspegic 500 mg at 11 or 19 weeks gave "nothing found"
+# while ibuprofen gave next-contact. Aspirin above 100 mg per unit before 20
+# weeks, as nsaid-pregnancy-before-20-weeks (same level and evidence): the
+# French label puts doses between 100 and 500 mg per day under the rules of
+# higher doses, allows them before 24 weeks only when absolutely necessary and
+# links prostaglandin synthesis inhibitors in the first trimester to
+# miscarriage (epidemiological studies, evidence C). Low-dose aspirin
+# (100 mg or less) is not flagged; a product of unknown strength is. The
+# threshold lives only in strength-above-mg and in the quotes.
+id: aspirin-analgesic-dose-pregnancy-before-20-weeks
+kind: pregnancy
+when:
+  subject: { substance: aspirin }
+  strength-above-mg: 100
+  pregnancy-windows: [lt12, 12-19]
+level: next-contact
+evidence: C
+message: aspirin-analgesic-dose-pregnancy-before-20-weeks
+sources:
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.6 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Sauf nécessité absolue, ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose ne doit pas être prescrit chez une femme qui envisage une grossesse ou au cours des 5 premiers mois de grossesse (avant 24 semaines d’aménorrhée).'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.6 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Des études épidémiologiques suggèrent qu’un traitement par un inhibiteur de la synthèse des prostaglandines au cours du 1er trimestre de grossesse est associé à une augmentation du risque de fausse-couche.'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.6 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'La prise maternelle d’un AINS expose le fœtus à un risque d’atteinte fonctionnelle rénale'
+  - source: bdpm
+    # The threshold of the rule comes from this record.
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.6 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'L’expérience clinique concernant l’administration de doses comprises entre 100 mg et 500 mg par jour est insuffisante. En conséquence, les recommandations ci-dessous pour les doses supérieures à 500 mg par jour s’appliquent à ces doses.'
+review:
+  status: draft
+  reviewers: []

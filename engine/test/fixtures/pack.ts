@@ -86,6 +86,16 @@ function fixtureMessages(lang: 'fr' | 'en', ids: string[]): Record<string, Messa
             risk: 'This does not mean it is risk-free.',
             orientation: 'Show this screen to your midwife or pharmacist.',
           },
+    'nothing-applies':
+      lang === 'fr'
+        ? {
+            fact: 'Notre base ne contient rien sur ce produit pour cette situation (test).',
+            risk: "Cela ne veut pas dire qu'il est sans risque.",
+          }
+        : {
+            fact: 'Our knowledge base holds nothing on this product for this situation (fixture).',
+            risk: 'This does not mean it is risk-free.',
+          },
     'not-recognised':
       lang === 'fr'
         ? { fact: "Ce nom n'a pas été reconnu.", risk: "Nous n'avons pas d'information." }
@@ -121,6 +131,8 @@ export function fixturePack(): Pack {
     substance('pyrimethamine'),
     substance('sulfamethoxazole'),
     substance('trimethoprim'),
+    // Read by no rule of the fixture: "nothing found".
+    substance('amoxicillin'),
   ];
   const products: Product[] = [
     product('ibuprofen-400', [{ substance: 'ibuprofen', strengthMg: 400 }]),
@@ -140,6 +152,7 @@ export function fixturePack(): Pack {
       { substance: 'amodiaquine', strengthMg: 270 },
     ]),
     product('quinine-300', [{ substance: 'quinine', strengthMg: 300 }]),
+    product('amoxicillin-500', [{ substance: 'amoxicillin', strengthMg: 500 }]),
   ];
   const plants: Plant[] = [
     plant('moringa', 'Moringa oleifera', 'B'),

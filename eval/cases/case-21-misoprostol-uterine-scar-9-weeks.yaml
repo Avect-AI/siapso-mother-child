@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-21-misoprostol-uterine-scar-9-weeks
+title: '9 weeks, previous caesarean, misoprostol: before the next dose, not red (the scar rule starts at 12 weeks, a committee question)'
+context:
+  pregnancy: { weeks: 9 }
+  conditions: [uterine-scar]
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: []
+  notes: []

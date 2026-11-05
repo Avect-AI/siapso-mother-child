@@ -12,12 +12,12 @@ evidence: C
 message: nsaid-pregnancy-before-20-weeks
 sources:
   - source: bdpm
-    locator: 'ADVIL 200 mg, comprimé enrobé, RCP section 4.4 (ANSM, updated 13/02/2025), CIS 68634000'
+    locator: 'ADVIL 200 mg, comprimé enrobé, RCP 4.4 (ANSM, 13/02/2025), CIS 68634000'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68634000&typedoc=R'
     accessed: 2026-11-03
     quote: "au cours des 5 premiers mois (avant 24 semaines d'aménorrhée), ADVIL 200 mg, comprimé enrobé ne doit être prescrit qu’en cas de nécessité absolue"
   - source: bdpm
-    locator: 'ADVIL 200 mg, comprimé enrobé, RCP section 4.6 (ANSM, updated 13/02/2025), CIS 68634000'
+    locator: 'ADVIL 200 mg, comprimé enrobé, RCP 4.6 (ANSM, 13/02/2025), CIS 68634000'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68634000&typedoc=R'
     accessed: 2026-11-03
     quote: 'un traitement par un inhibiteur de la synthèse des prostaglandines au cours du 1er trimestre de grossesse est associé à une augmentation du risque de fausse-couche'

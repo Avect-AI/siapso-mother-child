@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { evaluate, type CheckedItem, type Evaluation } from '@siapso/engine';
+import { evaluate, type CheckedItem, type ConditionId, type Evaluation } from '@siapso/engine';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Redirect, useLocation } from 'wouter';
 import { historyEntryOf, recordHistoryOnce } from '../data/history.js';
@@ -32,9 +32,13 @@ type Loaded =
   | { status: 'missing' }
   | { status: 'failed' };
 
-/** The evaluation of the check, with the items it read (the profile's long-term ones included). */
+/**
+ * The evaluation of the check, with the items it read (the profile's
+ * long-term ones included) and the profile's situations.
+ */
 type Evaluated =
-  { status: 'ready'; evaluation: Evaluation; items: CheckedItem[] } | { status: 'failed' };
+  | { status: 'ready'; evaluation: Evaluation; items: CheckedItem[]; conditions: ConditionId[] }
+  | { status: 'failed' };
 
 /** Whether a finding has source or rule lines: in accompanied mode only. */
 function hasMeta({ sources, ruleIds }: FindingView): boolean {
@@ -256,8 +260,9 @@ function Closing({ view }: { view: ResultView }) {
  * Result: what to do about each product, read aloud to the woman. When a
  * finding is a danger, the danger banner leads, with the screen's one
  * primary action (who to call). Then, when there are several findings, a
- * summary (level, then product, most urgent first), then one card per item
- * set and check (the highest level of each), then the notes and, in
+ * summary (level, then product, most urgent first), then the situations of
+ * the profile that the base does not read yet (both modes), then one card per
+ * item set and check (the highest level of each), then the notes and, in
  * accompanied mode, the reminders, then the fixed sentences, the knowledge
  * base version and "not clinically validated", then the way back to the
  * list, which keeps the check so a forgotten product can be added.
@@ -302,7 +307,12 @@ export function Result() {
     try {
       // Today from the phone's clock, handed to pure code.
       const context = contextFromProfile(loaded.profile, { items, signs }, todayIso(new Date()));
-      return { status: 'ready', evaluation: evaluate(pack, context), items: context.items };
+      return {
+        status: 'ready',
+        evaluation: evaluate(pack, context),
+        items: context.items,
+        conditions: context.conditions,
+      };
     } catch (failure) {
       console.warn('The check could not be evaluated', failure);
       return { status: 'failed' };
@@ -313,7 +323,15 @@ export function Result() {
     if (evaluated === null || pack === null) return null;
     if (evaluated.status === 'failed') return 'failed';
     try {
-      return buildResultView(evaluated.evaluation, pack, evaluated.items, mode, lang, t);
+      return buildResultView(
+        evaluated.evaluation,
+        pack,
+        evaluated.items,
+        mode,
+        lang,
+        t,
+        evaluated.conditions,
+      );
     } catch (failure) {
       console.warn('The result could not be shown', failure);
       return 'failed';
@@ -386,6 +404,8 @@ export function Result() {
             />
           ) : null}
           {ready.findings.length > 1 ? <Summary view={ready} /> : null}
+          {/* The situations the result leaves out, said before any card. */}
+          <Notes heading="result.situations" notes={ready.situations} />
           <div className="result__findings">
             {ready.findings.map((finding) => (
               <Finding key={finding.key} finding={finding} />

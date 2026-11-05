@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: CC-BY-4.0
+# The card of misoprostol when no danger rule applies (no known scar, before
+# 30 weeks): it also says when to go now, in words for both modes. When a
+# danger rule fires on the same card, the danger orientation shows instead.
 id: misoprostol-pregnancy
 fr:
   fact: "Ce produit contient une substance qui fait contracter l'utérus."
   risk: 'Pendant la grossesse, il peut provoquer des contractions, des saignements et la perte de la grossesse.'
   risk-detail: "Il peut aussi provoquer une naissance trop tôt, des malformations ou une rupture de l'utérus. Le risque de rupture augmente avec l'avancée de la grossesse et après une césarienne ou une autre opération de l'utérus."
-  orientation: "Montrez ce produit à la sage-femme aujourd'hui."
+  orientation: "Montrez ce produit à la sage-femme aujourd'hui. En cas de saignement, de contractions ou de très fortes douleurs au ventre, allez au poste de santé maintenant."
 en:
   fact: 'This product contains a substance that makes the womb contract.'
   risk: 'During pregnancy it can cause contractions, bleeding and the loss of the pregnancy.'
   risk-detail: 'It can also cause a birth that comes too early, birth defects or a rupture of the womb. The risk of rupture rises as the pregnancy advances and after a caesarean section or other surgery on the womb.'
-  orientation: 'Show this product to the midwife today.'
+  orientation: 'Show this product to the midwife today. If there is bleeding, contractions or very strong pain in the belly, go to the health post now.'

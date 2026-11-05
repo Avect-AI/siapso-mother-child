@@ -173,6 +173,7 @@ describe('parsePack', () => {
   it('refuses a missing builtin message', () => {
     for (const id of [
       'nothing-found',
+      'nothing-applies',
       'not-recognised',
       'danger-sign',
       'max-dose-not-computable',

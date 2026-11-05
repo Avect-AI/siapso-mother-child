@@ -165,8 +165,8 @@ function SampleProducts() {
           orientation="Dites-le à la sage-femme à la prochaine visite."
           meta={
             <p>
-              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas graves ont été
-              rapportés
+              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas ont été rapportés ou
+              observés
             </p>
           }
         >
@@ -177,7 +177,7 @@ function SampleProducts() {
           levelLabel="On ne sait pas"
           title="Poudre achetée au marché (nom inconnu)"
           headingLevel={3}
-          orientation="Montrez-le à votre sage-femme ou au pharmacien."
+          orientation="Montrez-le à la sage-femme ou au pharmacien à la prochaine visite."
           meta={<p>Produit absent de la base.</p>}
         >
           <p>Nous n’avons pas d’information fiable. Cela ne veut pas dire que c’est sans risque.</p>
@@ -201,22 +201,22 @@ function SampleDanger() {
           <p className="meta">39 semaines de grossesse, 1 produit</p>
         </div>
         <DangerBanner
-          levelLabel="Signe de danger"
-          title="Allez au poste de santé maintenant."
+          levelLabel={'Danger\u00a0: à montrer maintenant'}
+          title="Allez au poste de santé maintenant, et montrez à la sage-femme ce qui a été pris."
           action="Voir qui appeler"
           headingLevel={3}
           onAction={noop}
         />
         <ResultCard
           level="danger"
-          levelLabel="Signe de danger"
+          levelLabel={'Danger\u00a0: à montrer maintenant'}
           title="Huile de ricin"
           headingLevel={3}
-          orientation="Montrez ce produit à la sage-femme aujourd’hui."
+          orientation={null}
           meta={
             <p>
-              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas graves ont été
-              rapportés
+              Source&nbsp;: exemple fictif. Niveau de preuve C&nbsp;: des cas ont été rapportés ou
+              observés
             </p>
           }
         >

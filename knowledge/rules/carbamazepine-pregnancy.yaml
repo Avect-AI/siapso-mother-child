@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: Tegretol in pregnancy gave "nothing found". Carbamazepine
+# raises the risk of major birth defects (French label: two to three times the
+# general rate, from population data; evidence A, as for valproate). Ending an
+# epilepsy treatment alone can cause serious seizures: the message says that
+# it must not be stopped without a doctor and refers soon, changing nothing.
+id: carbamazepine-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: carbamazepine }
+level: before-next-dose
+evidence: A
+message: carbamazepine-pregnancy
+sources:
+  - source: bdpm
+    locator: 'TEGRETOL 200 mg, comprimé sécable, RCP 4.6 (ANSM, 14/08/2026), CIS 61009918'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61009918&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'L’exposition prénatale à la carbamazépine peut augmenter les risques de malformations congénitales et d’autres effets néfastes sur le développement.'
+  - source: bdpm
+    locator: 'TEGRETOL 200 mg, comprimé sécable, RCP 4.6 (ANSM, 14/08/2026), CIS 61009918'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61009918&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Dans l’espèce humaine, l'exposition à la carbamazépine pendant la grossesse est associée à une fréquence de malformations congénitales majeures 2 à 3 fois supérieure à celle de la population générale, qui est de 2 à 3 %."
+  - source: bdpm
+    locator: 'TEGRETOL 200 mg, comprimé sécable, RCP 4.6 (ANSM, 14/08/2026), CIS 61009918'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61009918&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Les malformations les plus souvent rencontrées sont des anomalies du tube neural (spina bifida)'
+  - source: bdpm
+    locator: 'TEGRETOL 200 mg, comprimé sécable, RCP 4.6 (ANSM, 14/08/2026), CIS 61009918'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61009918&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'L’arrêt brutal d’un traitement par un médicament antiépileptique doit être évité car il peut entraîner des crises susceptibles d’avoir des conséquences graves pour la femme et l’enfant à naître.'
+  - source: bdpm
+    locator: 'TEGRETOL 200 mg, comprimé sécable, RCP 4.6 (ANSM, 14/08/2026), CIS 61009918'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61009918&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Si une femme devient enceinte alors qu’elle prend de la carbamazépine, elle doit être orientée vers un spécialiste afin de réévaluer le traitement par la carbamazépine et d’envisager des alternatives thérapeutiques.'
+  - source: openfda
+    locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, pregnancy'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'Carbamazepine can cause fetal harm when administered to a pregnant woman.'
+  - source: openfda
+    locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, pregnancy'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'Women with epilepsy who become pregnant should not abruptly discontinue antiepileptic drugs, including TEGRETOL, due to the risk of status epilepticus or severe seizures, which may be life-threatening.'
+review:
+  status: draft
+  reviewers: []

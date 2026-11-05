@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-19-misoprostol-breastfeeding
+title: 'Breastfeeding only, misoprostol: no rule applies, and the base says so without "nothing found"'
+context:
+  breastfeeding: { baby-age-weeks: 6, premature: false }
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-applies, level: unknown, items: [0] }
+  reminders: []
+  notes: []

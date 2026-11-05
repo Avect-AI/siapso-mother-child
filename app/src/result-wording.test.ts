@@ -14,6 +14,7 @@ import {
   type EvaluationContext,
   type Finding,
   type Lang,
+  type Level,
   type Pack,
   type Rule,
   type Subject,
@@ -113,15 +114,51 @@ describe('result wording over the reference cases', () => {
   });
 
   it('always names the level in text, for the result and for every card', () => {
+    let products = 0;
     eachView((view, label, _mode, lang) => {
-      expect(view.levelLabel, label).toBe(translate(lang, `level.${view.level}`));
+      // A danger card of a danger sign (check C11), or of a product rule, never called a sign.
+      const fromSign = (key: string) => key.startsWith('C11|');
+      const nameOf = (level: Level, sign: boolean) =>
+        level === 'danger' && !sign
+          ? translate(lang, 'result.dangerProductLevel')
+          : translate(lang, `level.${level}`);
+      const signShown = view.findings.some((f) => f.level === 'danger' && fromSign(f.key));
+      expect(view.levelLabel, label).toBe(nameOf(view.level, signShown));
       expect(view.findings.length, label).toBeGreaterThan(0);
       for (const finding of view.findings) {
-        expect(finding.levelLabel, label).toBe(translate(lang, `level.${finding.level}`));
+        if (finding.level === 'danger' && !fromSign(finding.key)) products += 1;
+        expect(finding.levelLabel, label).toBe(nameOf(finding.level, fromSign(finding.key)));
         expect(finding.risks.length, label).toBeGreaterThan(0);
         for (const risk of finding.risks) expect(risk.text.trim(), label).not.toBe('');
       }
     });
+    // Not vacuous: the cases hold danger cards of product rules (castor oil, misoprostol).
+    expect(products).toBeGreaterThan(0);
+  });
+
+  it('never gives a danger card more time than now, nor a before-the-next-dose card days', () => {
+    let checked = 0;
+    eachView((view, label, _mode, lang) => {
+      const later =
+        lang === 'fr'
+          ? { danger: /aujourd|prochain/, before: /prochains jours|prochaine visite/ }
+          : {
+              danger: /today|next (visit|dose|contact)|coming days/,
+              before: /coming days|next visit/,
+            };
+      for (const finding of view.findings) {
+        const said = typeof finding.orientation === 'string' ? finding.orientation : view.headline;
+        if (finding.level === 'danger') {
+          checked += 1;
+          expect(said, `${label} ${finding.title}`).not.toMatch(later.danger);
+        }
+        if (finding.level === 'before-next-dose') {
+          expect(said, `${label} ${finding.title}`).not.toMatch(later.before);
+        }
+      }
+      if (view.danger) expect(view.headline, label).not.toMatch(later.danger);
+    });
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('always says who to show and when: on the card, or once in the danger banner above it', () => {

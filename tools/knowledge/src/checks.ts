@@ -3,7 +3,7 @@
 // shape, evidence cap and message text. What the engine already checks
 // (partners, windows, subjects) is left to parsePack, which runs last.
 import { BUILTIN_MESSAGES, capForEvidence, findForbiddenWording } from '@siapso/engine';
-import type { Lang, Subject } from '@siapso/engine';
+import type { Lang, Level, Subject } from '@siapso/engine';
 import type {
   AuthoredDangerSign,
   AuthoredMessage,
@@ -292,6 +292,67 @@ const DOSE = new RegExp(
   'iu',
 );
 
+/**
+ * A text as the wording checks read it: lowercase, without accents, with one
+ * straight apostrophe and single spaces (no-break spaces included), so that
+ * "comprimes", "aujourd’hui" and "prochains jours" (a no-break space) are read as written
+ * with accents, a straight apostrophe or a plain space.
+ */
+function plain(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[’‘ʼ´`]/g, "'")
+    .replace(/\s+/gu, ' ');
+}
+
+/** Units a count in words makes an amount of (unaccented). */
+const AMOUNT_UNITS =
+  'prises?|doses?|comprimes?|tablets?|gelules?|capsules?|cuillerees?|cuilleres?|spoons?|spoonfuls?|teaspoons?|sachets?|gouttes?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|fois par jour|times (?:a|per) day|par jour|per day';
+/**
+ * Units whose singular after an article is always an amount ("un comprimé",
+ * "a tablet"), unlike "une dose" or "une prise" ("à une dose plus forte").
+ */
+const UNIT_OBJECTS =
+  'comprimes?|gelules?|sachets?|cuillerees?|cuilleres?|gouttes?|tablets?|capsules?|spoons?|spoonfuls?|teaspoons?|drops?|cachets?|pilules?|pills?|suppositoires?|suppositor(?:y|ies)|grammes?|grams?|fois par jour';
+/** Number words from two to twenty (unaccented), and "one". */
+const NUMBER_WORDS =
+  'deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|treize|quatorze|quinze|seize|dix[ -]sept|dix[ -]huit|dix[ -]neuf|vingt|one|two|three|four|five|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty';
+const WORD_START = '(?<![\\p{L}\\p{N}])';
+const WORD_END = '(?![\\p{L}\\p{N}])';
+/**
+ * A dose in words, read on the plain text: "une seule prise", "a single dose";
+ * a number word and a unit ("deux comprimés", "twelve tablets"); an article
+ * and a unit that is always an amount ("un comprimé", "une fois par jour",
+ * "a drop"); "once a day", "twice daily"; half a unit ("un demi-comprimé",
+ * "half a tablet"). The digit check cannot see them. "Une dose plus forte",
+ * "une seule fois" and "deux à trois fois plus" are not doses.
+ */
+const WORD_DOSE = new RegExp(
+  WORD_START +
+    '(?:' +
+    [
+      `(?:un|une|a|an|one) (?:seul|seule|single) (?:${AMOUNT_UNITS})`,
+      `(?:${NUMBER_WORDS}) (?:${AMOUNT_UNITS})`,
+      `(?:un|une|a|an) (?:${UNIT_OBJECTS})`,
+      '(?:once|twice) (?:(?:a|per) day|daily)',
+      `(?:demi|half)(?:[ -](?:a|an|une?))?[ -](?:${AMOUNT_UNITS})`,
+    ].join('|') +
+    ')' +
+    WORD_END,
+  'u',
+);
+/**
+ * The number of doses of a preventive schedule, which a reminder may state
+ * ("au moins trois doses de SP", "at least three doses of SP"): the one
+ * exception to the dose-in-words check, for the messages of reminders only.
+ */
+const REMINDER_SCHEDULE = new RegExp(
+  `${WORD_START}(?:(?:au\\s+moins|at\\s+least)\\s+)?(?:${NUMBER_WORDS}|\\p{Nd}+)\\s+doses?\\s+(?:de|of)\\s+(?:la\\s+)?sp${WORD_END}`,
+  'giu',
+);
+
 const LANGS: readonly Lang[] = ['fr', 'en'];
 const FIELDS = ['fact', 'risk', 'risk-detail', 'orientation'] as const;
 /** Fields that may hold a number (never a dose); the others hold no digit at all. */
@@ -312,18 +373,25 @@ function checkWording(entry: Entry<unknown>, where: string, text: string, lang: 
   return problems;
 }
 
-function checkMessageText(message: Entry<AuthoredMessage>): Problem[] {
+/**
+ * The message text checks. `reminder`: every rule that uses the message is a
+ * reminder, which may state the number of doses of a preventive schedule.
+ */
+function checkMessageText(message: Entry<AuthoredMessage>, reminder: boolean): Problem[] {
   const problems: Problem[] = [];
   for (const lang of LANGS) {
     for (const field of FIELDS) {
-      const text = message.data[lang][field];
-      if (text === undefined) continue;
+      const written = message.data[lang][field];
+      if (written === undefined) continue;
       const where = `${lang}.${field}`;
-      if (!NUMBER_FIELDS.has(field) && DIGIT.test(text)) {
+      if (!NUMBER_FIELDS.has(field) && DIGIT.test(written)) {
         problems.push(
           problem(message, where, 'must not contain digits (put numbers in risk-detail)'),
         );
       }
+      // The words and the wording are checked on the whole text; the doses
+      // without the schedule a reminder may give.
+      const text = reminder ? written.replace(REMINDER_SCHEDULE, ' ') : written;
       const dose = NUMBER_FIELDS.has(field) ? DOSE.exec(text) : null;
       if (dose) {
         problems.push(
@@ -334,7 +402,124 @@ function checkMessageText(message: Entry<AuthoredMessage>): Problem[] {
           ),
         );
       }
-      problems.push(...checkWording(message, where, text, lang));
+      const wordDose = WORD_DOSE.exec(plain(text));
+      if (wordDose) {
+        problems.push(
+          problem(
+            message,
+            where,
+            `gives a dose in words ("${wordDose[0]}"): messages never state a dose, even as a count of units`,
+          ),
+        );
+      }
+      problems.push(...checkWording(message, where, written, lang));
+    }
+  }
+  return problems;
+}
+
+/** Later than before the next dose, so later than a danger too (plain text). */
+const LATER: Readonly<Record<Lang, readonly string[]>> = {
+  fr: [
+    'prochains jours',
+    'prochaine visite',
+    'prochain contact',
+    'demain',
+    'semaine',
+    'rendez-vous',
+    'consultation',
+    'plus tard',
+  ],
+  en: [
+    'coming days',
+    'next visit',
+    'next contact',
+    'tomorrow',
+    'week',
+    'appointment',
+    'consultation',
+    'later',
+  ],
+};
+
+/**
+ * Timing words that give more time than a level allows, read on the plain
+ * text as whole words (a final "s" included): a danger is now, never today,
+ * soon or at the next dose, and before the next dose is never in the coming
+ * days, at the next visit, tomorrow, within a week or later.
+ */
+const LATER_THAN: Readonly<Partial<Record<Level, Record<Lang, readonly string[]>>>> = {
+  danger: {
+    fr: [...LATER.fr, "aujourd'hui", 'prochaine prise', 'rapidement', 'des que possible'],
+    en: [...LATER.en, 'today', 'next dose', 'soon'],
+  },
+  'before-next-dose': LATER,
+};
+
+/** A danger orientation says one of these (plain text). */
+const NOW: Readonly<Record<Lang, readonly string[]>> = {
+  fr: ['maintenant', 'immediatement'],
+  en: ['now', 'immediately'],
+};
+
+function sayWord(text: string, word: string): boolean {
+  const source = word.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&');
+  return new RegExp(`${WORD_START}${source}s?${WORD_END}`, 'u').test(text);
+}
+
+/**
+ * Check 7 (timing): the orientation of the message of a rule, of a danger sign
+ * or of the built-in danger sign message never gives more time than its level
+ * (a danger sign is a danger), and a danger orientation says now. Notes and
+ * reminders have no level. Read on the plain text: any apostrophe, any space.
+ */
+function checkTiming(content: Content): Problem[] {
+  const users: { message: string; level: Level; who: string }[] = [
+    ...content.rules
+      .filter((r) => r.data.kind !== 'reminder' && r.data.kind !== 'contraception-info')
+      .map((r) => ({ message: r.data.message, level: r.data.level, who: `rule ${r.data.id}` })),
+    ...content.dangerSigns.flatMap((s) =>
+      s.data.message === undefined
+        ? []
+        : [{ message: s.data.message, level: 'danger' as const, who: `danger sign ${s.data.id}` }],
+    ),
+    {
+      message: BUILTIN_MESSAGES.dangerSign,
+      level: 'danger',
+      who: 'the built-in danger sign message',
+    },
+  ];
+  const problems: Problem[] = [];
+  const seen = new Set<string>();
+  for (const { message: id, level, who } of users) {
+    const later = LATER_THAN[level];
+    const message = content.messages.find((m) => m.data.id === id);
+    if (later === undefined || message === undefined || seen.has(`${id}|${level}`)) continue;
+    seen.add(`${id}|${level}`);
+    for (const lang of LANGS) {
+      const orientation = message.data[lang].orientation;
+      if (orientation === undefined) continue;
+      const text = plain(orientation);
+      const where = `${lang}.orientation`;
+      const word = later[lang].find((w) => sayWord(text, w));
+      if (word !== undefined) {
+        problems.push(
+          problem(
+            message,
+            where,
+            `says "${word}", which gives more time than the level ${level} of ${who}`,
+          ),
+        );
+      }
+      if (level === 'danger' && !NOW[lang].some((w) => sayWord(text, w))) {
+        problems.push(
+          problem(
+            message,
+            where,
+            `does not say now (${NOW[lang].map((w) => `"${w}"`).join(' or ')}), as a danger of ${who} must`,
+          ),
+        );
+      }
     }
   }
   return problems;
@@ -346,8 +531,19 @@ function checkLabels(sign: Entry<AuthoredDangerSign>): Problem[] {
 }
 /** Check 7 (message and label text) and check 8 (builtin messages exist). */
 function checkMessages(content: Content, raw: RawContent): Problem[] {
+  // Messages that only reminders use: they may state a preventive schedule.
+  const kinds = new Map<string, Set<string>>();
+  for (const rule of content.rules) {
+    const set = kinds.get(rule.data.message) ?? new Set<string>();
+    set.add(rule.data.kind);
+    kinds.set(rule.data.message, set);
+  }
+  const reminderOnly = (id: string): boolean => {
+    const used = kinds.get(id);
+    return used !== undefined && [...used].every((kind) => kind === 'reminder');
+  };
   const problems = [
-    ...content.messages.flatMap(checkMessageText),
+    ...content.messages.flatMap((m) => checkMessageText(m, reminderOnly(m.data.id))),
     ...content.dangerSigns.flatMap(checkLabels),
   ];
   const present = new Set(raw.messages.map((f) => stem(f.file)));
@@ -370,5 +566,6 @@ export function checkContent(content: Content, raw: RawContent): Problem[] {
     ...checkReferences(content, knownIds(raw)),
     ...checkRules(content),
     ...checkMessages(content, raw),
+    ...checkTiming(content),
   ];
 }

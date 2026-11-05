@@ -233,7 +233,10 @@ export interface Evaluation {
 }
 
 export const BUILTIN_MESSAGES = {
+  /** A known product that no rule of the pack reads: nothing found in the base. */
   nothingFound: 'nothing-found',
+  /** A known product that a rule reads, when no rule applies to the situation: no alert here. */
+  nothingApplies: 'nothing-applies',
   notRecognised: 'not-recognised',
   dangerSign: 'danger-sign',
   /** Note of a max-dose rule when a unit count is given for an item of unknown strength. */

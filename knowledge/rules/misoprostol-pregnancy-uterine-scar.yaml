@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: misoprostol with a uterine scar came out one level below
+# castor oil at term with a scar. The US label reports rupture of the womb,
+# says that its risk rises with prior uterine surgery and advises against use
+# in the third trimester after a caesarean; the French label of the same
+# substance asks for caution with a scarred womb and calls rupture very rare
+# in the first trimester, hence the windows from 12 weeks. Evidence C (reported
+# cases). The clinical committee must confirm the level and the windows.
+id: misoprostol-pregnancy-uterine-scar
+kind: pregnancy
+when:
+  subject: { substance: misoprostol }
+  pregnancy-windows: [12-19, 20-29, 30-plus]
+  requires:
+    - condition: uterine-scar
+level: danger
+evidence: C
+danger-rationale: 'Risk of rupture of a scarred womb with a substance that makes the womb contract (US label, boxed warning and labor and delivery section): a risk rising with the term, catastrophic when it occurs, an immediate vital risk for the mother and the baby.'
+message: misoprostol-pregnancy-uterine-scar
+sources:
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'UTERINE RUPTURE HAS BEEN REPORTED WHEN CYTOTEC WAS ADMINISTERED IN PREGNANT WOMEN TO INDUCE LABOR OR TO INDUCE ABORTION.'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'THE RISK OF UTERINE RUPTURE INCREASES WITH ADVANCING GESTATIONAL AGES AND WITH PRIOR UTERINE SURGERY, INCLUDING CESAREAN DELIVERY'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, labor and delivery'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'Cytotec should not be used in the third trimester in women with a history of Cesarean section or major uterine surgery because of an increased risk of uterine rupture.'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, labor and delivery'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'uterine rupture (requiring surgical repair, hysterectomy, and/or salpingo-oophorectomy)'
+  - source: bdpm
+    locator: 'GYMISO 200 microgrammes, comprimé, RCP 4.4 (ANSM, 23/12/2025), CIS 69981979'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69981979&typedoc=R'
+    accessed: 2026-11-05
+    quote: "En raison de la survenue possible (très rare au 1er trimestre de grossesse) de rupture utérine, GYMISO doit être utilisé avec prudence en cas de fragilité utérine, en particulier en cas de grande multiparité ou d'utérus cicatriciel."
+review:
+  status: draft
+  reviewers: []

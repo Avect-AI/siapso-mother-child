@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-28-ibuprofen-renal-failure
+title: 'Breastfeeding, kidney failure, ibuprofen: the situation changes the result'
+context:
+  breastfeeding: { baby-age-weeks: 10, premature: false }
+  conditions: [renal-failure]
+  items:
+    - { product: advil-400-mg-63646874 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C8,
+        rule: nsaid-renal-failure,
+        message: nsaid-renal-failure,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: []
+  notes: []

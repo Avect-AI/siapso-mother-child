@@ -35,7 +35,7 @@ sources:
     accessed: 2026-11-03
     quote: 'famotidine, fer, fexofenadine'
   - source: bdpm
-    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP section 4.5 (ANSM, updated 22/04/2025), CIS 69584073'
+    locator: 'SMECTA 3 g ORANGE-VANILLE, poudre pour suspension buvable en sachet, RCP 4.5 (ANSM, 22/04/2025), CIS 69584073'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69584073&typedoc=R'
     accessed: 2026-11-03
     quote: "Les propriétés adsorbantes de ce produit pouvant interférer avec les délais et/ou les taux d'absorption d'une autre substance"

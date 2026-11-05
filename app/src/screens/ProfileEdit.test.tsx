@@ -146,6 +146,15 @@ describe('ProfileEdit: the common case', () => {
     expect(old).toHaveAccessibleDescription(/^Ce mois a été donné il y a longtemps/);
   });
 
+  it('asks the month about her in accompanied mode, as "Ce qu\'elle prend" does', async () => {
+    await saveProfile(stored({ term: { kind: 'months', months: 5, givenOn: '2026-10-07' } }));
+    await openForm(accompanied, '#/profile/p1');
+    expect(
+      screen.getByRole('textbox', { name: /^Dans quel mois de grossesse est-elle/ }),
+    ).toHaveValue('6');
+    expect(screen.queryByRole('textbox', { name: /êtes-vous/ })).toBeNull();
+  });
+
   it('reopens a baby age given in months as months', async () => {
     await saveProfile(
       stored({

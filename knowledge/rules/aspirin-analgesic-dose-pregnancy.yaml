@@ -17,24 +17,24 @@ evidence: A
 message: aspirin-analgesic-dose-pregnancy
 sources:
   - source: bdpm
-    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.4 (ANSM, updated 22/07/2026), CIS 61162942'
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.4 (ANSM, 22/07/2026), CIS 61162942'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
     accessed: 2026-11-03
     quote: 'expose à un risque de mort fœtale même après une seule prise en raison de sa toxicité cardio-pulmonaire'
   - source: bdpm
-    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.4 (ANSM, updated 22/07/2026), CIS 61162942'
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.4 (ANSM, 22/07/2026), CIS 61162942'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
     accessed: 2026-11-03
     quote: 'expose également le nouveau-né à un risque d’atteinte rénale (insuffisance rénale), de fermeture prématurée du canal artériel et d’hypertension pulmonaire'
   - source: bdpm
     # The threshold of the rule comes from this record.
-    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP section 4.3 (ANSM, updated 22/07/2026), CIS 61162942'
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.3 (ANSM, 22/07/2026), CIS 61162942'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
     accessed: 2026-11-03
     quote: 'grossesse, à partir du début du 6ème mois (24 semaines d’aménorrhée) pour des doses d’aspirine supérieures à 100 mg par jour'
   - source: bdpm
-    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, notice section 2 (ANSM, RCP updated 22/07/2026), CIS 61162942'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, notice 2 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=N'
     accessed: 2026-11-03
     quote: 'Dès le début du 5 ème mois de grossesse (20 semaines d’aménorrhée), un rétrécissement des vaisseaux sanguins au niveau du cœur de votre bébé'
   - source: openfda

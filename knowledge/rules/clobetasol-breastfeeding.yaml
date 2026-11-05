@@ -21,12 +21,12 @@ sources:
     accessed: 2026-11-03
     quote: 'Since only extensive application of the most potent corticosteroids may cause systemic effects in the mother'
   - source: bdpm
-    locator: 'DERMOVAL 0,05 %, crème, notice section 2 (ANSM, updated 25/07/2022), CIS 61777782'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
+    locator: 'DERMOVAL 0,05 %, crème, notice 2 (ANSM, 25/07/2022), CIS 61777782'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=N'
     accessed: 2026-11-03
     quote: "Ne pas appliquer sur les seins lors de l'allaitement, en raison du risque d'ingestion du produit par l'enfant."
   - source: bdpm
-    locator: 'DERMOVAL 0,05 %, crème, RCP section 4.6 (ANSM, updated 25/07/2022), CIS 61777782'
+    locator: 'DERMOVAL 0,05 %, crème, RCP 4.6 (ANSM, 25/07/2022), CIS 61777782'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
     accessed: 2026-11-03
     quote: "le risque d'excrétion du corticoïde dans le lait sera fonction de la surface traitée"

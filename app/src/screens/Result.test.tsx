@@ -133,7 +133,7 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     expect(within(cards[1] as HTMLElement).getByText(/rien ne prouve qu'il guérit/)).toBeVisible();
     expect(
       within(cards[1] as HTMLElement).getByText(
-        "Nous n'avons pas d'information fiable. Montrez-le à votre sage-femme ou au pharmacien.",
+        "Nous n'avons pas d'information fiable. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
       ),
     ).toHaveClass('result-card__orientation');
     // Woman mode: no source, no evidence, no rule, no reminder.
@@ -255,6 +255,34 @@ describe('Result: woman mode', () => {
   });
 });
 
+describe('Result: a situation the base does not read', () => {
+  it('says so before the cards, in woman mode too, and nothing for a situation a rule reads', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' },
+        conditions: ['sickle-cell', 'uterine-scar'],
+      }),
+    );
+    await openResult({ items: [ADVIL], settings: woman });
+    const [card] = await screen.findAllByRole('article');
+    const situations = screen.getByRole('region', { name: 'Situations non prises en compte' });
+    expect(
+      within(situations).getByText(/^Drépanocytose\s: notre base ne tient pas encore compte/),
+    ).toBeVisible();
+    expect(
+      within(situations).getByText(
+        'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
+      ),
+    ).toBeVisible();
+    expect(within(situations).queryByText(/^Ancienne césarienne/)).toBeNull();
+    // Read before the first card, not after the last one.
+    expect(
+      situations.compareDocumentPosition(card as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'À noter aussi' })).toBeNull();
+  });
+});
+
 describe('Result: accompanied mode', () => {
   it('names the profile and adds evidence, sources, rule and reminders', async () => {
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
@@ -298,7 +326,7 @@ describe('Result: accompanied mode', () => {
       [
         before20?.risk,
         before20?.riskDetail,
-        'Niveau de preuve C : « des cas graves ont été rapportés »',
+        'Niveau de preuve C : « des cas ont été rapportés ou observés »',
       ],
     ]);
     // The sources and rules close the card; no evidence line apart from its risk.

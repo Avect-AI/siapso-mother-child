@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-17-misoprostol-36-weeks
+title: '36 weeks, no known scar, misoprostol: danger late in pregnancy'
+context:
+  pregnancy: { weeks: 36 }
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-late-pregnancy,
+        message: misoprostol-late-pregnancy,
+        level: danger,
+        evidence: C,
+        items: [0],
+      }
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-26-carbamazepine-16-weeks
+title: '16 weeks, epilepsy treatment, Tegretol: carbamazepine in pregnancy, before the next dose'
+context:
+  pregnancy: { weeks: 16 }
+  conditions: [epilepsy-treatment]
+  items:
+    - { product: tegretol-200-mg-61009918, long-term: true }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: carbamazepine-pregnancy,
+        message: carbamazepine-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: [carbamazepine-contraception]

@@ -12,6 +12,7 @@
 import {
   BUILTIN_MESSAGES,
   type CheckedItem,
+  type ConditionId,
   type Evaluation,
   type Evidence,
   type Finding,
@@ -136,6 +137,11 @@ export interface ResultView {
   reminders: NoteView[];
   /** Dose notes in both modes; contraception notes in accompanied mode only. */
   notes: NoteView[];
+  /**
+   * Both modes: one note per situation of the profile that no rule of the pack
+   * reads, said before the cards, since the whole result leaves it out.
+   */
+  situations: NoteView[];
   fixedLines: string[];
   versionLine: string;
   notValidated: boolean;
@@ -290,9 +296,30 @@ function saidInBanner(card: CardView, instruction: string): FindingView {
     : card;
 }
 
-/** The risk as read: for "nothing found", its first sentence first, with the version and date. */
+/**
+ * "Nothing found" (no rule reads the product) and "nothing applies" (no rule
+ * applies to this situation): their fact is said in the risk, with the version.
+ */
+function aboutTheBase(finding: Finding): boolean {
+  return (
+    finding.message === BUILTIN_MESSAGES.nothingFound ||
+    finding.message === BUILTIN_MESSAGES.nothingApplies
+  );
+}
+
+/**
+ * The level name of a finding: a danger that comes from a product rule is
+ * never called a danger sign (DESIGN.md, Levels).
+ */
+function levelLabelOf(t: Translate, finding: Finding): string {
+  return finding.level === 'danger' && finding.sign === undefined
+    ? t('result.dangerProductLevel')
+    : t(`level.${finding.level}`);
+}
+
+/** The risk as read: for a message about the base, its first sentence first, with the version and date. */
 function riskOf(scope: Scope, finding: Finding, message: Message): string {
-  if (finding.message !== BUILTIN_MESSAGES.nothingFound) return message.risk;
+  if (!aboutTheBase(finding)) return message.risk;
   const version = scope.t('result.versionInline', { version: scope.version, date: scope.date });
   return `${message.fact.replace(/\.\s*$/, '')} ${version}. ${message.risk}`;
 }
@@ -369,7 +396,7 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   const view: CardView = {
     key: `${keyOf(finding)}|${finding.ruleId ?? finding.message}`,
     level: finding.level,
-    levelLabel: t(`level.${finding.level}`),
+    levelLabel: levelLabelOf(t, finding),
     title: joinNames(names, scope.lang),
     names,
     risks,
@@ -382,8 +409,8 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   }
   if (mode === 'woman') return view;
 
-  // "Nothing found" reads its fact in the risk, with the version; a sign's fact is the lead or nothing.
-  if (finding.message !== BUILTIN_MESSAGES.nothingFound && !sign) view.fact = message.fact;
+  // A message about the base reads its fact in the risk, with the version; a sign's fact is the lead or nothing.
+  if (!aboutTheBase(finding) && !sign) view.fact = message.fact;
   const sources = sourcesOf(scope, group);
   if (sources.length > 0) view.sources = sources;
   const ruleIds = distinct(group.flatMap((f) => (f.ruleId === undefined ? [] : [f.ruleId])));
@@ -402,10 +429,45 @@ function shownNotes(notes: readonly Note[], mode: Mode): Note[] {
   return notes.filter((note) => note.kind === 'dose' || mode === 'accompanied');
 }
 
+/** Whether a rule of the pack reads a situation, as a requirement or as an exception. */
+function readByARule(pack: Pack, condition: ConditionId): boolean {
+  return pack.rules.some(
+    (rule) =>
+      (rule.when.requires ?? []).some((r) => 'condition' in r && r.condition === condition) ||
+      (rule.when.unlessConditions ?? []).includes(condition),
+  );
+}
+
+/**
+ * One note, in both modes, for each situation of the profile that no rule of
+ * the pack reads: the result says plainly that it does not take it into
+ * account, rather than staying silent about a question the profile asked.
+ */
+function conditionNotes(scope: Scope, conditions: readonly ConditionId[]): NoteView[] {
+  const { pack, t } = scope;
+  return distinct(conditions)
+    .filter((condition) => !readByARule(pack, condition))
+    .map((condition) => ({
+      key: `condition:${condition}`,
+      text: t('result.conditionNote', { situation: t(`profile.condition.${condition}`) }),
+      orientation: t('result.conditionOrientation'),
+    }));
+}
+
+/**
+ * The level name of the result, said first in the danger banner: a danger
+ * sign's when a sign is present, else the product danger's.
+ */
+function resultLevelLabel(t: Translate, evaluation: Evaluation): string {
+  if (evaluation.level !== 'danger') return t(`level.${evaluation.level}`);
+  const sign = evaluation.findings.some((f) => f.level === 'danger' && f.sign !== undefined);
+  return sign ? t('level.danger') : t('result.dangerProductLevel');
+}
+
 /**
  * The result screen's content for an evaluation. `items` are the items of the
- * evaluation context (findings point into them by index). Throws when the
- * pack lacks a message the evaluation names.
+ * evaluation context (findings point into them by index), `conditions` its
+ * situations. Throws when the pack lacks a message the evaluation names.
  */
 export function buildResultView(
   evaluation: Evaluation,
@@ -414,6 +476,7 @@ export function buildResultView(
   mode: Mode,
   lang: Lang,
   t: Translate,
+  conditions: readonly ConditionId[] = [],
 ): ResultView {
   const scope: Scope = {
     pack,
@@ -424,7 +487,7 @@ export function buildResultView(
     version: evaluation.pack.version,
     date: formatPackDate(evaluation.pack.date, lang),
   };
-  const levelLabel = t(`level.${evaluation.level}`);
+  const levelLabel = resultLevelLabel(t, evaluation);
   const danger = evaluation.level === 'danger';
   const groups = cardGroups(evaluation.findings);
   const cards = groups.map((group) => findingView(scope, group));
@@ -442,6 +505,7 @@ export function buildResultView(
         ? evaluation.reminders.map((reminder) => noteView(scope, reminder, 'reminder'))
         : [],
     notes: shownNotes(evaluation.notes, mode).map((note) => noteView(scope, note, note.kind)),
+    situations: conditionNotes(scope, conditions),
     fixedLines: [t('result.noChange')],
     versionLine: t('result.version', { version: scope.version, date: scope.date }),
     notValidated: !evaluation.pack.clinicallyValidated,

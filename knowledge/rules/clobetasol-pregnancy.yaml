@@ -22,17 +22,17 @@ sources:
     accessed: 2026-11-03
     quote: 'a probable association between low birth weight and maternal use of potent to very potent topical corticosteroids'
   - source: bdpm
-    locator: 'DERMOVAL 0,05 %, crème, RCP section 4.4 (ANSM, updated 25/07/2022), CIS 61777782'
+    locator: 'DERMOVAL 0,05 %, crème, RCP 4.4 (ANSM, 25/07/2022), CIS 61777782'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
     accessed: 2026-11-03
     quote: 'peuvent se produire chez certains sujets en raison d’une augmentation de l’absorption systémique des corticoïdes locaux.'
   - source: bdpm
-    locator: 'DERMOVAL 0,05 %, crème, RCP section 4.4 (ANSM, updated 25/07/2022), CIS 61777782'
+    locator: 'DERMOVAL 0,05 %, crème, RCP 4.4 (ANSM, 25/07/2022), CIS 61777782'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
     accessed: 2026-11-03
     quote: 'Un arrêt brutal du traitement peut engendrer une insuffisance surrénalienne (voir Rubrique 4.8).'
   - source: bdpm
-    locator: 'DERMOVAL 0,05 %, crème, RCP section 4.6 (ANSM, updated 25/07/2022), CIS 61777782'
+    locator: 'DERMOVAL 0,05 %, crème, RCP 4.6 (ANSM, 25/07/2022), CIS 61777782'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61777782&typedoc=R'
     accessed: 2026-11-03
     quote: "l'utilisation de propionate de clobétasol à 0,05% peut être envisagée pendant la grossesse si nécessaire."

@@ -16,12 +16,12 @@ sources:
     accessed: 2026-11-03
     quote: 'Women who are ultra-rapid metabolizers of tramadol may have higher than expected serum levels of M1'
   - source: bdpm
-    locator: 'CONTRAMAL 50 mg, gélule, RCP section 4.6 (ANSM, updated 30/10/2025), CIS 68655884'
+    locator: 'CONTRAMAL 50 mg, gélule, RCP 4.6 (ANSM, 30/10/2025), CIS 68655884'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
     accessed: 2026-11-03
     quote: 'il convient soit de ne pas utiliser le tramadol pendant la lactation, soit d’interrompre l’allaitement lors d’un traitement par tramadol.'
   - source: bdpm
-    locator: 'CONTRAMAL 50 mg, gélule, RCP section 4.6 (ANSM, updated 30/10/2025), CIS 68655884'
+    locator: 'CONTRAMAL 50 mg, gélule, RCP 4.6 (ANSM, 30/10/2025), CIS 68655884'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
     accessed: 2026-11-03
     quote: 'L’interruption de l’allaitement n’est généralement pas nécessaire à la suite d’une prise unique de tramadol.'

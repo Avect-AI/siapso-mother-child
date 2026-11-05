@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Liver failure ticked in the profile. No dose figure: the label's lower daily
+# maximum lives only in the rule's source quotes.
+id: paracetamol-hepatic-failure
+fr:
+  fact: 'Ce produit contient du paracétamol, et la femme a une maladie du foie (insuffisance hépatique).'
+  risk: "Avec une maladie du foie, le corps élimine moins bien le paracétamol, et le risque d'abîmer le foie est plus grand."
+  risk-detail: "La notice française contre-indique le paracétamol quand l'insuffisance hépatique est sévère, et demande une quantité maximale par jour plus faible quand elle est légère ou modérée. Chez ces personnes, le paracétamol reste plus longtemps dans le sang."
+en:
+  fact: 'This product contains paracetamol, and the woman has a liver disease (liver failure).'
+  risk: 'With a liver disease, the body clears paracetamol less well, and the risk of damaging the liver is greater.'
+  risk-detail: 'The French label contraindicates paracetamol when liver failure is severe, and asks for a lower daily maximum when it is mild or moderate. In these people, paracetamol stays longer in the blood.'

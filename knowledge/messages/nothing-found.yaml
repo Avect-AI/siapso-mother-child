@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: CC-BY-4.0
-# Spec section 2 wording; the app adds the version and date of the knowledge
-# base after the first sentence.
+# Built-in message of a product that no rule of the base reads (spec section
+# 2 wording, with its subject); the app adds the version and date of the
+# knowledge base after the first sentence. A product that a rule reads gets
+# nothing-applies instead.
 id: nothing-found
 fr:
-  fact: "Rien n'a été trouvé dans notre base."
-  risk: "Cela ne veut pas dire que c'est sans risque."
-  orientation: 'Montrez cet écran à votre sage-femme ou à votre pharmacien.'
+  fact: "Rien n'a été trouvé sur ce produit dans notre base."
+  risk: "Cela ne veut pas dire qu'il est sans risque."
+  orientation: 'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.'
 en:
-  fact: 'Nothing was found in our knowledge base.'
+  fact: 'Nothing was found on this product in our knowledge base.'
   risk: 'This does not mean it is risk-free.'
-  orientation: 'Show this screen to your midwife or pharmacist.'
+  orientation: 'Show this screen to the midwife or the pharmacist at the next visit.'

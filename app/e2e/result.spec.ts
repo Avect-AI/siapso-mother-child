@@ -106,7 +106,7 @@ test('kinkeliba without a danger sign: we do not know, and who to show it to', a
   await expect(card).toBeVisible();
   await expect(card.locator('.result-card__level')).toHaveText('On ne sait pas');
   await expect(card.locator('.result-card__orientation')).toHaveText(
-    "Nous n'avons pas d'information fiable. Montrez-le à votre sage-femme ou au pharmacien.",
+    "Nous n'avons pas d'information fiable. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
   );
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expectNoSeriousViolation(page);

@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: kidney failure ticked in the profile did not change the
+# result for ibuprofen. The French label contraindicates NSAIDs in severe
+# kidney failure and asks for monitoring in chronic kidney failure, since they
+# can cause functional kidney failure (evidence A). The profile does not say
+# how severe it is, so the rule takes the contraindication's level. Aspirin is
+# outside the nsaid class: the committee must say whether it needs this rule.
+id: nsaid-renal-failure
+kind: condition
+when:
+  subject: { class: nsaid }
+  requires:
+    - condition: renal-failure
+level: before-next-dose
+evidence: A
+message: nsaid-renal-failure
+sources:
+  - source: bdpm
+    locator: 'ADVIL 200 mg, comprimé enrobé, RCP 4.3 (ANSM, 13/02/2025), CIS 68634000'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68634000&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'insuffisance rénale sévère'
+  - source: bdpm
+    locator: 'ADVIL 200 mg, comprimé enrobé, RCP 4.4 (ANSM, 13/02/2025), CIS 68634000'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68634000&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Les AINS, en inhibant l'action vasodilatatrice des prostaglandines rénales, sont susceptibles de provoquer une insuffisance rénale fonctionnelle par diminution de la filtration glomérulaire."
+  - source: bdpm
+    locator: 'ADVIL 200 mg, comprimé enrobé, RCP 4.4 (ANSM, 13/02/2025), CIS 68634000'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68634000&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'En début de traitement ou après augmentation de la posologie, une surveillance de la diurèse et de la fonction rénale est recommandée chez les patients présentant les facteurs de risque suivants'
+review:
+  status: draft
+  reviewers: []

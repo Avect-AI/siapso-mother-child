@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-23-doxycycline-12-weeks
+title: '12 weeks, doxycycline: the second-trimester rule, not the first-trimester one'
+context:
+  pregnancy: { weeks: 12 }
+  items:
+    - { product: doxy-100-mg-61722191 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: tetracyclines-pregnancy,
+        message: tetracyclines-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

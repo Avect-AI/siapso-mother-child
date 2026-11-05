@@ -20,17 +20,17 @@ sources:
     accessed: 2026-11-03
     quote: 'Liver warning This product contains acetaminophen. Severe liver damage may occur'
   - source: bdpm
-    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.4 (ANSM, updated 25/08/2025), CIS 60234100'
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.4 (ANSM, 25/08/2025), CIS 60234100'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
     accessed: 2026-11-03
     quote: 'Les patients doivent être informés qu’ils ne doivent pas prendre d’autres médicaments contenant du paracétamol.'
   - source: bdpm
-    locator: 'DOLIPRANE 1000 mg, comprimé, RCP section 4.9 (ANSM, updated 25/08/2025), CIS 60234100'
+    locator: 'DOLIPRANE 1000 mg, comprimé, RCP 4.9 (ANSM, 25/08/2025), CIS 60234100'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60234100&typedoc=R'
     accessed: 2026-11-03
     quote: "Les symptômes cliniques de l'atteinte hépatique sont généralement observés après 1 à 2 jours, et atteignent un maximum après 3 à 4 jours."
   - source: bdpm
-    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, RCP section 4.4 (ANSM, updated 17/08/2026), CIS 60904643'
+    locator: 'CODOLIPRANE 500 mg/30 mg, comprimé, RCP 4.4 (ANSM, 17/08/2026), CIS 60904643'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60904643&typedoc=R'
     accessed: 2026-11-03
     quote: "Vérifier l'absence de codéine et de paracétamol dans la composition d'autres médicaments, y compris si ce sont des médicaments obtenus sans prescription."

@@ -12,13 +12,13 @@ evidence: A
 message: valproate-pregnancy
 sources:
   - source: bdpm
-    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice section 2 (ANSM, RCP updated 24/09/2026), CIS 60184188'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=R'
+    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice 2 (ANSM, 24/09/2026), CIS 60184188'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=N'
     accessed: 2026-11-03
     quote: 'il est établi que près de 11 bébés sur 100 nés de mères sous valproate présentent des malformations, contre 2 à 3 bébés sur 100 dans la population générale.'
   - source: bdpm
-    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice section 2 (ANSM, RCP updated 24/09/2026), CIS 60184188'
-    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=R'
+    locator: 'DEPAKINE 500 mg, comprimé gastro-résistant, notice 2 (ANSM, 24/09/2026), CIS 60184188'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=60184188&typedoc=N'
     accessed: 2026-11-03
     quote: 'ne pas arrêter de prendre DEPAKINE sans que votre médecin ne vous l’ait demandé ; cela pourrait aggraver votre maladie.'
   - source: openfda
@@ -32,12 +32,12 @@ sources:
     accessed: 2026-11-03
     quote: 'valproate can cause decreased IQ scores and neurodevelopmental disorders following in utero exposure.'
   - source: bdpm
-    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP section 4.6 (ANSM, updated 01/10/2026), CIS 63737879'
+    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP 4.6 (ANSM, 01/10/2026), CIS 63737879'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63737879&typedoc=R'
     accessed: 2026-11-04
     quote: "Le principal métabolite du valpromide est l'acide valproïque."
   - source: bdpm
-    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP section 4.4 (ANSM, updated 01/10/2026), CIS 63737879'
+    locator: 'DEPAMIDE 300 mg, comprimé pelliculé gastro-résistant, RCP 4.4 (ANSM, 01/10/2026), CIS 63737879'
     url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63737879&typedoc=R'
     accessed: 2026-11-04
     quote: 'Le valproate est un tératogène puissant entraînant un risque élevé de malformations congénitales et de troubles neuro-développementaux chez les enfants exposés in utero au valproate'

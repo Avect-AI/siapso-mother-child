@@ -240,14 +240,14 @@ describe('buildResultView: orientation', () => {
         viewOf(contextOf({ pregnancy: weeks(14), items: [KINKELIBA] }), mode),
       );
       expect(plant.orientation, mode).toBe(
-        "Nous n'avons pas d'information fiable. Montrez-le à votre sage-femme ou au pharmacien.",
+        "Nous n'avons pas d'information fiable. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
       );
     }
     const english = onlyFinding(
       viewOf(contextOf({ pregnancy: weeks(14), items: [KINKELIBA] }), 'woman', 'en'),
     );
     expect(english.orientation).toBe(
-      'We have no reliable information. Show it to your midwife or pharmacist.',
+      'We have no reliable information. Show it to the midwife or the pharmacist at the next visit.',
     );
     // A message that says neither: the whole default of spec section 10.
     const quiet = { fact: 'Ce remède est utilisé.', risk: 'Ce remède est peu étudié.' };
@@ -269,7 +269,7 @@ describe('buildResultView: orientation', () => {
       tOf('fr'),
     );
     expect(onlyFinding(full).orientation).toBe(
-      "Nous n'avons pas d'information fiable. Cela ne veut pas dire que c'est sans risque. Montrez-le à votre sage-femme ou au pharmacien.",
+      "Nous n'avons pas d'information fiable. Cela ne veut pas dire que c'est sans risque. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
     );
     const fullEn = buildResultView(
       evaluate(plain, context),
@@ -280,7 +280,7 @@ describe('buildResultView: orientation', () => {
       tOf('en'),
     );
     expect(onlyFinding(fullEn).orientation).toBe(
-      'We have no reliable information. This does not mean it is risk-free. Show it to your midwife or pharmacist.',
+      'We have no reliable information. This does not mean it is risk-free. Show it to the midwife or the pharmacist at the next visit.',
     );
   });
 
@@ -367,27 +367,170 @@ describe('buildResultView: titles', () => {
 });
 
 describe('buildResultView: nothing found', () => {
+  // No rule of the pack reads artemether-lumefantrine (reference case 12).
+  const COARTEM: CheckedItem = { ref: { kind: 'product', id: 'artemether-lumefantrine-generic' } };
+
   it('gives the knowledge base version and date in both modes, never a reassurance', () => {
-    const context = contextOf({ items: [ADVIL], breastfeeding: { babyAgeWeeks: 30 } });
+    const context = contextOf({ items: [COARTEM], pregnancy: weeks(8) });
     for (const mode of ['woman', 'accompanied'] as const) {
       const finding = onlyFinding(viewOf(context, mode));
       expect(finding.level).toBe('unknown');
       expect(finding.risks, mode).toEqual([
         {
-          text: `Rien n'a été trouvé dans notre base (version ${pack.version} du ${formatPackDate(pack.date, 'fr')}). Cela ne veut pas dire que c'est sans risque.`,
+          text: `Rien n'a été trouvé sur ce produit dans notre base (version ${pack.version} du ${formatPackDate(pack.date, 'fr')}). Cela ne veut pas dire qu'il est sans risque.`,
         },
       ]);
+      // Who to show it to, and when.
       expect(finding.orientation).toBe(
-        'Montrez cet écran à votre sage-femme ou à votre pharmacien.',
+        'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.',
       );
       expect(finding).not.toHaveProperty('fact');
     }
     const english = onlyFinding(viewOf(context, 'woman', 'en'));
     expect(english.risks).toEqual([
       {
-        text: `Nothing was found in our knowledge base (version ${pack.version} of ${formatPackDate(pack.date, 'en')}). This does not mean it is risk-free.`,
+        text: `Nothing was found on this product in our knowledge base (version ${pack.version} of ${formatPackDate(pack.date, 'en')}). This does not mean it is risk-free.`,
       },
     ]);
+  });
+
+  it('never says "nothing found" for a product the base has a rule on, nor an all-clear: a gap', () => {
+    // Ibuprofen while breastfeeding: the NSAID rules are about pregnancy.
+    const context = contextOf({ items: [ADVIL], breastfeeding: { babyAgeWeeks: 30 } });
+    for (const mode of ['woman', 'accompanied'] as const) {
+      const finding = onlyFinding(viewOf(context, mode));
+      expect(finding.level).toBe('unknown');
+      expect(finding.risks, mode).toEqual([
+        {
+          text: `Notre base ne contient rien sur ce produit pour cette situation (version ${pack.version} du ${formatPackDate(pack.date, 'fr')}). Cela ne veut pas dire qu'il est sans risque.`,
+        },
+      ]);
+      expect(finding.orientation).toBe(
+        'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.',
+      );
+      expect(finding).not.toHaveProperty('fact');
+    }
+    const english = onlyFinding(viewOf(context, 'woman', 'en'));
+    expect(english.risks).toEqual([
+      {
+        text: `Our knowledge base holds nothing on this product for this situation (version ${pack.version} of ${formatPackDate(pack.date, 'en')}). This does not mean it is risk-free.`,
+      },
+    ]);
+  });
+
+  it('gives every grey card a subject: never a risk that starts with "Cela"', () => {
+    const plants = pack.plants.map((p): CheckedItem => ({ ref: { kind: 'plant', id: p.id } }));
+    const items: CheckedItem[] = [COARTEM, ADVIL, MARKET, ...plants];
+    for (const lang of ['fr', 'en'] as const) {
+      const view = viewOf(contextOf({ items, breastfeeding: {} }), 'woman', lang);
+      const grey = view.findings.filter((f) => f.level === 'unknown');
+      expect(grey.length).toBeGreaterThan(plants.length);
+      for (const finding of grey) {
+        for (const risk of finding.risks) {
+          expect(risk.text, `${lang} ${finding.title}`).not.toMatch(/^(Cela|This does)/);
+        }
+      }
+    }
+  });
+});
+
+describe('buildResultView: situations the base does not read', () => {
+  it('says plainly, in both modes, that a ticked situation is not taken into account yet', () => {
+    const context = contextOf({
+      pregnancy: weeks(16),
+      conditions: ['sickle-cell', 'tuberculosis-treatment', 'uterine-scar'],
+      items: [ADVIL],
+    });
+    for (const mode of ['woman', 'accompanied'] as const) {
+      const view = buildResultView(
+        evaluate(pack, context),
+        pack,
+        context.items,
+        mode,
+        'fr',
+        tOf('fr'),
+        context.conditions,
+      );
+      // The uterine scar is read by rules: no note for it. Apart from the
+      // notes, so the screen can say them before the cards.
+      expect(view.notes, mode).toEqual([]);
+      expect(
+        view.situations.map((n) => n.key),
+        mode,
+      ).toEqual(['condition:sickle-cell', 'condition:tuberculosis-treatment']);
+      expect(view.situations[0], mode).toEqual({
+        key: 'condition:sickle-cell',
+        text: 'Drépanocytose : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Ajoutez à la liste chaque médicament pris pour ce traitement ou cette maladie : il sera regardé comme les autres.',
+        orientation: 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
+      });
+    }
+    const english = buildResultView(
+      evaluate(pack, context),
+      pack,
+      context.items,
+      'woman',
+      'en',
+      tOf('en'),
+      context.conditions,
+    );
+    expect(english.situations[0]?.text).toBe(
+      'Sickle cell disease: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
+    );
+  });
+
+  it('adds no note for a situation a rule reads, nor without situations', () => {
+    const items = [{ ref: { kind: 'product', id: 'doliprane-1000-mg-60234100' } } as const];
+    for (const conditions of [
+      ['hepatic-failure', 'renal-failure', 'hiv-cotrimoxazole', 'uterine-scar'] as const,
+      [] as const,
+    ]) {
+      const context = contextOf({ pregnancy: weeks(16), conditions: [...conditions], items });
+      const view = buildResultView(
+        evaluate(pack, context),
+        pack,
+        context.items,
+        'woman',
+        'fr',
+        tOf('fr'),
+        context.conditions,
+      );
+      expect(view.notes).toEqual([]);
+      expect(view.situations).toEqual([]);
+    }
+  });
+});
+
+describe('buildResultView: misoprostol', () => {
+  const MISOPROSTOL: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+  const fallback = {
+    fr: 'En cas de saignement, de contractions ou de très fortes douleurs au ventre, allez au poste de santé maintenant.',
+    en: 'If there is bleeding, contractions or very strong pain in the belly, go to the health post now.',
+  };
+
+  it('says when to go now on a card without a danger rule, in both modes', () => {
+    for (const mode of ['woman', 'accompanied'] as const) {
+      for (const lang of ['fr', 'en'] as const) {
+        const card = onlyFinding(
+          viewOf(contextOf({ pregnancy: weeks(24), items: [MISOPROSTOL] }), mode, lang),
+        );
+        expect(card.level).toBe('before-next-dose');
+        expect(card.orientation, `${mode} ${lang}`).toEqual(
+          expect.stringContaining(fallback[lang]) as unknown,
+        );
+      }
+    }
+  });
+
+  it('gives the danger orientation instead when a danger rule fires on the card', () => {
+    const view = viewOf(
+      contextOf({ pregnancy: weeks(16), conditions: ['uterine-scar'], items: [MISOPROSTOL] }),
+      'woman',
+    );
+    const card = onlyFinding(view);
+    expect(card.level).toBe('danger');
+    expect(card.orientation).toEqual({ inBanner: true });
+    expect(view.headline).toBe(pack.messages.fr['misoprostol-pregnancy-uterine-scar']?.orientation);
+    expect(view.headline).not.toContain(fallback.fr);
   });
 });
 
@@ -591,6 +734,51 @@ describe('buildResultView: danger', () => {
     expect(viewOf(contextOf({ pregnancy: weeks(30), items: [ADVIL] }), 'woman')).not.toHaveProperty(
       'headlineSource',
     );
+  });
+
+  it('names a danger that comes from a product as such, never as a danger sign', () => {
+    const castor = viewOf(contextOf({ ...scar, items: [CASTOR] }), 'woman');
+    expect(castor.levelLabel).toBe('Danger : à montrer maintenant');
+    expect(onlyFinding(castor).levelLabel).toBe('Danger : à montrer maintenant');
+    const english = viewOf(contextOf({ ...scar, items: [CASTOR] }), 'woman', 'en');
+    expect(english.levelLabel).toBe('Danger: show now');
+    // With a danger sign, the banner names the sign; each card keeps its own name.
+    const both = viewOf(
+      contextOf({ ...scar, items: [CASTOR], signs: ['vaginal-bleeding'] }),
+      'woman',
+    );
+    expect(both.levelLabel).toBe('Signe de danger');
+    expect(both.findings.map((f) => f.levelLabel)).toEqual([
+      'Danger : à montrer maintenant',
+      'Signe de danger',
+    ]);
+  });
+
+  it('says the evidence of a C-level message without overstating it', () => {
+    const castor = onlyFinding(viewOf(contextOf({ ...scar, items: [CASTOR] }), 'accompanied'));
+    expect(castor.risks[0]?.evidence?.text).toBe(
+      'Niveau de preuve C : « des cas ont été rapportés ou observés »',
+    );
+    const english = onlyFinding(
+      viewOf(contextOf({ ...scar, items: [CASTOR] }), 'accompanied', 'en'),
+    );
+    expect(english.risks[0]?.evidence?.wording).toBe('cases have been reported or observed');
+  });
+
+  it('gives the same urgency everywhere: a danger card never says today or later', () => {
+    const MISOPROSTOL: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const view = viewOf(
+      contextOf({ ...scar, items: [CASTOR, MISOPROSTOL], signs: ['fever'] }),
+      'woman',
+    );
+    expect(view.headline).toBe('Allez au poste de santé maintenant.');
+    const danger = view.findings.filter((f) => f.level === 'danger');
+    expect(danger).toHaveLength(3);
+    for (const finding of danger) {
+      const said = typeof finding.orientation === 'string' ? finding.orientation : view.headline;
+      expect(said, finding.title).toMatch(/maintenant/);
+      expect(said, finding.title).not.toMatch(/aujourd|prochain/);
+    }
   });
 
   it('has no danger lead otherwise; the headline is the level name', () => {

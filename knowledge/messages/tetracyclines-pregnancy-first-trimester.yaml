@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# First trimester: a precaution of the French label, without a demonstrated
+# effect (evidence E). From the second trimester tetracyclines-pregnancy
+# applies. Short course: the default orientation of the level.
+id: tetracyclines-pregnancy-first-trimester
+fr:
+  fact: 'Ce produit contient un antibiotique de la famille des cyclines (tétracyclines), comme la doxycycline.'
+  risk: "Au premier trimestre, un effet sur le bébé est possible mais n'a pas été démontré, car il a été peu étudié : par précaution, la notice française préfère éviter ces antibiotiques."
+  risk-detail: "Les études chez l'animal n'ont pas montré de malformation, et l'utilisation chez un nombre limité de femmes enceintes n'a pas montré d'effet particulier, mais d'autres études sont nécessaires. À partir du deuxième trimestre, la notice française contre-indique les cyclines, qui peuvent colorer les dents du bébé."
+en:
+  fact: 'This product contains an antibiotic of the tetracycline family, such as doxycycline.'
+  risk: 'In the first trimester, an effect on the baby is possible but has not been shown, because it has been little studied: as a precaution, the French label prefers to avoid these antibiotics.'
+  risk-detail: "Animal studies showed no birth defects, and use in a limited number of pregnant women showed no particular effect, but more studies are needed. From the second trimester, the French label contraindicates tetracyclines, which can stain the baby's teeth."

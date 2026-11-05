@@ -9,6 +9,6 @@ context:
 expect:
   level: unknown
   findings:
-    - { check: no-finding, message: nothing-found, level: unknown, items: [0] }
+    - { check: no-finding, message: nothing-applies, level: unknown, items: [0] }
   reminders: []
   notes: []

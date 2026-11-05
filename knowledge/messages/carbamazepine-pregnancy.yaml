@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# A long-term treatment of epilepsy: the message says plainly that it must not
+# be ended without a doctor (seizures), as valproate-pregnancy does, and the
+# orientation refers soon without changing anything meanwhile.
+id: carbamazepine-pregnancy
+fr:
+  fact: "Ce produit contient de la carbamazépine, un traitement de l'épilepsie, parfois donné pour d'autres maladies."
+  risk: "Pendant la grossesse, elle peut augmenter le risque de malformations chez le bébé, mais un traitement de l'épilepsie ne doit pas être arrêté sans l'avis d'un médecin : des crises graves peuvent survenir."
+  risk-detail: "Selon la notice française, les malformations graves sont deux à trois fois plus fréquentes chez les bébés exposés pendant la grossesse, notamment de la colonne vertébrale (spina bifida). Elle demande d'éviter un arrêt brutal, qui peut provoquer des crises graves pour la femme et le bébé, et d'orienter la femme enceinte vers un spécialiste pour revoir le traitement."
+  orientation: 'Parlez-en rapidement à la sage-femme ou au médecin, sans rien changer au traitement en attendant.'
+en:
+  fact: 'This product contains carbamazepine, a treatment for epilepsy, sometimes given for other illnesses.'
+  risk: 'During pregnancy it can raise the risk of birth defects in the baby, but an epilepsy treatment must not be ended without a doctor: serious seizures can happen.'
+  risk-detail: 'According to the French label, serious birth defects are two to three times more frequent in babies exposed during pregnancy, among them defects of the spine (spina bifida). It asks to avoid a sudden end of the treatment, which can cause serious seizures for the woman and the baby, and to refer the pregnant woman to a specialist to review the treatment.'
+  orientation: 'Talk to the midwife or the doctor soon, and change nothing in the treatment until then.'

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-20-misoprostol-24-weeks
+title: '24 weeks, no known scar, misoprostol: before the next dose, not red (the late rule starts at 30 weeks, a committee question)'
+context:
+  pregnancy: { weeks: 24 }
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

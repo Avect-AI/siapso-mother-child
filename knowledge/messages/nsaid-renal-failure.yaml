@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Kidney failure ticked in the profile, during pregnancy, breastfeeding or not.
+id: nsaid-renal-failure
+fr:
+  fact: "Ce produit contient un anti-inflammatoire non stéroïdien (AINS), comme l'ibuprofène ou le diclofénac, et la femme a une maladie des reins (insuffisance rénale)."
+  risk: 'Avec une maladie des reins, ce type de médicament peut abîmer davantage les reins.'
+  risk-detail: "La notice française contre-indique les AINS quand l'insuffisance rénale est sévère. Ils peuvent faire baisser le travail des reins, surtout quand les reins sont déjà malades : la notice demande alors de surveiller les reins."
+en:
+  fact: 'This product contains a non-steroidal anti-inflammatory drug (NSAID), such as ibuprofen or diclofenac, and the woman has a kidney disease (kidney failure).'
+  risk: 'With a kidney disease, this type of medicine can harm the kidneys further.'
+  risk-detail: 'The French label contraindicates NSAIDs when kidney failure is severe. They can lower the work of the kidneys, mostly when the kidneys are already ill: the label then asks for the kidneys to be watched.'

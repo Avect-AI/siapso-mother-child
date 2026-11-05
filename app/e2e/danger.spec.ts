@@ -144,7 +144,7 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
 
   // The result leads with the danger.
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
-  const fever = "Allez faire un test au poste de santé aujourd'hui.";
+  const fever = 'Allez au poste de santé maintenant pour faire un test.';
   await expect(page.getByRole('alert')).toContainText(fever);
   await expect(page.getByRole('article').first()).toHaveClass(/level--danger/);
 

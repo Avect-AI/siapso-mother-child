@@ -129,6 +129,8 @@ export const fr = {
     weeksHint: "Semaines d'aménorrhée (depuis les dernières règles), de 0 à 42.",
     // The month in progress; the term read back covers "months completed" too.
     months: 'Dans quel mois de grossesse êtes-vous ? (le mois en cours, du 1er au 9e)',
+    // Accompanied mode: the question is about the woman, as "Ce qu'elle prend".
+    monthsAccompanied: 'Dans quel mois de grossesse est-elle ? (le mois en cours, du 1er au 9e)',
     termShown: 'Terme retenu',
     term: {
       underOne: "Moins d'une semaine",
@@ -301,8 +303,18 @@ export const fr = {
       'before-next-dose':
         "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
       'next-contact': 'Dites-le à la sage-femme à la prochaine visite.',
-      unknown: 'Montrez-le à votre sage-femme ou au pharmacien.',
+      // Who and when (PRODUCT.md principle 2), in words that suit both modes.
+      unknown: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
     },
+    // The level name of a danger that comes from a product rule, not from a
+    // danger sign (DESIGN.md, Levels): a product is never called a sign.
+    dangerProductLevel: 'Danger : à montrer maintenant',
+    // A situation ticked in the profile that no rule of the knowledge base reads.
+    conditionNote:
+      '{situation} : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Ajoutez à la liste chaque médicament pris pour ce traitement ou cette maladie : il sera regardé comme les autres.',
+    conditionOrientation: 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
+    // The heading of those notes, said before the cards.
+    situations: 'Situations non prises en compte',
     // "On ne sait pas" without an orientation of its own: these come first (spec section 10),
     // each unless what the card has just said contains its phrase (unknownSaid, lowercase).
     unknown: {
@@ -330,7 +342,8 @@ export const fr = {
     evidenceWording: {
       A: 'peut provoquer',
       B: 'une étude chez des volontaires a montré',
-      C: 'des cas graves ont été rapportés',
+      // Case reports or observational studies: not always serious cases.
+      C: 'des cas ont été rapportés ou observés',
       D: "des tests en laboratoire suggèrent, ce n'est pas prouvé chez la femme",
       E: "c'est possible, mais cela n'a pas été étudié",
       '0': "pas d'information fiable",

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-16-misoprostol-uterine-scar
+title: '16 weeks, previous caesarean, misoprostol: danger for the scar, as castor oil at term'
+context:
+  pregnancy: { weeks: 16 }
+  conditions: [uterine-scar]
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy-uterine-scar,
+        message: misoprostol-pregnancy-uterine-scar,
+        level: danger,
+        evidence: C,
+        items: [0],
+      }
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

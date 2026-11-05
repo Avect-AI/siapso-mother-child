@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: doxycycline at 8 or 11 weeks gave "nothing found". The
+# French label prefers, as a precaution, to avoid tetracyclines in the first
+# trimester: animal studies showed no teratogenic effect and the few human
+# data no particular malformation, so the risk is theoretical (evidence E,
+# hence next-contact at most). From 12 weeks tetracyclines-pregnancy applies.
+id: tetracyclines-pregnancy-first-trimester
+kind: pregnancy
+when:
+  subject: { class: tetracycline }
+  pregnancy-windows: [lt12]
+level: next-contact
+evidence: E
+message: tetracyclines-pregnancy-first-trimester
+sources:
+  - source: bdpm
+    locator: 'DOXY 100 mg, comprimé pelliculé, RCP 4.6 (ANSM, 25/03/2024), CIS 61722191'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61722191&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'En conséquence, par mesure de précaution, il est préférable de ne pas utiliser les cyclines pendant le premier trimestre de la grossesse.'
+  - source: bdpm
+    locator: 'DOXY 100 mg, comprimé pelliculé, RCP 4.6 (ANSM, 25/03/2024), CIS 61722191'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61722191&typedoc=R'
+    accessed: 2026-11-05
+    quote: "En clinique, l'utilisation des cyclines au cours d'un nombre limité de grossesses n'a apparemment révélé aucun effet malformatif particulier à ce jour."
+  - source: bdpm
+    locator: 'DOXY 100 mg, comprimé pelliculé, RCP 4.6 (ANSM, 25/03/2024), CIS 61722191'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61722191&typedoc=R'
+    accessed: 2026-11-05
+    quote: "Les études chez l'animal n'ont pas mis en évidence d'effet tératogène."
+review:
+  status: draft
+  reviewers: []

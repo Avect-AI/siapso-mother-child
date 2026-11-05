@@ -70,6 +70,7 @@ const CONDITION_RULE = 'fixture-condition-sp-cotrimoxazole';
 const CONTRACEPTION_RULE = 'fixture-contraception-info-artesunate';
 const REMINDER_RULE = 'fixture-reminder-iptp';
 
+/** A product that no rule of the pack reads: "nothing found in our base". */
 function nothingFound(index: number): Finding {
   return {
     level: 'unknown',
@@ -79,6 +80,11 @@ function nothingFound(index: number): Finding {
     capped: false,
     sources: [],
   };
+}
+
+/** A product that a rule reads, when no rule applies to the situation: "no alert here". */
+function nothingApplies(index: number): Finding {
+  return { ...nothingFound(index), message: 'nothing-applies' };
 }
 
 describe('C1 pregnancy', () => {
@@ -102,7 +108,7 @@ describe('C1 pregnancy', () => {
   it('does not trigger the 20-plus rule for an NSAID at 10 weeks', () => {
     const result = run({ pregnancy: exact(10), items: [product('ibuprofen-400')] });
     expect(withRule(result, NSAID_RULE)).toEqual([]);
-    expect(result.findings).toStrictEqual([nothingFound(0)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0)]);
     expect(result.level).toBe('unknown');
   });
 
@@ -126,7 +132,7 @@ describe('C1 pregnancy', () => {
 
   it('does not apply a pregnancy rule without a pregnancy', () => {
     const result = run({ items: [product('ibuprofen-400')] });
-    expect(result.findings).toStrictEqual([nothingFound(0)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0)]);
   });
 });
 
@@ -157,8 +163,8 @@ describe('C2 breastfeeding', () => {
   it('does not apply above the age bound or without breastfeeding', () => {
     expect(
       run({ breastfeeding: { babyAgeWeeks: 27 }, items: [product('codeine-syrup')] }).findings,
-    ).toStrictEqual([nothingFound(0)]);
-    expect(run({ items: [product('codeine-syrup')] }).findings).toStrictEqual([nothingFound(0)]);
+    ).toStrictEqual([nothingApplies(0)]);
+    expect(run({ items: [product('codeine-syrup')] }).findings).toStrictEqual([nothingApplies(0)]);
   });
 
   it('applies a prematurity rule when the baby is premature or prematurity is unknown', () => {
@@ -172,7 +178,7 @@ describe('C2 breastfeeding', () => {
 
   it('does not apply a prematurity rule to a baby born at term', () => {
     const result = run({ breastfeeding: { premature: false }, items: [product('quinine-300')] });
-    expect(result.findings).toStrictEqual([nothingFound(0)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0)]);
   });
 });
 
@@ -198,13 +204,13 @@ describe('C3 interaction', () => {
 
   it('does not let one item interact with itself', () => {
     const result = run({ items: [product('quinine-300')] });
-    expect(result.findings).toStrictEqual([nothingFound(0)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0)]);
   });
 
   it('does not let the same product entered twice interact with itself', () => {
     const result = run({ items: [product('quinine-300'), product('quinine-300')] });
     expect(withRule(result, INTERACTION_RULE)).toEqual([]);
-    expect(result.findings).toStrictEqual([nothingFound(0), nothingFound(1)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0), nothingApplies(1)]);
   });
 
   it('lists every item involved in the interaction', () => {
@@ -316,7 +322,9 @@ describe('C6 duplicate', () => {
   });
 
   it('needs at least two items', () => {
-    expect(run({ items: [product('paracetamol-500')] }).findings).toStrictEqual([nothingFound(0)]);
+    expect(run({ items: [product('paracetamol-500')] }).findings).toStrictEqual([
+      nothingApplies(0),
+    ]);
   });
 });
 
@@ -437,10 +445,10 @@ describe('C8 condition', () => {
   });
 
   it('needs the subject and one of the requirements', () => {
-    expect(run({ items: [product('sp')] }).findings).toStrictEqual([nothingFound(0)]);
+    expect(run({ items: [product('sp')] }).findings).toStrictEqual([nothingApplies(0)]);
     expect(
       run({ conditions: ['hiv-cotrimoxazole'], items: [product('cotrimoxazole')] }).findings,
-    ).toStrictEqual([nothingFound(0)]);
+    ).toStrictEqual([nothingApplies(0)]);
   });
 });
 
@@ -456,7 +464,7 @@ describe('C9 contraception-info', () => {
       },
     ]);
     expect(checks(result)).not.toContain('C9');
-    expect(result.findings).toStrictEqual([nothingFound(0)]);
+    expect(result.findings).toStrictEqual([nothingApplies(0)]);
     expect(result.reminders).toEqual([]);
   });
 });
@@ -549,8 +557,95 @@ describe('C12 unrecognised items', () => {
 });
 
 describe('no-finding', () => {
-  it('gives nothing-found for a known product without any finding', () => {
-    expect(run({ items: [product('paracetamol-500')] }).findings).toStrictEqual([nothingFound(0)]);
+  it('gives nothing-found for a known product that no rule of the pack reads', () => {
+    expect(run({ items: [product('amoxicillin-500')] }).findings).toStrictEqual([nothingFound(0)]);
+    expect(
+      run({ pregnancy: exact(30), breastfeeding: {}, items: [product('amoxicillin-500')] })
+        .findings,
+    ).toStrictEqual([nothingFound(0)]);
+  });
+
+  it('gives nothing-applies for a product a rule reads when no rule applies to the situation', () => {
+    // The paracetamol rules need two products, or a daily total above the threshold.
+    expect(run({ items: [product('paracetamol-500')] }).findings).toStrictEqual([
+      nothingApplies(0),
+    ]);
+    // The NSAID rule starts at 20 weeks.
+    expect(run({ pregnancy: exact(10), items: [product('ibuprofen-400')] }).findings).toStrictEqual(
+      [nothingApplies(0)],
+    );
+  });
+
+  it('reads a partner of a rule as read by that rule', () => {
+    // Cotrimoxazole is only the partner of the SP rule.
+    expect(run({ items: [product('cotrimoxazole')] }).findings).toStrictEqual([nothingApplies(0)]);
+  });
+
+  it('reads a product below the strength threshold of a rule as read by that rule', () => {
+    const base = fixturePack();
+    const strong: Pack = deepFreeze({
+      ...base,
+      rules: [
+        ...base.rules,
+        {
+          id: 'fixture-extra-strong-amoxicillin',
+          kind: 'pregnancy',
+          when: { subject: { substance: 'amoxicillin' }, strengthAboveMg: 1000 },
+          level: 'next-contact',
+          evidence: 'A',
+          message: 'fixture-extra-strong-amoxicillin',
+          sources: [],
+          review: { status: 'draft', reviewers: [] },
+        },
+      ],
+      messages: {
+        fr: { ...base.messages.fr, 'fixture-extra-strong-amoxicillin': { fact: 'F.', risk: 'R.' } },
+        en: { ...base.messages.en, 'fixture-extra-strong-amoxicillin': { fact: 'F.', risk: 'R.' } },
+      },
+    });
+    expect(
+      run({ pregnancy: exact(30), items: [product('amoxicillin-500')] }, strong).findings,
+    ).toStrictEqual([nothingApplies(0)]);
+  });
+
+  it('does not read a product as known when only a contraception note reads it', () => {
+    const base = fixturePack();
+    const id = 'fixture-extra-contraception-amoxicillin';
+    const noteOnly: Pack = deepFreeze({
+      ...base,
+      rules: [
+        ...base.rules,
+        {
+          id,
+          kind: 'contraception-info',
+          when: { subject: { substance: 'amoxicillin' } },
+          level: 'next-contact',
+          evidence: 'A',
+          message: id,
+          sources: [],
+          review: { status: 'draft', reviewers: [] },
+        },
+      ],
+      messages: {
+        fr: { ...base.messages.fr, [id]: { fact: 'F.', risk: 'R.' } },
+        en: { ...base.messages.en, [id]: { fact: 'F.', risk: 'R.' } },
+      },
+    });
+    const result = run({ pregnancy: exact(25), items: [product('amoxicillin-500')] }, noteOnly);
+    // The note says something about contraception, nothing about this pregnancy.
+    expect(result.notes.map((n) => n.ruleId)).toEqual([id]);
+    expect(result.findings).toStrictEqual([nothingFound(0)]);
+  });
+
+  it('does not read the exception of a reminder as a rule about the product', () => {
+    const base = fixturePack();
+    const onlyException: Pack = deepFreeze({
+      ...base,
+      rules: base.rules.filter((r) => r.id === REMINDER_RULE),
+    });
+    expect(run({ items: [product('cotrimoxazole')] }, onlyException).findings).toStrictEqual([
+      nothingFound(0),
+    ]);
   });
 
   it('gives the plant message and evidence for a known plant without any finding', () => {
@@ -603,7 +698,7 @@ describe('evaluation', () => {
       ['next-contact', 'C4', HERB_RULE, [5, 6]],
       ['unknown', 'C12', 'not-recognised', [3]],
       ['unknown', 'no-finding', 'fixture-plant-kinkeliba', [1]],
-      ['unknown', 'no-finding', 'nothing-found', [7]],
+      ['unknown', 'no-finding', 'nothing-applies', [7]],
     ]);
     expect(result.reminders.map((r) => r.ruleId)).toEqual([REMINDER_RULE]);
     expect(result.level).toBe('danger');
@@ -613,7 +708,11 @@ describe('evaluation', () => {
     const result = run({
       items: [product('sp'), product('paracetamol-500'), product('codeine-syrup')],
     });
-    expect(result.findings).toStrictEqual([nothingFound(0), nothingFound(1), nothingFound(2)]);
+    expect(result.findings).toStrictEqual([
+      nothingApplies(0),
+      nothingApplies(1),
+      nothingApplies(2),
+    ]);
   });
 
   it('returns sources that are copies, not the pack objects', () => {
@@ -761,7 +860,7 @@ describe('rule matching edge cases', () => {
   it('never applies a rule that needs a subject but has none', () => {
     const custom = packWithRule(extraRule('fixture-extra-no-subject', 'pregnancy', {}));
     expect(run({ pregnancy: exact(30), items: [product('sp')] }, custom).findings).toStrictEqual([
-      nothingFound(0),
+      nothingApplies(0),
     ]);
   });
 

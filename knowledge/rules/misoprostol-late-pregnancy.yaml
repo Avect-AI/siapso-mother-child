@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 1: misoprostol near term, without a known scar (with a scar,
+# misoprostol-pregnancy-uterine-scar applies instead). The US label describes
+# excessive contractions that can impair the blood flow to the baby and rupture
+# of the womb, whose risk rises with the term. Late pregnancy is the 30-plus
+# window, as for castor oil. Evidence C (reported cases). The clinical
+# committee must confirm the level and whether it should start earlier.
+id: misoprostol-late-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: misoprostol }
+  pregnancy-windows: [30-plus]
+  unless-conditions: [uterine-scar]
+level: danger
+evidence: C
+danger-rationale: 'Risk of excessive contractions and of rupture of the womb with a substance that makes the womb contract late in pregnancy (US label, boxed warning and labor and delivery section): an immediate vital risk for the mother and the baby.'
+message: misoprostol-late-pregnancy
+sources:
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'UTERINE RUPTURE HAS BEEN REPORTED WHEN CYTOTEC WAS ADMINISTERED IN PREGNANT WOMEN TO INDUCE LABOR OR TO INDUCE ABORTION.'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, boxed warning'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'THE RISK OF UTERINE RUPTURE INCREASES WITH ADVANCING GESTATIONAL AGES AND WITH PRIOR UTERINE SURGERY, INCLUDING CESAREAN DELIVERY'
+  - source: openfda
+    locator: 'Cytotec (misoprostol) drug label, Pfizer Laboratories Div Pfizer Inc, set_id 4ab12da7-5731-4e06-bf1c-bc3f2e711f12, effective 20260604, labor and delivery'
+    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Cytotec%22&limit=1'
+    accessed: 2026-11-05
+    quote: 'A major adverse effect of the obstetrical use of Cytotec is uterine tachysystole which may progress to uterine tetany with marked impairment of uteroplacental blood flow, uterine rupture (requiring surgical repair, hysterectomy, and/or salpingo-oophorectomy), or amniotic fluid embolism and lead to adverse fetal heart changes.'
+  - source: bdpm
+    locator: 'GYMISO 200 microgrammes, comprimé, RCP 4.4 (ANSM, 23/12/2025), CIS 69981979'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=69981979&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'En raison de ses propriétés abortives, GYMISO ne doit en aucun cas être utilisé chez une femme ayant une grossesse en cours et qui souhaite la mener à terme.'
+review:
+  status: draft
+  reviewers: []

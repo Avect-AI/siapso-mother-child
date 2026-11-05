@@ -179,6 +179,7 @@ describe('fixture builtin messages', () => {
     for (const lang of ['fr', 'en'] as const) {
       for (const id of [
         'nothing-found',
+        'nothing-applies',
         'not-recognised',
         'danger-sign',
         'max-dose-not-computable',
