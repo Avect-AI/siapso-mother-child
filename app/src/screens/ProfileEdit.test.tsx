@@ -792,6 +792,28 @@ describe('ProfileEdit: past 42 weeks and past 9 months (live test round 2)', () 
     expect((await listProfiles())[0]?.term).toEqual({ kind: 'post-term', givenOn: '2026-11-04' });
   });
 
+  it('"Mettre à jour" on a term said past 42 weeks days ago reads it so again from today', async () => {
+    vi.setSystemTime(new Date(2026, 10, 6, 10, 0));
+    await saveProfile(
+      stored({ id: 'p1', pseudonym: 'Bineta', term: { kind: 'post-term', givenOn: '2026-11-03' } }),
+    );
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/' });
+    const row = await screen.findByRole('button', { name: /^Bineta / });
+    expect(row).toHaveTextContent('Plus de 42 semaines');
+    expect(row).toHaveTextContent(/À confirmer/);
+
+    await user.click(screen.getByRole('link', { name: 'Mettre à jour le profil de Bineta' }));
+    await user.click(await screen.findByRole('button', { name: 'Non, toujours enceinte' }));
+    expect(await screen.findByText(POST_TERM_HER)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(await screen.findByRole('button', { name: /^Bineta / })).not.toHaveTextContent(
+      /À confirmer/,
+    );
+    expect((await listProfiles())[0]?.term).toEqual({ kind: 'post-term', givenOn: '2026-11-06' });
+  });
+
   it('asks whether she is past 9 months for 10 to 12, never giving it as weeks in one tap', async () => {
     const user = userEvent.setup();
     await openForm(woman);

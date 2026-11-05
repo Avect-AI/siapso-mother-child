@@ -110,7 +110,86 @@ test('an outdated term asks whether the baby is born before any check, then upda
   expect(JSON.stringify(stored)).not.toMatch(/breastfeeding|babyAgeWeeks|pregnant/);
 });
 
-test('the list marks an outdated profile, and "still pregnant" asks for the term again', async ({
+test('"still pregnant" past 42 weeks says to go to the health post today, and the check goes on', async ({
+  page,
+}) => {
+  // Live test round 2 (woman-literate#0): never "Je ne sais pas" to a term she knows.
+  await onboard(page, 'woman');
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await pregnantProfile(page, 30);
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await daysLater(page, 95);
+  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+  await page.getByRole('button', { name: 'Non, toujours enceinte' }).click();
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  const advice =
+    /^Allez au poste de santé aujourd'hui\s: une grossesse de plus de 42 semaines doit être vue\.$/;
+  await expect(page.getByText(advice)).toBeVisible();
+  await expect(page.getByText('Plus de 42 semaines', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Je ne sais pas\./)).toHaveCount(0);
+  await expectNoSeriousViolation(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+
+  // The check goes on, read as more than 42 weeks, with the advice and who to call.
+  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByText(advice)).toBeVisible();
+  await expect(page.locator('.check__profile')).toHaveText(/Plus de 42 semaines/);
+  await page.getByRole('link', { name: 'Voir qui appeler' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
+});
+
+test('10 to 12 months asks whether she is past 9 months, and "Mettre à jour" asks about the birth first', async ({
+  page,
+}) => {
+  await onboard(page, 'accompanied');
+  await page.getByRole('button', { name: 'Ajouter un profil' }).click();
+  await page.getByRole('textbox', { name: 'Surnom' }).fill('Bineta');
+  await answer(page, /^Enceinte/, 'Oui').click();
+  await answer(page, 'Terme de la grossesse', 'En mois').click();
+  await page.getByRole('textbox', { name: /^Dans quel mois de grossesse/ }).fill('10');
+  // Never "Ce sont 10 semaines" in one tap.
+  await expect(page.getByRole('button', { name: /^Ce sont/ })).toHaveCount(0);
+  await expect(page.getByText('Elle a dépassé 9 mois ?')).toBeVisible();
+  await page.getByRole('button', { name: 'Non, ce sont des semaines' }).click();
+  const weeks = page.getByRole('textbox', { name: 'Nombre de semaines' });
+  await expect(weeks).toHaveValue('');
+  await expect(weeks).toBeFocused();
+  await answer(page, 'Terme de la grossesse', 'En mois').click();
+  await page.getByRole('textbox', { name: /^Dans quel mois de grossesse/ }).fill('9');
+  await answer(page, /^Allaite/, 'Non').click();
+  await page.getByText('Aucune de ces situations').click();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+  // Given today: nothing to confirm yet.
+  await expect(list.getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+    'Bineta Entre 36 et 42 semaines (estimé)',
+  );
+
+  // Three weeks later: the real range says why the baby may be born.
+  await daysLater(page, 21);
+  await expect(list.getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+    /^Bineta Entre 39 et 45 semaines \(estimé\) À confirmer/,
+  );
+  await list.getByRole('link', { name: 'Mettre à jour le profil de Bineta' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Le terme noté a peut-être passé 42 semaines/ }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Non, toujours enceinte' }).click();
+  await expect(page.getByText("Donnez le terme d'aujourd'hui.")).toBeVisible();
+  await answer(page, 'Terme de la grossesse', 'En semaines').click();
+  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('41');
+  await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(list.getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
+    'Bineta Environ 41 semaines',
+  );
+});
+
+test('the list marks an outdated profile, and "still pregnant" reads more than 42 weeks', async ({
   page,
 }) => {
   await onboard(page, 'accompanied');
@@ -135,13 +214,10 @@ test('the list marks an outdated profile, and "still pregnant" asks for the term
   await page.getByRole('button', { name: 'Non, toujours enceinte' }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Modifier le profil' })).toBeVisible();
-  const weeks = page.getByRole('textbox', { name: 'Nombre de semaines' });
-  await expect(weeks).toHaveValue('');
-  await weeks.fill('40');
-  await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
+  await expect(page.getByText(/^Elle doit aller au poste de santé aujourd'hui/)).toBeVisible();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
-  await expect(page.getByText('Environ 40 semaines')).toBeVisible();
+  await expect(page.locator('.check__profile')).toHaveText(/Plus de 42 semaines/);
 });
 
 /** Her profile: pregnant, "Je ne sais pas" to the term, no breastfeeding, no situation. */
@@ -251,7 +327,7 @@ test('a last period with the phone date set back is read as unknown, and the res
 
   await expect(
     page.getByText(
-      /la date du téléphone est avant un jour où l'application a déjà servi\. Votre bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement/,
+      /^La date du téléphone semble fausse\s: elle est avant un jour où l'application a déjà servi\. Regardez la date du téléphone\. En attendant, le terme est inconnu et votre bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement/,
     ),
   ).toBeVisible();
   await expect(
@@ -259,7 +335,7 @@ test('a last period with the phone date set back is read as unknown, and the res
   ).toBeVisible();
 });
 
-test('the month field keeps "34", says it looks like weeks, and takes it as weeks in one tap', async ({
+test('the month field keeps "34", says it looks like weeks, and takes it as weeks in one tap (13 to 42)', async ({
   page,
 }) => {
   await onboard(page, 'woman');

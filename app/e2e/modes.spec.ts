@@ -247,6 +247,52 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await expect(page.getByText('Fièvre', { exact: true })).toHaveCount(0);
 });
 
+test('a danger result warns 30 s before the auto-lock, and "Continuer" keeps it', async ({
+  page,
+}) => {
+  // Live test round 1 (safety-auditor#22), decided in round 2.
+  await page.clock.install();
+  await onboard(page, 'woman');
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await fillProfile(page);
+  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+  await page.getByRole('searchbox').fill('kinkeliba');
+  await page.locator('.candidate').first().click();
+  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await page.getByText('Fièvre', { exact: true }).click();
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.getByRole('button', { name: 'Voir qui appeler' })).toBeVisible();
+
+  await page.clock.fastForward('01:31');
+  const warning = page.getByText(
+    /^L'application va se verrouiller\s: touchez l'écran pour continuer\.$/,
+  );
+  await expect(warning).toBeVisible();
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await expect(warning).toHaveCount(0);
+  await page.clock.fastForward('01:00');
+  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+});
+
+test('"Quitter" is on the settings and the about screen before the code', async ({ page }) => {
+  // Live test round 2 (privacy-offline#6).
+  await onboard(page, 'woman');
+  await page.getByRole('button', { name: 'Quitter' }).click();
+  await page.getByRole('button', { name: 'Ouvrir' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Quitter' })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Réglages' }).click();
+  await page.getByRole('link', { name: 'À propos' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'À propos' })).toBeVisible();
+
+  await page.getByRole('banner').getByRole('button', { name: 'Quitter' }).click();
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('#/');
+});
+
 test('a product never shows in the address, even after an auto-lock and a reload', async ({
   page,
 }) => {

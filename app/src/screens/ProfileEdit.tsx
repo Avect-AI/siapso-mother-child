@@ -1065,7 +1065,10 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
           maybe={baseStatus === 'possibly-past'}
           onAnswer={(born) => {
             if (born) setAnswered('born');
-            else setAnswered(baseStatus === 'outdated' ? stillPregnantUpdate(base) : 'term');
+            // Past 42 weeks (outdated, or already said past 42 weeks): read so again from today.
+            else if (baseStatus === 'outdated' || base.term?.kind === 'post-term') {
+              setAnswered(stillPregnantUpdate(base));
+            } else setAnswered('term');
           }}
         />
       ) : null}

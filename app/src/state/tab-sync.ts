@@ -123,8 +123,14 @@ function localMarks(): Marks {
   return marksOf(localValue());
 }
 
+/**
+ * Takes the marks off local storage. Written empty first: removing a key that
+ * is not there tells no other tab, while each change fires their storage
+ * event, so a tab with no channel still reads the stored code again.
+ */
 function removeLocal(): void {
   try {
+    localStorage.setItem(EPOCH_KEY, '[]');
     localStorage.removeItem(EPOCH_KEY);
   } catch {
     // No local storage: nothing kept there.
