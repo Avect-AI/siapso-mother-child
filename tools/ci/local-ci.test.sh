@@ -215,7 +215,7 @@ cp "$root/tools/reuse/requirements.txt" "$seed/tools/reuse/"
 for stub in tools/github/merge-pr.sh tools/github/merge-pr.test.sh tools/ci/local-ci.sh \
   tools/ci/local-ci.test.sh tools/release/audit.sh tools/release/audit.test.sh \
   tools/ci/check-playwright-image.mjs; do
-  printf '%s\n' '# SPDX-License-Identifier: MIT' '# A stub of the fixture repository.' >"$seed/$stub"
+  echo '# A stub of the fixture repository.' >"$seed/$stub"
 done
 git -C "$seed" add -A
 git -C "$seed" commit -q -s -m 'chore: start the fixture'
