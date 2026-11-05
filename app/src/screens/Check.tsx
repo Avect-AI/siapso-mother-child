@@ -11,7 +11,7 @@ import { activeProfile, useCheck, type CheckChange } from '../state/check-state.
 import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
-import { searchPath } from './check-flow.js';
+import { flowEntry, searchPath } from './check-flow.js';
 
 /** The last change to the list, said under it. */
 type Change =
@@ -86,9 +86,9 @@ function Item({
  * back). The one primary action goes on to the result, through the danger
  * signs present now, once at least one item is listed.
  *
- * The check is for the active profile: hers in woman mode, the profile of the
- * check in progress or the one saved last in accompanied mode. Without any
- * profile, the profile screen opens first, then comes back here.
+ * The check is for the active profile: hers in woman mode, the one chosen in
+ * the list of profiles in accompanied mode (without a choice, the list opens).
+ * Without any profile, the profile screen opens first, then comes back here.
  */
 export function Check() {
   const t = useT();
@@ -129,6 +129,11 @@ export function Check() {
         if (!live) return;
         const active = activeProfile(profiles, mode, profileId);
         if (active === undefined) {
+          // Accompanied mode with profiles, none chosen: she is chosen in the list.
+          if (mode === 'accompanied' && profiles.length > 0) {
+            navigate('/', { replace: true });
+            return;
+          }
           // The profile screen reads `next` and comes back here once saved.
           navigate(profilePathFor(mode), { replace: true, state: { next: '/check' } });
           return;
@@ -168,7 +173,7 @@ export function Check() {
 
   const openSearch = (kind: 'product' | 'plant') => {
     // One entry after this one: adding an item comes back here (check-flow.ts).
-    navigate(searchPath(kind), { state: { stepsToCheck: 1 } });
+    navigate(searchPath(kind), { state: flowEntry({ stepsToCheck: 1 }) });
   };
 
   const empty = check.items.length === 0;
@@ -256,7 +261,7 @@ export function Check() {
         onClick={() => {
           // The danger signs present now come first, then the result (one entry
           // after this one, then two: their ways back come here, check-flow.ts).
-          navigate('/signs', { state: { stepsToCheck: 1 } });
+          navigate('/signs', { state: flowEntry({ stepsToCheck: 1 }) });
         }}
       >
         {t('check.seeResult')}

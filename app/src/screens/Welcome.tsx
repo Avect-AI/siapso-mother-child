@@ -8,8 +8,9 @@ import { useApp } from '../state/app-state.js';
 import { AppMark } from '../ui/AppMark.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
+import { CodeSetup } from './CodeSetup.js';
 
-type Step = 'language' | 'mode';
+type Step = 'language' | 'mode' | 'code';
 
 /**
  * A large two-line choice. Its name is everything it shows, label then hint
@@ -25,12 +26,14 @@ function Choice({ label, hint, onChoose }: { label: string; hint: string; onChoo
 }
 
 /**
- * First launch: the language, asked in both languages, then who uses the app.
- * Both answers are stored; the second one ends the welcome and opens Home.
+ * First launch: the language, asked in both languages, then who uses the app,
+ * then the code, typed twice: hers in woman mode, the accompanying person's
+ * in accompanied mode. Each answer is stored; the code ends the welcome and
+ * opens Home (woman mode) or the list of profiles (accompanied mode).
  */
 export function Welcome() {
   const t = useT();
-  const { setSettings, settingsUnavailable } = useApp();
+  const { settings, setSettings, settingsUnavailable } = useApp();
   const [step, setStep] = useState<Step>('language');
   const question = useRef<HTMLHeadingElement>(null);
   const shown = useRef(step);
@@ -48,8 +51,24 @@ export function Welcome() {
     setStep('mode');
   };
   const chooseMode = (mode: Mode) => {
-    void setSettings({ mode, onboarded: true });
+    void setSettings({ mode });
+    setStep('code');
   };
+
+  if (step === 'code') {
+    return (
+      <CodeSetup
+        mode={settings.mode ?? 'woman'}
+        headingRef={question}
+        onBack={() => {
+          setStep('mode');
+        }}
+        onCreated={() => {
+          void setSettings({ onboarded: true });
+        }}
+      />
+    );
+  }
 
   return (
     <main className="screen welcome">

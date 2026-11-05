@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
+import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, renderApp } from '../test/render-app.js';
@@ -234,8 +235,25 @@ describe('Search', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Est-ce bien ce remède ?' }),
     ).toBeVisible();
-    expect(window.location.hash).toBe('#/confirm/plant/moringa');
+    expect(window.location.hash).toBe('#/confirm/plant');
+    expect(sessionState()).toMatchObject({ id: 'moringa' });
     expect(probe.current().items).toEqual([]);
+  });
+
+  it('never brings back a name typed before a lock, and takes it off the history entry', async () => {
+    await saveProfile(profileOf());
+    await renderApp({
+      settings: woman,
+      hash: '#/search/product',
+      packLoader: loaderOf(pack),
+      entryState: { query: 'efavirenz', stepsToCheck: 1, visit: 'a visit', epoch: 'before a lock' },
+    });
+
+    expect(await screen.findByRole('searchbox')).toHaveValue('');
+    expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
+    // A name typed in this session is kept on the entry, with its epoch.
+    window.history.replaceState(inSession({ query: 'doliprane' }), '');
+    expect(sessionState()).toMatchObject({ query: 'doliprane' });
   });
 
   it('opens the best candidate from the keyboard with Enter', async () => {
@@ -245,7 +263,8 @@ describe('Search', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Est-ce bien ce remède ?' }),
     ).toBeVisible();
-    expect(window.location.hash).toBe('#/confirm/plant/kinkeliba');
+    expect(window.location.hash).toBe('#/confirm/plant');
+    expect(sessionState()).toMatchObject({ id: 'kinkeliba' });
     expect(probe.current().items).toEqual([]);
   });
 

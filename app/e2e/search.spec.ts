@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { onboard } from './support.js';
 
 const NBSP = ' ';
 
@@ -14,9 +15,7 @@ async function expectNoSeriousViolation(page: Page) {
 
 /** Welcome in French, woman mode, then her profile (pregnant, term unknown), as the check asks for it. */
 async function startWithProfile(page: Page) {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
+  await onboard(page, 'woman');
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
   // No profile yet: the profile screen comes first, then the check.

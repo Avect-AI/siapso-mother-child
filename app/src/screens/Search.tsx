@@ -14,6 +14,7 @@ import { TextField } from '../ui/TextField.js';
 import {
   backToCheck,
   confirmPath,
+  flowEntry,
   flowState,
   keepOnEntry,
   oneMoreStep,
@@ -121,12 +122,14 @@ export function Search({ kind }: { kind: EntryKind }) {
     if (leaving) return;
     setLeaving(true);
     keepOnEntry({ query: text });
-    navigate(confirmPath(candidate.kind, candidate.id), {
-      state: {
+    // The product goes in the entry's state, never in the address.
+    navigate(confirmPath(candidate.kind), {
+      state: flowEntry({
+        id: candidate.id,
         query: foundBy,
         matched: candidate.matched,
         stepsToCheck: oneMoreStep(entry.stepsToCheck),
-      },
+      }),
     });
   };
 
@@ -146,7 +149,10 @@ export function Search({ kind }: { kind: EntryKind }) {
   };
 
   const lookInOtherList = () => {
-    navigate(searchPath(OTHER[kind]), { replace: true, state: { ...entry, query: text } });
+    navigate(searchPath(OTHER[kind]), {
+      replace: true,
+      state: flowEntry({ stepsToCheck: entry.stepsToCheck, query: text }),
+    });
   };
 
   // What the list now holds, said by the live region: how many, and the first

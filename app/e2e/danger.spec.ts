@@ -3,6 +3,7 @@
 // Phone numbers here are made up: runs of the same digit, never a real number.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { onboard, unlock, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -44,18 +45,17 @@ function answer(page: Page, question: string | RegExp, label: string) {
   return page.getByRole('group', { name: question }).getByText(label, { exact: true });
 }
 
-/** Welcome in French, then a mode; the app is then served offline by the service worker. */
-async function onboardOffline(page: Page, mode: 'woman' | 'accompanied') {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page
-    .getByRole('button', { name: mode === 'woman' ? /^Je suis enceinte/ : /^J'accompagne/ })
-    .click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+/**
+ * Welcome in French, a mode and the code; the app is then served offline by
+ * the service worker, and the code opens it again after the reload.
+ */
+async function onboardOffline(page: Page, mode: Mode) {
+  await onboard(page, mode);
   await waitForServiceWorkerControl(page);
   await page.context().setOffline(true);
   await page.reload();
   await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
+  await unlock(page);
 }
 
 /** The header shortcut opens the danger signs; back returns to the screen it was opened from. */
@@ -167,10 +167,20 @@ test('at 200 percent text on a 360 px phone, no word of a sign breaks inside its
   await page.goto('/#/danger');
   await page.addStyleTag({ content: 'html { font-size: 200%; }' });
   await expect(page.getByRole('checkbox')).toHaveCount(21);
-  // Each word of each answer sits on one line: its range has a single line box.
+  const sizes = await page.evaluate(() =>
+    [...document.querySelectorAll('label.option > span')].map(
+      (span) => getComputedStyle(span).fontSize,
+    ),
+  );
+  // The answers keep the full text size: nothing scales them down to fit.
+  expect(new Set(sizes)).toEqual(new Set(['36px']));
+  // Each word of each answer sits on one line (its range has a single line
+  // box), unless that word alone is wider than the column of the list (not
+  // the answer's own text box, which its padding could make too narrow).
   const broken = await page.evaluate(() => {
     const found: string[] = [];
-    for (const span of document.querySelectorAll('label.option > span')) {
+    for (const span of document.querySelectorAll<HTMLElement>('label.option > span')) {
+      const column = span.closest('.options')?.clientWidth ?? 0;
       const node = span.firstChild;
       if (node?.nodeType !== Node.TEXT_NODE) continue;
       const text = node.textContent ?? '';
@@ -179,7 +189,17 @@ test('at 200 percent text on a 360 px phone, no word of a sign breaks inside its
         range.setStart(node, match.index);
         range.setEnd(node, match.index + match[0].length);
         const tops = new Set([...range.getClientRects()].map((r) => Math.round(r.top)));
-        if (tops.size > 1) found.push(match[0]);
+        if (tops.size <= 1) continue;
+        // The word's own width, on one line, in the answer's font.
+        const probe = document.createElement('span');
+        probe.textContent = match[0];
+        probe.style.whiteSpace = 'nowrap';
+        probe.style.position = 'absolute';
+        probe.style.visibility = 'hidden';
+        span.append(probe);
+        const wider = probe.getBoundingClientRect().width > column;
+        probe.remove();
+        if (!wider) found.push(match[0]);
       }
     }
     return found;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 // App-wide state: settings (kept in IndexedDB), the knowledge pack with where
 // it came from, the connection status, and the check in progress (in memory,
-// see check-state.ts, read with useCheck). Later tasks add the session.
+// see check-state.ts, read with useCheck), and the session that the code
+// opens (session.tsx, read with useSession).
 import type { Pack } from '@siapso/engine';
 import {
   createContext,
@@ -18,6 +19,7 @@ import { getStoredSettings, storeSettings } from '../data/db.js';
 import { loadPack, type LoadedPack } from '../data/pack-loader.js';
 import type { Settings } from '../domain/types.js';
 import { CheckContext, useCheckStore } from './check-state.js';
+import { SessionProvider, type SessionOptions } from './session.js';
 
 export interface AppState {
   settings: Settings;
@@ -119,11 +121,14 @@ export function AppProvider({
   children,
   packLoader = loadPack,
   storageTimeoutMs = STORAGE_TIMEOUT_MS,
+  session = {},
 }: {
   children: ReactNode;
   /** Replaced in tests; loads from /pack/ with a fallback to IndexedDB by default. */
   packLoader?: () => Promise<LoadedPack>;
   storageTimeoutMs?: number;
+  /** Set by tests only: the app always starts locked, with the full PBKDF2 count. */
+  session?: SessionOptions;
 }) {
   const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
   const [settingsReady, setSettingsReady] = useState(false);
@@ -233,7 +238,9 @@ export function AppProvider({
 
   return (
     <AppContext value={value}>
-      <CheckContext value={check}>{children}</CheckContext>
+      <CheckContext value={check}>
+        <SessionProvider {...session}>{children}</SessionProvider>
+      </CheckContext>
     </AppContext>
   );
 }

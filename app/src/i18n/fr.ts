@@ -20,6 +20,47 @@ export const fr = {
   header: {
     danger: 'Signes de danger',
     offline: 'Hors ligne',
+    // The quick exit: locks at once and shows the neutral screen.
+    quickExit: 'Quitter',
+  },
+  // The code that opens the profiles on a shared phone (spec section 2, Codes).
+  code: {
+    title: 'Entrez votre code',
+    label: 'Code',
+    open: 'Ouvrir',
+    opening: 'Ouverture en cours.',
+    wrong: "Ce n'est pas le bon code.",
+    triesLeft: 'Encore {count} essais avant une attente.',
+    lastTry: 'Encore 1 essai avant une attente.',
+    waitSeconds: "Trop d'essais. Attendez {count} secondes, puis essayez encore.",
+    waitMinutes: "Trop d'essais. Attendez {count} minutes, puis essayez encore.",
+    waitHours: "Trop d'essais. Attendez {count} heures, puis essayez encore.",
+    // Said once to a screen reader when a wait is over.
+    tryAgain: 'Vous pouvez essayer à nouveau.',
+    unavailable:
+      "Le code n'a pas pu être lu sur ce téléphone. Fermez l'application, puis rouvrez-la.",
+    keypad: 'Clavier du code',
+    erase: 'Effacer',
+    // Said to a screen reader as the keys on the screen are tapped.
+    digitsNone: 'Aucun chiffre',
+    digitsOne: '1 chiffre',
+    digits: '{count} chiffres',
+    createTitle: 'Choisissez un code',
+    createLeadWoman: 'Ce code ouvre votre profil sur ce téléphone.',
+    createLeadAccompanied: 'Ce code ouvre les profils des femmes que vous suivez.',
+    createHintWoman:
+      "De 4 à 6 chiffres. Gardez-le pour vous : sans lui, votre profil ne s'ouvre pas.",
+    createHintAccompanied:
+      "De 4 à 6 chiffres. Gardez-le pour vous : sans lui, les profils ne s'ouvrent pas.",
+    // The field of the second typing: what a screen reader hears when it takes the focus.
+    confirmLabel: 'Le même code',
+    confirmTitle: 'Tapez le code une deuxième fois',
+    next: 'Continuer',
+    save: 'Enregistrer le code',
+    saving: 'Le code se prépare.',
+    invalid: 'Écrivez de 4 à 6 chiffres.',
+    mismatch: 'Les deux codes ne sont pas les mêmes. Choisissez un code à nouveau.',
+    changeMode: 'Changer de mode',
   },
   home: {
     title: 'Un médicament ou un remède ?',
@@ -29,10 +70,39 @@ export const fr = {
     packUnavailable:
       "Les informations sur les produits ne sont pas encore sur ce téléphone. Ouvrez l'application une fois avec Internet.",
     closing: 'Cet outil ne remplace pas un soignant.',
-    // Woman mode: her one profile. Accompanied mode: a new one (the list comes with the codes).
+    // Woman mode: her one profile (accompanied mode opens on the list of profiles).
     profileMine: 'Mon profil',
-    profileNew: 'Nouveau profil',
+    settings: 'Réglages',
     profileSaved: 'Profil enregistré : {name}.',
+  },
+  // A forgotten code: the only way is to erase the profiles of this phone,
+  // typed word then a last yes. Never red: it is not a danger sign.
+  forgot: {
+    link: "J'ai oublié le code",
+    title: 'Code oublié',
+    lead: "Sans le code, la seule solution est d'effacer les profils enregistrés sur ce téléphone, avec leur historique et les contacts enregistrés. La langue et les informations sur les produits restent.",
+    word: 'EFFACER',
+    wordLabel: 'Pour continuer, écrivez EFFACER',
+    wordError: 'Écrivez EFFACER pour continuer, ou revenez au code.',
+    next: 'Continuer',
+    confirmTitle: 'Tout effacer maintenant ?',
+    confirmLead:
+      'Les profils, leur historique et les contacts de ce téléphone seront effacés. Cela ne peut pas être annulé.',
+    erase: 'Effacer les profils',
+    erasing: 'Effacement en cours.',
+    failed: "Les profils n'ont pas pu être effacés sur ce téléphone. Essayez encore.",
+    back: 'Revenir au code',
+  },
+  // Accompanied mode: the women followed, by pseudonym, after the code.
+  profiles: {
+    title: 'Profils',
+    lead: 'Choisissez une femme pour regarder un produit.',
+    listLabel: 'Profils enregistrés sur ce téléphone',
+    loading: 'Les profils se chargent.',
+    empty: 'Aucun profil sur ce téléphone pour le moment.',
+    add: 'Ajouter un profil',
+    edit: 'Modifier',
+    editNamed: 'Modifier le profil de {name}',
   },
   profile: {
     titleMine: 'Mon profil',
@@ -323,6 +393,9 @@ export const fr = {
     add: 'Ajouter un contact',
     manage: 'Modifier les contacts',
     circuit: 'Circuit de référence',
+    // Before the code: the contacts kept on the phone are not shown.
+    locked: 'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
+    enterCode: 'Entrer le code',
   },
   contacts: {
     title: 'Contacts à appeler',
@@ -383,6 +456,15 @@ export const fr = {
   settings: {
     unavailable:
       "Ce téléphone n'a pas pu garder vos réglages. Vos choix seront peut-être à refaire.",
+    title: 'Réglages',
+    language: 'Langue',
+    mode: "Qui utilise l'application ?",
+    modeHint: 'Changer de mode ne supprime aucune donnée.',
+    // Woman mode opens one profile: the first one made. The others stay on the phone.
+    modeWomanNote:
+      "En mode « Je suis enceinte ou j'allaite », seul le premier profil s'ouvre. Les autres restent sur ce téléphone.",
+    changed: 'Réglage enregistré.',
+    done: "Revenir à l'accueil",
   },
   update: {
     ready: 'Une nouvelle version est prête.',

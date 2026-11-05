@@ -7,14 +7,18 @@ import { fileURLToPath } from 'node:url';
 import type { CheckedItem, Pack } from '@siapso/engine';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { LoadedPack } from '../data/pack-loader.js';
 import { saveProfile } from '../data/profiles.js';
 import { saveContacts } from '../data/referral.js';
 import type { ReferralContact, Settings } from '../domain/types.js';
+import { inSession, inVisit } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp } from '../test/render-app.js';
+import { loaderOf, renderApp, TEST_CODE } from '../test/render-app.js';
+import { probeSession } from '../test/session-probe.js';
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -160,7 +164,7 @@ describe('Who to call, details', () => {
   it('words the instruction it was opened with in the language of the moment', async () => {
     // As a result leaves it: which message says the instruction, never its words.
     window.history.replaceState(
-      { instruction: { message: 'castor-oil-term-uterine-scar' } },
+      inSession({ instruction: { message: 'castor-oil-term-uterine-scar' } }),
       '',
       '#/danger/call',
     );
@@ -173,10 +177,125 @@ describe('Who to call, details', () => {
     expect(await screen.findByRole('heading', { level: 2, name: english })).toBeVisible();
     unmount();
 
-    window.history.replaceState({ instruction: { standard: true } }, '', '#/danger/call');
+    window.history.replaceState(inVisit({ instruction: { standard: true } }), '', '#/danger/call');
     await renderApp({ settings: woman, hash: '#/danger/call', packLoader: loaderOf(pack) });
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Allez au poste de santé maintenant.' }),
+    ).toBeVisible();
+  });
+
+  it("says a result's own instruction only once the pack is there, never another one first", async () => {
+    let deliver: (loaded: LoadedPack) => void = () => undefined;
+    const later = () =>
+      new Promise<LoadedPack>((resolve) => {
+        deliver = resolve;
+      });
+    window.history.replaceState(
+      inSession({ instruction: { message: 'castor-oil-term-uterine-scar' } }),
+      '',
+      '#/danger/call',
+    );
+    await renderApp({ settings: woman, hash: '#/danger/call', packLoader: later });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    // The pack is loading: no banner yet, rather than the standard words first.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('Allez au poste de santé maintenant.')).toBeNull();
+
+    await act(async () => {
+      deliver(await loaderOf(pack)());
+    });
+    const own = pack.messages.fr['castor-oil-term-uterine-scar']?.orientation ?? 'missing';
+    expect(await screen.findByRole('heading', { level: 2, name: own })).toBeVisible();
+  });
+
+  it('ignores signs and an instruction left on the entry before a quick exit', async () => {
+    window.history.replaceState(
+      { instruction: { standard: true }, signs: ['fever'], visit: 'an earlier visit' },
+      '',
+      '#/danger/call',
+    );
+    await renderApp({ settings: woman, hash: '#/danger/call', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('Dites ces signes au téléphone ou au poste de santé :')).toBeNull();
+    // Gone from the history too, not only unread.
+    expect(window.history.state).toBeNull();
+  });
+});
+
+describe('Who to call, before the code', () => {
+  it('keeps the signs ticked on the danger signs screen, given without the code', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/danger',
+      packLoader: loaderOf(pack),
+      locked: true,
+    });
+    const user = userEvent.setup();
+    const fever = pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr ?? 'missing';
+
+    await user.click(await screen.findByRole('checkbox', { name: fever }));
+    await user.click(screen.getByRole('button', { name: "C'est grave maintenant" }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(screen.getByText('Dites ces signes au téléphone ou au poste de santé :')).toBeVisible();
+    expect(screen.getByText(fever)).toBeVisible();
+  });
+  it('shows the deployment circuit only, and a way to give the code that comes back here', async () => {
+    await saveContacts([AWA]);
+    serveDeployment();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/danger/call',
+      packLoader: loaderOf(pack),
+      locked: true,
+    });
+    const user = userEvent.setup();
+
+    expect(await screen.findByRole('link', { name: /^Appeler Maternité/ })).toBeVisible();
+    expect(screen.queryByText('Awa')).toBeNull();
+    expect(screen.queryByText('Aucun contact enregistré sur ce téléphone.')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Modifier les contacts' })).toBeNull();
+    expect(
+      screen.getByText(
+        'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Entrer le code' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' }),
+    ).toBeVisible();
+    await user.type(screen.getByLabelText('Code'), `${TEST_CODE}{Enter}`);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(await screen.findByRole('link', { name: /^Appeler Awa/ })).toBeVisible();
+    expect(window.location.hash).toBe('#/danger/call');
+  });
+
+  it('takes the saved contacts off the screen as soon as the session locks', async () => {
+    await saveContacts([AWA]);
+    const session = probeSession();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/danger/call',
+      packLoader: loaderOf(pack),
+      children: session.element,
+    });
+    expect(await screen.findByRole('link', { name: /^Appeler Awa/ })).toBeVisible();
+
+    act(() => {
+      session.current().lock();
+    });
+
+    expect(screen.queryByText('Awa')).toBeNull();
+    expect(
+      await screen.findByText(
+        'Les contacts enregistrés sur ce téléphone apparaissent une fois le code entré.',
+      ),
     ).toBeVisible();
   });
 });
@@ -184,13 +303,18 @@ describe('Who to call, details', () => {
 describe('Who to call, from a result', () => {
   const CASTOR: CheckedItem = { ref: { kind: 'plant', id: 'castor-oil' } };
 
-  async function openResult(items: CheckedItem[], signs: string[]) {
+  async function openResult(items: CheckedItem[], signs: string[], extra?: ReactElement) {
     const probe = probeCheck();
-    await renderApp({
+    const view = await renderApp({
       settings: woman,
       hash: '#/',
       packLoader: loaderOf(pack),
-      children: probe.element,
+      children: (
+        <>
+          {probe.element}
+          {extra}
+        </>
+      ),
     });
     await screen.findByRole('heading', { level: 1 });
     act(() => {
@@ -203,7 +327,45 @@ describe('Who to call, from a result', () => {
       window.location.hash = '#/result';
     });
     await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+    return view;
   }
+
+  it("never shows a result's instruction or the check's signs once locked, nor after a reload", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 4, 10, 0));
+    await saveProfile(profileOf());
+    const session = probeSession();
+    const view = await openResult(
+      [{ ref: { kind: 'plant', id: 'kinkeliba' } }],
+      ['fever'],
+      session.element,
+    );
+    const user = userEvent.setup();
+    const own = pack.messages.fr['danger-sign-fever']?.orientation ?? 'missing';
+    const fever = pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr ?? 'missing';
+    await user.click(await screen.findByRole('button', { name: 'Voir qui appeler' }));
+    expect(await screen.findByRole('heading', { level: 2, name: own })).toBeVisible();
+    expect(screen.getByText(fever)).toBeVisible();
+
+    // Two minutes without a touch: the session locks on this screen.
+    act(() => {
+      session.current().lock();
+    });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Allez au poste de santé maintenant.' }),
+    ).toBeVisible();
+    expect(document.body.textContent).not.toContain("test au poste de santé aujourd'hui");
+    expect(screen.queryByText(fever)).toBeNull();
+
+    // A reload while locked: the entry's state is gone, not only unread.
+    view.unmount();
+    await renderApp({ hash: '#/danger/call', packLoader: loaderOf(pack), locked: true });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    expect(document.body.textContent).not.toContain("test au poste de santé aujourd'hui");
+    expect(screen.queryByText(fever)).toBeNull();
+    expect(window.history.state).toBeNull();
+    vi.useRealTimers();
+  });
 
   it('a danger finding always leads to the circuit: the same instruction, then the contacts or none', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });

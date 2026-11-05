@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useId, useState } from 'react';
+import { useLocation } from 'wouter';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
 import { phoneGroups, telHref, whoOf } from '../domain/contacts.js';
 import type { InstructionSource } from '../domain/result-view.js';
 import type { ReferralContact } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
+import { epochToken, forgetStaleEntry, visitState } from '../state/entry-state.js';
+import { useSession } from '../state/session.js';
+import { Button } from '../ui/Button.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
+import { UNLOCK_PATH } from './Neutral.js';
 
 /** The route of who to call, under the danger signs. */
 export const CALL_PATH = '/danger/call';
@@ -22,6 +27,13 @@ export const CALL_PATH = '/danger/call';
 interface Opened {
   signs: string[];
   instruction: InstructionSource | null;
+  /**
+   * The epoch a result left the state in (entry-state.ts), when it came from
+   * a result: its instruction and the check's signs say something about her,
+   * so they show only while open, in that epoch. Undefined for the danger
+   * signs screen, whose signs were given without the code.
+   */
+  epoch: string | undefined;
 }
 
 function instructionOf(value: unknown): InstructionSource | null {
@@ -31,17 +43,33 @@ function instructionOf(value: unknown): InstructionSource | null {
   return typeof message === 'string' && message !== '' ? { message } : null;
 }
 
-/** The history entry's state: the signs (strings only) and the instruction, when given. */
+/**
+ * The history entry's state: the signs (strings only) and the instruction,
+ * when given in this visit (an entry left before a quick exit gives nothing).
+ */
 function openedWith(): Opened {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null) return { signs: [], instruction: null };
-  const { signs, instruction } = state as Record<string, unknown>;
+  const { signs, instruction, epoch } = visitState();
   return {
     signs: Array.isArray(signs)
       ? [...new Set(signs.filter((s): s is string => typeof s === 'string'))]
       : [],
     instruction: instructionOf(instruction),
+    epoch: typeof epoch === 'string' ? epoch : undefined,
   };
+}
+
+/**
+ * What may show of what the screen was opened with. From a result, while
+ * locked or after a lock (a new epoch): no sign of the check, and only the
+ * standard danger instruction, since a danger was said.
+ */
+function shownOf(opened: Opened, unlocked: boolean): Opened {
+  // A result's own instruction always comes with an epoch; one without is not trusted either.
+  const fromResult =
+    opened.epoch !== undefined || (opened.instruction !== null && 'message' in opened.instruction);
+  if (!fromResult) return opened;
+  if (unlocked && opened.epoch === epochToken()) return opened;
+  return { signs: [], instruction: { standard: true }, epoch: undefined };
 }
 
 function ContactRow({ contact, primary }: { contact: ReferralContact; primary: boolean }) {
@@ -82,48 +110,74 @@ function ContactRow({ contact, primary }: { contact: ReferralContact; primary: b
  * In accompanied mode a way to add or change the contacts; then the national
  * circuit of the deployment file. The app never sends a message, and never
  * says that someone knows or is on the way.
+ *
+ * Before the code (this screen opens locked too), the contacts saved on the
+ * phone are not shown, only the deployment's, with a way to give the code
+ * that comes back here; they go as soon as the session locks.
  */
 export function Referral() {
   const t = useT();
   const lang = useLang();
-  const { settings, pack, storageTimeoutMs } = useApp();
+  const { settings, pack, packError, storageTimeoutMs } = useApp();
+  const { unlocked, status } = useSession();
+  const [, navigate] = useLocation();
   const [opened] = useState(openedWith);
-  const [loaded, setLoaded] = useState<LoadedReferral | null>(null);
+  const [loaded, setLoaded] = useState<(LoadedReferral & { withSaved: boolean }) | null>(null);
   const nationalId = useId();
   const accompanied = settings.mode === 'accompanied';
+
+  // A state left in another visit, or by a result before a lock, goes from the history.
+  useEffect(() => {
+    forgetStaleEntry();
+  }, []);
 
   useEffect(() => {
     let live = true;
     // Never rejects: storage that cannot be read still lists the deployment's contacts.
     void loadReferral({
-      readSaved: () => withTimeout(loadSavedContacts(), storageTimeoutMs),
+      readSaved: unlocked
+        ? () => withTimeout(loadSavedContacts(), storageTimeoutMs)
+        : () => Promise.resolve([]),
     }).then((result) => {
-      if (live) setLoaded(result);
+      if (live) setLoaded({ ...result, withSaved: unlocked });
     });
     return () => {
       live = false;
     };
-  }, [storageTimeoutMs]);
+  }, [storageTimeoutMs, unlocked]);
 
-  const { signs } = opened;
-  // Worded now, in the language of the moment; a message the pack does not
-  // have (or a pack still loading) gives the standard danger instruction.
-  const source = opened.instruction;
-  let instruction: string | null = null;
+  // A circuit read with the saved contacts never shows once locked, even
+  // while it is read again without them.
+  const circuit = loaded?.withSaved === unlocked ? loaded : null;
+  const shown = shownOf(opened, unlocked);
+  const { signs } = shown;
+  // Worded now, in the language of the moment. A result's own message waits
+  // for the pack (so the banner never says one instruction, then another); a
+  // message the pack does not have, or no pack at all, gives the standard
+  // danger instruction. Undefined: not known yet, nothing is said.
+  const source = shown.instruction;
+  let instruction: string | null | undefined = null;
   if (source !== null) {
-    const own = 'message' in source ? pack?.messages[lang][source.message]?.orientation : undefined;
-    instruction = own ?? t('result.orientation.danger');
+    if ('standard' in source || pack === null) {
+      instruction =
+        'standard' in source || packError !== null ? t('result.orientation.danger') : undefined;
+    } else {
+      instruction =
+        pack.messages[lang][source.message]?.orientation ?? t('result.orientation.danger');
+    }
   }
   const labels = signs.flatMap((id) => {
     const sign = pack?.dangerSigns.find((d) => d.id === id);
     return sign === undefined ? [] : [sign.label[lang]];
   });
-  const contacts = loaded?.contacts ?? [];
+  const contacts = circuit?.contacts ?? [];
+  // Locked with a code on the phone: the saved contacts wait for it.
+  const behindCode = !unlocked && status !== 'new';
 
   return (
     <main className="screen referral">
       <h1 tabIndex={-1}>{t('call.title')}</h1>
-      {instruction === null ? (
+      {instruction === undefined ? null : instruction === null ? (
         <div className="danger__orientation">
           <p>{t('danger.condition')}</p>
           <p className="orientation">{t('danger.orientation')}</p>
@@ -143,16 +197,17 @@ export function Referral() {
       )}
 
       <div className="referral__circuit">
-        {loaded === null ? (
+        {circuit === null ? (
           <p className="referral__loading" role="status">
             {t('call.loading')}
           </p>
         ) : (
           <>
-            {loaded.savedUnavailable ? <Notice>{t('call.savedUnavailable')}</Notice> : null}
+            {circuit.savedUnavailable ? <Notice>{t('call.savedUnavailable')}</Notice> : null}
             {contacts.length === 0 ? (
-              // Unreadable storage is said above: never "no contact" when that is not known.
-              loaded.savedUnavailable ? null : (
+              // Unreadable storage is said above, and locked contacts below:
+              // never "no contact" when that is not known.
+              circuit.savedUnavailable || behindCode ? null : (
                 <p className="referral__none">{t('call.none')}</p>
               )
             ) : (
@@ -162,7 +217,22 @@ export function Referral() {
                 ))}
               </ul>
             )}
-            {accompanied ? (
+            {behindCode ? (
+              <div className="referral__locked">
+                <p>{t('call.locked')}</p>
+                <Button
+                  variant="secondary"
+                  className="referral__unlock"
+                  onClick={() => {
+                    // The code screen comes back here once the code is given.
+                    navigate(UNLOCK_PATH, { state: { back: true } });
+                  }}
+                >
+                  {t('call.enterCode')}
+                </Button>
+              </div>
+            ) : null}
+            {accompanied && unlocked ? (
               <a
                 className="button button--secondary referral__manage"
                 href={contacts.length === 0 ? '#/contacts/new' : '#/contacts'}
@@ -174,10 +244,10 @@ export function Referral() {
         )}
       </div>
 
-      {loaded?.nationalCircuit === undefined ? null : (
+      {circuit?.nationalCircuit === undefined ? null : (
         <section className="referral__national" aria-labelledby={nationalId}>
           <h2 id={nationalId}>{t('call.circuit')}</h2>
-          <p>{loaded.nationalCircuit[lang]}</p>
+          <p>{circuit.nationalCircuit[lang]}</p>
         </section>
       )}
     </main>

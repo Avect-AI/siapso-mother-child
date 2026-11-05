@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MIT
 import type { Pack } from '@siapso/engine';
 import { describe, expect, it } from 'vitest';
+import { verifierOf } from '../test/verifier.js';
 import {
   closeAppDb,
+  getStoredLockout,
   getStoredPack,
   getStoredSettings,
+  getStoredVerifier,
   openAppDb,
+  storeLockout,
   storePack,
   storeSettings,
+  storeVerifier,
 } from './db.js';
 
 const pack = (version: string) => ({ version }) as unknown as Pack;
@@ -120,5 +125,31 @@ describe('settings', () => {
     await storeSettings({ lang: 'en', mode: 'woman', onboarded: true });
 
     expect(await getStoredSettings()).toEqual({ lang: 'en', mode: 'woman', onboarded: true });
+  });
+});
+
+describe('code and lockout', () => {
+  it('keep the verifier and the lockout beside the settings, never the code', async () => {
+    expect(await getStoredVerifier()).toBeUndefined();
+    expect(await getStoredLockout()).toBeUndefined();
+    const verifier = await verifierOf('2468');
+
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    await storeVerifier({ ...verifier, code: '2468' } as never);
+    await storeLockout({ failures: 5, lockedUntil: 30_000 });
+
+    expect(await getStoredVerifier()).toEqual(verifier);
+    expect(JSON.stringify(await (await openAppDb()).getAll('settings'))).not.toContain('2468');
+    expect(await getStoredLockout()).toEqual({ failures: 5, lockedUntil: 30_000 });
+    expect(await getStoredSettings()).toEqual({ lang: 'fr', mode: 'woman', onboarded: true });
+  });
+
+  it('read a stored value that is not a verifier or a lockout as none', async () => {
+    const db = await openAppDb();
+    await db.put('settings', { lang: 'fr' } as never, 'code');
+    await db.put('settings', { failures: 'many' } as never, 'lockout');
+
+    expect(await getStoredVerifier()).toBeUndefined();
+    expect(await getStoredLockout()).toBeUndefined();
   });
 });

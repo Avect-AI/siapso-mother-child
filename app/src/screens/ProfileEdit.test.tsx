@@ -181,7 +181,7 @@ describe('ProfileEdit: the common case', () => {
     await storeSettings(woman);
     window.location.hash = '#/profile';
     render(
-      <AppProvider packLoader={loaderOf(shellPack())}>
+      <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
         <App>
           <English />
         </App>

@@ -1,38 +1,25 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
-
-/** The pseudonym of the profile just saved (the profile screen leaves it in the history entry), or null. */
-function justSaved(): string | null {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null || !('profileSaved' in state)) return null;
-  return typeof state.profileSaved === 'string' ? state.profileSaved : null;
-}
+import { useSavedNote } from './saved-note.js';
 
 /**
- * Home: what the app is for and its one primary action, held together, then
- * the way to the profile (hers in woman mode, a new one in accompanied mode).
- * The primary action opens the check for the active profile (the check screen
- * opens the profile screen first when there is none). After a save it says
- * the profile was saved, once: the note is taken off the history entry, so a
- * reload does not repeat it. The status and about links arrive with their
- * screens (Task 15, SCRUM-28).
+ * Home in woman mode (accompanied mode opens on the list of profiles): what
+ * the app is for and its one primary action, held together, then the way to
+ * her profile and to the settings. The primary action opens the check for her
+ * profile (the check screen opens the profile screen first when there is
+ * none). After a save it says the profile was saved, once. The status and
+ * about links arrive with their screens (Task 15, SCRUM-28).
  */
 export function Home() {
   const t = useT();
-  const { packError, settingsUnavailable, settings } = useApp();
+  const { packError, settingsUnavailable } = useApp();
   const [, navigate] = useLocation();
-  const [saved] = useState(justSaved);
+  const saved = useSavedNote();
 
-  useEffect(() => {
-    if (saved !== null) window.history.replaceState(null, '', window.location.href);
-  }, [saved]);
-
-  const accompanied = settings.mode === 'accompanied';
   return (
     <main className="screen home">
       <div className="home__task">
@@ -56,14 +43,16 @@ export function Home() {
         >
           {t('home.check')}
         </Button>
-        <a
-          className="button button--secondary home__profile"
-          href={accompanied ? '#/profile/new' : '#/profile'}
-        >
-          {t(accompanied ? 'home.profileNew' : 'home.profileMine')}
+        <a className="button button--secondary home__profile" href="#/profile">
+          {t('home.profileMine')}
         </a>
       </div>
-      <p className="meta home__closing">{t('home.closing')}</p>
+      <div className="home__closing">
+        <a className="button button--quiet home__settings" href="#/settings">
+          {t('home.settings')}
+        </a>
+        <p className="meta">{t('home.closing')}</p>
+      </div>
     </main>
   );
 }

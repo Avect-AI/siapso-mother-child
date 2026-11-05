@@ -10,7 +10,7 @@ import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
-import { flowState, oneMoreStep } from './check-flow.js';
+import { flowEntry, flowState, oneMoreStep } from './check-flow.js';
 
 /** No answer yet, "none of these signs", or the signs present now. */
 type Answer = null | 'none' | string[];
@@ -110,7 +110,9 @@ export function SignsNow() {
           }
           setSigns(Array.isArray(answer) ? answer : []);
           // One entry more to the check: the result's way back goes there (check-flow.ts).
-          navigate('/result', { state: { stepsToCheck: oneMoreStep(entry.stepsToCheck) } });
+          navigate('/result', {
+            state: flowEntry({ stepsToCheck: oneMoreStep(entry.stepsToCheck) }),
+          });
         }}
       >
         {/* One heading, in one place from the first render: it keeps the focus the

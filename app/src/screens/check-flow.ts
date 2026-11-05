@@ -5,7 +5,13 @@
 // entry instead of stacking a new one (back from the check would otherwise
 // return to a search already done). An entry opened directly, with no such
 // state, goes to the check by replacing itself.
+//
+// What was searched and confirmed says what she takes (a product can say an
+// HIV treatment): it never goes in the address, only in the entry's state,
+// tied to the visit and the session's epoch (entry-state.ts), so neither a
+// lock nor a reload brings it back.
 import type { EntryKind } from '@siapso/resolver';
+import { inSession, sessionState } from '../state/entry-state.js';
 
 export interface FlowState {
   /** How many entries back the check is. */
@@ -18,29 +24,38 @@ export interface FlowState {
   query?: string;
   /** The name the chosen candidate was found by (a local name is shown with its language). */
   matched?: string;
+  /** On the confirm entry, the id of the product or remedy chosen. */
+  id?: string;
 }
 
 /**
- * The flow state of the current history entry: each field kept only when it
- * has its type (a positive whole number of steps, strings), anything else on
- * the entry ignored; empty when there is none.
+ * The flow state of the current history entry, when left in this visit and
+ * epoch: each field kept only when it has its type (a positive whole number
+ * of steps, strings), anything else on the entry ignored; empty when there is
+ * none.
  */
 export function flowState(): FlowState {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null) return {};
-  const { stepsToCheck, query, matched } = state as Record<string, unknown>;
+  const { stepsToCheck, query, matched, id } = sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
   }
   if (typeof query === 'string') flow.query = query;
   if (typeof matched === 'string') flow.matched = matched;
+  if (typeof id === 'string' && id !== '') flow.id = id;
   return flow;
+}
+
+/** A flow state to leave on a new history entry (a field not known yet: undefined), marked with the visit and epoch. */
+export function flowEntry(flow: {
+  [K in keyof FlowState]?: FlowState[K] | undefined;
+}): Record<string, unknown> {
+  return inSession({ ...flow });
 }
 
 /** Keeps `patch` on the current entry's state, without a new entry. */
 export function keepOnEntry(patch: FlowState): void {
-  window.history.replaceState({ ...flowState(), ...patch }, '');
+  window.history.replaceState(flowEntry({ ...flowState(), ...patch }), '');
 }
 
 /** The steps to the check after one more entry, or undefined when the way is not known. */
@@ -52,8 +67,9 @@ export function searchPath(kind: EntryKind): string {
   return `/search/${kind}`;
 }
 
-export function confirmPath(kind: EntryKind, id: string): string {
-  return `/confirm/${kind}/${encodeURIComponent(id)}`;
+/** The confirm screen of a list; the id chosen goes in the entry's state (FlowState.id). */
+export function confirmPath(kind: EntryKind): string {
+  return `/confirm/${kind}`;
 }
 
 type Navigate = (to: string, options?: { replace?: boolean; state?: unknown }) => void;

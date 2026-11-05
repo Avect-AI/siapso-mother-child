@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: MIT
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { signsByGroup, SIGN_GROUPS } from '../domain/signs.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
+import { forgetStaleEntry, inVisit, visitState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
 import { CALL_PATH } from './Referral.js';
 
-/** The history entry's state as a record, or an empty one. */
-function entryState(): Record<string, unknown> {
-  const state: unknown = window.history.state;
-  return typeof state === 'object' && state !== null ? (state as Record<string, unknown>) : {};
-}
-
-/** The signs ticked on this history entry, so that back from who to call finds them ticked. */
+/**
+ * The signs ticked on this history entry, so that back from who to call finds
+ * them ticked (in this visit only: a quick exit forgets them).
+ */
 function keptSigns(): string[] {
-  const { dangerSigns } = entryState();
+  const { dangerSigns } = visitState();
   return Array.isArray(dangerSigns)
     ? dangerSigns.filter((sign): sign is string => typeof sign === 'string')
     : [];
@@ -44,10 +42,15 @@ export function Danger() {
   const [, navigate] = useLocation();
   const [chosen, setChosen] = useState<string[]>(keptSigns);
 
+  // Signs ticked in an earlier visit go from the history, not only unread.
+  useEffect(() => {
+    forgetStaleEntry();
+  }, []);
+
   const choose = (id: string, checked: boolean) => {
     const next = checked ? [...chosen.filter((s) => s !== id), id] : chosen.filter((s) => s !== id);
     setChosen(next);
-    window.history.replaceState({ ...entryState(), dangerSigns: next }, '');
+    window.history.replaceState(inVisit({ ...visitState(), dangerSigns: next }), '');
   };
 
   let list = null;
@@ -62,7 +65,9 @@ export function Danger() {
           onSubmit={(event) => {
             event.preventDefault();
             // The emergency action never refuses; the signs ticked go along for the call.
-            navigate(CALL_PATH, { state: { instruction: { standard: true }, signs: chosen } });
+            navigate(CALL_PATH, {
+              state: inVisit({ instruction: { standard: true }, signs: chosen }),
+            });
           }}
         >
           <SectionedCheckboxGroup

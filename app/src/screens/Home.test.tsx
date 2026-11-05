@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App.js';
 import { storeSettings } from '../data/db.js';
 import { AppProvider } from '../state/app-state.js';
+import { makeCode } from '../test/code-steps.js';
 import { breakIndexedDB } from '../test/idb.js';
 import { loaderOf, noPack, pendingPack, renderApp, shellPack } from '../test/render-app.js';
 
@@ -33,7 +34,7 @@ describe('Home', () => {
     await screen.findByRole('banner');
 
     const targets = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(targets.sort()).toEqual(['#/', '#/danger', '#/profile']);
+    expect(targets.sort()).toEqual(['#/', '#/danger', '#/profile', '#/settings']);
   });
 
   it('opens her one profile in woman mode', async () => {
@@ -44,13 +45,10 @@ describe('Home', () => {
     expect(profile).toHaveClass('button--secondary');
   });
 
-  it('opens a new profile in accompanied mode', async () => {
+  it('is the list of profiles in accompanied mode', async () => {
     await renderApp({ settings: { ...onboarded, mode: 'accompanied' } });
 
-    expect(await screen.findByRole('link', { name: 'Nouveau profil' })).toHaveAttribute(
-      'href',
-      '#/profile/new',
-    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Mon profil' })).toBeNull();
   });
 
@@ -59,7 +57,7 @@ describe('Home', () => {
     await storeSettings(onboarded);
     window.history.replaceState({ profileSaved: 'Awa' }, '', '#/');
     const { unmount } = render(
-      <AppProvider packLoader={loaderOf(shellPack())}>
+      <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
         <App />
       </AppProvider>,
     );
@@ -101,6 +99,7 @@ describe('Home', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Français' }));
     await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
+    await makeCode(user);
 
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     expect(

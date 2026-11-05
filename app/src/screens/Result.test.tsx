@@ -78,7 +78,7 @@ async function openResult({
   packLoader?: () => Promise<LoadedPack>;
 }) {
   const probe = probeCheck();
-  await renderApp({ settings, hash: '#/', packLoader, children: probe.element });
+  const view = await renderApp({ settings, hash: '#/', packLoader, children: probe.element });
   await screen.findByRole('heading', { level: 1 });
   act(() => {
     const check = probe.current();
@@ -91,7 +91,7 @@ async function openResult({
   });
   // The hash change arrives as an event: wait for the result screen itself.
   await screen.findByRole('heading', { level: 1, name: /^Résultat/ });
-  return { probe, user: userEvent.setup() };
+  return { probe, view, user: userEvent.setup() };
 }
 
 describe('Result: a danger sign and a remedy we know nothing about', () => {
@@ -204,6 +204,54 @@ describe('Result: several products in one finding', () => {
     ]);
     const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
     expect(rows).toHaveLength(1);
+  });
+});
+
+describe('Result: woman mode', () => {
+  const EFAVIRENZ: CheckedItem = { ref: { kind: 'product', id: 'efavirenz-generic' } };
+
+  it('hides the fact, evidence, sources, rule, reminders and contraception notes', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
+    const items = [ADVIL, EFAVIRENZ];
+    const contraception = pack.messages.fr['efavirenz-contraception']?.orientation ?? 'missing';
+    const hidden = (main: HTMLElement) => ({
+      reminders: within(main).queryByRole('heading', { name: 'Rappels' }) !== null,
+      notes: within(main).queryByRole('heading', { name: 'À noter aussi' }) !== null,
+      contraception: within(main).queryByText(contraception) !== null,
+      evidence: within(main).queryAllByText(/^Niveau de preuve/).length > 0,
+      rule: within(main).queryAllByText(/^Règles?\s:/).length > 0,
+      // Text matchers read the no-break space before the colon as a space.
+      sources: within(main).queryAllByText('Sources :').length > 0,
+      details: main.querySelector('.result-card__details') !== null,
+    });
+
+    const { view } = await openResult({ items, settings: accompanied });
+    await screen.findAllByRole('article');
+    // The same check in accompanied mode says every one of them.
+    expect(hidden(screen.getByRole('main'))).toEqual({
+      reminders: true,
+      notes: true,
+      contraception: true,
+      evidence: true,
+      rule: true,
+      sources: true,
+      details: true,
+    });
+    view.unmount();
+
+    await openResult({ items, settings: woman });
+    await screen.findAllByRole('article');
+    expect(hidden(screen.getByRole('main'))).toEqual({
+      reminders: false,
+      notes: false,
+      contraception: false,
+      evidence: false,
+      rule: false,
+      sources: false,
+      details: false,
+    });
+    // She still reads the level, the risk and who to show it to.
+    expect(document.querySelector('.result-card__orientation')).not.toBeNull();
   });
 });
 

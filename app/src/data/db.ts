@@ -3,9 +3,19 @@
 // is ever sent anywhere.
 import type { Pack } from '@siapso/engine';
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import {
+  claimTry,
+  isCodeVerifier,
+  isLockoutState,
+  type CodeClaim,
+  type CodeVerifier,
+  type LockoutState,
+} from '../domain/code.js';
 import type { HistoryEntry, Profile, ReferralContact, Settings } from '../domain/types.js';
 
 export type PackSlot = 'current' | 'previous';
+
+type SettingsKey = 'settings' | 'code' | 'lockout';
 
 /**
  * A validated pack and its fingerprint: the version and the sha256 of every
@@ -22,7 +32,11 @@ export type StoreOutcome = 'stored' | 'unchanged';
 interface SiapsoDb extends DBSchema {
   /** The active knowledge pack and the one before it. */
   pack: { key: PackSlot; value: StoredPack };
-  settings: { key: 'settings'; value: Settings };
+  /**
+   * The settings, the verifier of the code (never the code itself) and the
+   * wrong codes in a row with the end of their wait, each under its own key.
+   */
+  settings: { key: SettingsKey; value: Settings | CodeVerifier | LockoutState };
   profiles: { key: string; value: Profile };
   history: { key: string; value: HistoryEntry; indexes: { profileId: string } };
   /** The referral contacts saved on this phone, in their order, under one key (version 2). */
@@ -107,9 +121,67 @@ export async function storePack(pack: Pack, fingerprint: string): Promise<StoreO
 }
 
 export async function getStoredSettings(): Promise<Settings | undefined> {
-  return (await openAppDb()).get('settings', 'settings');
+  return (await (await openAppDb()).get('settings', 'settings')) as Settings | undefined;
 }
 
 export async function storeSettings(settings: Settings): Promise<void> {
   await (await openAppDb()).put('settings', settings, 'settings');
+}
+
+/** The verifier of the code, when one was made on this phone (a stored value that is not one: none). */
+export async function getStoredVerifier(): Promise<CodeVerifier | undefined> {
+  const stored = await (await openAppDb()).get('settings', 'code');
+  return isCodeVerifier(stored) ? stored : undefined;
+}
+
+export async function storeVerifier(verifier: CodeVerifier): Promise<void> {
+  const { salt, hash, iterations } = verifier;
+  await (await openAppDb()).put('settings', { salt, hash, iterations }, 'code');
+}
+
+/** The wrong codes in a row and their wait, kept across a reload (a stored value that is not one: none). */
+export async function getStoredLockout(): Promise<LockoutState | undefined> {
+  const stored = await (await openAppDb()).get('settings', 'lockout');
+  return isLockoutState(stored) ? stored : undefined;
+}
+
+export async function storeLockout(lockout: LockoutState): Promise<void> {
+  const { failures, lockedUntil } = lockout;
+  await (await openAppDb()).put('settings', { failures, lockedUntil }, 'lockout');
+}
+
+/**
+ * Claims one try at the code in a single readwrite transaction: the stored
+ * lockout is read, merged with what this tab knows, the wait checked, and
+ * the try counted before the code is worked out (domain/code.ts claimTry).
+ * Every tab of the app shares the count.
+ */
+export async function claimCodeTry(known: LockoutState, nowMs: number): Promise<CodeClaim> {
+  const tx = (await openAppDb()).transaction('settings', 'readwrite');
+  const stored = await tx.store.get('lockout');
+  const claim = claimTry(known, isLockoutState(stored) ? stored : undefined, nowMs);
+  const { failures, lockedUntil } = claim.after;
+  await tx.store.put({ failures, lockedUntil }, 'lockout');
+  await tx.done;
+  return claim;
+}
+
+/**
+ * The code is forgotten: the profiles, their history, the contacts saved on
+ * the phone, the verifier and the wrong codes are erased, in one
+ * transaction. The settings (language) and the knowledge pack stay.
+ */
+export async function eraseProfilesAndCode(): Promise<void> {
+  const tx = (await openAppDb()).transaction(
+    ['profiles', 'history', 'contacts', 'settings'],
+    'readwrite',
+  );
+  await Promise.all([
+    tx.objectStore('profiles').clear(),
+    tx.objectStore('history').clear(),
+    tx.objectStore('contacts').clear(),
+    tx.objectStore('settings').delete('code'),
+    tx.objectStore('settings').delete('lockout'),
+  ]);
+  await tx.done;
 }

@@ -101,21 +101,39 @@ describe('Check', () => {
     });
   });
 
-  it('is for the profile saved last in accompanied mode, and names it', async () => {
+  it('is for the woman chosen in the list in accompanied mode, and names her', async () => {
     await saveProfile(
       profileOf({ id: 'a', pseudonym: 'Awa', updatedAt: '2026-11-01T08:00:00.000Z' }),
     );
     await saveProfile(
       profileOf({ id: 'b', pseudonym: 'Fatou', updatedAt: '2026-11-03T08:00:00.000Z' }),
     );
-    const { probe } = await openCheckFromHome(accompanied);
+    const probe = probeCheck();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+
+    await user.click(within(list).getByRole('button', { name: 'Awa' }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
     ).toBeVisible();
     // Text matchers read the no-break space before the colon as a space.
-    expect(await screen.findByText('Profil : Fatou')).toBeVisible();
-    expect(probe.current().profileId).toBe('b');
+    expect(await screen.findByText('Profil : Awa')).toBeVisible();
+    expect(probe.current().profileId).toBe('a');
+  });
+
+  it('sends accompanied mode to the list when no woman is chosen, never to one by default', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await renderApp({ settings: accompanied, hash: '#/check', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
   });
 
   it('lists each item added with its substances and units, and removes one', async () => {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { makeCode, onboard } from './support.js';
 
 /** Runs axe on the page as it is and fails on any serious or critical violation. */
 async function expectNoSeriousViolation(page: Page) {
@@ -11,7 +12,7 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-test('Welcome has no serious accessibility violation, at both steps', async ({ page }) => {
+test('Welcome has no serious accessibility violation, at every step', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
   await expectNoSeriousViolation(page);
@@ -19,16 +20,17 @@ test('Welcome has no serious accessibility violation, at both steps', async ({ p
   await page.getByRole('button', { name: 'Français' }).click();
   await expect(page.getByRole('button', { name: "J'accompagne des femmes" })).toBeVisible();
   await expectNoSeriousViolation(page);
+
+  await page.getByRole('button', { name: /^J'accompagne/ }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+  await expectNoSeriousViolation(page);
 });
 
 test('Home has no serious accessibility violation, online and offline', async ({
   page,
   context,
 }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'English' }).click();
-  await page.getByRole('button', { name: 'I am pregnant or breastfeeding' }).click();
-  await expect(page.getByRole('button', { name: 'Look up a product' })).toBeVisible();
+  await onboard(page, 'woman', 'en');
   await expectNoSeriousViolation(page);
 
   await context.setOffline(true);
@@ -57,7 +59,9 @@ test.describe('at 360 px with text at 200 percent', () => {
     expect(overflow).toBeLessThanOrEqual(0);
   }
 
-  test('nothing scrolls sideways on Welcome, Home and the danger signs', async ({ page }) => {
+  test('nothing scrolls sideways on Welcome, the code, Home and the danger signs', async ({
+    page,
+  }) => {
     await page.goto('/');
     await largeText(page);
     await expectNoSidewaysScroll(page);
@@ -66,6 +70,10 @@ test.describe('at 360 px with text at 200 percent', () => {
     await expectNoSidewaysScroll(page);
 
     await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+    await expectNoSidewaysScroll(page);
+
+    await makeCode(page);
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     await expectNoSidewaysScroll(page);
 
@@ -76,10 +84,7 @@ test.describe('at 360 px with text at 200 percent', () => {
 });
 
 test('every control is at least 48 px in both directions', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page.getByRole('button', { name: /^J'accompagne des femmes/ }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await onboard(page, 'accompanied');
 
   const small = await page.evaluate(() =>
     [...document.querySelectorAll<HTMLElement>('a, button')]

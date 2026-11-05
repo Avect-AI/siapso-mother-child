@@ -329,9 +329,9 @@ describe('activeProfile', () => {
     expect(activeProfile([older, newer], 'woman', null)).toBe(older);
   });
 
-  it('is the profile of the check in accompanied mode, else the one saved last', () => {
+  it('is the profile chosen for the check in accompanied mode, never one picked by default', () => {
     expect(activeProfile([older, newer, edited], 'accompanied', 'b')).toBe(newer);
-    expect(activeProfile([older, newer, edited], 'accompanied', null)).toBe(edited);
-    expect(activeProfile([older, newer, edited], 'accompanied', 'gone')).toBe(edited);
+    expect(activeProfile([older, newer, edited], 'accompanied', null)).toBeUndefined();
+    expect(activeProfile([older, newer, edited], 'accompanied', 'gone')).toBeUndefined();
   });
 });

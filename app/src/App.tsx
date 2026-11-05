@@ -7,17 +7,25 @@ import { APP_NAME } from './config.js';
 import type { Mode } from './domain/types.js';
 import { I18nProvider, useT } from './i18n/index.js';
 import { Check } from './screens/Check.js';
+import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
 import { ContactEdit, Contacts, type ContactTarget } from './screens/Contacts.js';
 import { Danger } from './screens/Danger.js';
+import { FORGOT_PATH, ForgotCode } from './screens/ForgotCode.js';
 import { Home } from './screens/Home.js';
+import { Neutral, UNLOCK_PATH } from './screens/Neutral.js';
 import { ProfileEdit, type ProfileTarget } from './screens/ProfileEdit.js';
+import { Profiles } from './screens/Profiles.js';
 import { CALL_PATH, Referral } from './screens/Referral.js';
 import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
+import { Settings } from './screens/Settings.js';
 import { SignsNow } from './screens/SignsNow.js';
+import { Unlock } from './screens/Unlock.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
+import { intoThisEpoch } from './state/entry-state.js';
+import { useSession, type SessionStatus } from './state/session.js';
 import { Header } from './ui/Header.js';
 
 /**
@@ -27,14 +35,21 @@ import { Header } from './ui/Header.js';
 type CheckRoute =
   | { screen: 'check' }
   | { screen: 'search'; kind: EntryKind }
-  | { screen: 'confirm'; kind: EntryKind; id: string }
+  | { screen: 'confirm'; kind: EntryKind }
   | { screen: 'signs' }
   | { screen: 'result' };
 
 type Screen =
   | 'loading'
   | 'welcome'
+  | 'code'
+  | 'unlock'
+  | 'unlocked'
+  | 'forgot'
+  | 'neutral'
+  | 'settings'
   | 'home'
+  | 'profiles'
   | 'danger'
   | 'call'
   | 'contacts'
@@ -59,23 +74,26 @@ function decoded(part: string): string | null {
   }
 }
 
-/** /check, /search/<kind>, /confirm/<kind>/<id>, /signs and /result; null for any other route. */
+/**
+ * /check, /search/<kind>, /confirm/<kind>, /signs and /result; null for any
+ * other route. The product confirmed is never in the address (it can say what
+ * she is treated for): it is in the entry's state.
+ */
 function checkRoute(location: string): CheckRoute | null {
   if (location === '/check') return { screen: 'check' };
   if (location === '/signs') return { screen: 'signs' };
   if (location === '/result') return { screen: 'result' };
   const search = /^\/search\/(product|plant)$/.exec(location);
   if (search?.[1]) return { screen: 'search', kind: search[1] as EntryKind };
-  const confirm = /^\/confirm\/(product|plant)\/([^/]+)$/.exec(location);
-  const id = confirm?.[2] === undefined ? null : decoded(confirm[2]);
-  if (confirm?.[1] && id) return { screen: 'confirm', kind: confirm[1] as EntryKind, id };
+  const confirm = /^\/confirm\/(product|plant)$/.exec(location);
+  if (confirm?.[1]) return { screen: 'confirm', kind: confirm[1] as EntryKind };
   return null;
 }
 
 /**
  * The profile a route opens. A woman has one profile: /profile and
  * /profile/new both open hers. In accompanied mode both open a new one (the
- * list of profiles comes with the codes). /profile/<id> opens that profile.
+ * list of profiles is the start). /profile/<id> opens that profile.
  */
 function profileTarget(location: string, mode: Mode | null): ProfileTarget | null {
   if (location === '/profile' || location === '/profile/new') {
@@ -87,15 +105,21 @@ function profileTarget(location: string, mode: Mode | null): ProfileTarget | nul
 
 /**
  * The screen for a hash route. Danger signs and who to call open from
- * anywhere and at once, even before the stored settings are read or the
- * welcome questions answered; anything else waits for the settings
- * ('loading' shows nothing, a few milliseconds normally), then for the
- * welcome answers. The contacts are for accompanied mode. Unknown routes get
- * null and are sent home.
+ * anywhere and at once, even before the stored settings are read, the
+ * welcome questions answered or the code given; anything else waits for the
+ * settings ('loading' shows nothing, a few milliseconds normally), then for
+ * the welcome answers, then for the stored code. The settings show the
+ * language at any time. Every other screen shows something about a profile
+ * and opens only with the code: while locked, the code screen takes its
+ * place (at start or after an auto-lock, so the code brings the same screen
+ * back), or the neutral screen after a quick exit. In accompanied mode the
+ * start is the list of profiles; the contacts are for accompanied mode.
+ * Unknown routes get null and are sent home.
  */
 function screenFor(
   location: string,
   settings: { ready: boolean; onboarded: boolean; mode: Mode | null },
+  session: { status: SessionStatus; exited: boolean },
   profile: ProfileTarget | null,
   check: CheckRoute | null,
   contact: 'list' | ContactTarget | null,
@@ -104,13 +128,70 @@ function screenFor(
   if (location === CALL_PATH) return 'call';
   if (!settings.ready) return 'loading';
   if (!settings.onboarded) return 'welcome';
+  if (location === '/settings') return 'settings';
+  if (session.status === 'loading') return 'loading';
+  // Onboarded before codes existed: the code is made first.
+  if (session.status === 'new') return 'code';
+  // A forgotten code: only behind the lock (once open, there is nothing to forget).
+  if (location === FORGOT_PATH) return session.status === 'locked' ? 'forgot' : null;
+  if (session.status === 'locked') {
+    if (location === UNLOCK_PATH) return 'unlock';
+    return session.exited ? 'neutral' : 'unlock';
+  }
+  if (location === UNLOCK_PATH) return 'unlocked';
   if (profile) return 'profile';
   if (check) return check.screen;
   if (contact !== null) {
     if (settings.mode !== 'accompanied') return null;
     return contact === 'list' ? 'contacts' : 'contact';
   }
-  return location === '/' ? 'home' : null;
+  if (location !== '/') return null;
+  return settings.mode === 'accompanied' ? 'profiles' : 'home';
+}
+
+/** The route in the address now (the hash), as wouter reads it. */
+function addressNow(): string {
+  return '/' + window.location.hash.replace(/^#?\/?/, '');
+}
+
+/**
+ * The session locked on a screen: its route and state go to memory (the
+ * session holds them), and the code screen takes the history entry's place
+ * under a neutral address, so nothing in the address or the entry says what
+ * was on screen, even after a reload.
+ */
+function LockAway({ location }: { location: string }) {
+  const { holdScreen } = useSession();
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    // Once: after it, the address is the code screen's (effects may run twice).
+    if (addressNow() !== location) return;
+    holdScreen(location, window.history.state);
+    navigate(UNLOCK_PATH, { replace: true });
+  }, [holdScreen, location, navigate]);
+  return null;
+}
+
+/**
+ * The code has opened the session on the code screen: back to the screen
+ * that asked for it (the neutral screen, who to call), or to the screen the
+ * session locked on (held in memory, moved to this epoch), or to the start.
+ */
+function AfterUnlock() {
+  const { takeHeldScreen } = useSession();
+  const [, navigate] = useLocation();
+  const done = useRef(false);
+  useEffect(() => {
+    if (done.current) return;
+    done.current = true;
+    const held = takeHeldScreen();
+    const state: unknown = window.history.state;
+    const back = typeof state === 'object' && state !== null && 'back' in state && state.back;
+    if (back === true) window.history.back();
+    else if (held) navigate(held.path, { replace: true, state: intoThisEpoch(held.state) });
+    else navigate('/', { replace: true });
+  }, [navigate, takeHeldScreen]);
+  return null;
 }
 
 /**
@@ -131,7 +212,7 @@ function screenKey(
   }
   if (screen === 'search' && check?.screen === 'search') return `search:${check.kind}`;
   if (screen === 'confirm' && check?.screen === 'confirm') {
-    return `confirm:${check.kind}:${check.id}`;
+    return `confirm:${check.kind}`;
   }
   return screen;
 }
@@ -139,6 +220,7 @@ function screenKey(
 function Screens() {
   const [location] = useLocation();
   const { settings, settingsReady, online } = useApp();
+  const session = useSession();
   const t = useT();
   const profile = profileTarget(location, settings.mode);
   const check = checkRoute(location);
@@ -146,6 +228,7 @@ function Screens() {
   const screen = screenFor(
     location,
     { ready: settingsReady, onboarded: settings.onboarded, mode: settings.mode },
+    session,
     profile,
     check,
     contact,
@@ -166,6 +249,11 @@ function Screens() {
 
   if (screen === null) return <Redirect to="/" replace />;
   if (screen === 'loading') return null;
+  if (screen === 'unlocked') return <AfterUnlock />;
+  if (screen === 'unlock' && location !== UNLOCK_PATH) return <LockAway location={location} />;
+  // After a quick exit, Back lands on entries of screens with profile data:
+  // each is replaced by the neutral one as it is reached.
+  if (screen === 'neutral' && location !== '/') return <Redirect to="/" replace />;
   return (
     <>
       {screen === 'welcome' ? null : (
@@ -174,11 +262,28 @@ function Screens() {
           dangerLabel={t('header.danger')}
           offlineLabel={t('header.offline')}
           online={online}
-          current={screen === 'home' || screen === 'danger' ? screen : null}
+          current={
+            screen === 'home' || screen === 'profiles'
+              ? 'home'
+              : screen === 'danger'
+                ? 'danger'
+                : null
+          }
+          quickExit={
+            session.unlocked && settings.onboarded
+              ? { label: t('header.quickExit'), onExit: session.quickExit }
+              : null
+          }
         />
       )}
       {screen === 'welcome' ? <Welcome /> : null}
+      {screen === 'code' ? <CodeSetup mode={session.mode} /> : null}
+      {screen === 'unlock' ? <Unlock /> : null}
+      {screen === 'forgot' ? <ForgotCode /> : null}
+      {screen === 'neutral' ? <Neutral /> : null}
+      {screen === 'settings' ? <Settings /> : null}
       {screen === 'home' ? <Home /> : null}
+      {screen === 'profiles' ? <Profiles /> : null}
       {screen === 'danger' ? <Danger /> : null}
       {screen === 'call' ? <Referral /> : null}
       {screen === 'contacts' ? <Contacts /> : null}
@@ -191,7 +296,7 @@ function Screens() {
         <Search key={key} kind={check.kind} />
       ) : null}
       {screen === 'confirm' && check?.screen === 'confirm' ? (
-        <Confirm key={key} kind={check.kind} id={check.id} />
+        <Confirm key={key} kind={check.kind} />
       ) : null}
       {screen === 'signs' ? <SignsNow /> : null}
       {screen === 'result' ? <Result /> : null}

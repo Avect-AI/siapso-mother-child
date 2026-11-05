@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { onboard, unlock } from './support.js';
 
 /**
  * Taps the way a thumb does on the mobile project (clicks on desktop) and
@@ -23,15 +24,6 @@ function stepCounter(testInfo: TestInfo) {
       await field.pressSequentially(text);
     },
   };
-}
-
-async function onboard(page: Page, mode: 'woman' | 'accompanied') {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page
-    .getByRole('button', { name: mode === 'woman' ? /^Je suis enceinte/ : /^J'accompagne/ })
-    .click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 }
 
 function answer(page: Page, question: string | RegExp, label: string) {
@@ -76,6 +68,7 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 
   await page.reload();
+  await unlock(page);
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   await expect(page.getByText(/^Profil enregistré/)).toBeHidden();
   await page.getByRole('link', { name: 'Mon profil' }).click();
@@ -92,7 +85,7 @@ test('an accompanying person creates a profile from a last period date and a bre
   page,
 }) => {
   await onboard(page, 'accompanied');
-  await page.getByRole('link', { name: 'Nouveau profil' }).click();
+  await page.getByRole('button', { name: 'Ajouter un profil' }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Nouveau profil' })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Femme 1');
@@ -164,7 +157,7 @@ test('the profile screen has no serious accessibility violation, empty, with err
   page,
 }) => {
   await onboard(page, 'accompanied');
-  await page.getByRole('link', { name: 'Nouveau profil' }).click();
+  await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await expect(page.getByRole('button', { name: 'Enregistrer' })).toBeVisible();
   await expectNoSeriousViolation(page);
 
@@ -188,7 +181,7 @@ test.describe('at 360 px with text at 200 percent', () => {
     page,
   }) => {
     await onboard(page, 'accompanied');
-    await page.getByRole('link', { name: 'Nouveau profil' }).click();
+    await page.getByRole('button', { name: 'Ajouter un profil' }).click();
     await answer(page, /^Enceinte/, 'Oui').click();
     await answer(page, 'Terme de la grossesse', 'Date des dernières règles').click();
     await answer(page, /^Allaite/, 'Oui').click();

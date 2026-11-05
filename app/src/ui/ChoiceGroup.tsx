@@ -78,6 +78,8 @@ export interface RadioOption<T extends string> {
   label: string;
   /** An answer of its own after the list ("I do not know"), set apart by a hairline. */
   apart?: boolean;
+  /** The language of the label, when it is not the page's (a language named in itself). */
+  lang?: string;
 }
 
 /** One answer of several. `row` sets short answers (yes, no) side by side when they fit. */
@@ -126,7 +128,7 @@ export function RadioGroup<T extends string>({
                     onChange(option.value);
                   }}
                 />
-                <span>{option.label}</span>
+                <span lang={option.lang}>{option.label}</span>
               </label>
             );
           })}

@@ -2,7 +2,7 @@
 import type { CheckedItem, Pack } from '@siapso/engine';
 import type { EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
-import { useLocation } from 'wouter';
+import { Redirect, useLocation } from 'wouter';
 import {
   candidateDisplayOf,
   candidateOf,
@@ -439,13 +439,18 @@ function ConfirmForm({
  * item to the check; a product already listed is not listed twice: "yes" then
  * changes its units per day, or goes back to the list. "No" goes back to the
  * search, with what was typed.
+ *
+ * The product is in the entry's state, never in the address (it can say what
+ * she is treated for); an entry without it in this session (an old link, a
+ * reload after a lock) goes to the check.
  */
-export function Confirm({ kind, id }: { kind: EntryKind; id: string }) {
+export function Confirm({ kind }: { kind: EntryKind }) {
   const t = useT();
   const { pack, packError } = useApp();
   const [, navigate] = useLocation();
-  // Read once: the state of this history entry (the search behind it, the way back).
+  // Read once: the state of this history entry (the product, the search behind it, the way back).
   const [entry] = useState(flowState);
+  const id = entry.id;
 
   const searchAgain = () => {
     // Opened from the search screen (it leaves the query): back to that entry, with the text.
@@ -453,6 +458,7 @@ export function Confirm({ kind, id }: { kind: EntryKind; id: string }) {
     else navigate(searchPath(kind), { replace: true });
   };
 
+  if (id === undefined) return <Redirect to="/check" replace />;
   const candidate = pack === null ? undefined : candidateOf(pack, { kind, id });
   return (
     <main className="screen confirm">

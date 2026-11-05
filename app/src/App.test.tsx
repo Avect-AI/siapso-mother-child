@@ -47,7 +47,7 @@ describe('App', () => {
     await storeSettings(onboarded);
     window.location.hash = '#/status';
     render(
-      <AppProvider packLoader={loaderOf(shellPack())}>
+      <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
         <App>
           <Slot />
         </App>

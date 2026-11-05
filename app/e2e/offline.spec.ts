@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { expect, test, type Page } from '@playwright/test';
+import { onboard, unlock } from './support.js';
 
 /**
  * Waits until the service worker is active and controls the page. A first
@@ -76,10 +77,7 @@ test('after one load the precache alone starts the app, Home and the danger sign
   page,
   context,
 }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page.getByRole('button', { name: "Je suis enceinte ou j'allaite" }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await onboard(page, 'woman');
   await waitForServiceWorkerControl(page);
 
   // Take the stored pack away: offline, only the precache can provide it now.
@@ -94,6 +92,8 @@ test('after one load the precache alone starts the app, Home and the danger sign
   await context.setOffline(true);
   await page.reload();
 
+  // A reload locks: the code, offline too.
+  await unlock(page);
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
   await expect(page.getByText(/Les informations sur les produits/)).toHaveCount(0);

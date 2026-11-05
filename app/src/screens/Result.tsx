@@ -17,6 +17,7 @@ import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
+import { inSession } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
 import { LevelIcon } from '../ui/LevelIcon.js';
@@ -378,7 +379,9 @@ export function Result() {
               onAction={() => {
                 // Who to call says the same instruction (which message says it, so it
                 // is worded in the language of the moment), and the signs to say.
-                navigate(CALL_PATH, { state: { instruction: ready.headlineSource, signs } });
+                navigate(CALL_PATH, {
+                  state: inSession({ instruction: ready.headlineSource, signs }),
+                });
               }}
             />
           ) : null}

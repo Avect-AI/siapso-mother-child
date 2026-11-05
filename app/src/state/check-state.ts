@@ -309,16 +309,12 @@ export function useCheck(): CheckState {
   return check;
 }
 
-function byLastSaved(a: Profile, b: Profile): number {
-  if (a.updatedAt !== b.updatedAt) return a.updatedAt > b.updatedAt ? -1 : 1;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
-
 /**
  * The profile a new look at a product is for. In woman mode, hers (the first
  * one, as the profile screen opens it). In accompanied mode, the profile of the
- * check in progress, else the profile saved last (the list of profiles comes
- * with Task 14). Undefined when there is no profile yet.
+ * check in progress, as chosen in the list of profiles: never one picked by
+ * default, so a result is never for the wrong woman. Undefined when there is
+ * no profile yet, or none chosen.
  */
 export function activeProfile(
   profiles: readonly Profile[],
@@ -326,7 +322,5 @@ export function activeProfile(
   checkProfileId: string | null,
 ): Profile | undefined {
   if (mode === 'woman') return profiles[0];
-  return (
-    profiles.find((profile) => profile.id === checkProfileId) ?? [...profiles].sort(byLastSaved)[0]
-  );
+  return profiles.find((profile) => profile.id === checkProfileId);
 }

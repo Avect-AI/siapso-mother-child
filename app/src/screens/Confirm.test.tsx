@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
 import { contextFromProfile } from '../domain/context.js';
 import type { Settings } from '../domain/types.js';
+import { inSession } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp } from '../test/render-app.js';
@@ -364,7 +365,8 @@ describe('Confirm: opened directly', () => {
     const probe = probeCheck();
     await renderApp({
       settings: woman,
-      hash: '#/confirm/product/paracetamol-generic',
+      hash: '#/confirm/product',
+      entryState: inSession({ id: 'paracetamol-generic' }),
       packLoader: loaderOf(pack),
       children: probe.element,
     });
@@ -378,10 +380,28 @@ describe('Confirm: opened directly', () => {
     expect(probe.current().items).toEqual([]);
   });
 
+  it('keeps the product out of the address, and goes to the check when the entry has none', async () => {
+    await saveProfile(profileOf());
+    // An old link, a reload after a lock: the product the entry held is no longer read.
+    await renderApp({
+      settings: woman,
+      hash: '#/confirm/product',
+      packLoader: loaderOf(pack),
+      entryState: { id: 'efavirenz-generic', visit: 'a visit before', epoch: 'an epoch before' },
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(window.location.href).not.toContain('efavirenz');
+    expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
+  });
+
   it('says so for a product this phone does not have', async () => {
     await renderApp({
       settings: woman,
-      hash: '#/confirm/product/not-in-the-pack',
+      hash: '#/confirm/product',
+      entryState: inSession({ id: 'not-in-the-pack' }),
       packLoader: loaderOf(pack),
     });
 
@@ -396,7 +416,8 @@ describe('Confirm: opened directly', () => {
     const probe = probeCheck();
     await renderApp({
       settings: woman,
-      hash: '#/confirm/plant/kinkeliba',
+      hash: '#/confirm/plant',
+      entryState: inSession({ id: 'kinkeliba' }),
       packLoader: loaderOf(pack),
       children: probe.element,
     });

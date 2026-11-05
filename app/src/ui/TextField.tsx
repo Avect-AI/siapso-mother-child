@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useId, type InputHTMLAttributes } from 'react';
+import { useId, type InputHTMLAttributes, type Ref } from 'react';
 import { WarningMark } from './WarningMark.js';
 
 export type TextFieldProps = {
@@ -7,6 +7,8 @@ export type TextFieldProps = {
   hint?: string | undefined;
   /** The problem with the value, or undefined when there is none. */
   error?: string | undefined;
+  /** The input itself, to give it the focus. */
+  ref?: Ref<HTMLInputElement> | undefined;
 } & InputHTMLAttributes<HTMLInputElement>;
 
 /**
@@ -21,6 +23,7 @@ export function TextField({
   id,
   className,
   'aria-describedby': describedByProp,
+  ref,
   ...rest
 }: TextFieldProps) {
   const autoId = useId();
@@ -52,6 +55,7 @@ export function TextField({
       ) : null}
       <input
         {...rest}
+        ref={ref}
         id={inputId}
         className="text-field__input"
         aria-invalid={error ? true : undefined}

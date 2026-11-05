@@ -182,7 +182,7 @@ a {
     transform var(--duration-press) var(--ease-out);
 }
 
-.button:active:not(:disabled) {
+.button:active:not(:disabled, [aria-disabled='true']) {
   transform: translateY(1px);
 }
 
@@ -197,7 +197,7 @@ a {
  * whatever was tapped last and fakes a state that does not exist.
  */
 @media (hover: hover) {
-  .button--primary:hover:not(:disabled) {
+  .button--primary:hover:not(:disabled, [aria-disabled='true']) {
     background: var(--color-primary-hover);
   }
 }
@@ -229,8 +229,13 @@ a {
   }
 }
 
-/* Disabled reads as absent, never as the grey "unknown" level: dashed, muted, unfilled. */
-.button:disabled {
+/*
+ * Disabled reads as absent, never as the grey "unknown" level: dashed, muted,
+ * unfilled. aria-disabled looks the same and keeps the focus where it is
+ * (the code screen's "Ouvrir" during a wait).
+ */
+.button:disabled,
+.button[aria-disabled='true'] {
   background: transparent;
   color: var(--color-text-muted);
   border-color: var(--color-border);
@@ -416,16 +421,17 @@ a {
 }
 
 /*
- * The words of an answer are never hyphenated (an answer can hold a product
- * name) and never cut inside a word: in a list narrow for the text size (a
- * 360 px phone at 200 percent text) they take at most a tenth of the list's
- * width, so a long word such as "l'accouchement" keeps its letters together.
- * At ordinary sizes this changes nothing; the user's text size still scales
- * them. overflow-wrap stays a last resort against a sideways scroll.
+ * The words of an answer keep the user's text size, whatever it is, and are
+ * never hyphenated (an answer can hold a product name). They break between
+ * words only: in a list narrow for the text size, the mark goes above the
+ * words and the side padding tightens (the container query below), so each
+ * line has the list's whole width and a long word such as "l'accouchement"
+ * fits on one line at 200 percent on a 360 px phone. overflow-wrap (on
+ * .option) cuts a word only when it is wider than the list on its own: the
+ * last resort against a sideways scroll.
  */
 .option > span {
   min-width: 0;
-  font-size: min(1em, 10cqi);
   hyphens: manual;
 }
 
@@ -530,12 +536,13 @@ a {
 /*
  * Large text on a narrow phone: when the answers are narrower than 13rem
  * (that is, past about 160 percent text at 360 px), the mark goes above the
- * words and the side padding tightens, so a long word such as
- * "Drépanocytose" keeps the full width instead of breaking in the middle.
+ * words and the side padding tightens to the smallest step, so a long word
+ * such as "Drépanocytose" or "l'accouchement" keeps the full width instead
+ * of breaking in the middle.
  */
 @container (max-width: 13rem) {
   .option {
-    --option-pad-inline: var(--space-2);
+    --option-pad-inline: var(--space-1);
 
     flex-wrap: wrap;
     row-gap: var(--space-2);
@@ -820,7 +827,10 @@ a {
 /*
  * Header: the ultramarine shell band. The app name leads home; the danger
  * signs shortcut keeps its place at the end of the row (it drops under the
- * name only when large text leaves no room). The offline badge sits under them.
+ * name only when large text leaves no room), locked or not. Once the code is
+ * given the quick exit follows it, at the end of the band: beside it on a wide
+ * screen, at the end of a row of its own on a phone. The offline badge sits
+ * under them.
  */
 
 .header {
@@ -831,10 +841,12 @@ a {
   color: var(--color-primary-text);
 }
 
+/* Every row of the band ends at its end: the name's margin takes the room left on the first. */
 .header__bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2) var(--space-3);
 }
 
@@ -843,6 +855,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  margin-inline-end: auto;
   min-height: var(--touch-target);
   color: inherit;
   font-size: var(--font-size-title);
@@ -859,10 +872,34 @@ a {
 
 .header__danger {
   gap: var(--space-1);
-  margin-inline-start: auto;
   padding-inline: var(--space-4) var(--space-3);
   border-color: var(--color-surface);
   text-decoration: none;
+}
+
+/*
+ * The quick exit: outlined in white on the band with a close mark, so it
+ * reads as leaving and never as one more page of the app; one tap, no
+ * question asked.
+ */
+.quick-exit {
+  gap: var(--space-2);
+  padding-inline: var(--space-3) var(--space-4);
+  border-color: var(--color-primary-text);
+  background: transparent;
+  color: var(--color-primary-text);
+}
+
+@media (hover: hover) {
+  .quick-exit:hover {
+    background: var(--color-primary-hover);
+  }
+}
+
+.quick-exit__mark {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 /* On the danger signs screen the shortcut shows where you are: outlined, not filled. */
@@ -1041,6 +1078,220 @@ a {
 
 .home__saved {
   font-weight: var(--font-weight-strong);
+}
+
+/* The settings link and the closing line, low on the screen. */
+.home__closing {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+/* A quiet link on its own line: its words line up with the column. */
+.home__settings,
+.profiles__settings,
+.code-form__aside {
+  justify-self: start;
+  align-self: flex-start;
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+/*
+ * The code: the field, masked, its digits spaced so each one reads apart,
+ * then large keys laid out as on a phone (0 under 8, erase beside it), then
+ * the one primary action. A size container: when the keys are narrow for the
+ * text size, the erase key takes a row of its own, so its word never breaks.
+ * The field is a password field, so assistive technologies never read the
+ * digits; as a one-time code with no name, no browser offers to keep it.
+ */
+.code-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.code-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  container-type: inline-size;
+}
+
+.code-input .text-field__input {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: 0.3em;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+/* A key is an answer, not an action: white with the control contour, ink digits, heavy. */
+.keypad__key {
+  min-width: var(--touch-target);
+  min-height: 3.5rem;
+  padding: var(--space-1);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-headline);
+  font-weight: var(--font-weight-heading);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-press) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .keypad__key:hover:not([aria-disabled='true']) {
+    border-color: var(--color-primary);
+  }
+}
+
+.keypad__key:active:not([aria-disabled='true']) {
+  background: var(--color-primary-tint);
+  transform: translateY(1px);
+}
+
+.keypad__erase {
+  font-size: var(--font-size-body);
+  overflow-wrap: break-word;
+}
+
+/*
+ * Nothing to erase: dashed and muted, as every disabled control, but
+ * aria-disabled rather than disabled, so a tap never drops the focus.
+ */
+.keypad__key[aria-disabled='true'] {
+  border-style: dashed;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+/* The digits keep their places as on a phone; the erase key takes a row of its own. */
+@container (max-width: 18rem) {
+  .keypad__erase {
+    grid-column: 1 / -1;
+  }
+}
+
+.code-form__submit {
+  width: 100%;
+}
+
+/* "J'ai oublié le code" and "Réglages", quiet, one under the other. */
+.code-form__asides {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+}
+
+/*
+ * Forgotten code: the explanation, the word to type, then the actions, the
+ * way back to the code under the primary one; never red, it is not a danger.
+ */
+.forgot__intro,
+.forgot__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+.forgot__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.code-setup__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * Neutral: what the quick exit leaves. The app's mark and neutral name in the
+ * middle of the screen, as on the welcome, and "Ouvrir" low, in thumb reach.
+ */
+.neutral__identity {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-block: auto;
+}
+
+.neutral__open {
+  width: 100%;
+}
+
+/*
+ * Profiles: the women followed, one pseudonym a row (a whole-width answer to
+ * tap), the way to her profile at the end of the row, then the one primary
+ * action.
+ */
+.profiles__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.profiles__empty {
+  color: var(--color-text-muted);
+}
+
+.profiles__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profiles__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+}
+
+.profiles__open {
+  flex: 1 1 12rem;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: var(--touch-target-large);
+  text-align: start;
+  overflow-wrap: break-word;
+}
+
+/* At the end of the row, and at the end of its own line when large text wraps it. */
+.profiles__edit {
+  margin-inline: auto calc(-1 * var(--space-3));
+}
+
+.profiles__add,
+.settings__done {
+  width: 100%;
+  margin-top: auto;
+}
+
+/* Settings: what the last choice did, in words; out of the layout while silent. */
+.settings__status {
+  font-weight: var(--font-weight-strong);
+}
+
+.settings__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 /*
@@ -1286,6 +1537,13 @@ html:has(.sticky-action) {
 .referral__manage {
   justify-self: stretch;
   text-decoration: none;
+}
+
+/* Before the code: what is not shown, and the way to show it. */
+.referral__locked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 .referral__national {
@@ -1857,11 +2115,13 @@ html:has(.sticky-action) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .button {
+  .button,
+  .keypad__key {
     transition: none;
   }
 
-  .button:active:not(:disabled) {
+  .button:active:not(:disabled),
+  .keypad__key:active:not([aria-disabled='true']) {
     transform: none;
   }
 }

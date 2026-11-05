@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { onboard, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -14,14 +15,16 @@ function answer(page: Page, question: string | RegExp, label: string) {
   return page.getByRole('group', { name: question }).getByText(label, { exact: true });
 }
 
-/** Welcome in French, a mode, then the profile: pregnant at `weeks` weeks, no situation. */
-async function pregnantAt(page: Page, weeks: number, mode: 'woman' | 'accompanied' = 'woman') {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
-  await page
-    .getByRole('button', { name: mode === 'woman' ? /^Je suis enceinte/ : /^J'accompagne/ })
-    .click();
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+/**
+ * Welcome in French, a mode and the code, then the profile: pregnant at
+ * `weeks` weeks, no situation. Woman mode goes from Home, accompanied mode
+ * adds the profile in the list, then opens it.
+ */
+async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
+  await onboard(page, mode);
+  await (mode === 'woman'
+    ? page.getByRole('button', { name: 'Regarder un produit' }).click()
+    : page.getByRole('button', { name: 'Ajouter un profil' }).click());
   await expect(page.getByRole('heading', { level: 1, name: /profil$/i })).toBeVisible();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
@@ -29,6 +32,12 @@ async function pregnantAt(page: Page, weeks: number, mode: 'woman' | 'accompanie
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
+  if (mode === 'accompanied') {
+    await page
+      .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
+      .getByRole('button', { name: 'Femme 1' })
+      .click();
+  }
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }
 

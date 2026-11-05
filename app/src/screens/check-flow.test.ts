@@ -1,22 +1,31 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from 'vitest';
-import { flowState, keepOnEntry, oneMoreStep } from './check-flow.js';
+import { inSession, newEpoch } from '../state/entry-state.js';
+import { confirmPath, flowState, keepOnEntry, oneMoreStep } from './check-flow.js';
 
 describe('flowState', () => {
-  it('reads the steps to the check, the query and the matched name of the entry', () => {
-    window.history.replaceState({ stepsToCheck: 2, query: 'doliprane', matched: 'DOLIPRANE' }, '');
-    expect(flowState()).toEqual({ stepsToCheck: 2, query: 'doliprane', matched: 'DOLIPRANE' });
+  it('reads the steps to the check, the query, the matched name and the id of the entry', () => {
+    window.history.replaceState(
+      inSession({ stepsToCheck: 2, query: 'doliprane', matched: 'DOLIPRANE', id: 'p' }),
+      '',
+    );
+    expect(flowState()).toEqual({
+      stepsToCheck: 2,
+      query: 'doliprane',
+      matched: 'DOLIPRANE',
+      id: 'p',
+    });
   });
 
   it('ignores values of the wrong type and anything else left on the entry', () => {
     window.history.replaceState(
-      { stepsToCheck: '2', query: 3, matched: null, profileSaved: 'Awa', next: '/check' },
+      inSession({ stepsToCheck: '2', query: 3, matched: null, id: '', profileSaved: 'Awa' }),
       '',
     );
     expect(flowState()).toEqual({});
-    window.history.replaceState({ stepsToCheck: 0 }, '');
+    window.history.replaceState(inSession({ stepsToCheck: 0 }), '');
     expect(flowState()).toEqual({});
-    window.history.replaceState({ stepsToCheck: 1.5 }, '');
+    window.history.replaceState(inSession({ stepsToCheck: 1.5 }), '');
     expect(flowState()).toEqual({});
     window.history.replaceState('text', '');
     expect(flowState()).toEqual({});
@@ -24,10 +33,22 @@ describe('flowState', () => {
     expect(flowState()).toEqual({});
   });
 
+  it('reads nothing left in another visit or before a lock', () => {
+    window.history.replaceState({ stepsToCheck: 2, query: 'efavirenz' }, '');
+    expect(flowState()).toEqual({});
+    window.history.replaceState(inSession({ query: 'efavirenz' }), '');
+    newEpoch();
+    expect(flowState()).toEqual({});
+  });
+
   it('keeps a patch on the entry with what was valid there', () => {
-    window.history.replaceState({ stepsToCheck: 1, query: 'old' }, '');
+    window.history.replaceState(inSession({ stepsToCheck: 1, query: 'old' }), '');
     keepOnEntry({ query: 'new' });
     expect(flowState()).toEqual({ stepsToCheck: 1, query: 'new' });
+  });
+
+  it('never puts the product in the address', () => {
+    expect(confirmPath('product')).toBe('/confirm/product');
   });
 });
 

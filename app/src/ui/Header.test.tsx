@@ -1,9 +1,15 @@
 // SPDX-License-Identifier: MIT
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { Header } from './Header.js';
 
-const labels = { appName: 'Carnet', dangerLabel: 'Signes de danger', offlineLabel: 'Hors ligne' };
+const labels = {
+  appName: 'Carnet',
+  dangerLabel: 'Signes de danger',
+  offlineLabel: 'Hors ligne',
+  quickExit: null,
+};
 
 describe('Header', () => {
   it('links the app name home and the danger signs to #/danger', () => {
@@ -44,5 +50,18 @@ describe('Header', () => {
       'aria-current',
       'page',
     );
+  });
+
+  it('shows the quick exit after the danger shortcut only when given, one tap away', async () => {
+    const onExit = vi.fn();
+    const { rerender } = render(<Header {...labels} online current="home" />);
+    expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
+
+    rerender(<Header {...labels} online current="home" quickExit={{ label: 'Quitter', onExit }} />);
+    const exit = within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' });
+    const danger = screen.getByRole('link', { name: 'Signes de danger' });
+    expect(danger.compareDocumentPosition(exit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.setup().click(exit);
+    expect(onExit).toHaveBeenCalledOnce();
   });
 });

@@ -2,7 +2,9 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { getStoredSettings } from '../data/db.js';
+import { getStoredSettings, getStoredVerifier } from '../data/db.js';
+import { checkCode } from '../domain/code.js';
+import { makeCode } from '../test/code-steps.js';
 import { hangIndexedDB } from '../test/idb.js';
 import { renderApp } from '../test/render-app.js';
 
@@ -19,23 +21,37 @@ describe('Welcome', () => {
     ).toBeVisible();
   });
 
-  it('stores English and accompanied mode, then shows Home in English', async () => {
+  it('stores English and accompanied mode, makes her code, then shows the profiles in English', async () => {
     const user = userEvent.setup();
     await renderApp();
 
     await user.click(await screen.findByRole('button', { name: 'English' }));
     await user.click(await screen.findByRole('button', { name: /^I support women/ }));
-
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose a code' })).toHaveFocus();
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'A medicine or a remedy?' }),
+      screen.getByText('This code opens the profiles of the women you support.'),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Look up a product' })).toBeVisible();
+    // Not onboarded until the code is made.
+    expect(await getStoredSettings()).toEqual({
+      lang: 'en',
+      mode: 'accompanied',
+      onboarded: false,
+    });
+    await user.type(screen.getByLabelText('Code'), '135790');
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    await user.type(screen.getByLabelText('The same code'), '135790');
+    await user.click(screen.getByRole('button', { name: 'Save the code' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profiles' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add a profile' })).toBeVisible();
     expect(document.documentElement.lang).toBe('en');
     expect(await getStoredSettings()).toEqual({
       lang: 'en',
       mode: 'accompanied',
       onboarded: true,
     });
+    const verifier = await getStoredVerifier();
+    expect(verifier === undefined ? false : await checkCode('135790', verifier)).toBe(true);
   });
 
   it('asks for the language first, in both languages, each button in its own language', async () => {
@@ -60,6 +76,8 @@ describe('Welcome', () => {
     const question = await screen.findByRole('heading', { name: "Qui utilise l'application ?" });
     expect(question).toHaveFocus();
     await user.click(screen.getByRole('button', { name: /^Je suis enceinte ou j'allaite/ }));
+    expect(await screen.findByText('Ce code ouvre votre profil sur ce téléphone.')).toBeVisible();
+    await makeCode(user);
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Un médicament ou un remède ?' }),

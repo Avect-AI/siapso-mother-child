@@ -22,6 +22,7 @@ import { termDisplay, weeksLabel, type TermDisplay } from '../domain/term.js';
 import type { Mode, Profile, TermInput } from '../domain/types.js';
 import { useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
+import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { CheckboxGroup, RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
@@ -477,12 +478,14 @@ function Form({
  * (date of last period, weeks, months or unknown; the term in words), breast
  * feeding with the baby's age and prematurity, and long-term situations (three
  * more in accompanied mode). Pseudonymous: a nickname, no phone number, no
- * address. Saving goes home, which says the profile was saved, or on to the
- * check that opened this screen for want of a profile.
+ * address. Saving goes home (the list of profiles in accompanied mode), which
+ * says the profile was saved, or on to the check that opened this screen for
+ * want of a profile, then for the profile just saved.
  */
 export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
   const { settings, storageTimeoutMs } = useApp();
+  const { start } = useCheck();
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
   const [next] = useState(nextAfterSave);
@@ -543,6 +546,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
           initial={loaded.form === null ? emptyForm(defaultPseudonym(loaded.number)) : loaded.form}
           onSaved={(profile) => {
             if (next !== null) {
+              start(profile.id);
               navigate(next, { replace: true });
               return;
             }

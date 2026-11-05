@@ -212,4 +212,15 @@ describe('Danger signs', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Signes de danger' })).toBeVisible();
     expect(screen.getByText('Allez au poste de santé maintenant.')).toBeVisible();
   });
+
+  it('takes signs ticked in an earlier visit off the history entry, unticked', async () => {
+    await renderApp({
+      hash: '#/danger',
+      packLoader: loaderOf(shellPack(signs)),
+      entryState: { dangerSigns: ['bleeding'], visit: 'a visit before a quick exit' },
+    });
+
+    expect(await screen.findByRole('checkbox', { name: 'Saignement' })).not.toBeChecked();
+    expect(window.history.state).toBeNull();
+  });
 });

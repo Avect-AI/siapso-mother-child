@@ -39,7 +39,10 @@ function label(id: string): string {
   return sign.label.fr;
 }
 
-/** The check of the stored profile with kinkeliba, then "Voir le résultat", as from Home. */
+/**
+ * The check of the stored profile with kinkeliba, then "Voir le résultat", as
+ * from Home (or from the list of profiles, which starts the check for her).
+ */
 async function openSigns({
   settings = woman,
   profile = profileOf(),
@@ -47,7 +50,14 @@ async function openSigns({
 }: { settings?: Settings; profile?: Profile; packLoader?: () => Promise<LoadedPack> } = {}) {
   await saveProfile(profile);
   const probe = probeCheck();
-  await renderApp({ settings, hash: '#/check', packLoader, children: probe.element });
+  await renderApp({ settings, hash: '#/', packLoader, children: probe.element });
+  await screen.findByRole('heading', { level: 1 });
+  act(() => {
+    probe.current().start(profile.id);
+  });
+  act(() => {
+    window.location.hash = '#/check';
+  });
   await screen.findByRole('heading', { level: 1, name: /^Ce qu/ });
   await waitFor(() => {
     expect(probe.current().profileId).toBe(profile.id);
