@@ -4,7 +4,7 @@
 
 ## Intended use
 
-SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not replace a health professional.
+SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not take the place of a health professional.
 
 The wording above is the shared source in [docs/intended-use.md](docs/intended-use.md). The README and the About screen of the app say the same.
 

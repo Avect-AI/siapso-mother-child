@@ -8,14 +8,14 @@ The marked paragraph is the source. Change it here first, then everywhere else.
 
 <!-- intended-use:start -->
 
-SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not replace a health professional.
+SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not take the place of a health professional.
 
 <!-- intended-use:end -->
 
 ## Where it is used
 
-| Place                   | How it uses the paragraph                        |
-| ----------------------- | ------------------------------------------------ |
-| `README.md`             | Disclaimer section, same words                   |
-| `MEDICAL_DISCLAIMER.md` | First section, same words                        |
-| About screen of the app | French and English strings with the same meaning |
+| Place                   | How it uses the paragraph                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `README.md`             | Disclaimer section, same words                                                                                     |
+| `MEDICAL_DISCLAIMER.md` | First section, same words                                                                                          |
+| About screen of the app | English: this paragraph, bundled at build time; French: a translation with the same meaning (`app/src/i18n/fr.ts`) |

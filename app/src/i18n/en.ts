@@ -2,6 +2,7 @@
 // English interface strings, typed from the French dictionary: a missing or
 // extra key is a type error. "Replace" is a forbidden word in English, hence
 // "does not take the place of" in the closing sentence.
+import { INTENDED_USE } from '../domain/intended-use.js';
 import type { Dictionary } from './fr.js';
 
 export const en: Dictionary = {
@@ -411,6 +412,52 @@ export const en: Dictionary = {
       'In "I am pregnant or breastfeeding" mode, only the first profile opens. The others stay on this phone.',
     changed: 'Setting saved.',
     done: 'Back to the start',
+  },
+  nav: {
+    status: 'Knowledge base',
+    about: 'About',
+  },
+  status: {
+    title: 'Knowledge base',
+    lead: 'What the app knows about products and remedies, and the date of this information.',
+    loading: 'The knowledge base is loading.',
+    unavailable: 'The knowledge base is not on this phone yet. Open the app once with Internet.',
+    contentLabel: 'Content of the base',
+    version: 'Version',
+    date: 'Date of the base',
+    dateUnknown: 'Unknown date',
+    rules: 'Rules',
+    products: 'Products',
+    remedies: 'Remedies',
+    stale: 'Knowledge base out of date: more than 90 days old. Ask the health post to update it.',
+    sourceTitle: 'Origin of this base',
+    fromNetwork: 'This base is the one loaded with the app.',
+    fromCopy: 'This base is the copy kept on this phone.',
+    fallback: 'The base could not be loaded with the app. The copy kept on this phone is used.',
+    notStored:
+      'This phone could not keep this base. It works for now. Open the app with Internet so that it is kept.',
+  },
+  about: {
+    title: 'About',
+    intendedUseTitle: 'What the app is for',
+    // Word for word the paragraph of docs/intended-use.md, read at build time.
+    intendedUse: INTENDED_USE,
+    licencesTitle: 'Licences',
+    licenceCode: 'Code: MIT licence.',
+    licenceContent: 'Content (knowledge and registry): CC BY 4.0 licence.',
+    licenceFont: 'Font Atkinson Hyperlegible Next: SIL OFL 1.1 licence.',
+    sourcesTitle: 'Sources of the base',
+    sourcesLead: 'The sources declared by the knowledge base, with their licence.',
+    sourcesNone: 'The knowledge base is not loaded: the sources cannot be listed.',
+    sourcesEmpty: 'This base declares no source.',
+    sourceLicence: 'Licence: {licence}',
+    sourceVersion: 'Version: {version}',
+    newWindow: '(opens in another window)',
+    thirdPartyTitle: 'Third-party software',
+    thirdTransformers:
+      'Transformers.js (Apache-2.0 licence): used only if the voice pack is installed.',
+    repositoryTitle: 'Source code',
+    repositoryPrivate: 'The repository is private during development.',
   },
   update: {
     ready: 'A new version is ready.',

@@ -31,7 +31,7 @@ describe('App', () => {
   });
 
   it('sends an unknown route to Home', async () => {
-    await renderApp({ settings: onboarded, hash: '#/status' });
+    await renderApp({ settings: onboarded, hash: '#/nowhere' });
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     expect(window.location.hash).toBe('#/');
   });
@@ -45,7 +45,7 @@ describe('App', () => {
       return <p>update slot</p>;
     }
     await storeSettings(onboarded);
-    window.location.hash = '#/status';
+    window.location.hash = '#/nowhere';
     render(
       <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
         <App>

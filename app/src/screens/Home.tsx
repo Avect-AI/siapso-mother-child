@@ -9,10 +9,10 @@ import { useSavedNote } from './saved-note.js';
 /**
  * Home in woman mode (accompanied mode opens on the list of profiles): what
  * the app is for and its one primary action, held together, then the way to
- * her profile and to the settings. The primary action opens the check for her
- * profile (the check screen opens the profile screen first when there is
- * none). After a save it says the profile was saved, once. The status and
- * about links arrive with their screens (Task 15, SCRUM-28).
+ * her profile, the settings, the knowledge base status and the about screen.
+ * The primary action opens the check for her profile (the check screen opens
+ * the profile screen first when there is none). After a save it says the
+ * profile was saved, once.
  */
 export function Home() {
   const t = useT();
@@ -50,6 +50,12 @@ export function Home() {
       <div className="home__closing">
         <a className="button button--quiet home__settings" href="#/settings">
           {t('home.settings')}
+        </a>
+        <a className="button button--quiet home__settings" href="#/status">
+          {t('nav.status')}
+        </a>
+        <a className="button button--quiet home__settings" href="#/about">
+          {t('nav.about')}
         </a>
         <p className="meta">{t('home.closing')}</p>
       </div>

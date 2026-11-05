@@ -15,8 +15,9 @@ import { Notice } from '../ui/Notice.js';
  * The mode in use says who the phone is for, so it never shows behind the
  * code. A choice applies at once and is stored; changing the mode never
  * deletes a profile, a check or a contact (woman mode opens the first profile
- * made, the others stay on the phone). The one primary action goes back to
- * the start.
+ * made, the others stay on the phone). It links to the knowledge base status
+ * and to the about screen, which need no code. The one primary action goes
+ * back to the start.
  */
 export function Settings() {
   const t = useT();
@@ -63,6 +64,14 @@ export function Settings() {
       <p className="settings__status" role="status">
         {changed ? t('settings.changed') : ''}
       </p>
+      <div className="settings__more">
+        <a className="button button--secondary" href="#/status">
+          {t('nav.status')}
+        </a>
+        <a className="button button--secondary" href="#/about">
+          {t('nav.about')}
+        </a>
+      </div>
       <Button
         variant="primary"
         className="settings__done"

@@ -29,12 +29,19 @@ describe('Home', () => {
     expect(screen.getByText('Cet outil ne remplace pas un soignant.')).toBeVisible();
   });
 
-  it('links to no screen that does not exist yet', async () => {
+  it('links to the profile, the settings, the knowledge base status and the about screen', async () => {
     await renderApp({ settings: onboarded });
     await screen.findByRole('banner');
 
     const targets = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
-    expect(targets.sort()).toEqual(['#/', '#/danger', '#/profile', '#/settings']);
+    expect(targets.sort()).toEqual([
+      '#/',
+      '#/about',
+      '#/danger',
+      '#/profile',
+      '#/settings',
+      '#/status',
+    ]);
   });
 
   it('opens her one profile in woman mode', async () => {

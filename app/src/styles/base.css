@@ -1281,6 +1281,95 @@ a {
   margin-top: auto;
 }
 
+/*
+ * Status and about: plain reading screens. The facts are rows under hairlines
+ * (a word, its value); sections are a heading and a few lines. Links dressed
+ * as buttons keep the width of the column and no underline.
+ */
+.status__intro,
+.status__source,
+.about__section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+/* Under the screen's title, a section heading is one step smaller. */
+.status__source h2,
+.about__section h2 {
+  font-size: var(--font-size-title);
+}
+
+.facts {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.facts li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--color-rule);
+}
+
+.facts li:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.status__not-validated,
+.about__fixed {
+  font-weight: var(--font-weight-strong);
+}
+
+.about__section ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.25em;
+}
+
+.about__section .about__sources {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.about__sources li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* The licence, then the version, each on its own line. */
+.about__sources .meta {
+  display: grid;
+}
+
+.about__address {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+.settings__more {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.settings__more .button,
+.status__about,
+.about__status {
+  width: 100%;
+  text-decoration: none;
+}
+
+.status__done,
+.about__done {
+  width: 100%;
+  margin-top: auto;
+}
+
 /* Settings: what the last choice did, in words; out of the layout while silent. */
 .settings__status {
   font-weight: var(--font-weight-strong);

@@ -10,6 +10,8 @@ import { describe, expect, it } from 'vitest';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (file) => readFileSync(path.join(root, file), 'utf8');
 const squash = (text) => text.replace(/\s+/g, ' ').trim();
+const sentencesOf = (text) => text.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+const statements = JSON.parse(read('tools/legal/intended-use-statements.json'));
 
 function source() {
   const text = read('docs/intended-use.md');
@@ -21,11 +23,8 @@ function source() {
 describe('intended use', () => {
   it('has one source paragraph that holds the key statements', () => {
     const paragraph = source();
-    expect(paragraph).toContain('general health information, education and referral');
-    expect(paragraph).toContain('pregnant and breastfeeding women in Senegal');
-    expect(paragraph).toContain('the people who accompany them');
-    expect(paragraph).toContain('does not diagnose, prescribe or set a dose');
-    expect(paragraph).toContain('does not replace a health professional');
+    for (const part of statements.english) expect(paragraph).toContain(part);
+    expect(sentencesOf(paragraph)).toBe(statements.sentences);
   });
 
   it.each(['README.md', 'MEDICAL_DISCLAIMER.md'])('is carried word for word by %s', (file) => {
@@ -35,6 +34,20 @@ describe('intended use', () => {
   it('is referenced from the README and the medical disclaimer', () => {
     expect(read('README.md')).toContain('docs/intended-use.md');
     expect(read('MEDICAL_DISCLAIMER.md')).toContain('docs/intended-use.md');
+  });
+
+  it('is bundled into the app from the same source, in English word for word', () => {
+    expect(read('app/src/domain/intended-use.ts')).toContain("'../../../docs/intended-use.md?raw'");
+    expect(read('app/src/i18n/en.ts')).toMatch(/intendedUse:\s*INTENDED_USE,/);
+  });
+
+  it('has a French translation in the app that says the same things and no more', () => {
+    const french = squash(read('app/src/i18n/fr.ts')).replace(/\\u00a0/g, ' ');
+    const match = /intendedUse:\s*"([^"]+)"/.exec(french);
+    expect(match).not.toBeNull();
+    const text = match?.[1] ?? '';
+    for (const part of statements.french) expect(text).toContain(part);
+    expect(sentencesOf(text)).toBe(statements.sentences);
   });
 
   it('states that no rule is validated, in the disclaimer and the governance', () => {

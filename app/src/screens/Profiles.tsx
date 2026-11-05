@@ -108,6 +108,12 @@ export function Profiles() {
       <a className="button button--quiet profiles__settings" href="#/settings">
         {t('home.settings')}
       </a>
+      <a className="button button--quiet profiles__settings" href="#/status">
+        {t('nav.status')}
+      </a>
+      <a className="button button--quiet profiles__settings" href="#/about">
+        {t('nav.about')}
+      </a>
     </main>
   );
 }

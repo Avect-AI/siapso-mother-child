@@ -64,6 +64,6 @@ Every file has an identifiable licence, declared in [REUSE.toml](REUSE.toml) (RE
 
 ## Disclaimer
 
-SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not replace a health professional.
+SIAPSO Mother-Child provides general health information, education and referral for pregnant and breastfeeding women in Senegal and the people who accompany them. It does not diagnose, prescribe or set a dose, and it does not take the place of a health professional.
 
 No rule is clinically validated yet. Full text: [MEDICAL_DISCLAIMER.md](MEDICAL_DISCLAIMER.md). The shared wording is in [docs/intended-use.md](docs/intended-use.md).

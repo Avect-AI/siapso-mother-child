@@ -21,4 +21,5 @@ The app is often used on a phone shared by a family. A pregnancy, an HIV status 
 
 - **The phone's clock:** offline, the only clock is the phone's. Setting it forward ends a wait early; setting it back never stretches a wait beyond its length.
 - **The recent apps screen** of the phone may still show the last screen as a thumbnail.
+- **The forgotten-code erase:** anyone who holds the phone can erase the profiles, the history and the saved contacts without the code, by typing EFFACER and a last yes. Nothing is revealed by doing so. This is an agreed trade-off: a woman who forgets her code must not lose the app for good, and the erase gives an attacker nothing to read.
 - **The data key of SCRUM-39** must not reuse the verifier's derivation: the verifier is the PBKDF2 output itself and is stored, so a key equal to it or derived from it would be readable from storage. SCRUM-39 derives with another salt, or splits one PBKDF2 output with HKDF into a stored verifier part and a secret key part.

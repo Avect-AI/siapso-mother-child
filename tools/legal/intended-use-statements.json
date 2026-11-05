@@ -1,0 +1,22 @@
+{
+  "comment": "The statements of docs/intended-use.md that each language of the app must carry. Read by tools/legal/intended-use.test.mjs and app/src/domain/intended-use.test.ts.",
+  "sentences": 2,
+  "english": [
+    "general health information, education and referral",
+    "pregnant and breastfeeding women in Senegal",
+    "the people who accompany them",
+    "does not diagnose, prescribe or set a dose",
+    "does not take the place of a health professional"
+  ],
+  "french": [
+    "informations générales sur la santé",
+    "éducation à la santé",
+    "orientation vers un professionnel de santé",
+    "femmes enceintes et allaitantes au Sénégal",
+    "personnes qui les accompagnent",
+    "ne pose pas de diagnostic",
+    "ne prescrit pas",
+    "ne fixe pas de dose",
+    "ne remplace pas un professionnel de santé"
+  ]
+}

@@ -6,6 +6,7 @@ import { useHashLocation } from 'wouter/use-hash-location';
 import { APP_NAME } from './config.js';
 import type { Mode } from './domain/types.js';
 import { I18nProvider, useT } from './i18n/index.js';
+import { About } from './screens/About.js';
 import { Check } from './screens/Check.js';
 import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
@@ -21,6 +22,7 @@ import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
 import { Settings } from './screens/Settings.js';
 import { SignsNow } from './screens/SignsNow.js';
+import { Status } from './screens/Status.js';
 import { Unlock } from './screens/Unlock.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
@@ -48,6 +50,8 @@ type Screen =
   | 'forgot'
   | 'neutral'
   | 'settings'
+  | 'status'
+  | 'about'
   | 'home'
   | 'profiles'
   | 'danger'
@@ -129,6 +133,9 @@ function screenFor(
   if (!settings.ready) return 'loading';
   if (!settings.onboarded) return 'welcome';
   if (location === '/settings') return 'settings';
+  // The knowledge base and the licences hold no profile data: open locked or not.
+  if (location === '/status') return 'status';
+  if (location === '/about') return 'about';
   if (session.status === 'loading') return 'loading';
   // Onboarded before codes existed: the code is made first.
   if (session.status === 'new') return 'code';
@@ -282,6 +289,8 @@ function Screens() {
       {screen === 'forgot' ? <ForgotCode /> : null}
       {screen === 'neutral' ? <Neutral /> : null}
       {screen === 'settings' ? <Settings /> : null}
+      {screen === 'status' ? <Status /> : null}
+      {screen === 'about' ? <About /> : null}
       {screen === 'home' ? <Home /> : null}
       {screen === 'profiles' ? <Profiles /> : null}
       {screen === 'danger' ? <Danger /> : null}

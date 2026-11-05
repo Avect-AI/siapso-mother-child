@@ -466,6 +466,62 @@ export const fr = {
     changed: 'Réglage enregistré.',
     done: "Revenir à l'accueil",
   },
+  // The two links to the status and about screens, on Home, the list of
+  // profiles and the settings.
+  nav: {
+    status: 'Base de connaissances',
+    about: 'À propos',
+  },
+  // The knowledge base: its version, its age, where it came from. Nothing
+  // here is about a profile, so it opens before the code.
+  status: {
+    title: 'Base de connaissances',
+    lead: "Ce que l'application connaît des produits et des remèdes, et la date de ces informations.",
+    loading: 'La base de connaissances se charge.',
+    unavailable:
+      "La base de connaissances n'est pas encore sur ce téléphone. Ouvrez l'application une fois avec Internet.",
+    contentLabel: 'Contenu de la base',
+    version: 'Version',
+    date: 'Date de la base',
+    dateUnknown: 'Date inconnue',
+    rules: 'Règles',
+    products: 'Produits',
+    remedies: 'Remèdes',
+    stale: 'Base périmée : plus de 90 jours. Faites-la mettre à jour au poste de santé.',
+    sourceTitle: 'Provenance de cette base',
+    fromNetwork: "Cette base est celle chargée avec l'application.",
+    fromCopy: 'Cette base est la copie gardée sur ce téléphone.',
+    fallback:
+      "La base n'a pas pu être chargée avec l'application. La copie gardée sur ce téléphone est utilisée.",
+    notStored:
+      "Ce téléphone n'a pas pu garder cette base. Elle marche pour le moment. Ouvrez l'application avec Internet pour qu'elle soit gardée.",
+  },
+  // Licences, sources and limits of the tool. The intended use is the
+  // paragraph of docs/intended-use.md (English: that text, word for word;
+  // French: its translation, kept in step by tools/legal/intended-use.test.mjs).
+  about: {
+    title: 'À propos',
+    intendedUseTitle: "À quoi sert l'application",
+    intendedUse:
+      "SIAPSO Mother-Child donne des informations générales sur la santé, de l'éducation à la santé et une orientation vers un professionnel de santé aux femmes enceintes et allaitantes au Sénégal et aux personnes qui les accompagnent. Il ne pose pas de diagnostic, ne prescrit pas et ne fixe pas de dose, et il ne remplace pas un professionnel de santé.",
+    licencesTitle: 'Licences',
+    licenceCode: 'Code : licence MIT.',
+    licenceContent: 'Contenus (connaissances et registre) : licence CC BY 4.0.',
+    licenceFont: 'Police Atkinson Hyperlegible Next : licence SIL OFL 1.1.',
+    sourcesTitle: 'Sources de la base',
+    sourcesLead: 'Les sources déclarées par la base de connaissances, avec leur licence.',
+    sourcesNone:
+      "La base de connaissances n'est pas chargée : les sources ne peuvent pas être listées.",
+    sourcesEmpty: 'Cette base ne déclare aucune source.',
+    sourceLicence: 'Licence : {licence}',
+    sourceVersion: 'Version : {version}',
+    newWindow: "(s'ouvre dans une autre fenêtre)",
+    thirdPartyTitle: 'Logiciels tiers',
+    thirdTransformers:
+      'Transformers.js (licence Apache-2.0) : utilisé seulement si le pack vocal est installé.',
+    repositoryTitle: 'Code source',
+    repositoryPrivate: 'Le dépôt est privé pendant le développement.',
+  },
   update: {
     ready: 'Une nouvelle version est prête.',
     // Not "Recharger": in Senegal it reads as buying phone credit.
