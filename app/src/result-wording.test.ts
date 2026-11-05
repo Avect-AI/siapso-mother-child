@@ -174,7 +174,8 @@ describe('result wording over the reference cases', () => {
   });
 });
 
-describe('result wording beyond the reference cases', () => {
+// These tests enumerate the whole registry; they take a few seconds, longer under coverage.
+describe('result wording beyond the reference cases', { timeout: 60_000 }, () => {
   it('reads the fact of every danger sign with its own message in woman mode: no number, no forbidden word', () => {
     const own = pack.dangerSigns.filter((sign) => sign.message !== undefined);
     expect(own.length).toBeGreaterThan(0);
@@ -224,7 +225,8 @@ describe('result wording beyond the reference cases', () => {
   });
 });
 
-describe('merge guard', () => {
+// These tests enumerate the whole registry; they take a few seconds, longer under coverage.
+describe('merge guard', { timeout: 60_000 }, () => {
   it('also tries each product with its strength unknown, as the confirm screen can add it', () => {
     // A substance whose every product has a known strength: a rule above any
     // of them matches only a box whose strength is not known.
