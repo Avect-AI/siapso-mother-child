@@ -176,6 +176,81 @@ test('weak resemblances kept as typed never alert: oils, a first name, close spe
   ).toContainText('EFFERALGAN 1000 mg, comprimé effervescent');
 });
 
+// Live test round 2 (SCRUM-51): a name written as it sounds is the name itself.
+test('"sitotek" and "uile de risin" kept as typed after "none of these" keep the danger at term with a scar', async ({
+  page,
+}) => {
+  await pregnantAt(page, 37, "Ancienne césarienne (cicatrice sur l'utérus)");
+  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+  await page.keyboard.type('sitotek');
+  // Proposed at once, under its own name, with the name on the box.
+  await expect(page.locator('.candidate').first()).toContainText(/^Misoprostol/);
+  await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
+  await page.getByRole('button', { name: /^Non, aucun de ces / }).click();
+  await addTyped(page, 'uile de risin');
+  await seeResult(page);
+
+  const alert = page.getByRole('alert');
+  await expect(alert).toContainText('Danger');
+  await expect(
+    page.getByRole('article', { name: /^Danger\s: à montrer maintenant\. .*«\ssitotek\s»$/ }),
+  ).toContainText('Ce nom ressemble à Misoprostol');
+  await expect(
+    page.getByRole('article', { name: /^Danger\s: à montrer maintenant\. .*«\suile de risin\s»$/ }),
+  ).toContainText('Ce nom ressemble à Huile de ricin');
+  await expectNoSeriousViolation(page);
+});
+
+test('a second box typed that looks like a product already listed gets its own card, at its level', async ({
+  page,
+}) => {
+  await pregnantAt(page, 10, 'Aucune de ces situations');
+  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+  await page.keyboard.type('cytotec');
+  await page.locator('.candidate').first().click();
+  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addTyped(page, 'cytotec 200');
+  await seeResult(page);
+
+  const second = page.getByRole('article', {
+    name: /^À montrer avant la prochaine prise\. Vous avez écrit\s:\s«\scytotec 200\s»$/,
+  });
+  await expect(second).toContainText(
+    `Ce nom ressemble à Misoprostol (générique) (Misoprostol), déjà dans la liste. Si c'est ce produit${NBSP}:`,
+  );
+  await expectNoSeriousViolation(page);
+});
+
+test('a carrier word alone lists the remedies that have it in their name', async ({ page }) => {
+  await pregnantAt(page, 37, "Ancienne césarienne (cicatrice sur l'utérus)");
+  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+  await page.keyboard.type('huile');
+  const list = page.getByRole('list', { name: `Remèdes avec «${NBSP}huile${NBSP}» dans leur nom` });
+  await expect(list.locator('.candidate')).toHaveCount(1);
+  await expect(list.locator('.candidate')).toContainText(/^Huile de ricin/);
+  await expectNoSeriousViolation(page);
+  await list.locator('.candidate').click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: `Est-ce bien ce remède${NBSP}?` }),
+  ).toBeVisible();
+});
+
+test('"Advil codéine" proposes ibuprofen with codeine first, and says what a codeine product lacks', async ({
+  page,
+}) => {
+  await pregnantAt(page, 28, 'Aucune de ces situations');
+  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+  await page.keyboard.type('Advil codéine');
+  const candidates = page.getByRole('list', { name: 'Propositions' }).locator('.candidate');
+  await expect(candidates.first()).toContainText(/^ANTARENE CODEINE/);
+  await candidates.filter({ hasText: /^Codéine \(générique\)/ }).click();
+  await expect(
+    page.getByText(
+      `ADVIL${NBSP}: ibuprofène, pas dans ce produit. Comparez avec le nom sur la boîte.`,
+    ),
+  ).toBeVisible();
+});
+
 test('"huile de ricin bio" kept as typed after "none of these" keeps the danger at term with a scar', async ({
   page,
 }) => {

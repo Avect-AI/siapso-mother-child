@@ -400,6 +400,23 @@ describe('evaluateWithPossibleMatches', () => {
     }
   });
 
+  it('gives "Ibuprofène 400" typed after "Advil 400 mg boîte de 20" its card at 28 weeks', () => {
+    const context = at(28, [typed('Advil 400 mg boîte de 20'), typed('Ibuprofène 400')]);
+    const net = withPossibleMatches(pack, context.items, { declined: () => true });
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    for (const forItem of [0, 1]) {
+      const added = [...net.possible].filter(([, match]) => match.forItem === forItem);
+      expect(added, String(forItem)).toHaveLength(1);
+      const [index] = added[0] ?? [];
+      expect(
+        evaluation.findings.some(
+          (f) => index !== undefined && f.items.includes(index) && f.level === 'before-next-dose',
+        ),
+        String(forItem),
+      ).toBe(true);
+    }
+  });
+
   it('holds the copy of a danger below a danger when its resemblance is only strong', () => {
     const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
     const context = at(36, [miso, typed('misopristol')]);
