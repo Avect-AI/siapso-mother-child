@@ -118,6 +118,9 @@
 - id: naproxen
   names: { fr: 'Naproxène', en: 'Naproxen' }
   classes: [nsaid]
+- id: oxomemazine
+  names: { fr: 'Oxomémazine', en: 'Oxomemazine' }
+  classes: []
 - id: paracetamol
   names: { fr: 'Paracétamol', en: 'Paracetamol' }
   classes: []

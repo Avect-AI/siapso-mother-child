@@ -1269,6 +1269,7 @@
     type: inn,
     expect:
       [
+        { kind: product, id: fluconazole-generic },
         { kind: product, id: beagyne-150-mg-66332081 },
         { kind: product, id: fluconazole-arrow-10-mg-ml-62861105 },
         { kind: product, id: fluconazole-arrow-lab-100-mg-68551946 },
@@ -1285,6 +1286,7 @@
     type: inn,
     expect:
       [
+        { kind: product, id: methotrexate-generic },
         { kind: product, id: methotrexate-accord-10-mg-60390455 },
         { kind: product, id: methotrexate-accord-2-5-mg-65854190 },
         { kind: product, id: metotab-10-mg-62537295 },
@@ -1397,3 +1399,38 @@
 # remedies that have it in their name instead (app), the resolver none.
 - { query: feuille, type: noise, expect: none }
 - { query: tisane, type: noise, expect: none }
+# Brands on the boxes of substances the rules read, and a cough syrup
+# (midwife#5, safety-auditor#14, woman-literate#9).
+- {
+    query: triflucan,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: triflucan-10-mg-ml-63868864 },
+        { kind: product, id: triflucan-100-mg-61173013 },
+        { kind: product, id: triflucan-200-mg-65826650 },
+        { kind: product, id: triflucan-40-mg-ml-60877534 },
+        { kind: product, id: triflucan-50-mg-64080646 },
+      ],
+  }
+- { query: triflucan 200, type: brand, expect: { kind: product, id: triflucan-200-mg-65826650 } }
+- { query: diflucan, type: brand, expect: { kind: product, id: fluconazole-generic } }
+- { query: imeth, type: brand, expect: { kind: product, id: methotrexate-generic } }
+- { query: ledertrexate, type: brand, expect: { kind: product, id: methotrexate-generic } }
+- { query: aspro, type: brand, expect: { kind: product, id: aspro-500-effervescent-68985138 } }
+- { query: artotec, type: brand, expect: { kind: product, id: artotec } }
+- { query: granudoxy, type: brand, expect: { kind: product, id: granudoxy-100-mg-67939611 } }
+- {
+    query: toplexil,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: toplexil-0-33-mg-ml-62982231 },
+        { kind: product, id: toplexil-0-33-mg-ml-sans-sucre-68672780 },
+      ],
+  }
+- {
+    query: toplexil sirop,
+    type: brand,
+    expect: { kind: product, id: toplexil-0-33-mg-ml-62982231 },
+  }

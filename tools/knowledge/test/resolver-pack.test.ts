@@ -45,6 +45,28 @@ describe('the resolver on the repository pack', () => {
     }
   });
 
+  // Live test round 2 (midwife#5, safety-auditor#14, woman-literate#9): the
+  // brands on the boxes of the substances the rules read, and a cough syrup.
+  it('finds the brands of the live test round 2, each holding its substances', () => {
+    const brands: Record<string, { id: RegExp; substances: string[] }> = {
+      triflucan: { id: /^triflucan-/, substances: ['fluconazole'] },
+      diflucan: { id: /^fluconazole-generic$/, substances: ['fluconazole'] },
+      imeth: { id: /^methotrexate-generic$/, substances: ['methotrexate'] },
+      ledertrexate: { id: /^methotrexate-generic$/, substances: ['methotrexate'] },
+      aspro: { id: /^aspro-/, substances: ['aspirin'] },
+      artotec: { id: /^artotec$/, substances: ['diclofenac', 'misoprostol'] },
+      granudoxy: { id: /^granudoxy-/, substances: ['doxycycline'] },
+      toplexil: { id: /^toplexil-/, substances: ['oxomemazine'] },
+    };
+    for (const [query, { id, substances }] of Object.entries(brands)) {
+      const [best] = search(index, query);
+      expect(best?.id, query).toMatch(id);
+      expect(best?.score, query).toBe(1);
+      const product = pack.products.find((p) => p.id === best?.id);
+      expect(product?.components.map((c) => c.substance).sort(), query).toEqual(substances);
+    }
+  });
+
   it('finds the plants by their names in the standard Wolof orthography', () => {
     const wolof: Record<string, string> = {
       dakhar: 'tamarind',

@@ -215,17 +215,31 @@ function keyOf(finding: Finding): string {
  * engine order, each group in engine order too. Findings are sorted by level,
  * danger first, so a group's first finding is its highest (ties keep the
  * engine's order). Two pregnancy findings for one ibuprofen on a range of
- * weeks are one group. The evaluation is not changed.
+ * weeks are one group. A card says one orientation for each level, so with
+ * `orientationOf` (a message's own orientation, undefined for the level's
+ * default), a finding whose level the group already has with another
+ * orientation starts a card of its own: misoprostol and the NSAID of Artotec
+ * keep their two orientations. The evaluation is not changed.
  */
-export function cardGroups(findings: readonly Finding[]): Finding[][] {
-  const groups = new Map<string, Finding[]>();
+export function cardGroups(
+  findings: readonly Finding[],
+  orientationOf?: (finding: Finding) => string | undefined,
+): Finding[][] {
+  const groups = new Map<string, Finding[][]>();
   for (const finding of findings) {
     const key = keyOf(finding);
-    const group = groups.get(key);
-    if (group) group.push(finding);
-    else groups.set(key, [finding]);
+    const cards = groups.get(key) ?? [];
+    const fits = (card: readonly Finding[]) =>
+      orientationOf === undefined ||
+      card.every(
+        (other) => other.level !== finding.level || orientationOf(other) === orientationOf(finding),
+      );
+    const card = cards.find(fits);
+    if (card) card.push(finding);
+    else cards.push([finding]);
+    groups.set(key, cards);
   }
-  return [...groups.values()];
+  return [...groups.values()].flat();
 }
 
 /** The finding each card is led by: the first, and highest, of its group. */
@@ -677,7 +691,11 @@ export function buildResultView(
   };
   const levelLabel = resultLevelLabel(t, evaluation);
   const danger = evaluation.level === 'danger';
-  const groups = cardGroups(evaluation.findings);
+  // A message's own orientation, so that one card never hides another of its level.
+  const groups = cardGroups(
+    evaluation.findings,
+    (finding) => pack.messages[lang][finding.message]?.orientation,
+  );
   const cards = groups.map((group) => findingView(scope, group));
   const instruction = danger ? dangerInstruction(scope, cards, groups) : null;
   const headline = instruction?.text ?? levelLabel;

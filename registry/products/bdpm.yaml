@@ -369,6 +369,20 @@
   source:
     bdpm: '66769394'
   demo: false
+- id: aspro-500-effervescent-68985138
+  names:
+    fr: 'ASPRO 500 EFFERVESCENT, comprimé effervescent'
+    en: 'ASPRO 500 EFFERVESCENT, comprimé effervescent'
+  brands: ['ASPRO']
+  local-names: []
+  components:
+    - substance: aspirin
+      strength-mg: 500
+  form: 'comprimé effervescent(e)'
+  route: 'oral'
+  source:
+    bdpm: '68985138'
+  demo: false
 - id: kardegic-160-mg-61348441
   names:
     fr: 'KARDEGIC 160 mg, poudre pour solution buvable en sachet'
@@ -1106,6 +1120,20 @@
   source:
     bdpm: '63307856'
   demo: false
+- id: granudoxy-100-mg-67939611
+  names:
+    fr: 'GRANUDOXY 100 mg, comprimé pelliculé sécable'
+    en: 'GRANUDOXY 100 mg, comprimé pelliculé sécable'
+  brands: ['GRANUDOXY']
+  local-names: []
+  components:
+    - substance: doxycycline
+      strength-mg: 100
+  form: 'comprimé pelliculé sécable'
+  route: 'oral'
+  source:
+    bdpm: '67939611'
+  demo: false
 - id: efavirenz-arrow-600-mg-65716353
   names:
     fr: 'EFAVIRENZ ARROW 600 mg, comprimé pelliculé'
@@ -1537,6 +1565,74 @@
   route: 'oral'
   source:
     bdpm: '66318142'
+  demo: false
+- id: triflucan-10-mg-ml-63868864
+  names:
+    fr: 'TRIFLUCAN 10 mg/mL, poudre pour suspension buvable'
+    en: 'TRIFLUCAN 10 mg/mL, poudre pour suspension buvable'
+  brands: ['TRIFLUCAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+  form: 'poudre pour suspension buvable'
+  route: 'oral'
+  source:
+    bdpm: '63868864'
+  demo: false
+- id: triflucan-100-mg-61173013
+  names:
+    fr: 'TRIFLUCAN 100 mg, gélule'
+    en: 'TRIFLUCAN 100 mg, gélule'
+  brands: ['TRIFLUCAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 100
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '61173013'
+  demo: false
+- id: triflucan-200-mg-65826650
+  names:
+    fr: 'TRIFLUCAN 200 mg, gélule'
+    en: 'TRIFLUCAN 200 mg, gélule'
+  brands: ['TRIFLUCAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 200
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '65826650'
+  demo: false
+- id: triflucan-40-mg-ml-60877534
+  names:
+    fr: 'TRIFLUCAN 40 mg/ml, poudre pour suspension buvable'
+    en: 'TRIFLUCAN 40 mg/ml, poudre pour suspension buvable'
+  brands: ['TRIFLUCAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+  form: 'poudre pour suspension buvable'
+  route: 'oral'
+  source:
+    bdpm: '60877534'
+  demo: false
+- id: triflucan-50-mg-64080646
+  names:
+    fr: 'TRIFLUCAN 50 mg, gélule'
+    en: 'TRIFLUCAN 50 mg, gélule'
+  brands: ['TRIFLUCAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 50
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '64080646'
   demo: false
 - id: acide-folique-arrow-5-mg-67320915
   names:
@@ -2977,6 +3073,32 @@
   route: 'oral'
   source:
     bdpm: '67183480'
+  demo: false
+- id: toplexil-0-33-mg-ml-sans-sucre-68672780
+  names:
+    fr: "TOPLEXIL 0,33 mg/ml SANS SUCRE, solution buvable édulcorée à l'acésulfame potassique"
+    en: "TOPLEXIL 0,33 mg/ml SANS SUCRE, solution buvable édulcorée à l'acésulfame potassique"
+  brands: ['TOPLEXIL']
+  local-names: []
+  components:
+    - substance: oxomemazine
+  form: 'solution buvable'
+  route: 'oral'
+  source:
+    bdpm: '68672780'
+  demo: false
+- id: toplexil-0-33-mg-ml-62982231
+  names:
+    fr: 'TOPLEXIL 0,33 mg/ml, sirop'
+    en: 'TOPLEXIL 0,33 mg/ml, sirop'
+  brands: ['TOPLEXIL']
+  local-names: []
+  components:
+    - substance: oxomemazine
+  form: 'sirop'
+  route: 'oral'
+  source:
+    bdpm: '62982231'
   demo: false
 - id: dafalgan-1000-mg-63264636
   names:

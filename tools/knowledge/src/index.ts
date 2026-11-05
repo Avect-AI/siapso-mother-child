@@ -5,6 +5,8 @@ export { BUILTIN_MESSAGE_IDS } from './checks.js';
 export { buildPack, minimumSafeVersionOf, PackBuildError } from './build.js';
 export { LICENCE_LINE, loadContent, SCHEMA_FILES } from './load.js';
 export {
+  ADDED_BRANDS,
+  ADDED_SUBSTANCES,
   brandOf,
   BDPM_FILES,
   decodeBdpm,

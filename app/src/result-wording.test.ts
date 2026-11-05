@@ -257,6 +257,11 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
 
   it('never merges into one card two findings of one level that say different orientations', () => {
     expect(mergeClashes(pack)).toEqual([]);
+    // Artotec holds misoprostol and an NSAID: one card per item set and check
+    // would merge their two orientations; the result gives each its card.
+    expect(mergeClashes(pack, false).some((clash) => clash.startsWith('product:artotec'))).toBe(
+      true,
+    );
     // Not vacuous: a rule on ibuprofen (another subject than the NSAID class of
     // its twin) with another orientation is caught, with the product and the rules.
     const rule = pack.rules.find((r) => r.id === 'nsaid-pregnancy-from-20-weeks');
@@ -274,13 +279,15 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
       rules: [...pack.rules, twin],
       messages: { ...pack.messages, fr: { ...pack.messages.fr, 'nsaid-twin': other } },
     };
-    const clashes = mergeClashes(clashing);
+    const clashes = mergeClashes(clashing, false).filter((clash) => clash.includes('nsaid-twin'));
     expect(clashes.length).toBeGreaterThan(0);
     for (const clash of clashes) {
       expect(clash).toMatch(
         /^product:\S+.*: C1 before-next-dose: nsaid-pregnancy-from-20-weeks, nsaid-twin$/,
       );
     }
+    // The result splits them: no card merges them.
+    expect(mergeClashes(clashing)).toEqual([]);
   });
 });
 
@@ -329,7 +336,8 @@ describe('merge guard', { timeout: 60_000 }, () => {
         },
       },
     };
-    expect(mergeClashes(clashing)).toContainEqual(
+    // One card per item set and check would merge them (the result splits them).
+    expect(mergeClashes(clashing, false)).toContainEqual(
       expect.stringMatching(/: C5 next-contact: plain-twin, strong-twin$/) as unknown,
     );
   });
@@ -389,9 +397,11 @@ function subsets<T>(values: readonly T[]): T[][] {
  * maximum is passed), during a pregnancy of unknown term (every window) and
  * while breastfeeding a baby of unknown age, with every combination of the
  * conditions the rules name. Items the rules see alike are evaluated once
- * (seenBy). Each clash names the products or plants and the rule ids.
+ * (seenBy). Each clash names the products or plants and the rule ids. The
+ * cards are made as the result makes them (`split`, by the messages' own
+ * orientations), or one per item set and check only (`split` false).
  */
-function mergeClashes(of: Pack): string[] {
+function mergeClashes(of: Pack, split = true): string[] {
   // Each product as listed with its strength, and as a box whose strength is
   // not known (the confirm screen's "Je ne sais pas"): a strength threshold
   // matches the second even when it matches no known strength.
@@ -444,7 +454,8 @@ function mergeClashes(of: Pack): string[] {
         items,
         signs: [],
       };
-      for (const group of cardGroups(evaluate(of, context).findings)) {
+      const own = (finding: Finding) => of.messages.fr[finding.message]?.orientation;
+      for (const group of cardGroups(evaluate(of, context).findings, split ? own : undefined)) {
         for (const level of new Set(group.map((f) => f.level))) {
           const same = group.filter((f) => f.level === level);
           if (new Set(same.map(orientationOf)).size < 2) continue;

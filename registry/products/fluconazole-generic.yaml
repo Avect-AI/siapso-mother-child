@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover under this name. Its availability in Senegal is
+# not verified. The brand is a name people commonly use for this medicine
+# (live test round 2, SCRUM-51): Diflucan is the name of fluconazole outside
+# France, absent from the BDPM files of 2026-11-04 (the French name, TRIFLUCAN,
+# comes from the BDPM import). The resolver indexes it as another name of the
+# generic.
+id: fluconazole-generic
+names: { fr: 'Fluconazole (générique)', en: 'Fluconazole (generic)' }
+brands: ['Diflucan']
+local-names: []
+components:
+  - { substance: fluconazole }
+form: 'gélule'
+route: oral
+source: { demo-manual: true }
+demo: true

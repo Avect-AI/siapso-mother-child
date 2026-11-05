@@ -19,7 +19,7 @@ import {
   withPossibleMatches,
 } from './possible-matches.js';
 import { formatDate } from './dates.js';
-import { buildResultView, shownFindings, type ResultView } from './result-view.js';
+import { buildResultView, cardGroups, shownFindings, type ResultView } from './result-view.js';
 import type { Mode } from './types.js';
 
 let pack: Pack;
@@ -782,6 +782,52 @@ describe('buildResultView: merged findings', () => {
       },
     ];
     expect(shownFindings(findings).map((f) => f.message)).toEqual(['a', 'b', 'c', 'e', 'f', 'g']);
+  });
+
+  // Live test round 2 (safety-auditor#14): Artotec holds misoprostol and an
+  // NSAID, two rules of one level whose orientations differ: one card would
+  // hide one of them, so each gets its own card.
+  it('gives each orientation of one level its own card, for one product', () => {
+    const artotec: CheckedItem = { ref: { kind: 'product', id: 'artotec' } };
+    const view = buildResultView(
+      evaluate(pack, contextOf({ pregnancy: weeks(24), items: [artotec] })),
+      pack,
+      [artotec],
+      'woman',
+      'fr',
+      tOf('fr'),
+    );
+    const cards = view.findings.filter((f) => f.title.startsWith('Artotec'));
+    expect(cards.map((card) => card.level)).toEqual(['before-next-dose', 'before-next-dose']);
+    expect(cards.map((card) => card.orientation)).toEqual([
+      pack.messages.fr['misoprostol-pregnancy']?.orientation,
+      tOf('fr')('result.orientation.before-next-dose'),
+    ]);
+    // Each card says its own risk.
+    expect(cards[0]?.risks.map((r) => r.text)).toEqual([
+      pack.messages.fr['misoprostol-pregnancy']?.risk,
+    ]);
+    expect(cards[1]?.risks.map((r) => r.text)).toEqual([
+      pack.messages.fr['nsaid-pregnancy-from-20-weeks']?.risk,
+    ]);
+  });
+
+  it('keeps one card for findings of one level that say the same orientation, and for other levels', () => {
+    const orientationOf = (f: { message: string }) => (f.message === 'b' ? 'B' : undefined);
+    const findings: Evaluation['findings'] = [
+      { level: 'danger', check: 'C1', items: [0], message: 'a', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'b', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'c', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'd', capped: false, sources: [] },
+    ];
+    // "b" says its own orientation, "c" and "d" the level's: two cards of that level.
+    expect(cardGroups(findings, orientationOf).map((g) => g.map((f) => f.message))).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+    expect(cardGroups(findings).map((g) => g.map((f) => f.message))).toEqual([
+      ['a', 'b', 'c', 'd'],
+    ]);
   });
 });
 
