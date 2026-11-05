@@ -1131,3 +1131,226 @@
 - { query: medicament, type: noise, expect: none }
 - { query: emplatre, type: noise, expect: none }
 - { query: sel, type: noise, expect: none }
+# Live test round of 2026-11-05 (SCRUM-47): the names the testers typed.
+- {
+    query: 'Advil 400 mg comprimé pelliculé',
+    type: brand,
+    expect: { kind: product, id: advil-400-mg-63646874 },
+  }
+- { query: micropakine, type: brand, expect: { kind: product, id: valproic-acid-generic } }
+- {
+    query: doliprane codeine,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: codoliprane-500-mg-30-mg-60904643 },
+        { kind: product, id: codoliprane-500-mg-30-mg-62049552 },
+        { kind: product, id: codoliprane-adultes-400-mg-20-mg-64406362 },
+      ],
+  }
+- { query: vibramycine, type: brand, expect: { kind: product, id: doxycycline-generic } }
+- { query: efferalgan codeine, type: brand, expect: { kind: product, id: efferalgan-codeine } }
+- {
+    query: 'Efferalgan codéine 500',
+    type: brand,
+    expect: { kind: product, id: efferalgan-codeine },
+  }
+- { query: nivaquine, type: brand, expect: { kind: product, id: chloroquine-generic } }
+- {
+    query: aspegic 1000,
+    type: brand,
+    expect: { kind: product, id: aspegic-adultes-1000-mg-63936571 },
+  }
+- {
+    query: Dafalgan 500,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: dafalgan-500-mg-62815944 },
+        { kind: product, id: dafalgan-500-mg-65609611 },
+        { kind: product, id: dafalgan-500-mg-67721153 },
+      ],
+  }
+- {
+    query: 'Doliprane 1000 comprimé effervescent',
+    type: brand,
+    expect: { kind: product, id: doliprane-1000-mg-66567738 },
+  }
+- { query: Neo-Codion sirop, type: brand, expect: { kind: product, id: neo-codion-syrup } }
+- { query: Aspirine 500, type: inn, expect: { kind: product, id: aspegic-500-mg-61162942 } }
+- {
+    query: valproate de sodium,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+        { kind: product, id: depakote-250-mg-66508736 },
+        { kind: product, id: depakote-500-mg-60797287 },
+        { kind: product, id: divalcote-250-mg-63413610 },
+        { kind: product, id: valproic-acid-generic },
+      ],
+  }
+- {
+    query: valproate sodium,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+        { kind: product, id: depakote-250-mg-66508736 },
+        { kind: product, id: depakote-500-mg-60797287 },
+        { kind: product, id: divalcote-250-mg-63413610 },
+        { kind: product, id: valproic-acid-generic },
+      ],
+  }
+- {
+    query: divalproate,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+        { kind: product, id: depakote-250-mg-66508736 },
+        { kind: product, id: depakote-500-mg-60797287 },
+        { kind: product, id: divalcote-250-mg-63413610 },
+        { kind: product, id: valproic-acid-generic },
+      ],
+  }
+- {
+    query: 'acide valproïque',
+    type: inn,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+        { kind: product, id: depakote-250-mg-66508736 },
+        { kind: product, id: depakote-500-mg-60797287 },
+        { kind: product, id: divalcote-250-mg-63413610 },
+        { kind: product, id: valproic-acid-generic },
+      ],
+  }
+- {
+    query: tramadol paracetamol,
+    type: inn,
+    expect: { kind: product, id: ixprim-37-5-mg-325-mg-61137241 },
+  }
+- {
+    query: paracetamol codeine,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: claradol-codeine-500-mg-20-mg-64226827 },
+        { kind: product, id: codoliprane-500-mg-30-mg-60904643 },
+        { kind: product, id: codoliprane-500-mg-30-mg-62049552 },
+        { kind: product, id: codoliprane-adultes-400-mg-20-mg-64406362 },
+        { kind: product, id: dafalgan-codeine-61109911 },
+        { kind: product, id: dafalgan-codeine-66003374 },
+        { kind: product, id: efferalgan-codeine },
+        { kind: product, id: klipal-300-mg-25-mg-62094992 },
+      ],
+  }
+- { query: chloroquine, type: inn, expect: { kind: product, id: chloroquine-generic } }
+- { query: tetracycline, type: inn, expect: { kind: product, id: tetracycline-generic } }
+- {
+    query: fluconazole,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: beagyne-150-mg-66332081 },
+        { kind: product, id: fluconazole-arrow-10-mg-ml-62861105 },
+        { kind: product, id: fluconazole-arrow-lab-100-mg-68551946 },
+        { kind: product, id: fluconazole-arrow-lab-150-mg-67860651 },
+        { kind: product, id: fluconazole-arrow-lab-200-mg-61527330 },
+        { kind: product, id: fluconazole-biogaran-10-mg-ml-64967484 },
+        { kind: product, id: fluconazole-biogaran-100-mg-66984913 },
+        { kind: product, id: fluconazole-biogaran-200-mg-68998826 },
+        { kind: product, id: fluconazole-cristers-100-mg-66318142 },
+      ],
+  }
+- {
+    query: methotrexate,
+    type: inn,
+    expect:
+      [
+        { kind: product, id: methotrexate-accord-10-mg-60390455 },
+        { kind: product, id: methotrexate-accord-2-5-mg-65854190 },
+        { kind: product, id: metotab-10-mg-62537295 },
+        { kind: product, id: metotab-2-5-mg-64739573 },
+        { kind: product, id: novatrex-2-5-mg-67853564 },
+      ],
+  }
+- { query: kenkiliba, type: misspelling, expect: { kind: plant, id: kinkeliba } }
+- { query: jenjer, type: misspelling, expect: { kind: plant, id: ginger } }
+- { query: nivakine, type: misspelling, expect: { kind: product, id: chloroquine-generic } }
+- { query: quinqueliba, type: local-fr, expect: { kind: plant, id: kinkeliba } }
+- { query: 'quinquéliba', type: local-fr, expect: { kind: plant, id: kinkeliba } }
+- { query: jinjeer, type: local-wo, expect: { kind: plant, id: ginger } }
+- { query: jinjer, type: local-wo, expect: { kind: plant, id: ginger } }
+- { query: goro, type: local-wo, expect: { kind: plant, id: cola-nut } }
+# Safety review of 2026-11-05 (SCRUM-47): text written on a box or said at a
+# sale, a carrier word before the name, box abbreviations, salt forms.
+- {
+    query: 'Advil 400 mg boîte de 20',
+    type: brand,
+    expect: { kind: product, id: advil-400-mg-63646874 },
+  }
+- {
+    query: Advil pour les douleurs,
+    type: brand,
+    expect:
+      [{ kind: product, id: advil-200-mg-68634000 }, { kind: product, id: advil-400-mg-63646874 }],
+  }
+- {
+    query: cytotec de la pharmacie,
+    type: brand,
+    expect: { kind: product, id: misoprostol-generic },
+  }
+- {
+    query: Efferalgan 1g cpr eff,
+    type: brand,
+    expect: { kind: product, id: efferalgan-1000-mg-67058605 },
+  }
+- { query: 'aspirine du Rhône', type: inn, expect: { kind: product, id: aspirin-generic } }
+- {
+    query: 'valproate de magnésium',
+    type: inn,
+    expect:
+      [
+        { kind: product, id: depakine-200-mg-67623734 },
+        { kind: product, id: depakine-200-mg-ml-62410472 },
+        { kind: product, id: depakine-500-mg-60184188 },
+        { kind: product, id: depakine-57-64-mg-ml-61174492 },
+        { kind: product, id: depakine-chrono-500-mg-61358994 },
+        { kind: product, id: depakote-250-mg-66508736 },
+        { kind: product, id: depakote-500-mg-60797287 },
+        { kind: product, id: divalcote-250-mg-63413610 },
+        { kind: product, id: valproic-acid-generic },
+      ],
+  }
+- { query: divalproate de sodium, type: inn, expect: { kind: product, id: valproic-acid-generic } }
+- { query: 'huile de ricin du marché', type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: huile de nim, type: local-wo, expect: { kind: plant, id: neem } }
+- { query: huile de ricin bio, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: mon cytotec, type: brand, expect: { kind: product, id: misoprostol-generic } }
+- { query: cytotek, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: misopristol, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: huile de coco, type: noise, expect: none }
+- { query: huile de lin, type: noise, expect: none }
+- { query: huile, type: noise, expect: none }
+# A plant part, or a cough with a form, names no remedy and no medicine.
+- { query: racine, type: noise, expect: none }
+- { query: sirop toux, type: noise, expect: none }
+- { query: sirop contre la toux, type: noise, expect: none }

@@ -9,6 +9,8 @@ export {
   BDPM_FILES,
   decodeBdpm,
   importBdpm,
+  LOCAL_NAMES,
+  MAX_ENTRIES,
   parseCompositions,
   parseSpecialities,
   PRIORITY_BRANDS,

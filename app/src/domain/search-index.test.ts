@@ -8,12 +8,14 @@ import {
   candidateOf,
   displayOf,
   localNameOf,
+  missingSubstancesOf,
   needsUnitsPerDay,
   productFamilyOf,
   searchIndexOf,
   strengthChoiceOf,
   strengthOptionLabel,
   substancesWithMaxDose,
+  writtenNameOf,
 } from './search-index.js';
 
 let pack: Pack;
@@ -152,13 +154,6 @@ describe('strengthOptionLabel', () => {
       '2,4 POUR CENT, suspension buvable',
     );
   });
-
-  it('keeps the whole name of the products of a generic', () => {
-    const candidate = first('paracetamol', 'product');
-    expect(strengthOptionLabel(pack, candidate, 'paracetamol-500-generic', 'fr')).toBe(
-      'Paracétamol 500 mg (générique)',
-    );
-  });
 });
 
 describe('localNameOf', () => {
@@ -236,19 +231,25 @@ describe('candidateDisplayOf', () => {
 describe('displayOf a product of a family that differs only by its forms', () => {
   it('names it by its brand and its strengths, without the form the user did not choose', () => {
     const NB = ' ';
-    expect(
-      displayOf(pack, { kind: 'product', id: 'codoliprane-500-mg-30-mg-62049552' }, 'fr'),
-    ).toEqual({
-      name: `CODOLIPRANE 500${NB}mg/30${NB}mg`,
+    // Strongest first, whatever the order of the components.
+    expect(displayOf(pack, { kind: 'product', id: 'dafalgan-codeine-66003374' }, 'fr')).toEqual({
+      name: `DAFALGAN CODEINE 500${NB}mg/30${NB}mg`,
       detail: `Paracétamol 500${NB}mg, Codéine 30${NB}mg`,
     });
-    // Strongest first, whatever the order of the components.
     expect(displayOf(pack, { kind: 'product', id: 'dafalgan-codeine-61109911' }, 'fr').name).toBe(
       `DAFALGAN CODEINE 500${NB}mg/30${NB}mg`,
     );
-    expect(candidateDisplayOf(pack, first('codoliprane', 'product'), 'codoliprane', 'fr')).toEqual(
-      displayOf(pack, { kind: 'product', id: 'codoliprane-500-mg-30-mg-60904643' }, 'fr'),
+    const candidate = first('dafalgan codeine', 'product');
+    expect(candidateDisplayOf(pack, candidate, 'dafalgan codeine', 'fr')).toEqual(
+      displayOf(pack, { kind: 'product', id: candidate.id }, 'fr'),
     );
+  });
+
+  it('keeps the whole name when an age variant of the brand has other strengths', () => {
+    // CODOLIPRANE ADULTES 400 mg/20 mg is a variant of CODOLIPRANE 500 mg/30 mg.
+    expect(
+      displayOf(pack, { kind: 'product', id: 'codoliprane-500-mg-30-mg-62049552' }, 'fr').name,
+    ).toBe('CODOLIPRANE 500 mg/30 mg, gélule');
   });
 
   it('keeps the whole name in a family of several strengths', () => {
@@ -337,13 +338,30 @@ describe('strengthChoiceOf', () => {
     expect(strengthChoiceOf(pack, candidate, 'dafalgan codeine')).toBeNull();
   });
 
-  it('offers the strengths of a generic; "I do not know" stands for its product without strength', () => {
+  it('offers the strengths of a generic with nothing chosen, as for a brand', () => {
+    // "I do not know" stands for its product without strength, but she says it herself.
     const candidate = first('paracetamol', 'product');
     expect(candidate.id).toBe('paracetamol-generic');
     expect(strengthChoiceOf(pack, candidate, 'paracetamol')).toEqual({
       options: ['paracetamol-500-generic', 'paracetamol-1000-generic'],
-      preselected: 'unknown',
+      preselected: null,
     });
+  });
+
+  it('preselects the form typed in the query when one product of the family has it', () => {
+    const candidate = first('Neo-Codion sirop', 'product');
+    expect(candidate.id).toBe('neo-codion-syrup');
+    expect(strengthChoiceOf(pack, candidate, 'Neo-Codion sirop')?.preselected).toBe('candidate');
+    // Several products of the family have it, of several strengths: none is chosen for her.
+    const effervescent = first('doliprane effervescent', 'product');
+    expect(strengthChoiceOf(pack, effervescent, 'doliprane effervescent')?.preselected).toBeNull();
+  });
+
+  it('preselects the strength and the form typed together', () => {
+    const query = 'Doliprane 1000 comprimé effervescent';
+    const candidate = first(query, 'product');
+    expect(candidate.id).toBe('doliprane-1000-mg-66567738');
+    expect(strengthChoiceOf(pack, candidate, query)?.preselected).toBe('candidate');
   });
 
   it('preselects the strength typed in the query', () => {
@@ -396,5 +414,47 @@ describe('strengthOptionLabel', () => {
     expect(strengthOptionLabel(pack, candidate, 'coversyl-2-5-mg-69475939', 'fr')).toBe(
       '2,5 mg, comprimé pelliculé',
     );
+  });
+
+  it('starts a generic strength with what the box shows, as for a brand', () => {
+    const candidate = first('paracetamol', 'product');
+    expect(strengthOptionLabel(pack, candidate, 'paracetamol-500-generic', 'fr')).toBe(
+      '500 mg, comprimé',
+    );
+    expect(strengthOptionLabel(pack, candidate, 'paracetamol-1000-generic', 'en')).toBe(
+      '1000 mg, comprimé',
+    );
+  });
+});
+
+describe('writtenNameOf', () => {
+  it('gives the name typed when the product is shown under another name', () => {
+    const cytotec = { kind: 'product', id: 'misoprostol-generic' } as const;
+    expect(writtenNameOf(pack, cytotec, 'cytotec', 'fr')).toBe('cytotec');
+    expect(writtenNameOf(pack, cytotec, '  Cytotec   200 ', 'fr')).toBe('Cytotec 200');
+    expect(writtenNameOf(pack, { kind: 'plant', id: 'moringa' }, 'nebeday', 'fr')).toBe('nebeday');
+  });
+
+  it('gives nothing when the name shown already says what was typed', () => {
+    const doliprane = { kind: 'product', id: 'doliprane-1000-mg-60234100' } as const;
+    expect(writtenNameOf(pack, doliprane, 'Doliprane 1000', 'fr')).toBeUndefined();
+    // A spelling the name shown reads the same way (accents, doubled letters).
+    expect(writtenNameOf(pack, doliprane, 'doliprann', 'fr')).toBeUndefined();
+    const generic = { kind: 'product', id: 'paracetamol-generic' } as const;
+    expect(writtenNameOf(pack, generic, 'paracétamol', 'fr')).toBeUndefined();
+    expect(writtenNameOf(pack, generic, 'paracetamol comprimé', 'en')).toBeUndefined();
+    expect(writtenNameOf(pack, generic, '', 'fr')).toBeUndefined();
+    expect(writtenNameOf(pack, generic, '500 mg', 'fr')).toBeUndefined();
+  });
+});
+
+describe('missingSubstancesOf', () => {
+  it('names the substances the query names that the product lacks', () => {
+    expect(
+      missingSubstancesOf(pack, 'efferalgan-500-mg-67326925', 'efferalgan codeine', 'fr'),
+    ).toEqual(['Codéine']);
+    expect(missingSubstancesOf(pack, 'efferalgan-codeine', 'efferalgan codeine', 'en')).toEqual([]);
+    expect(missingSubstancesOf(pack, 'efferalgan-500-mg-67326925', 'efferalgan', 'fr')).toEqual([]);
+    expect(missingSubstancesOf(pack, 'gone', 'codeine', 'fr')).toEqual([]);
   });
 });

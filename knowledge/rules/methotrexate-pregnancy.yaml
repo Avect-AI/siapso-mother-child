@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Methotrexate during pregnancy: the French label calls it teratogenic in
+# humans (fetal death, miscarriage, birth defects) and contraindicates it
+# outside cancer treatment. It is a long-term treatment (joints, skin), so
+# the message gives its own orientation: show it before the next dose,
+# changing nothing until then. Not an immediate vital risk for the mother:
+# before-next-dose, not danger (a question for the clinical committee).
+id: methotrexate-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: methotrexate }
+level: before-next-dose
+evidence: A
+message: methotrexate-pregnancy
+sources:
+  - source: bdpm
+    locator: 'NOVATREX 2,5 mg, comprimé, RCP 4.6 (ANSM, 03/11/2026), CIS 67853564'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=67853564&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Le méthotrexate s’est avéré tératogène chez les humains, des cas de mort fœtale, des fausses couches et/ou des anomalies congénitales ont été rapportés (par exemple, cranio-faciales, cardiovasculaires, du système nerveux central et des extrémités).'
+  - source: bdpm
+    locator: 'NOVATREX 2,5 mg, comprimé, RCP 4.6 (ANSM, 03/11/2026), CIS 67853564'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=67853564&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Le méthotrexate est contre-indiqué pendant la grossesse pour des indications non oncologiques (voir rubrique 4.3).'
+review:
+  status: draft
+  reviewers: []

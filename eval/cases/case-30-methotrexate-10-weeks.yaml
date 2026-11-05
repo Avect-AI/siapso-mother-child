@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-30-methotrexate-10-weeks
+title: '10 weeks, methotrexate tablets: a teratogen shown before the next dose'
+context:
+  pregnancy: { weeks: 10 }
+  items:
+    - { product: novatrex-2-5-mg-67853564 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: methotrexate-pregnancy,
+        message: methotrexate-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: []
+  notes: []

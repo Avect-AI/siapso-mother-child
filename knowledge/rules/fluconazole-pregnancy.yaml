@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Fluconazole during the first and second trimesters: observational studies
+# in the French label find more miscarriages, and more birth defects after a
+# first-trimester exposure, rising with the amount taken (C). The label asks
+# not to use it during pregnancy unless absolutely necessary. A short course,
+# not a vital treatment: the default orientation of the level. The level, the
+# windows and the dose dependence are questions for the clinical committee.
+id: fluconazole-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: fluconazole }
+  pregnancy-windows: [lt12, 12-19, 20-29]
+level: before-next-dose
+evidence: C
+message: fluconazole-pregnancy
+sources:
+  - source: bdpm
+    locator: 'FLUCONAZOLE PFIZER 150 mg, gélule, RCP 4.6 (ANSM, 03/11/2026), CIS 63206323'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63206323&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Les études observationnelles suggèrent un risque accru d’avortement spontané chez les femmes traitées par fluconazole au cours du premier et/ou du deuxième trimestre par rapport aux femmes non traitées par fluconazole ou traitées par des azolés topiques au cours de la même période.'
+  - source: bdpm
+    locator: 'FLUCONAZOLE PFIZER 150 mg, gélule, RCP 4.6 (ANSM, 03/11/2026), CIS 63206323'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63206323&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Le fluconazole administré à des doses standard et les traitements à court terme ne doivent pas être utilisés pendant la grossesse sauf nécessité absolue.'
+  - source: bdpm
+    locator: 'FLUCONAZOLE PFIZER 150 mg, gélule, RCP 4.6 (ANSM, 03/11/2026), CIS 63206323'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63206323&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Les données sur quelques milliers de femmes enceintes traitées avec une dose cumulée ≤ 150 mg de fluconazole, administrée au cours du premier trimestre, n’ont montré aucune augmentation du risque global de malformations chez le fœtus.'
+  - source: bdpm
+    locator: 'FLUCONAZOLE PFIZER 150 mg, gélule, RCP 4.6 (ANSM, 03/11/2026), CIS 63206323'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=63206323&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Au cours d’une vaste étude de cohorte observationnelle, l’exposition au fluconazole par voie orale au cours du premier trimestre a été associée à une légère augmentation du risque de malformations musculo-squelettiques, correspondant à environ 1 cas supplémentaire pour 1 000 femmes traitées avec des doses cumulées ≤ 450 mg par rapport aux femmes traitées avec des azolés topiques et à environ 4 cas supplémentaires pour 1 000 femmes traitées avec des doses cumulées supérieures à 450 mg. Le risque relatif ajusté était de 1,29 (IC à 95 % 1,05 à 1,58) pour 150 mg de fluconazole par voie orale et de 1,98 (IC à 95 % 1,23 à 3,17) pour les doses supérieures à 450 mg de fluconazole.'
+review:
+  status: draft
+  reviewers: []

@@ -95,8 +95,9 @@ describe('search scoring', () => {
   });
 
   it('scores a prefix of a name (3 characters or more) 0.9', () => {
-    const [first] = search(index, 'Moringa ole');
-    expect(first).toMatchObject({ id: 'moringa', matchedLang: 'latin', score: 0.9 });
+    // "Moringa ole" holds the whole name "Moringa" too: contained, also 0.9.
+    expect(search(index, 'Moringa ole')[0]).toMatchObject({ id: 'moringa', score: 0.9 });
+    expect(search(index, 'morin')[0]).toMatchObject({ id: 'moringa', score: 0.9, match: 'prefix' });
   });
 
   it('does not use the prefix rule below 3 characters', () => {
@@ -222,8 +223,10 @@ describe('search options', () => {
         'family',
         'id',
         'kind',
+        'match',
         'matched',
         'matchedLang',
+        'queryLength',
         'score',
         'variants',
       ].sort(),

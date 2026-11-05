@@ -36,12 +36,15 @@ function Item({
   item,
   shown,
   list,
+  written,
   onRemove,
 }: {
   item: CheckedItem;
   shown: ItemDisplay;
   /** The list an unrecognised text was typed in. */
   list: 'product' | 'plant' | undefined;
+  /** The name she typed, when the item is shown under another name. */
+  written: string | undefined;
   onRemove: () => void;
 }) {
   const t = useT();
@@ -60,6 +63,10 @@ function Item({
         {item.strengthUnknown === true ? (
           <p className="meta">{t('check.strengthUnknown')}</p>
         ) : null}
+        {/* Last in the product block, as on the confirm screen. */}
+        {written === undefined ? null : (
+          <p className="meta">{t('check.writtenAs', { text: written })}</p>
+        )}
         {units === undefined ? null : (
           <p className="meta">
             {units === 1 ? t('check.unitsOne') : t('check.unitsMany', { units })}
@@ -206,6 +213,7 @@ export function Check() {
                 item={item}
                 shown={shown}
                 list={check.listOf(item)}
+                written={check.writtenOf(item)}
                 onRemove={() => {
                   focusRow.current = index;
                   setChange({ kind: 'removed', item, index });

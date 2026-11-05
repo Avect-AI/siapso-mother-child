@@ -241,14 +241,18 @@ function Screens() {
   const shown = useRef(key);
 
   // A new screen takes the focus to its heading, so a screen reader starts
-  // reading it from the top; not on the first screen of a load, which starts
-  // there anyway.
+  // reading it from the top, or to the field the screen exists for (the
+  // search: its label says what the heading says); not on the first screen of
+  // a load, which starts there anyway.
   useEffect(() => {
     const previous = shown.current;
     if (previous === key) return;
     shown.current = key;
     if (previous === 'loading') return;
-    document.querySelector<HTMLElement>('main h1')?.focus();
+    const target =
+      document.querySelector<HTMLElement>('main [data-autofocus]') ??
+      document.querySelector<HTMLElement>('main h1');
+    target?.focus();
   }, [key]);
 
   if (screen === null) return <Redirect to="/" replace />;

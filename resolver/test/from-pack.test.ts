@@ -64,15 +64,19 @@ describe('entriesFromPack', () => {
   it('puts the INN names of a brand product in a separate entry at priority 1', () => {
     const inn = byKey('doliprane-1000', 1);
     expect(inn?.names).toEqual([
-      { text: 'paracétamol', lang: 'inn' },
-      { text: 'paracetamol', lang: 'inn' },
+      { text: 'paracétamol', lang: 'inn', substance: 'paracetamol' },
+      { text: 'paracetamol', lang: 'inn', substance: 'paracetamol' },
     ]);
     expect(byKey('doliprane-1000', 3)?.names.some((name) => name.lang === 'inn')).toBe(false);
   });
 
   it('indexes a generic product (no brand) at priority 2 with its INN names inside', () => {
     const item = byKey('paracetamol-generic', 2);
-    expect(item?.names).toContainEqual({ text: 'paracétamol', lang: 'inn' });
+    expect(item?.names).toContainEqual({
+      text: 'paracétamol',
+      lang: 'inn',
+      substance: 'paracetamol',
+    });
     expect(item?.names).toContainEqual({ text: 'Paracétamol (générique)', lang: 'fr' });
     expect(byKey('paracetamol-generic', 1)).toBeUndefined();
   });
@@ -133,7 +137,11 @@ describe('entriesFromPack', () => {
     expect(aliased).toHaveLength(1);
     expect(aliased[0]).toMatchObject({ priority: 2, family: 'substances:paracetamol' });
     expect(aliased[0]?.names).toContainEqual({ text: 'Brufen', lang: 'brand' });
-    expect(aliased[0]?.names).toContainEqual({ text: 'paracétamol', lang: 'inn' });
+    expect(aliased[0]?.names).toContainEqual({
+      text: 'paracétamol',
+      lang: 'inn',
+      substance: 'paracetamol',
+    });
   });
 
   it('treats a product whose name starts with its first brand as a brand product', () => {
@@ -155,6 +163,29 @@ describe('entriesFromPack', () => {
       [1, 'brand:neo codion'],
     ]);
     expect(byKey('combo', 3)?.family).toBe('brand:combo');
+  });
+
+  it('records the sorted substance ids of a product', () => {
+    expect(byKey('combo', 3)?.substances).toEqual(['codeine', 'paracetamol']);
+    expect(byKey('combo', 1)?.substances).toEqual(['codeine', 'paracetamol']);
+    expect(byKey('moringa', 2)?.substances).toBeUndefined();
+  });
+
+  it('gives the products of one brand one family whatever their age words', () => {
+    const ages = entriesFromPack({
+      ...PACK,
+      products: [
+        {
+          id: 'doliprane-adultes-1000',
+          names: { fr: 'DOLIPRANE ADULTES 1000 mg, suppositoire', en: 'DOLIPRANE ADULTES' },
+          brands: ['DOLIPRANE ADULTES'],
+          localNames: [],
+          components: [{ substance: 'paracetamol' }],
+        },
+      ],
+      plants: [],
+    });
+    expect(ages[0]).toMatchObject({ priority: 3, family: 'brand:dolipran' });
   });
 
   it('skips an unknown substance instead of failing', () => {

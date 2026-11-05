@@ -9,7 +9,11 @@ import type { ItemRef, Lang, LocalName, Pack, Product } from '@siapso/engine';
 import {
   buildIndex,
   entriesFromPack,
+  formWords,
+  namedSubstances,
+  normalize,
   parseStrength,
+  withoutStopWords,
   type Candidate,
   type ResolverIndex,
 } from '@siapso/resolver';
@@ -56,9 +60,20 @@ function firstStrength(product: Product | undefined): number {
   return product?.components.find((c) => c.strengthMg !== undefined)?.strengthMg ?? Infinity;
 }
 
-/** Strength ascending, then id: the order of the resolver's variants. */
-function byStrengthThenId(a: Product, b: Product): number {
-  return firstStrength(a) - firstStrength(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Strength ascending, then French name (normalised: the plainest form first),
+ * then id: the order of the resolver's variants, the same for every brand.
+ */
+function byStrengthThenName(a: Product, b: Product): number {
+  return (
+    firstStrength(a) - firstStrength(b) ||
+    compareText(normalize(a.names.fr), normalize(b.names.fr)) ||
+    compareText(a.id, b.id)
+  );
 }
 
 function indexedOf(pack: Pack): Indexed {
@@ -80,7 +95,7 @@ function indexedOf(pack: Pack): Indexed {
     const members = new Map(
       [...grouped].map(([family, products]) => [
         family,
-        products.sort(byStrengthThenId).map((p) => p.id),
+        products.sort(byStrengthThenName).map((p) => p.id),
       ]),
     );
     indexed = { index: buildIndex(entries), familyOf, members, maxDose: maxDoseSubstances(pack) };
@@ -218,6 +233,45 @@ export function localNameOf(
   return entries.find((e) => e.id === ref.id)?.localNames.find((local) => local.text === matched);
 }
 
+/**
+ * The name she typed, when the product or remedy is shown under a name that
+ * does not say it ("cytotec" for "Misoprostol (générique)", "nebeday" for
+ * "Moringa"), so she still recognises what she entered: the text typed,
+ * trimmed, its spaces collapsed. Undefined when the name shown already holds
+ * it, as the resolver reads names (accents, doubled letters, a strength and
+ * form words aside), and for a query with no name in it.
+ */
+export function writtenNameOf(
+  pack: Pack,
+  ref: { kind: 'product' | 'plant'; id: string },
+  query: string,
+  lang: Lang,
+): string | undefined {
+  const typed = query.trim().replace(/\s+/g, ' ');
+  const name = withoutStopWords(normalize(parseStrength(typed).text));
+  if (name === '') return undefined;
+  return normalize(displayOf(pack, ref, lang).name).includes(name) ? undefined : typed;
+}
+
+/**
+ * The substances a query names that the product lacks, in the language
+ * ("efferalgan codéine" for a paracetamol-only EFFERALGAN: Codéine), for the
+ * confirm screen to say so. Empty when it lacks none, or is not in the pack.
+ */
+export function missingSubstancesOf(
+  pack: Pack,
+  productId: string,
+  query: string,
+  lang: Lang,
+): string[] {
+  const product = productOf(pack, productId);
+  if (product === undefined) return [];
+  const held = new Set(product.components.map((c) => c.substance));
+  return namedSubstances(indexedOf(pack).index, query)
+    .filter((id) => !held.has(id))
+    .map((id) => pack.substances.find((s) => s.id === id)?.names[lang] ?? id);
+}
+
 /** What the confirm screen needs of a candidate: who it is and the other products of its family. */
 export type ConfirmCandidate = Pick<Candidate, 'id' | 'kind' | 'family' | 'variants'>;
 
@@ -290,11 +344,18 @@ export interface StrengthChoice {
   options: string[];
   /**
    * The answer chosen at first: the candidate when the query gave its
-   * strength, "unknown" when the candidate is the product without strength,
-   * and null otherwise: a strength the user did not give is never chosen for
-   * her (the lowest strength of a brand would hide a daily maximum).
+   * strength, or gave the form of the only product of the family that has it
+   * when that product has no strength in mg (a syrup); null otherwise, for a
+   * generic as for a brand: a strength the user did not give is never chosen
+   * for her (the lowest strength of a brand would hide a daily maximum), and
+   * "I do not know" is her own answer too.
    */
-  preselected: 'candidate' | 'unknown' | null;
+  preselected: 'candidate' | null;
+}
+
+/** The form words of a product: of its French name and of its form ("comprimé", "sirop"). */
+function productForms(product: Product): Set<string> {
+  return new Set(formWords(`${product.names.fr} ${product.form}`));
 }
 
 /**
@@ -320,20 +381,28 @@ export function strengthChoiceOf(
   const generic = candidate.family.startsWith(GENERIC_FAMILY);
   const options = members
     .filter((p) => !(generic && hasNoStrength(p)))
-    .sort(byStrengthThenId)
+    .sort(byStrengthThenName)
     .map((p) => p.id);
 
   const typed = parseStrength(query).strengthMg;
+  const forms = formWords(query);
   let preselected: StrengthChoice['preselected'] = null;
-  if (hasNoStrength(product)) {
-    preselected = typed === undefined && generic ? 'unknown' : null;
-  } else if (
+  if (
     typed !== undefined &&
     product.components.some(
       (c) => c.strengthMg !== undefined && Math.abs(c.strengthMg - typed) < 1e-6,
     )
   ) {
     preselected = 'candidate';
+  } else if (typed === undefined && forms.length > 0 && hasNoStrength(product)) {
+    // "Néo-Codion sirop": the only product of the family in that form, and no strength chosen.
+    const inForm = members.filter((p) => {
+      const own = productForms(p);
+      return forms.every((form) => own.has(form));
+    });
+    if (inForm.length === 1 && inForm[0]?.id === product.id && options.includes(product.id)) {
+      preselected = 'candidate';
+    }
   }
   return { options, preselected };
 }
@@ -362,8 +431,9 @@ export function candidateDisplayOf(
  * the brand every answer shares is said once, above the question, so each
  * answer starts with what differs and what the box shows: "1000 mg,
  * comprimé" for "DOLIPRANE 1000 mg, comprimé", "comprimé pelliculé" for
- * "DAFALGAN CODEINE, comprimé pelliculé". A name that does not start with the
- * brand as a whole word, and the products of a generic, keep their whole name.
+ * "DAFALGAN CODEINE, comprimé pelliculé". A generic product reads the same
+ * way, its strengths then its form ("500 mg, comprimé"). A name that does not
+ * start with the brand as a whole word keeps the whole name.
  */
 export function strengthOptionLabel(
   pack: Pack,
@@ -371,8 +441,17 @@ export function strengthOptionLabel(
   id: string,
   lang: Lang,
 ): string {
+  const product = productOf(pack, id);
+  if (candidate.family.startsWith(GENERIC_FAMILY) && product !== undefined) {
+    // Written as the names of the brand products are ("1000 mg, comprimé").
+    const number = new Intl.NumberFormat(lang, { useGrouping: false, maximumFractionDigits: 3 });
+    const strengths = product.components.flatMap((c) =>
+      c.strengthMg === undefined ? [] : [`${number.format(c.strengthMg)} mg`],
+    );
+    if (strengths.length > 0) return `${strengths.join('/')}, ${product.form}`;
+  }
   // The product's own name, form included: the forms are what the answers tell apart.
-  const name = productOf(pack, id)?.names[lang] ?? id;
+  const name = product?.names[lang] ?? id;
   const brand = candidate.family.startsWith(GENERIC_FAMILY)
     ? undefined
     : productOf(pack, candidate.id)?.brands[0];

@@ -31,6 +31,9 @@
 - id: celecoxib
   names: { fr: 'Célécoxib', en: 'Celecoxib' }
   classes: [nsaid]
+- id: chloroquine
+  names: { fr: 'Chloroquine', en: 'Chloroquine' }
+  classes: []
 - id: clobetasol
   names: { fr: 'Clobétasol', en: 'Clobetasol' }
   classes: []
@@ -55,6 +58,9 @@
 - id: etoricoxib
   names: { fr: 'Étoricoxib', en: 'Etoricoxib' }
   classes: [nsaid]
+- id: fluconazole
+  names: { fr: 'Fluconazole', en: 'Fluconazole' }
+  classes: []
 - id: folic-acid
   names: { fr: 'Acide folique', en: 'Folic acid' }
   classes: []
@@ -97,6 +103,9 @@
 - id: mefenamic-acid
   names: { fr: 'Acide méfénamique', en: 'Mefenamic acid' }
   classes: [nsaid]
+- id: methotrexate
+  names: { fr: 'Méthotrexate', en: 'Methotrexate' }
+  classes: []
 - id: metronidazole
   names: { fr: 'Métronidazole', en: 'Metronidazole' }
   classes: []

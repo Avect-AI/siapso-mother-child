@@ -179,6 +179,108 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
   });
 });
 
+describe('Result: a name typed as not recognised that looks like a known one', () => {
+  it('evaluates what it looks like: the danger the base knows stays, the text stays unknown', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-04' },
+        conditions: ['uterine-scar'],
+      }),
+    );
+    const typed: CheckedItem = { ref: { kind: 'unrecognised', text: 'huile de ricin' } };
+    await openResult({ items: [typed] });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^Danger : à montrer maintenant/);
+    const possible = await screen.findByRole('article', {
+      name: /^Danger\s: à montrer maintenant\. huile de ricin$/,
+    });
+    expect(possible).toHaveTextContent(
+      "Ce nom ressemble à Huile de ricin (Ricinus communis). Si c'est ce remède :",
+    );
+    // The text typed keeps its own grey card.
+    const own = screen.getByRole('article', { name: 'On ne sait pas. huile de ricin' });
+    expect(own).not.toHaveTextContent('Ce nom ressemble');
+
+    // The history keeps the items as they were checked, and the level shown.
+    await waitFor(async () => {
+      expect(await listHistory('p1')).toHaveLength(1);
+    });
+    const [kept] = await listHistory('p1');
+    expect(kept).toMatchObject({ level: 'danger', items: [typed] });
+  });
+
+  it('says in the banner and the summary that the danger is a resemblance', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-04' },
+        conditions: ['uterine-scar'],
+      }),
+    );
+    await openResult({ items: [{ ref: { kind: 'unrecognised', text: 'huile de ricin' } }] });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('(ressemble à Huile de ricin)');
+    const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
+    expect(rows[0]).toHaveTextContent(/\(ressemble à Huile de ricin\)\. huile de ricin$/);
+  });
+
+  it('keeps no weak resemblance of a name she said was none of the products proposed', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-04' },
+        conditions: ['uterine-scar'],
+      }),
+    );
+    const probe = probeCheck();
+    await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    await screen.findByRole('heading', { level: 1 });
+    act(() => {
+      const check = probe.current();
+      check.start('p1');
+      for (const text of ['huile de coco', 'Moussa', 'Anta', 'vitamines', 'clotrimazole']) {
+        check.add({ ref: { kind: 'unrecognised', text } }, { list: 'product', declined: true });
+      }
+      check.setSigns([]);
+    });
+    act(() => {
+      window.location.hash = '#/result';
+    });
+
+    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+    expect(await screen.findAllByRole('article')).toHaveLength(5);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/ressemble à/)).toBeNull();
+  });
+
+  it('shows the name typed on the card of a product found under another name', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 10, givenOn: '2026-11-04' } }));
+    const probe = probeCheck();
+    await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    await screen.findByRole('heading', { level: 1 });
+    act(() => {
+      const check = probe.current();
+      check.start('p1');
+      check.add({ ref: { kind: 'product', id: 'misoprostol-generic' } }, { written: 'cytotec' });
+      check.setSigns([]);
+    });
+    act(() => {
+      window.location.hash = '#/result';
+    });
+
+    const card = await screen.findByRole('article', { name: /Misoprostol \(générique\)$/ });
+    expect(card).toHaveTextContent('Vous avez écrit : cytotec');
+  });
+});
+
 describe('Result: several products in one finding', () => {
   it('sets each product on its own line, and lists the same products at one level once', async () => {
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 16, givenOn: '2026-11-04' } }));

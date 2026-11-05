@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand: the syrup of Néo-Codion, common in Senegal but
+# not marketed in France, so the BDPM import leaves it out. Its active
+# substance is codeine camphosulfonate (therapeutic fraction: codeine, per
+# 100 ml of syrup) in the BDPM composition file of 2026-11-04 (CIS 63010787,
+# NEO-CODION ADULTES, sirop). A syrup has no strength per unit, so none is
+# given. Same brand as the coated tablet (neo-codion): the confirm screen
+# offers both forms. Its availability in Senegal is not verified.
+id: neo-codion-syrup
+names: { fr: 'Néo-Codion, sirop', en: 'Néo-Codion, syrup' }
+brands: ['Néo-Codion']
+local-names: []
+components:
+  - { substance: codeine }
+form: 'sirop'
+route: oral
+source: { demo-manual: true }
+demo: true

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Methotrexate while breastfeeding: the French label says it passes into
+# breast milk and may be toxic for the breastfed child, and contraindicates
+# breastfeeding. The passage into milk is human pharmacokinetic data (B); the
+# toxicity for the child is what the label fears, not measured.
+id: methotrexate-breastfeeding
+kind: breastfeeding
+when:
+  subject: { substance: methotrexate }
+level: before-next-dose
+evidence: B
+message: methotrexate-breastfeeding
+sources:
+  - source: bdpm
+    locator: 'NOVATREX 2,5 mg, comprimé, RCP 4.6 (ANSM, 03/11/2026), CIS 67853564'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=67853564&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Le méthotrexate passe dans le lait maternel et peut entraîner une toxicité chez l’enfant allaité, l’allaitement est contre-indiqué et doit être arrêté avant le traitement (voir rubrique 4.3).'
+review:
+  status: draft
+  reviewers: []

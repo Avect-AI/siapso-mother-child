@@ -48,6 +48,12 @@ describe('normalize: spelling variants', () => {
     expect(normalize('huile de ricine')).toBe('huil de ricin');
   });
 
+  it('maps qu to k (the French spelling of the k sound)', () => {
+    expect(normalize('quinquéliba')).toBe(normalize('kinkéliba'));
+    expect(normalize('Nivaquine')).toBe(normalize('nivakine'));
+    expect(normalize('quinine')).toBe('kinin');
+  });
+
   it('does not map kh to x because it changes the meaning', () => {
     expect(normalize('dakhar')).toBe('dakhar');
     expect(normalize('dakhar')).not.toBe(normalize('daxar'));

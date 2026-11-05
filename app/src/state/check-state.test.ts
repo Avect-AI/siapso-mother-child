@@ -45,6 +45,47 @@ describe('useCheckStore', () => {
     expect(result.current.items).toHaveLength(2);
   });
 
+  it('keeps the name typed for a product shown under another name, until the check is reset', () => {
+    const cytotec: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('p1');
+      result.current.add(cytotec, { written: 'cytotec' });
+      result.current.add(moringa);
+    });
+    expect(result.current.writtenOf({ ...cytotec, ref: { ...cytotec.ref } })).toBe('cytotec');
+    expect(result.current.writtenOf(moringa)).toBeUndefined();
+    // Confirmed again under its own name: the name typed before is no longer said.
+    act(() => {
+      result.current.add(cytotec);
+    });
+    expect(result.current.writtenOf(cytotec)).toBeUndefined();
+    act(() => {
+      result.current.add(cytotec, { written: 'cytotec' });
+      result.current.reset();
+    });
+    expect(result.current.writtenOf(cytotec)).toBeUndefined();
+  });
+
+  it('remembers a name kept as typed after "none of these", until the check is reset', () => {
+    const coco: CheckedItem = { ref: { kind: 'unrecognised', text: 'huile de coco' } };
+    const market: CheckedItem = { ref: { kind: 'unrecognised', text: 'poudre du marché' } };
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('p1');
+      result.current.add(coco, { list: 'product', declined: true });
+      result.current.add(market, { list: 'product' });
+    });
+    expect(
+      result.current.declinedOf({ ref: { kind: 'unrecognised', text: 'Huile de coco ' } }),
+    ).toBe(true);
+    expect(result.current.declinedOf(market)).toBe(false);
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.declinedOf(coco)).toBe(false);
+  });
+
   it('keeps a count of units per day from 1 to 24 and refuses any other', () => {
     const { result } = renderHook(() => useCheckStore());
     act(() => {

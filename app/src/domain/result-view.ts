@@ -25,6 +25,7 @@ import {
   type SourceRef,
 } from '@siapso/engine';
 import type { MessageKey, Vars } from '../i18n/translate.js';
+import type { PossibleMatch } from './possible-matches.js';
 import { displayOf } from './search-index.js';
 import type { Mode } from './types.js';
 
@@ -45,6 +46,19 @@ export interface FindingView {
   title: string;
   /** The same names one by one, so a screen can set each product on its own line. */
   names: string[];
+  /**
+   * Read first, in both modes, when the card is about a possible match of a
+   * name typed as not recognised (possible-matches.ts): what the name looks
+   * like, and that what follows holds if it is that product or remedy.
+   */
+  possible?: string;
+  /**
+   * For a card about a possible match, said after its level wherever the
+   * level is said alone (the summary): "ressemble à Huile de ricin".
+   */
+  resembles?: string;
+  /** The names typed for the products of the card shown under another name ("Vous avez écrit : cytotec"). */
+  written?: string[];
   /**
    * Read before the risk in both modes: the fact of a danger sign that has a
    * message of its own ("La fièvre pendant la grossesse peut être le
@@ -129,6 +143,11 @@ export interface ResultView {
   headline: string;
   /** When a finding is a danger, where the headline comes from (for who to call). */
   headlineSource?: InstructionSource;
+  /**
+   * When the danger comes only from possible matches, what it resembles, said
+   * after the level in the banner: "ressemble à Huile de ricin".
+   */
+  levelNote?: string;
   /** A finding is a danger: the screen leads with the danger banner. */
   danger: boolean;
   /** One per item set and check, in engine order (shownFindings). */
@@ -199,7 +218,15 @@ export function formatPackDate(iso: string, lang: Lang): string {
   return new Intl.DateTimeFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', options).format(date);
 }
 
-interface Scope {
+/** What the result knows of the items besides the evaluation. */
+export interface ResultExtras {
+  /** The items added as possible matches of names typed as not recognised, by index. */
+  possible?: ReadonlyMap<number, PossibleMatch>;
+  /** The name typed for an item shown under another name, if any. */
+  writtenOf?: (item: CheckedItem) => string | undefined;
+}
+
+interface Scope extends ResultExtras {
   pack: Pack;
   items: readonly CheckedItem[];
   mode: Mode;
@@ -226,11 +253,53 @@ function namesOf(scope: Scope, finding: Finding): string[] {
   }
   const names = finding.items.flatMap((index) => {
     const item = items[index];
+    // A possible match is named as she typed it: the card says what it looks like.
+    const typed = scope.possible?.get(index)?.typed;
+    if (typed !== undefined) return [typed];
     return item === undefined
       ? []
       : [displayOf(pack, item.ref, lang, item.strengthUnknown === true).name];
   });
   return names.length === 0 ? [scope.t(`level.${finding.level}`)] : names;
+}
+
+/** "Ce nom ressemble à ADVIL 400 mg (Ibuprofène 400 mg). Si c'est ce produit :", for a card about a possible match. */
+function possibleOf(scope: Scope, finding: Finding): string | undefined {
+  const index = finding.items.find((i) => scope.possible?.has(i) === true);
+  const item = index === undefined ? undefined : scope.items[index];
+  if (item !== undefined && item.ref.kind !== 'unrecognised') {
+    const shown = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true);
+    const name = shown.detail === undefined ? shown.name : `${shown.name} (${shown.detail})`;
+    const key = item.ref.kind === 'plant' ? 'result.possiblePlant' : 'result.possibleProduct';
+    return scope.t(key, { name });
+  }
+  // The grey card of the name typed itself, read after its possible match: "Si ce n'est pas ce produit :".
+  for (const [added, { forItem }] of scope.possible ?? []) {
+    const ref = scope.items[added]?.ref;
+    if (!finding.items.includes(forItem) || ref === undefined) continue;
+    return scope.t(ref.kind === 'plant' ? 'result.possibleNotPlant' : 'result.possibleNotProduct');
+  }
+  return undefined;
+}
+
+/** "ressemble à Huile de ricin", for a finding about a possible match: said after its level. */
+function resemblesOf(scope: Scope, finding: Finding): string | undefined {
+  const index = finding.items.find((i) => scope.possible?.has(i) === true);
+  const item = index === undefined ? undefined : scope.items[index];
+  if (item === undefined || item.ref.kind === 'unrecognised') return undefined;
+  const name = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true).name;
+  return scope.t('result.resembles', { name });
+}
+
+/** "Vous avez écrit : cytotec" for each product of a card shown under another name. */
+function writtenOf(scope: Scope, finding: Finding): string[] {
+  const lines = finding.items.flatMap((index) => {
+    const item = scope.items[index];
+    if (item === undefined || scope.possible?.has(index) === true) return [];
+    const text = scope.writtenOf?.(item);
+    return text === undefined ? [] : [scope.t('check.writtenAs', { text })];
+  });
+  return distinct(lines);
 }
 
 /** Names joined as the language says a list ("A et B", "A, B et C"). */
@@ -404,6 +473,12 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
     capped: finding.capped,
   };
   if (signFact) view.lead = message.fact;
+  const possible = possibleOf(scope, finding);
+  if (possible !== undefined) view.possible = possible;
+  const resembles = resemblesOf(scope, finding);
+  if (resembles !== undefined) view.resembles = resembles;
+  const written = writtenOf(scope, finding);
+  if (written.length > 0) view.written = written;
   if (finding.term === 'estimated' || finding.term === 'unknown') {
     view.termNote = t(`result.term.${finding.term}`);
   }
@@ -466,8 +541,9 @@ function resultLevelLabel(t: Translate, evaluation: Evaluation): string {
 
 /**
  * The result screen's content for an evaluation. `items` are the items of the
- * evaluation context (findings point into them by index), `conditions` its
- * situations. Throws when the pack lacks a message the evaluation names.
+ * evaluation context (findings point into them by index), possible matches
+ * included (`extras.possible`), `conditions` its situations. Throws when the
+ * pack lacks a message the evaluation names.
  */
 export function buildResultView(
   evaluation: Evaluation,
@@ -477,8 +553,10 @@ export function buildResultView(
   lang: Lang,
   t: Translate,
   conditions: readonly ConditionId[] = [],
+  extras: ResultExtras = {},
 ): ResultView {
   const scope: Scope = {
+    ...extras,
     pack,
     items,
     mode,
@@ -513,5 +591,10 @@ export function buildResultView(
   };
   if (view.notValidated) view.notValidatedLine = t('result.notValidated');
   if (instruction !== null) view.headlineSource = instruction.source;
+  // A danger that only a resemblance gives says so next to its level.
+  const dangers = cards.filter((card) => card.level === 'danger');
+  const notes = distinct(dangers.map((card) => card.resembles));
+  const [note] = notes;
+  if (danger && notes.length === 1 && note !== undefined) view.levelNote = note;
   return view;
 }

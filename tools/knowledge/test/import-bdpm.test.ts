@@ -10,6 +10,8 @@ import {
   brandOf,
   decodeBdpm,
   importBdpm,
+  LOCAL_NAMES,
+  MAX_ENTRIES,
   parseCompositions,
   parseSpecialities,
   PRIORITY_BRANDS,
@@ -262,6 +264,20 @@ describe('selectProducts', () => {
     }
   });
 
+  it('gives a brand the other names people use for it, as unchecked local names', async () => {
+    const products = await selected({
+      localNames: { TESTSUPPO: [{ text: 'Suppo test', lang: 'fr' }] },
+    });
+    expect(byCis(products, '99000013')?.['local-names']).toEqual([
+      { text: 'Suppo test', lang: 'fr', checked: false },
+    ]);
+    expect(byCis(products, '99000001')?.['local-names']).toEqual([]);
+  });
+
+  it('names Codoliprane by default as people say it: "Doliprane codéine"', () => {
+    expect(LOCAL_NAMES['CODOLIPRANE']).toContainEqual({ text: 'Doliprane codéine', lang: 'fr' });
+  });
+
   it('caps the entries per substance, keeping the first ones by denomination', async () => {
     const perSubstance = await selected({ maxPerSubstance: 2 });
     const paracetamol = perSubstance.filter((p) =>
@@ -319,6 +335,21 @@ describe('renderProducts', () => {
     const file = path.join(HERE, '..', '..', '..', 'registry', 'products', 'bdpm.yaml');
     const options = (await resolveConfig(file)) ?? {};
     expect(await check(text, { ...options, filepath: file })).toBe(true);
+  });
+
+  it('writes the local names of a product', async () => {
+    const products = await selected({
+      substances: new Set(['paracetamol']),
+      localNames: { TESTSUPPO: [{ text: "Suppo d'essai", lang: 'fr' }] },
+    });
+    const text = renderProducts(products);
+    expect(parse(text)).toStrictEqual(products);
+    expect(text).toContain(
+      `  local-names:\n    - { text: "Suppo d'essai", lang: fr, checked: false }`,
+    );
+    const raw = copyOf(await loadValid());
+    raw.products.push({ file: 'registry/products/bdpm.yaml', data: parse(text), text });
+    expect(validateContent(raw)).toEqual([]);
   });
 
   it('quotes text that YAML would read otherwise', () => {
@@ -397,6 +428,22 @@ describe('registry/products/bdpm.yaml (the committed import)', () => {
       });
       expect(found, brand).toBe(true);
     }
-    expect(products.length).toBeLessThanOrEqual(300);
+    expect(products.length).toBeLessThanOrEqual(MAX_ENTRIES);
+  });
+
+  it('holds what the live test round of 2026-11-05 looked for', async () => {
+    const file = path.join(HERE, '..', '..', '..', 'registry', 'products', 'bdpm.yaml');
+    const products = parse(await readFile(file, 'utf8')) as AuthoredProduct[];
+    const holding = (substance: string) =>
+      products.filter((p) => p.components.some((c) => c.substance === substance));
+    expect(holding('fluconazole').length).toBeGreaterThan(0);
+    expect(holding('methotrexate').length).toBeGreaterThan(0);
+    for (const codoliprane of products.filter((p) => p.brands[0]?.startsWith('CODOLIPRANE'))) {
+      expect(codoliprane['local-names']).toContainEqual({
+        text: 'Doliprane codéine',
+        lang: 'fr',
+        checked: false,
+      });
+    }
   });
 });

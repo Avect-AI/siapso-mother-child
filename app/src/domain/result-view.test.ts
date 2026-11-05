@@ -13,6 +13,7 @@ import {
 import { beforeAll, describe, expect, it } from 'vitest';
 import { translate, type MessageKey, type Vars } from '../i18n/translate.js';
 import { knowledgePack } from '../test/knowledge-pack.js';
+import { withPossibleMatches } from './possible-matches.js';
 import { buildResultView, formatPackDate, shownFindings, type ResultView } from './result-view.js';
 import type { Mode } from './types.js';
 
@@ -871,6 +872,109 @@ describe('buildResultView: closing lines', () => {
     );
     expect(view.notValidated).toBe(false);
     expect(view).not.toHaveProperty('notValidatedLine');
+  });
+});
+
+describe('buildResultView: a name typed as unrecognised that looks like a known one', () => {
+  const NBSP = ' ';
+  const typed = (text: string): CheckedItem => ({ ref: { kind: 'unrecognised', text } });
+
+  function netViewOf(text: string, patch: Partial<EvaluationContext>, mode: Mode, lang: Lang) {
+    const net = withPossibleMatches(pack, [typed(text)]);
+    const context = contextOf({ ...patch, items: net.items });
+    return buildResultView(evaluate(pack, context), pack, net.items, mode, lang, tOf(lang), [], {
+      possible: net.possible,
+    });
+  }
+
+  it('shows the possible match under the name typed, at its own level, and says what it looks like', () => {
+    const text = 'Advil 400 mg comprimé pelliculé';
+    const view = netViewOf(text, { pregnancy: weeks(30) }, 'woman', 'fr');
+    expect(view.level).toBe('before-next-dose');
+    const possible = view.findings.find((f) => f.level === 'before-next-dose');
+    expect(possible).toMatchObject({
+      title: text,
+      possible: `Ce nom ressemble à ADVIL 400 mg, comprimé enrobé (Ibuprofène 400${NBSP}mg). Si c'est ce produit${NBSP}:`,
+    });
+    // The text typed is still not recognised: its grey card stays, for the other case.
+    const own = view.findings.find((f) => f.level === 'unknown');
+    expect(own?.title).toBe(text);
+    expect(own?.possible).toBe(`Si ce n'est pas ce produit${NBSP}:`);
+  });
+
+  it('says nothing of the kind on the grey card of a name that looks like nothing', () => {
+    const view = netViewOf('comprimés du marché', { pregnancy: weeks(30) }, 'woman', 'fr');
+    expect(view.findings).toHaveLength(1);
+    expect(view.findings[0]).not.toHaveProperty('possible');
+  });
+
+  it('says remedy for a remedy, and leads with the danger the base knows', () => {
+    const view = netViewOf(
+      'huile de ricin',
+      { pregnancy: weeks(38), conditions: ['uterine-scar'] },
+      'accompanied',
+      'en',
+    );
+    expect(view.level).toBe('danger');
+    expect(view.danger).toBe(true);
+    expect(view.findings[0]).toMatchObject({
+      level: 'danger',
+      title: 'huile de ricin',
+      possible: 'This name looks like Castor oil (Ricinus communis). If it is this remedy:',
+    });
+    expect(view.findings.find((f) => f.level === 'unknown')?.possible).toBe(
+      'If it is not this remedy:',
+    );
+    // The level said in the banner and the summary says it is a resemblance.
+    expect(view.findings[0]?.resembles).toBe('looks like Castor oil');
+    expect(view.levelNote).toBe('looks like Castor oil');
+  });
+
+  it('says nothing of a resemblance in the banner when a danger sign is there too', () => {
+    const net = withPossibleMatches(pack, [typed('huile de ricin')]);
+    const context = contextOf({
+      pregnancy: weeks(38),
+      conditions: ['uterine-scar'],
+      items: net.items,
+      signs: ['fever'],
+    });
+    const view = buildResultView(
+      evaluate(pack, context),
+      pack,
+      net.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      [],
+      {
+        possible: net.possible,
+      },
+    );
+    expect(view.danger).toBe(true);
+    expect(view).not.toHaveProperty('levelNote');
+  });
+
+  it('shows on a card the name typed for a product found under another name', () => {
+    const cytotec: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const context = contextOf({ pregnancy: weeks(10), items: [cytotec] });
+    const view = buildResultView(
+      evaluate(pack, context),
+      pack,
+      context.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      [],
+      {
+        writtenOf: (item) =>
+          item.ref.kind === 'product' && item.ref.id === 'misoprostol-generic'
+            ? 'cytotec'
+            : undefined,
+      },
+    );
+    expect(onlyFinding(view).written).toEqual([`Vous avez écrit${NBSP}: cytotec`]);
+    const plain = viewOf(context, 'woman');
+    expect(onlyFinding(plain)).not.toHaveProperty('written');
   });
 });
 

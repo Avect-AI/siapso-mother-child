@@ -14,7 +14,8 @@ export type TextFieldProps = {
 /**
  * A text input with its visible label, an optional hint and an optional error.
  * Reading order follows the eye: label, hint, error, then the input. The hint
- * and the error describe the input for screen readers.
+ * and the error describe the input for screen readers, then what
+ * `aria-describedby` names (a line under the input, such as a length).
  */
 export function TextField({
   label,
@@ -31,7 +32,7 @@ export function TextField({
   const hintId = `${inputId}-hint`;
   const errorId = `${inputId}-error`;
   const describedBy =
-    [describedByProp, hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') ||
+    [hint ? hintId : null, error ? errorId : null, describedByProp].filter(Boolean).join(' ') ||
     undefined;
   const classes = ['text-field', error ? 'text-field--invalid' : null, className]
     .filter(Boolean)

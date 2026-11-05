@@ -720,7 +720,8 @@
     fr: 'CODOLIPRANE 500 mg/30 mg, comprimé'
     en: 'CODOLIPRANE 500 mg/30 mg, comprimé'
   brands: ['CODOLIPRANE']
-  local-names: []
+  local-names:
+    - { text: 'Doliprane codéine', lang: fr, checked: false }
   components:
     - substance: paracetamol
       strength-mg: 500
@@ -736,7 +737,8 @@
     fr: 'CODOLIPRANE 500 mg/30 mg, gélule'
     en: 'CODOLIPRANE 500 mg/30 mg, gélule'
   brands: ['CODOLIPRANE']
-  local-names: []
+  local-names:
+    - { text: 'Doliprane codéine', lang: fr, checked: false }
   components:
     - substance: paracetamol
       strength-mg: 500
@@ -752,7 +754,8 @@
     fr: 'CODOLIPRANE ADULTES 400 mg/20 mg, comprimé sécable'
     en: 'CODOLIPRANE ADULTES 400 mg/20 mg, comprimé sécable'
   brands: ['CODOLIPRANE ADULTES']
-  local-names: []
+  local-names:
+    - { text: 'Doliprane codéine', lang: fr, checked: false }
   components:
     - substance: codeine
       strength-mg: 15.62
@@ -1410,6 +1413,130 @@
   route: 'oral'
   source:
     bdpm: '62718662'
+  demo: false
+- id: beagyne-150-mg-66332081
+  names:
+    fr: 'BEAGYNE 150 mg, gélule'
+    en: 'BEAGYNE 150 mg, gélule'
+  brands: ['BEAGYNE']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 150
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '66332081'
+  demo: false
+- id: fluconazole-arrow-10-mg-ml-62861105
+  names:
+    fr: 'FLUCONAZOLE ARROW 10 mg/ml, poudre pour suspension buvable'
+    en: 'FLUCONAZOLE ARROW 10 mg/ml, poudre pour suspension buvable'
+  brands: ['FLUCONAZOLE ARROW']
+  local-names: []
+  components:
+    - substance: fluconazole
+  form: 'poudre pour suspension buvable'
+  route: 'oral'
+  source:
+    bdpm: '62861105'
+  demo: false
+- id: fluconazole-arrow-lab-100-mg-68551946
+  names:
+    fr: 'FLUCONAZOLE ARROW LAB 100 mg, gélule'
+    en: 'FLUCONAZOLE ARROW LAB 100 mg, gélule'
+  brands: ['FLUCONAZOLE ARROW LAB']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 100
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '68551946'
+  demo: false
+- id: fluconazole-arrow-lab-150-mg-67860651
+  names:
+    fr: 'FLUCONAZOLE ARROW LAB 150 mg, gélule'
+    en: 'FLUCONAZOLE ARROW LAB 150 mg, gélule'
+  brands: ['FLUCONAZOLE ARROW LAB']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 150
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '67860651'
+  demo: false
+- id: fluconazole-arrow-lab-200-mg-61527330
+  names:
+    fr: 'FLUCONAZOLE ARROW LAB 200 mg, gélule'
+    en: 'FLUCONAZOLE ARROW LAB 200 mg, gélule'
+  brands: ['FLUCONAZOLE ARROW LAB']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 200
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '61527330'
+  demo: false
+- id: fluconazole-biogaran-10-mg-ml-64967484
+  names:
+    fr: 'FLUCONAZOLE BIOGARAN 10 mg/ml, poudre pour suspension buvable'
+    en: 'FLUCONAZOLE BIOGARAN 10 mg/ml, poudre pour suspension buvable'
+  brands: ['FLUCONAZOLE BIOGARAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+  form: 'poudre pour suspension buvable'
+  route: 'oral'
+  source:
+    bdpm: '64967484'
+  demo: false
+- id: fluconazole-biogaran-100-mg-66984913
+  names:
+    fr: 'FLUCONAZOLE BIOGARAN 100 mg, gélule'
+    en: 'FLUCONAZOLE BIOGARAN 100 mg, gélule'
+  brands: ['FLUCONAZOLE BIOGARAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 100
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '66984913'
+  demo: false
+- id: fluconazole-biogaran-200-mg-68998826
+  names:
+    fr: 'FLUCONAZOLE BIOGARAN 200 mg, gélule'
+    en: 'FLUCONAZOLE BIOGARAN 200 mg, gélule'
+  brands: ['FLUCONAZOLE BIOGARAN']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 200
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '68998826'
+  demo: false
+- id: fluconazole-cristers-100-mg-66318142
+  names:
+    fr: 'FLUCONAZOLE CRISTERS 100 mg, gélule'
+    en: 'FLUCONAZOLE CRISTERS 100 mg, gélule'
+  brands: ['FLUCONAZOLE CRISTERS']
+  local-names: []
+  components:
+    - substance: fluconazole
+      strength-mg: 100
+  form: 'gélule'
+  route: 'oral'
+  source:
+    bdpm: '66318142'
   demo: false
 - id: acide-folique-arrow-5-mg-67320915
   names:
@@ -2390,6 +2517,20 @@
   source:
     bdpm: '62606357'
   demo: false
+- id: zestril-20-mg-66729161
+  names:
+    fr: 'ZESTRIL 20 mg, comprimé'
+    en: 'ZESTRIL 20 mg, comprimé'
+  brands: ['ZESTRIL']
+  local-names: []
+  components:
+    - substance: lisinopril
+      strength-mg: 20
+  form: 'comprimé'
+  route: 'oral'
+  source:
+    bdpm: '66729161'
+  demo: false
 - id: cozaar-100-mg-66928996
   names:
     fr: 'COZAAR 100 mg, comprimé pelliculé'
@@ -2501,6 +2642,76 @@
   route: 'oral'
   source:
     bdpm: '66659784'
+  demo: false
+- id: methotrexate-accord-10-mg-60390455
+  names:
+    fr: 'METHOTREXATE ACCORD 10 mg, comprimé'
+    en: 'METHOTREXATE ACCORD 10 mg, comprimé'
+  brands: ['METHOTREXATE ACCORD']
+  local-names: []
+  components:
+    - substance: methotrexate
+      strength-mg: 10
+  form: 'comprimé'
+  route: 'oral'
+  source:
+    bdpm: '60390455'
+  demo: false
+- id: methotrexate-accord-2-5-mg-65854190
+  names:
+    fr: 'METHOTREXATE ACCORD 2,5 mg, comprimé'
+    en: 'METHOTREXATE ACCORD 2,5 mg, comprimé'
+  brands: ['METHOTREXATE ACCORD']
+  local-names: []
+  components:
+    - substance: methotrexate
+      strength-mg: 2.5
+  form: 'comprimé'
+  route: 'oral'
+  source:
+    bdpm: '65854190'
+  demo: false
+- id: metotab-10-mg-62537295
+  names:
+    fr: 'METOTAB 10 mg, comprimé sécable'
+    en: 'METOTAB 10 mg, comprimé sécable'
+  brands: ['METOTAB']
+  local-names: []
+  components:
+    - substance: methotrexate
+      strength-mg: 10
+  form: 'comprimé sécable'
+  route: 'oral'
+  source:
+    bdpm: '62537295'
+  demo: false
+- id: metotab-2-5-mg-64739573
+  names:
+    fr: 'METOTAB 2,5 mg, comprimé'
+    en: 'METOTAB 2,5 mg, comprimé'
+  brands: ['METOTAB']
+  local-names: []
+  components:
+    - substance: methotrexate
+      strength-mg: 2.5
+  form: 'comprimé'
+  route: 'oral'
+  source:
+    bdpm: '64739573'
+  demo: false
+- id: novatrex-2-5-mg-67853564
+  names:
+    fr: 'NOVATREX 2,5 mg, comprimé'
+    en: 'NOVATREX 2,5 mg, comprimé'
+  brands: ['NOVATREX']
+  local-names: []
+  components:
+    - substance: methotrexate
+      strength-mg: 2.5
+  form: 'comprimé'
+  route: 'oral'
+  source:
+    bdpm: '67853564'
   demo: false
 - id: flagyl-125-mg-5-ml-65020253
   names:

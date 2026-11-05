@@ -2,6 +2,7 @@
 /**
  * Spelling variants applied to each word, in this order:
  * - `ph` becomes `f` (phenytoine, fenitoine);
+ * - `qu` becomes `k` (quinquéliba, kinkéliba; nivaquine, nivakine);
  * - `y` becomes `i` (nebeday, nebedai);
  * - a doubled consonant becomes single (doliprann, dolipran); vowels and
  *   digits are kept as they are;
@@ -12,6 +13,7 @@
 function simplifyWord(word: string): string {
   const spelled = word
     .replaceAll('ph', 'f')
+    .replaceAll('qu', 'k')
     .replaceAll('y', 'i')
     .replace(/([b-df-hj-np-tv-z])\1+/g, '$1');
   return spelled.length > 4 && spelled.endsWith('e') ? spelled.slice(0, -1) : spelled;
@@ -34,11 +36,11 @@ export function normalize(text: string): string {
 }
 
 /**
- * Words of pharmaceutical forms, packaging and age groups: they say nothing
- * about which medicine it is ("comprimé blanc" named every tablet). Accents
- * and case do not matter: they are compared after normalize.
+ * Words of pharmaceutical forms and packaging, French and English: they say
+ * nothing about which medicine it is ("comprimé blanc" named every tablet),
+ * but they tell the forms of one product apart ("sirop", "effervescent").
  */
-export const STOP_WORDS: readonly string[] = [
+const FORM_WORDS: readonly string[] = [
   // French forms and packaging.
   'comprimé',
   'comprimés',
@@ -92,20 +94,7 @@ export const STOP_WORDS: readonly string[] = [
   'ampoules',
   'flacon',
   'flacons',
-  // Generic words for the thing itself: they name no medicine.
-  'médicament',
-  'médicaments',
-  'médicamenteux',
-  'médicamenteuse',
-  'médicamenteuses',
-  'medicament',
-  'medicaments',
-  'medicamenteux',
-  'emplatre',
-  'emplatres',
-  'emplâtre',
-  'emplâtres',
-  // English forms, packaging and age groups.
+  // English forms and packaging.
   'tablet',
   'tablets',
   'coated',
@@ -126,6 +115,128 @@ export const STOP_WORDS: readonly string[] = [
   'bottle',
   'bottles',
 ];
+
+/**
+ * Generic words for the thing itself, or for the part of a plant used: they
+ * name no medicine and no remedy ("racine" must not reach "Huile de ricin").
+ */
+const GENERIC_WORDS: readonly string[] = [
+  'médicament',
+  'médicaments',
+  'médicamenteux',
+  'médicamenteuse',
+  'médicamenteuses',
+  'medicament',
+  'medicaments',
+  'medicamenteux',
+  'emplatre',
+  'emplatres',
+  'emplâtre',
+  'emplâtres',
+  'remède',
+  'remèdes',
+  'plante',
+  'plantes',
+  'racine',
+  'racines',
+  'écorce',
+  'écorces',
+  'graine',
+  'graines',
+  'tisane',
+  'tisanes',
+  'générique',
+  'génériques',
+  'generique',
+  'generiques',
+  'generic',
+  'generics',
+  // Carrier words: what holds the remedy, not the remedy ("huile de nim" is
+  // neem, "huile de coco" names nothing of the base).
+  'huile',
+  'huiles',
+  'feuille',
+  'feuilles',
+  'mousse',
+  'mousses',
+  'infusion',
+  'infusions',
+  'décoction',
+  'décoctions',
+  'jus',
+];
+
+/**
+ * Abbreviations of forms written on boxes and in pharmacies, and the form
+ * words they stand for ("cpr eff" is "comprimé effervescent", "gél" is a gel
+ * or a "gélule").
+ */
+const FORM_ABBREVIATIONS: Readonly<Record<string, readonly string[]>> = {
+  cp: ['comprimé'],
+  cpr: ['comprimé'],
+  cpe: ['comprimé'],
+  cps: ['comprimé'],
+  comp: ['comprimé'],
+  eff: ['effervescent'],
+  effer: ['effervescent'],
+  efferv: ['effervescent'],
+  pell: ['pelliculé'],
+  pellic: ['pelliculé'],
+  séc: ['sécable'],
+  sécab: ['sécable'],
+  gél: ['gel', 'gélule'],
+  gélu: ['gélule'],
+  sach: ['sachet'],
+  susp: ['suspension'],
+  sol: ['solution'],
+  buv: ['buvable'],
+  pdre: ['poudre'],
+  supp: ['suppositoire'],
+  suppo: ['suppositoire'],
+  amp: ['ampoule'],
+  inj: ['injectable'],
+  orodisp: ['orodispersible'],
+  lp: ['lp'],
+};
+
+/**
+ * Words of pharmaceutical forms, packaging and generic words: they say
+ * nothing about which medicine it is. Accents and case do not matter: they
+ * are compared after normalize.
+ */
+export const STOP_WORDS: readonly string[] = [
+  ...FORM_WORDS,
+  ...GENERIC_WORDS,
+  ...Object.keys(FORM_ABBREVIATIONS),
+];
+
+const FORM_SET: ReadonlySet<string> = new Set(FORM_WORDS.map(normalize));
+const ABBREVIATION_OF: ReadonlyMap<string, readonly string[]> = new Map(
+  Object.entries(FORM_ABBREVIATIONS).map(([short, forms]) => [
+    normalize(short),
+    forms.map(normalize),
+  ]),
+);
+
+/** Whether a normalised word is a form or packaging word, or an abbreviation of one. */
+export function isFormWord(word: string): boolean {
+  return FORM_SET.has(word) || ABBREVIATION_OF.has(word);
+}
+
+/**
+ * The form and packaging words of a text, normalised, each once, in their
+ * order, an abbreviation read as the forms it stands for: "Doliprane 1000
+ * comprimé effervescent" and "Doliprane 1g cpr eff" both have "comprim" and
+ * "efervescent". They choose between the forms of one product.
+ */
+export function formWords(text: string): string[] {
+  const words = normalize(text).split(' ');
+  return [
+    ...new Set(
+      words.flatMap((word) => ABBREVIATION_OF.get(word) ?? (FORM_SET.has(word) ? [word] : [])),
+    ),
+  ];
+}
 
 /**
  * Age words, French and English, in the three groups a product name uses.
@@ -149,15 +260,129 @@ const AGE_GROUP_OF: ReadonlyMap<string, string> = new Map(
   ),
 );
 
-const STOP_SET: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
+const NEWBORN_FIRST: ReadonlySet<string> = new Set(['nouveau', 'nouveaux']);
+const NEWBORN_SECOND: ReadonlySet<string> = new Set(['ne', 'nes', 'nee', 'nees']);
+const CHILD_MARKERS: ReadonlySet<string> = new Set(
+  ['pédiatrique', 'pédiatriques', 'pediatric', 'paediatric'].map(normalize),
+);
+const INFANT_MARKERS: ReadonlySet<string> = new Set(['newborn', 'newborns'].map(normalize));
 
-/** A normalised text without its stop-words (an empty string when it has only stop-words). */
-export function withoutStopWords(normalized: string): string {
+/**
+ * The age groups a normalised product name says it is for without an age
+ * word: "NOUVEAU-NE" (infant), "PEDIATRIQUE" (child). These words stay in the
+ * name (they are matched as any other word); they only rank the product after
+ * the others when the query names no age.
+ */
+export function ageMarkersOf(normalized: string): string[] {
+  const words = normalized === '' ? [] : normalized.split(' ');
+  const groups = new Set<string>();
+  words.forEach((word, index) => {
+    if (CHILD_MARKERS.has(word)) groups.add('child');
+    if (INFANT_MARKERS.has(word)) groups.add('infant');
+    if (NEWBORN_FIRST.has(word) && NEWBORN_SECOND.has(words[index + 1] ?? '')) {
+      groups.add('infant');
+    }
+  });
+  return [...groups].sort();
+}
+
+/**
+ * Words of the salt or hydrate that a box or a composition names next to the
+ * substance ("valproate de sodium", "chlorhydrate de tramadol", "phosphate de
+ * codéine hémihydraté"): they say nothing about which substance it is. Accents
+ * and case do not matter: they are compared after normalize.
+ */
+export const SALT_WORDS: readonly string[] = [
+  'sodium',
+  'sodique',
+  'semisodium',
+  'potassium',
+  'potassique',
+  'calcium',
+  'calcique',
+  'chlorhydrate',
+  'hydrochloride',
+  'hyclate',
+  'phosphate',
+  'sulfate',
+  'fumarate',
+  'maléate',
+  'maleate',
+  'succinate',
+  'gluconate',
+  'propionate',
+  'magnésium',
+  'magnesium',
+  'camphosulfonate',
+  'tosilate',
+  'erbumine',
+  'arginine',
+  'disoproxil',
+  'lysinate',
+  'hémihydraté',
+  'hemihydrate',
+  'monohydraté',
+  'monohydrate',
+  'dihydraté',
+  'dihydrate',
+  'trihydraté',
+  'trihydrate',
+  'heptahydraté',
+  'heptahydrate',
+  'anhydre',
+  'desséché',
+];
+
+/** The words that link a salt to its substance ("de sodium", "d'énalapril"), normalised. */
+const SALT_LINKS: ReadonlySet<string> = new Set(['de', 'd', 'du']);
+/** The words left alone at either end once the words around them are gone ("huile de ricin": "ricin"). */
+const EDGE_LINKS: ReadonlySet<string> = new Set(['de', 'd', 'du', 'des']);
+
+const STOP_SET: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
+const SALT_SET: ReadonlySet<string> = new Set(SALT_WORDS.map(normalize));
+const NO_WORDS: ReadonlySet<string> = new Set();
+
+/** Whether a normalised word is a salt word (a substance of its own may still keep it: withoutStopWords). */
+export function isSaltWord(word: string): boolean {
+  return SALT_SET.has(word);
+}
+
+/** The words kept, without the linking words left at either end. */
+function trimmed(words: readonly string[], kept: readonly boolean[]): string {
+  const left = words.filter((_, index) => kept[index]);
+  let start = 0;
+  let end = left.length;
+  while (start < end && EDGE_LINKS.has(left[start] ?? '')) start += 1;
+  while (end > start && EDGE_LINKS.has(left[end - 1] ?? '')) end -= 1;
+  return left.slice(start, end).join(' ');
+}
+
+/**
+ * A normalised text without its stop-words and its salt words, each salt word
+ * with the "de" that links it to its substance ("valproate de sodium" is
+ * "valproate"), and without a linking word left alone at either end ("huile
+ * de nim" is "nim"); an empty string when nothing else is left. A salt word is
+ * kept when it is a substance of its own (`keep`: "calcium" in a registry
+ * that has calcium), and when nothing else would be left ("sodium" alone).
+ */
+export function withoutStopWords(normalized: string, keep: ReadonlySet<string> = NO_WORDS): string {
   if (normalized === '') return '';
-  return normalized
-    .split(' ')
-    .filter((word) => !STOP_SET.has(word))
-    .join(' ');
+  const words = normalized.split(' ');
+  const salt = (word: string) => SALT_SET.has(word) && !keep.has(word);
+  const kept = words.map((word) => !STOP_SET.has(word) && !salt(word));
+  words.forEach((word, index) => {
+    if (!salt(word)) return;
+    for (const near of [index - 1, index + 1]) {
+      if (SALT_LINKS.has(words[near] ?? '')) kept[near] = false;
+    }
+  });
+  const text = trimmed(words, kept);
+  if (text !== '' || !words.some(salt)) return text;
+  // Only salt words (and stop-words) were there: the salt words are the name.
+  return trimmed(
+    words,
+    words.map((word) => !STOP_SET.has(word)),
+  );
 }
 
 /**

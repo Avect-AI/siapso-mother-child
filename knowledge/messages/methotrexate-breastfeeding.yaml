@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: methotrexate-breastfeeding
+fr:
+  fact: 'Ce produit contient du méthotrexate, un traitement de fond de certaines maladies des articulations ou de la peau, et de certains cancers.'
+  risk: "Il passe dans le lait maternel, et la notice craint qu'il soit toxique pour le bébé allaité."
+  risk-detail: "La notice française contre-indique l'allaitement pendant le traitement."
+  orientation: 'Montrez ce produit à la sage-femme ou au médecin avant la prochaine prise, sans rien changer au traitement en attendant.'
+en:
+  fact: 'This product contains methotrexate, a long-term treatment of some joint or skin diseases, and of some cancers.'
+  risk: 'It passes into breast milk, and the label fears it may be toxic for the breastfed baby.'
+  risk-detail: 'The French label contraindicates breastfeeding during the treatment.'
+  orientation: 'Show this product to the midwife or the doctor before the next dose, and change nothing in the treatment until then.'

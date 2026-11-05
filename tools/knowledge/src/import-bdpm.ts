@@ -17,8 +17,10 @@
 // registry/products/bdpm.yaml. The selection is deterministic: sorted by
 // substance then denomination, one product per denomination; the brands most
 // used in Senegal (PRIORITY_BRANDS) are always kept, and the other products
-// fill the rest, at most 3 per brand, 15 per substance and 300 in total
-// (taken rank by rank across substances, see selectProducts).
+// fill the rest, at most 3 per brand, 15 per substance and MAX_ENTRIES in
+// total (taken rank by rank across substances, see selectProducts). The other
+// names people use for a brand (LOCAL_NAMES) become local names of its
+// products.
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -166,6 +168,7 @@ export const SUBSTANCE_LABELS: Readonly<Record<string, string>> = {
   'SULFATE FERREUX DESSECHE': 'iron',
   'SULFATE FERREUX HEPTAHYDRATE': 'iron',
   IBUPROFENE: 'ibuprofen',
+  FLUCONAZOLE: 'fluconazole',
   "IBUPROFENE (LYSINATE D')": 'ibuprofen',
   'IBUPROFENE SODIQUE DIHYDRATE': 'ibuprofen',
   "LYSINATE D'IBUPROFENE": 'ibuprofen',
@@ -178,6 +181,7 @@ export const SUBSTANCE_LABELS: Readonly<Record<string, string>> = {
   LISINOPRIL: 'lisinopril',
   'LISINOPRIL DIHYDRATE': 'lisinopril',
   'LOSARTAN POTASSIQUE': 'losartan',
+  METHOTREXATE: 'methotrexate',
   METRONIDAZOLE: 'metronidazole',
   'METRONIDAZOLE (BENZOATE DE)': 'metronidazole',
   'CHLORHYDRATE DE MINOCYCLINE': 'minocycline',
@@ -289,10 +293,34 @@ export function productIdOf(denomination: string, cis: string): string {
   return slug === '' ? `bdpm-${cis}` : `${slug}-${cis}`;
 }
 
+/**
+ * At most this many products in the import, by default. It was 300 until
+ * fluconazole and methotrexate joined the registry (2026-11-05); their
+ * products take their rank in the cut, and 315 keeps every product the 300
+ * cap kept before.
+ */
+export const MAX_ENTRIES = 315;
+
+/** Another name people use for a brand, as a product's local name (not checked by a speaker). */
+export interface BrandLocalName {
+  text: string;
+  lang: 'fr' | 'wo' | 'en';
+}
+
+/**
+ * Other names people use for a brand, given to every product of the brand
+ * (matched as PRIORITY_BRANDS are, by the first whole words of the
+ * denomination) as local names that no speaker has checked. From the live
+ * test round of 2026-11-05: a depot keeper asked for "Doliprane codéine".
+ */
+export const LOCAL_NAMES: Readonly<Record<string, readonly BrandLocalName[]>> = {
+  CODOLIPRANE: [{ text: 'Doliprane codéine', lang: 'fr' }],
+};
+
 export interface SelectOptions {
   /** Registry substance ids: a product is kept only if all its substances are listed. */
   substances: ReadonlySet<string>;
-  /** At most this many products in total (300 by default). */
+  /** At most this many products in total (MAX_ENTRIES by default). */
   maxEntries?: number;
   /** At most this many products per first substance (15 by default). */
   maxPerSubstance?: number;
@@ -303,6 +331,8 @@ export interface SelectOptions {
   maxPerBrand?: number;
   /** Brands always kept, whatever the caps (PRIORITY_BRANDS by default). */
   priorityBrands?: readonly string[];
+  /** Other names of a brand, given to its products (LOCAL_NAMES by default). */
+  localNames?: Readonly<Record<string, readonly BrandLocalName[]>>;
 }
 
 /**
@@ -338,13 +368,26 @@ export const PRIORITY_BRANDS: readonly string[] = [
   'TEGRETOL',
 ];
 
+/** Whether a denomination starts with the brand, as whole words. */
+function startsWithBrand(denomination: string, brand: string): boolean {
+  const name = normalise(denomination);
+  const prefix = normalise(brand);
+  return name.startsWith(prefix) && /^($|[ ,])/.test(name.slice(prefix.length));
+}
+
 /** Whether a denomination starts with one of the brands, as whole words. */
 function isPriority(denomination: string, brands: readonly string[]): boolean {
-  const name = normalise(denomination);
-  return brands.some((brand) => {
-    const prefix = normalise(brand);
-    return name.startsWith(prefix) && /^($|[ ,])/.test(name.slice(prefix.length));
-  });
+  return brands.some((brand) => startsWithBrand(denomination, brand));
+}
+
+/** The local names of a product: the other names of its brand, not checked by a speaker. */
+function localNamesOf(
+  denomination: string,
+  table: Readonly<Record<string, readonly BrandLocalName[]>>,
+): AuthoredProduct['local-names'] {
+  return Object.entries(table)
+    .filter(([brand]) => startsWithBrand(denomination, brand))
+    .flatMap(([, names]) => names.map((name) => ({ ...name, checked: false })));
 }
 
 type Component = AuthoredProduct['components'][number];
@@ -413,10 +456,11 @@ export function selectProducts(
   compositions: readonly BdpmComponent[],
   options: SelectOptions,
 ): AuthoredProduct[] {
-  const maxEntries = options.maxEntries ?? 300;
+  const maxEntries = options.maxEntries ?? MAX_ENTRIES;
   const maxPerSubstance = options.maxPerSubstance ?? 15;
   const maxPerBrand = options.maxPerBrand ?? 3;
   const priorityBrands = options.priorityBrands ?? PRIORITY_BRANDS;
+  const localNames = options.localNames ?? LOCAL_NAMES;
   const linesOf = new Map<string, BdpmComponent[]>();
   for (const line of compositions) {
     linesOf.set(line.cis, [...(linesOf.get(line.cis) ?? []), line]);
@@ -444,7 +488,7 @@ export function selectProducts(
         id: productIdOf(speciality.denomination, speciality.cis),
         names: { fr: speciality.denomination, en: speciality.denomination },
         brands: [brandOf(speciality.denomination)],
-        'local-names': [],
+        'local-names': localNamesOf(speciality.denomination, localNames),
         components,
         form: speciality.form,
         route,
@@ -531,7 +575,14 @@ export function renderProducts(products: readonly AuthoredProduct[]): string {
     lines.push(`    fr: ${quoted(product.names.fr)}`);
     lines.push(`    en: ${quoted(product.names.en)}`);
     lines.push(`  brands: [${product.brands.map(quoted).join(', ')}]`);
-    lines.push('  local-names: []');
+    const locals = product['local-names'];
+    if (locals.length === 0) lines.push('  local-names: []');
+    else lines.push('  local-names:');
+    for (const local of locals) {
+      lines.push(
+        `    - { text: ${quoted(local.text)}, lang: ${local.lang}, checked: ${String(local.checked)} }`,
+      );
+    }
     lines.push('  components:');
     for (const component of product.components) {
       lines.push(`    - substance: ${component.substance}`);

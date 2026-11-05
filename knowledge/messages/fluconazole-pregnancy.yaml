@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: fluconazole-pregnancy
+fr:
+  fact: 'Ce produit contient du fluconazole, un traitement des mycoses (infections par des champignons).'
+  risk: 'Pendant les deux premiers trimestres, des fausses couches ont été observées plus souvent chez les femmes qui en ont pris ; au premier trimestre, certaines malformations ont été un peu plus fréquentes, surtout quand la quantité prise était grande.'
+  risk-detail: "Une grande étude d'observation a trouvé une légère hausse des malformations des os et des muscles après une prise au premier trimestre, d'environ 1 cas de plus pour 1 000 femmes avec de petites quantités et d'environ 4 cas de plus pour 1 000 avec de grandes quantités. Après une seule petite prise, les données de la notice ne montrent pas de hausse du risque global de malformations. La notice française demande de ne pas l'utiliser pendant la grossesse sauf nécessité absolue."
+en:
+  fact: 'This product contains fluconazole, a treatment for fungal infections.'
+  risk: 'During the first two trimesters, miscarriages were observed more often in women who took it; in the first trimester, some birth defects were a little more frequent, above all when the amount taken was large.'
+  risk-detail: 'A large observational study found a slight rise in bone and muscle birth defects after a first-trimester exposure, about 1 more case per 1 000 women with small amounts and about 4 more per 1 000 with large amounts. After a single small dose, the data of the label show no rise in the overall risk of birth defects. The French label asks not to use it during pregnancy unless absolutely necessary.'

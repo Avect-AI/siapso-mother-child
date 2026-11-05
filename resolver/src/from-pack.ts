@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { normalize } from './normalize.js';
+import { normalize, splitAgeWords } from './normalize.js';
 import type { IndexEntry, NameLang } from './types.js';
 
 type Names = IndexEntry['names'];
@@ -23,10 +23,10 @@ export interface PackNames {
 }
 
 /** Adds a name unless the same text is already there (the first language wins). */
-function add(names: Names, text: string, lang: NameLang): void {
+function add(names: Names, text: string, lang: NameLang, substance?: string): void {
   if (text.trim() === '') return;
   if (names.some((name) => name.text === text)) return;
-  names.push({ text, lang });
+  names.push(substance === undefined ? { text, lang } : { text, lang, substance });
 }
 
 /** Priority of a brand product, a generic product or plant, and an INN-only match. */
@@ -67,8 +67,8 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
     for (const component of product.components) {
       const substance = substances.get(component.substance);
       if (!substance) continue;
-      add(inn, substance.names.fr, 'inn');
-      add(inn, substance.names.en, 'inn');
+      add(inn, substance.names.fr, 'inn', substance.id);
+      add(inn, substance.names.en, 'inn', substance.id);
       parts.push(
         component.strengthMg === undefined
           ? substance.names.fr
@@ -84,9 +84,12 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
       ...new Set(product.components.map((component) => component.substance)),
     ].sort();
     const brandProduct = namedByItsBrand(product);
+    // The age words of a brand ("DOLIPRANE ADULTES") name a variant of the
+    // brand, not another brand: one family, whose age variants a query word
+    // chooses between.
     const family =
       brandProduct && product.brands[0] !== undefined
-        ? `brand:${normalize(product.brands[0])}`
+        ? `brand:${splitAgeWords(normalize(product.brands[0])).text}`
         : `substances:${substanceIds.join('+')}`;
     const base = {
       family,
@@ -94,6 +97,7 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
         component.strengthMg === undefined ? [] : [component.strengthMg],
       ),
       componentCount: product.components.length,
+      substances: substanceIds,
       id: product.id,
       kind: 'product' as const,
       display: { fr: product.names.fr, en: product.names.en },
@@ -103,7 +107,7 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
       entries.push({ ...base, names, priority: BRAND_PRIORITY });
       if (inn.length > 0) entries.push({ ...base, names: inn, priority: INN_PRIORITY });
     } else {
-      for (const name of inn) add(names, name.text, name.lang);
+      for (const name of inn) add(names, name.text, name.lang, name.substance);
       entries.push({ ...base, names, priority: GENERIC_PRIORITY });
     }
   }

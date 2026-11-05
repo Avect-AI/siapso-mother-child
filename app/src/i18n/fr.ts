@@ -222,6 +222,8 @@ export const fr = {
     notRecognisedPlant: 'Remède non reconnu',
     // "Je ne sais pas" was answered to the strength question.
     strengthUnknown: 'Dosage non connu',
+    // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
+    writtenAs: 'Vous avez écrit : {text}',
   },
   search: {
     titleProduct: 'Ajouter un médicament',
@@ -238,6 +240,8 @@ export const fr = {
     noneFound: 'Aucun produit ne correspond à ce nom.',
     noneFoundPlant: 'Aucun remède ne correspond à ce nom.',
     localName: 'Nom local : {name} ({lang})',
+    // The brand a candidate was found by, when its name shown does not say it ("cytotek").
+    boxName: 'Nom sur la boîte : {name}',
     notFound: 'Je ne trouve pas ce produit',
     notFoundPlant: 'Je ne trouve pas ce remède',
     notFoundHint: "Il sera ajouté tel qu'il est écrit, comme produit non reconnu.",
@@ -248,6 +252,23 @@ export const fr = {
     otherKindProduct: 'Ce nom correspond à un médicament.',
     searchPlants: 'Chercher parmi les remèdes',
     searchProducts: 'Chercher parmi les médicaments',
+    // The length of the name typed, shown near the limit of the field.
+    limit: '{count} caractères sur {max}',
+    limitReached: "{max} caractères au plus : la suite ne s'écrit pas.",
+    // "Je ne trouve pas" while the name looks like products or remedies of either list.
+    lookalikeTitle: 'Ce nom ressemble à :',
+    // The question asked before a name is added as typed, following the lists it shows.
+    lookalikeAskProduct: "Est-ce l'un de ces médicaments ?",
+    lookalikeAskPlant: "Est-ce l'un de ces remèdes ?",
+    lookalikeAskBoth: "Est-ce l'un de ces médicaments ou remèdes ?",
+    noneOfTheseProduct: 'Non, aucun de ces médicaments',
+    noneOfThesePlant: 'Non, aucun de ces remèdes',
+    noneOfTheseBoth: 'Non, aucun de ces produits',
+    // What "none of these" does: the result still counts a name that looks very much like one.
+    noneOfTheseHint:
+      "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
+    kindProduct: 'Médicament',
+    kindPlant: 'Remède',
   },
   // The language of a local name, after the name.
   nameLang: {
@@ -287,6 +308,9 @@ export const fr = {
     // A known strength chosen while the family is listed without one, and she said it is the same box.
     takesPlace: '{name}, dosage non connu, devient {product} dans la liste.',
     missing: "Ce produit n'est pas sur ce téléphone. Cherchez encore.",
+    // The name typed names a substance the product chosen does not have ("efferalgan codéine").
+    missingSubstances:
+      "{substances} : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
   },
   result: {
     title: 'Résultat',
@@ -332,6 +356,13 @@ export const fr = {
     dangerAction: 'Voir qui appeler',
     // After the first sentence of "nothing found" (spec section 2).
     versionInline: '(version {version} du {date})',
+    // A name typed as not recognised that looks like a product or remedy of the base.
+    possibleProduct: "Ce nom ressemble à {name}. Si c'est ce produit :",
+    possiblePlant: "Ce nom ressemble à {name}. Si c'est ce remède :",
+    // The grey card of the name typed, read after its possible match.
+    possibleNotProduct: "Si ce n'est pas ce produit :",
+    possibleNotPlant: "Si ce n'est pas ce remède :",
+    resembles: 'ressemble à {name}',
     term: {
       estimated: 'Terme estimé : ce résultat tient compte de toutes les semaines possibles.',
       unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',

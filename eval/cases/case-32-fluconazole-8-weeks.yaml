@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-32-fluconazole-8-weeks
+title: '8 weeks, one fluconazole capsule for a yeast infection'
+context:
+  pregnancy: { weeks: 8 }
+  items:
+    - { product: fluconazole-arrow-lab-150-mg-67860651 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: fluconazole-pregnancy,
+        message: fluconazole-pregnancy,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
+  reminders: []
+  notes: []

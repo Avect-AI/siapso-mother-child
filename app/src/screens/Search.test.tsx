@@ -15,6 +15,8 @@ import { loaderOf, noPack, renderApp } from '../test/render-app.js';
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+const NBSP = ' ';
+const LOOKALIKE = `Ce nom ressemble à${NBSP}:`;
 let pack: Pack;
 
 beforeAll(async () => {
@@ -305,6 +307,125 @@ describe('Search', () => {
     await waitFor(() => {
       expect(candidates()[0]).toHaveTextContent(/^Moringa/);
     });
+  });
+
+  it('takes the focus to the field when it opens, so a name can be typed at once', async () => {
+    const { field } = await openSearch('Ajouter un médicament');
+
+    await waitFor(() => {
+      expect(field).toHaveFocus();
+    });
+  });
+
+  it('shows the length of the name near its limit of 80 characters', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    expect(field).toHaveAttribute('maxLength', '80');
+    await user.type(field, 'x'.repeat(59));
+    expect(screen.queryByText(/caractères sur 80/)).toBeNull();
+
+    await user.type(field, 'x');
+    expect(screen.getByText('60 caractères sur 80')).toBeVisible();
+    expect(field).toHaveAccessibleDescription(
+      'Le nom et le dosage écrits sur la boîte, même avec des fautes. 60 caractères sur 80',
+    );
+    await user.type(field, 'y'.repeat(25));
+    expect(field).toHaveValue(`${'x'.repeat(60)}${'y'.repeat(20)}`);
+    expect(
+      screen.getByText("80 caractères au plus : la suite ne s'écrit pas.", {
+        selector: '.search__limit',
+      }),
+    ).toBeVisible();
+    // Said once reached, while typing (the description is read only when the field takes the focus).
+    const said = document.querySelector('.search__limit-said');
+    expect(said).toHaveAttribute('aria-live', 'polite');
+    expect(said).toHaveTextContent("80 caractères au plus : la suite ne s'écrit pas.");
+  });
+
+  it('asks first when the name looks like a remedy: "huile de ricin" among the medicines', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'huile de ricin');
+    await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce produit' }));
+
+    const heading = await screen.findByRole('heading', { level: 2, name: LOOKALIKE });
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
+    // The question follows the list shown: one remedy here.
+    expect(screen.getByText("Est-ce l'un de ces remèdes ?")).toBeVisible();
+    const lookalikes = screen.getByRole('list', { name: LOOKALIKE });
+    const [first] = within(lookalikes).getAllByRole('button');
+    expect(first).toHaveTextContent(/^Huile de ricin/);
+    expect(first).toHaveTextContent('Remède');
+    // The usual results are hidden under the question: one "not found" only.
+    expect(screen.queryByRole('button', { name: 'Je ne trouve pas ce produit' })).toBeNull();
+    expect(probe.current().items).toEqual([]);
+
+    const none = screen.getByRole('button', { name: 'Non, aucun de ces remèdes' });
+    expect(none).toHaveAccessibleDescription(
+      "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
+    );
+    await user.click(none);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'unrecognised', text: 'huile de ricin' } },
+    ]);
+    // She said it is none of them: the result keeps only a strong resemblance.
+    expect(
+      probe.current().declinedOf({ ref: { kind: 'unrecognised', text: 'huile de ricin' } }),
+    ).toBe(true);
+  });
+
+  it('opens the confirm screen of a lookalike of the other list', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un remède');
+    await user.type(field, 'cytotec');
+    await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
+
+    const lookalikes = await screen.findByRole('list', { name: LOOKALIKE });
+    const [first] = within(lookalikes).getAllByRole('button');
+    expect(first).toHaveTextContent(/^Misoprostol \(générique\)/);
+    expect(first).toHaveTextContent('Médicament');
+    expect(screen.getByText("Est-ce l'un de ces médicaments ?")).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Non, aucun de ces médicaments' })).toBeVisible();
+    await user.click(first as HTMLElement);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/confirm/product');
+    expect(sessionState()).toMatchObject({ id: 'misoprostol-generic', query: 'cytotec' });
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('says the name on the box a misspelt brand was found by, in the question too', async () => {
+    const { user, field } = await openSearch('Ajouter un remède');
+    await user.type(field, 'cytotek');
+    await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
+
+    const lookalikes = await screen.findByRole('list', { name: LOOKALIKE });
+    const [first] = within(lookalikes).getAllByRole('button');
+    expect(first).toHaveTextContent(/^Misoprostol \(générique\)/);
+    expect(first).toHaveTextContent('Nom sur la boîte : Cytotec');
+  });
+
+  it('says no name on the box when the name shown already holds it', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'doliprane 1000');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent('DOLIPRANE 1000 mg');
+    });
+    expect(candidates()[0]).not.toHaveTextContent('Nom sur la boîte');
+  });
+
+  it('closes the question when the name typed changes', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'advil');
+    await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce produit' }));
+    expect(await screen.findByRole('list', { name: LOOKALIKE })).toBeVisible();
+
+    await user.type(field, 'x');
+    expect(screen.queryByRole('list', { name: LOOKALIKE })).toBeNull();
   });
 
   it('says the product information is missing, and still takes the text typed', async () => {

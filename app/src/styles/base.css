@@ -76,6 +76,11 @@ p {
   text-wrap: pretty;
 }
 
+/* Hidden means hidden, whatever display a component's own rule gives it. */
+[hidden] {
+  display: none !important;
+}
+
 strong {
   font-weight: var(--font-weight-strong);
 }
@@ -650,6 +655,12 @@ a {
  * the clearest one, at title size and heading weight, set apart from the
  * reading fields by a hairline. The product name above it stays at reading size.
  */
+/* A possible match of a name typed as not recognised: what it looks like, read before the risk. */
+.result-card__possible {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
 .result-card__orientation {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-rule);
@@ -1990,7 +2001,42 @@ html:has(.sticky-action) {
   overflow-wrap: break-word;
 }
 
+/* Which list a lookalike comes from: the question mixes medicines and remedies. */
+.candidate__kind {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-strong);
+}
+
 .search__other {
+  width: 100%;
+}
+
+/* The length of a long name, under the field, from 60 characters to the limit. */
+.search__limit {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+/*
+ * "Not found" asked first: what the name typed looks like in both lists, each
+ * one a candidate that opens its confirm screen, then "none of these", which
+ * adds the name as written.
+ */
+.search__lookalikes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* The screen's question, at the title size as every question of the app. */
+.search__lookalikes h2 {
+  font-size: var(--font-size-title);
+  overflow-wrap: break-word;
+}
+
+.search__none-of-these {
   width: 100%;
 }
 

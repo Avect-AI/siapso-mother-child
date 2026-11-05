@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 import { damerauLevenshtein } from './distance.js';
-import { compiledOf, MIN_WORD_LENGTH } from './index-build.js';
-import type { CompiledName } from './index-build.js';
-import { normalize, splitAgeWords, withoutStopWords } from './normalize.js';
+import { compiledOf, infoOf, MIN_WORD_LENGTH } from './index-build.js';
+import type { CompiledIndex, CompiledName } from './index-build.js';
+import { formWords, normalize, splitAgeWords, withoutStopWords } from './normalize.js';
 import { parseStrength } from './strength.js';
 import { jaccard, trigrams } from './trigrams.js';
-import type { Candidate, ResolverIndex, SearchOptions } from './types.js';
+import type { Candidate, IndexEntry, MatchKind, ResolverIndex, SearchOptions } from './types.js';
 
 export const DEFAULT_LIMIT = 3;
 export const DEFAULT_MIN_SCORE = 0.55;
@@ -48,32 +48,68 @@ function fuzzy(
   return similarity + 0.5 * (1 - damerauLevenshtein(query, target) / longest);
 }
 
+/** Score of a whole name (with a word of 4 letters or more) found inside a longer query. */
+const CONTAINED_SCORE = 0.9;
+/** Score of a product holding exactly the substances a query names, and no other word. */
+const SET_SCORE = 0.95;
+/** Score of a product holding the substances a query names and others. */
+const SUPERSET_SCORE = 0.9;
+/** Words that join the names of a combination ("paracétamol et codéine"): they name nothing. */
+const JOINING_WORDS: ReadonlySet<string> = new Set(
+  ['et', 'and', 'avec', 'with', 'plus'].map(normalize),
+);
+
 interface Match {
   score: number;
+  /** How the score was reached. */
+  kind: MatchKind;
   name: CompiledName;
   strengthMatch: boolean;
+  /** How many form words of the query ("sirop", "effervescent") the product's name has. */
+  formMatch: number;
   /** The query holds an age word of the product's age group (see splitAgeWords). */
   ageMatch: boolean;
+  /**
+   * The query names no age and the product is only for newborns or children
+   * ("NOUVEAU-NE", "ENFANTS"): a maternal tool shows the others first.
+   */
+  childOnly: boolean;
+  /** How many substances named in the query the product lacks. */
+  missing: number;
+}
+
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /**
- * Order of the matches, best first: score, then a matching strength, then a
- * matching age word, then a single-substance product before a combination,
- * then entry priority, then id.
+ * Order of the matches, best first: fewer substances named in the query and
+ * missing from the product, then score, then a matching strength, then the
+ * form words of the query, then a matching age word, then a product that is
+ * not only for children, then a single-substance product before a
+ * combination, then entry priority, then (within a family, `byName`) the
+ * plainest French name, then id.
  */
-function compare(a: Match, b: Match): number {
+function compare(a: Match, b: Match, byName = false): number {
   const combinationA = (a.name.entry.componentCount ?? 1) > 1 ? 1 : 0;
   const combinationB = (b.name.entry.componentCount ?? 1) > 1 ? 1 : 0;
-  const idA = a.name.entry.id;
-  const idB = b.name.entry.id;
   return (
+    a.missing - b.missing ||
     b.score - a.score ||
     Number(b.strengthMatch) - Number(a.strengthMatch) ||
+    b.formMatch - a.formMatch ||
     Number(b.ageMatch) - Number(a.ageMatch) ||
+    Number(a.childOnly) - Number(b.childOnly) ||
     combinationA - combinationB ||
     b.name.entry.priority - a.name.entry.priority ||
-    (idA < idB ? -1 : idA > idB ? 1 : 0)
+    (byName ? compareText(infoOf(a.name.entry).sortName, infoOf(b.name.entry).sortName) : 0) ||
+    compareText(a.name.entry.id, b.name.entry.id)
   );
+}
+
+/** Only for newborns or children: an age group, and not the adults'. */
+function onlyForChildren(ages: ReadonlySet<string>): boolean {
+  return ages.size > 0 && !ages.has('adult');
 }
 
 /** The family prefix of generic products, grouped by their substances (see entriesFromPack). */
@@ -88,6 +124,7 @@ const GENERIC_FAMILY = 'substances:';
  * the usual order applies.
  */
 function compareInFamily(a: Match, b: Match, strengthTyped: boolean): number {
+  if (a.missing !== b.missing) return a.missing - b.missing;
   // An age word typed in the query ("doliprane enfant") picks the variant of
   // that age, after a typed strength.
   if (a.score === b.score && a.strengthMatch === b.strengthMatch && a.ageMatch !== b.ageMatch) {
@@ -98,7 +135,7 @@ function compareInFamily(a: Match, b: Match, strengthTyped: boolean): number {
     const strengthB = (b.name.entry.strengths ?? []).length > 0 ? 1 : 0;
     if (strengthA !== strengthB) return strengthA - strengthB;
   }
-  return compare(a, b);
+  return compare(a, b, true);
 }
 
 /**
@@ -114,36 +151,156 @@ function prefixMatches(name: CompiledName, query: string): boolean {
   );
 }
 
-function scoreName(
-  name: CompiledName,
-  query: string,
-  queryTri: Set<string>,
-  compactQuery: string,
-  compactTri: Set<string>,
-  floor: number,
-): number {
-  if (query.length < MIN_PREFIX_LENGTH) {
+/** A score and how it was reached. */
+interface Scored {
+  score: number;
+  kind: MatchKind;
+}
+
+/** The query as scoreName reads it. */
+interface ScoredQuery {
+  text: string;
+  tri: Set<string>;
+  compact: string;
+  compactTri: Set<string>;
+}
+
+/** A whole name of this many letters or more, spelt within one edit, is a near match. */
+const NEAR_NAME_LENGTH = 6;
+
+function scoreName(name: CompiledName, query: ScoredQuery, floor: number): Scored {
+  const text = query.text;
+  if (text.length < MIN_PREFIX_LENGTH) {
     // 1 or 2 characters: an exact whole name or whole word only.
-    return name.norm === query || name.words.some((word) => word.norm === query) ? SHORT_SCORE : 0;
+    if (name.norm === text) return { score: SHORT_SCORE, kind: 'exact' };
+    return name.words.some((word) => word.norm === text)
+      ? { score: SHORT_SCORE, kind: 'word' }
+      : { score: 0, kind: 'fuzzy' };
   }
-  if (name.norm === query) return 1;
-  let score = 0;
-  if (name.words.some((word) => word.norm === query)) score = WORD_SCORE;
-  else if (prefixMatches(name, query)) score = PREFIX_SCORE;
-  score = Math.max(score, fuzzy(query, queryTri, name.norm, name.tri, floor));
-  if (query !== compactQuery || name.norm !== name.compact) {
-    score = Math.max(score, fuzzy(compactQuery, compactTri, name.compact, name.compactTri, floor));
+  if (name.norm === text) return { score: 1, kind: 'exact' };
+  let best: Scored = { score: 0, kind: 'fuzzy' };
+  const better = (score: number, kind: MatchKind) => {
+    if (score > best.score) best = { score, kind };
+  };
+  if (name.words.some((word) => word.norm === text)) better(WORD_SCORE, 'word');
+  else if (prefixMatches(name, text)) better(PREFIX_SCORE, 'prefix');
+  // The whole name, its words one after the other, inside a longer text,
+  // whatever the words around it ("mon cytotec", "huile de ricin bio").
+  if (name.containable && ` ${text} `.includes(` ${name.norm} `)) {
+    better(CONTAINED_SCORE, 'contained');
+  }
+  // A spelling of the whole name within one edit ("cytotek") says which name it is.
+  // (Only for a spelling already close enough to be scored: cheap checks first.)
+  const whole = fuzzy(text, query.tri, name.norm, name.tri, floor);
+  const near =
+    whole > 0 &&
+    name.norm.length >= NEAR_NAME_LENGTH &&
+    Math.abs(text.length - name.norm.length) <= 1 &&
+    damerauLevenshtein(text, name.norm) <= 1;
+  better(whole, near ? 'near' : 'fuzzy');
+  if (text !== query.compact || name.norm !== name.compact) {
+    better(fuzzy(query.compact, query.compactTri, name.compact, name.compactTri, floor), 'fuzzy');
+  }
+  // Words merged as said, carrier words included ("huiledericin").
+  if (name.spoken !== undefined && text === query.compact) {
+    better(
+      fuzzy(query.compact, query.compactTri, name.spoken.text, name.spoken.tri, floor),
+      'fuzzy',
+    );
   }
   // Inside a multi-word name a query of 3 characters is not fuzzy-matched
   // against one word ("sel" would reach "sels ferreux").
-  for (const word of query.length >= MIN_WORD_PREFIX_LENGTH ? name.words : []) {
+  for (const word of text.length >= MIN_WORD_PREFIX_LENGTH ? name.words : []) {
     if (word.norm.length < MIN_WORD_LENGTH) continue;
-    score = Math.max(
-      score,
-      Math.min(FUZZY_WORD_CAP, fuzzy(query, queryTri, word.norm, word.tri, floor)),
+    better(
+      Math.min(FUZZY_WORD_CAP, fuzzy(text, query.tri, word.norm, word.tri, floor)),
+      'fuzzy-word',
     );
   }
-  return score;
+  return best;
+}
+
+interface CleanQuery {
+  /** The strength typed, in mg. */
+  wanted: number | undefined;
+  /** The name part: normalised, without strength, stop-words, salt words or age words. */
+  normalized: string;
+  /** The age groups the query names. */
+  ages: string[];
+  /** The form words of the query: they choose between the forms of one product. */
+  forms: string[];
+}
+
+function cleanQuery(query: string, compiled: CompiledIndex): CleanQuery {
+  const parsed = parseStrength(query);
+  // Form and packaging words are ignored; a query made only of them ("sirop",
+  // "comprimé") names no medicine and gets no candidate. Age words have no
+  // weight on their own: they only choose between the variants of a product.
+  const { text, ages } = splitAgeWords(
+    withoutStopWords(normalize(parsed.text), compiled.keepSalts),
+  );
+  return { wanted: parsed.strengthMg, normalized: text, ages, forms: formWords(parsed.text) };
+}
+
+/** Whether a product has the strength typed, in mg, or writes it in its name when it has none. */
+function hasStrength(entry: IndexEntry, wanted: number | undefined): boolean {
+  if (wanted === undefined) return false;
+  const near = (mg: number) => Math.abs(mg - wanted) < STRENGTH_EPSILON;
+  const strengths = entry.strengths ?? [];
+  if (strengths.length > 0) return strengths.some(near);
+  const written = infoOf(entry).nameStrength;
+  return written !== undefined && near(written);
+}
+
+/**
+ * The substances a cleaned query names, by any of their names (the longest
+ * name first: "acide ascorbique" before "acide"), and its other words, the
+ * words that join a combination ("et", "avec") left out.
+ */
+function mentionsOf(
+  compiled: CompiledIndex,
+  normalized: string,
+): { substances: Set<string>; rest: string[] } {
+  const words = normalized === '' ? [] : normalized.split(' ');
+  const substances = new Set<string>();
+  const rest: string[] = [];
+  let at = 0;
+  while (at < words.length) {
+    let length = Math.min(compiled.substanceWords, words.length - at);
+    for (; length > 0; length -= 1) {
+      const id = compiled.substances.get(words.slice(at, at + length).join(' '));
+      if (id === undefined) continue;
+      substances.add(id);
+      break;
+    }
+    if (length > 0) {
+      at += length;
+      continue;
+    }
+    const word = words[at] ?? '';
+    if (!JOINING_WORDS.has(word)) rest.push(word);
+    at += 1;
+  }
+  return { substances, rest };
+}
+
+/**
+ * The substances a query names ("efferalgan codéine": codeine), sorted: the
+ * confirm screen says when the product chosen lacks one of them.
+ */
+export function namedSubstances(index: ResolverIndex, query: string): string[] {
+  const compiled = compiledOf(index);
+  const { normalized } = cleanQuery(query, compiled);
+  return [...mentionsOf(compiled, normalized).substances].sort();
+}
+
+/** How many of the named substances an entry lacks (a plant lacks them all). */
+function missingFrom(entry: IndexEntry, named: ReadonlySet<string>): number {
+  if (named.size === 0) return 0;
+  const held = entry.substances ?? [];
+  let missing = 0;
+  for (const id of named) if (!held.includes(id)) missing += 1;
+  return missing;
 }
 
 /**
@@ -167,31 +324,53 @@ export function search(
   const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
   const relativeCutoff = options.relativeCutoff ?? DEFAULT_RELATIVE_CUTOFF;
   const kinds = options.kinds;
-  const parsed = parseStrength(query);
-  const wanted = parsed.strengthMg;
-  // Form and packaging words are ignored; a query made only of them ("sirop",
-  // "comprimé") names no medicine and gets no candidate. Age words have no
-  // weight on their own: they only choose between the variants of a product.
-  const { text: normalized, ages: queryAges } = splitAgeWords(
-    withoutStopWords(normalize(parsed.text)),
-  );
+  const compiled = compiledOf(index);
+  const { wanted, normalized, ages: queryAges, forms } = cleanQuery(query, compiled);
   if (normalized === '' || limit <= 0) return [];
   const queryTri = trigrams(normalized);
   const compactQuery = normalized.replaceAll(' ', '');
-  const compactTri = compactQuery === normalized ? queryTri : trigrams(compactQuery);
-  const compiled = compiledOf(index);
+  const scored: ScoredQuery = {
+    text: normalized,
+    tri: queryTri,
+    compact: compactQuery,
+    compactTri: compactQuery === normalized ? queryTri : trigrams(compactQuery),
+  };
+  // A query made only of substance names ("paracétamol codéine") finds the
+  // products that hold them all, whatever their names.
+  const mentions = mentionsOf(compiled, normalized);
+  const named = mentions.substances;
+  const onlySubstances = named.size >= 2 && mentions.rest.length === 0;
 
   const bestById = new Map<string, Match>();
   for (const name of compiled.names) {
     if (kinds && !kinds.includes(name.entry.kind)) continue;
-    const raw = scoreName(name, normalized, queryTri, compactQuery, compactTri, minScore);
+    const missing = missingFrom(name.entry, named);
+    let { score: raw, kind } = scoreName(name, scored, minScore);
+    if (onlySubstances && name.substance !== undefined && missing === 0) {
+      const exact = (name.entry.substances ?? []).length === named.size;
+      const bySubstances = exact ? SET_SCORE : SUPERSET_SCORE;
+      if (bySubstances > raw) {
+        raw = bySubstances;
+        kind = 'substances';
+      }
+    }
     const score = Math.round(raw * 10000) / 10000;
     if (score < minScore || score === 0) continue;
-    const strengthMatch =
-      wanted !== undefined &&
-      (name.entry.strengths ?? []).some((mg) => Math.abs(mg - wanted) < STRENGTH_EPSILON);
+    const strengthMatch = hasStrength(name.entry, wanted);
+    const productForms = infoOf(name.entry).forms;
+    const formMatch = forms.filter((form) => productForms.has(form)).length;
     const ageMatch = queryAges.some((age) => name.ages.has(age));
-    const match: Match = { score, name, strengthMatch, ageMatch };
+    const childOnly = queryAges.length === 0 && onlyForChildren(name.ages);
+    const match: Match = {
+      score,
+      kind,
+      name,
+      strengthMatch,
+      formMatch,
+      ageMatch,
+      childOnly,
+      missing,
+    };
     const known = bestById.get(name.entry.id);
     if (!known || compare(match, known) < 0) bestById.set(name.entry.id, match);
   }
@@ -206,10 +385,13 @@ export function search(
 
   const ranked = [...bestByFamily.values()].sort(compare);
   const floor = (ranked[0]?.score ?? 0) * relativeCutoff;
+  // A candidate lacking a substance the query names is kept only when its
+  // name matches at least as well as the best candidate that lacks none.
+  const holding = ranked[0]?.missing === 0 ? ranked[0].score : 0;
   return ranked
-    .filter((match) => match.score >= floor)
+    .filter((match) => match.score >= floor && (match.missing === 0 || match.score >= holding))
     .slice(0, limit)
-    .map(({ score, name }) => ({
+    .map(({ score, kind, name }) => ({
       id: name.entry.id,
       kind: name.entry.kind,
       family: name.entry.family,
@@ -218,6 +400,8 @@ export function search(
       matched: name.text,
       matchedLang: name.lang,
       score,
+      match: kind,
+      queryLength: compactQuery.length,
       variants: (compiled.families.get(name.entry.family) ?? [])
         .filter((member) => member.id !== name.entry.id)
         .map((member) => member.id),

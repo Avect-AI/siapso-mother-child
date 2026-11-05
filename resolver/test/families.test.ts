@@ -188,7 +188,8 @@ describe('scoring order: whole word above prefix', () => {
   it('ranks an exact whole word 0.95 above the prefix of another word 0.9', () => {
     const results = search(index, 'fer', { limit: 5 });
     const byId = new Map(results.map((candidate) => [candidate.id, candidate.score]));
-    expect(byId.get('fer-generic')).toBe(0.95);
+    // "Fer (générique)" is "fer": "générique" names no medicine.
+    expect(byId.get('fer-generic')).toBe(1);
     expect(byId.get('fer-ap-hp')).toBe(0.95);
     expect(byId.get('fertifol')).toBe(0.9);
     expect(byId.get('fero-grad')).toBe(0.9);

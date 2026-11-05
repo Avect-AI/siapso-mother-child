@@ -7,6 +7,11 @@ import { getProfile } from '../data/profiles.js';
 import { contextFromProfile } from '../domain/context.js';
 import { todayIso } from '../domain/dates.js';
 import {
+  cappedEvaluation,
+  withPossibleMatches,
+  type PossibleMatch,
+} from '../domain/possible-matches.js';
+import {
   buildResultView,
   type FindingView,
   type ResultView,
@@ -33,11 +38,21 @@ type Loaded =
   | { status: 'failed' };
 
 /**
- * The evaluation of the check, with the items it read (the profile's
- * long-term ones included) and the profile's situations.
+ * The evaluation of the check, with the items it read: the items of the
+ * context (the profile's long-term ones included), then the possible matches
+ * of the names typed as not recognised (`possible`), and the profile's
+ * situations. `checked` are the items of the context alone, as the history
+ * keeps them.
  */
 type Evaluated =
-  | { status: 'ready'; evaluation: Evaluation; items: CheckedItem[]; conditions: ConditionId[] }
+  | {
+      status: 'ready';
+      evaluation: Evaluation;
+      items: CheckedItem[];
+      checked: CheckedItem[];
+      possible: Map<number, PossibleMatch>;
+      conditions: ConditionId[];
+    }
   | { status: 'failed' };
 
 /** Whether a finding has source or rule lines: in accompanied mode only. */
@@ -180,6 +195,14 @@ function Finding({ finding }: { finding: FindingView }) {
       {...(details === undefined ? {} : { details })}
       {...(hasMeta(finding) ? { meta: <FindingMeta finding={finding} /> } : {})}
     >
+      {(finding.written ?? []).map((line) => (
+        <p key={line} className="meta">
+          {line}
+        </p>
+      ))}
+      {finding.possible === undefined ? null : (
+        <p className="result-card__possible">{finding.possible}</p>
+      )}
       {finding.lead === undefined ? null : <p>{finding.lead}</p>}
       {texts.map((text) => (
         <p key={text}>{text}</p>
@@ -210,6 +233,7 @@ function Summary({ view }: { view: ResultView }) {
           </span>
           <span className="result-summary__text">
             <strong>{finding.levelLabel}</strong>
+            {finding.resembles === undefined ? null : ` (${finding.resembles})`}
             <span className="sr-only">.</span>{' '}
             <span>
               <Names names={finding.names} />
@@ -307,17 +331,26 @@ export function Result() {
     try {
       // Today from the phone's clock, handed to pure code.
       const context = contextFromProfile(loaded.profile, { items, signs }, todayIso(new Date()));
+      // A name typed as not recognised is evaluated as what it clearly names
+      // too; a resemblance short of a clear name is not kept after she said
+      // "none of these", and never makes the result a danger.
+      const net = withPossibleMatches(pack, context.items, { declined: check.declinedOf });
       return {
         status: 'ready',
-        evaluation: evaluate(pack, context),
-        items: context.items,
+        evaluation: cappedEvaluation(
+          evaluate(pack, { ...context, items: net.items }),
+          net.possible,
+        ),
+        items: net.items,
+        checked: context.items,
+        possible: net.possible,
         conditions: context.conditions,
       };
     } catch (failure) {
       console.warn('The check could not be evaluated', failure);
       return { status: 'failed' };
     }
-  }, [pack, loaded, items, signs]);
+  }, [pack, loaded, items, signs, check.declinedOf]);
 
   const view = useMemo((): ResultView | 'failed' | null => {
     if (evaluated === null || pack === null) return null;
@@ -331,12 +364,13 @@ export function Result() {
         lang,
         t,
         evaluated.conditions,
+        { possible: evaluated.possible, writtenOf: check.writtenOf },
       );
     } catch (failure) {
       console.warn('The result could not be shown', failure);
       return 'failed';
     }
-  }, [evaluated, pack, mode, lang, t]);
+  }, [evaluated, pack, mode, lang, t, check.writtenOf]);
 
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
@@ -349,7 +383,7 @@ export function Result() {
       at: new Date().toISOString(),
       profileId,
       evaluation: evaluated.evaluation,
-      items: evaluated.items,
+      items: evaluated.checked,
       signs,
     });
     recordHistoryOnce(kept).catch((failure: unknown) => {
@@ -390,7 +424,11 @@ export function Result() {
         <>
           {ready.danger ? (
             <DangerBanner
-              levelLabel={ready.levelLabel}
+              levelLabel={
+                ready.levelNote === undefined
+                  ? ready.levelLabel
+                  : `${ready.levelLabel} (${ready.levelNote})`
+              }
               title={ready.headline}
               action={t('result.dangerAction')}
               headingLevel={2}

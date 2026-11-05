@@ -4,6 +4,8 @@ latin-name: Zingiber officinale
 names: { fr: 'Gingembre', en: 'Ginger' }
 local-names:
   - { text: gingembre, lang: fr, checked: false }
+  - { text: jinjeer, lang: wo, checked: false }
+  - { text: jinjer, lang: wo, checked: false }
 parts: [rhizome]
 evidence: '0'
 message: evidence-0

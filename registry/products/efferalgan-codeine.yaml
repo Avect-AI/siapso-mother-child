@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand: Efferalgan codéine (paracetamol and codeine)
+# is a name people use in Senegal, but the BDPM files of 2026-11-04 do not
+# list it, so the BDPM import leaves it out. Without a source for its
+# strengths, none is given: the engine then reads them as unknown. Its
+# availability in Senegal is not verified.
+id: efferalgan-codeine
+names: { fr: 'Efferalgan codéine', en: 'Efferalgan codeine' }
+brands: ['Efferalgan codéine']
+local-names: []
+components:
+  - { substance: paracetamol }
+  - { substance: codeine }
+form: 'comprimé effervescent'
+route: oral
+source: { demo-manual: true }
+demo: true

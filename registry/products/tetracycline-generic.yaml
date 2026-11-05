@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Demo product written by hand for a medicine common in Senegal that the
+# BDPM import does not cover: the BDPM files of 2026-11-04 list no
+# tetracycline taken by mouth. Its availability in Senegal is not verified.
+id: tetracycline-generic
+names: { fr: 'Tétracycline (générique)', en: 'Tetracycline (generic)' }
+brands: []
+local-names: []
+components:
+  - { substance: tetracycline }
+form: 'gélule'
+route: oral
+source: { demo-manual: true }
+demo: true

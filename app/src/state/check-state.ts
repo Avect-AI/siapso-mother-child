@@ -55,6 +55,10 @@ export interface CheckState {
   indexOf: (ref: ItemRef) => number;
   /** The list an unrecognised item was typed in (medicines or remedies), when known. */
   listOf: (item: CheckedItem) => EntryKind | undefined;
+  /** The name typed for a product or remedy shown under another name ("cytotec"), when known. */
+  writtenOf: (item: CheckedItem) => string | undefined;
+  /** Whether she said an unrecognised text is none of the products proposed ("Non, aucun de ces..."). */
+  declinedOf: (item: CheckedItem) => boolean;
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
@@ -67,6 +71,11 @@ export interface CheckState {
 export interface AddOptions {
   /** The list an unrecognised text was typed in. */
   list?: EntryKind;
+  /**
+   * She said the unrecognised text is none of the products proposed: the
+   * result keeps only a strong resemblance (domain/possible-matches.ts).
+   */
+  declined?: boolean;
   /** The resolver family of a product (domain/search-index.ts productFamilyOf). */
   family?: string;
   /**
@@ -74,6 +83,12 @@ export interface AddOptions {
    * unknown: a known strength is then listed apart instead of taking its place.
    */
   anotherBox?: boolean;
+  /**
+   * The name she typed, when the product or remedy is shown under another
+   * name (domain/search-index.ts writtenNameOf); without it, the product is
+   * said under its own name only.
+   */
+  written?: string;
 }
 
 /**
@@ -102,6 +117,10 @@ interface CheckData {
   lists: Readonly<Record<string, EntryKind>>;
   /** The resolver family of each product added with one, by product id. */
   families: Readonly<Record<string, string>>;
+  /** The name typed for each product or remedy shown under another name, by refKey. */
+  written: Readonly<Record<string, string>>;
+  /** The unrecognised texts she said were none of the products proposed, by refKey. */
+  declined: Readonly<Record<string, true>>;
 }
 
 type Action =
@@ -121,6 +140,8 @@ const EMPTY: CheckData = {
   changed: null,
   lists: {},
   families: {},
+  written: {},
+  declined: {},
 };
 
 function unknownStrength(item: CheckedItem): boolean {
@@ -170,7 +191,20 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
     item.ref.kind === 'product' && options.family !== undefined
       ? { ...base.families, [item.ref.id]: options.family }
       : base.families;
-  const state = { ...base, lists, families };
+  // The name typed goes with the product or remedy as it was last confirmed.
+  let written = base.written;
+  if (item.ref.kind !== 'unrecognised') {
+    const key = refKey(item.ref);
+    const others = Object.entries(base.written).filter(([listed]) => listed !== key);
+    written = Object.fromEntries(
+      options.written === undefined ? others : [...others, [key, options.written]],
+    );
+  }
+  const declined =
+    item.ref.kind === 'unrecognised' && options.declined === true
+      ? { ...base.declined, [refKey(item.ref)]: true as const }
+      : base.declined;
+  const state = { ...base, lists, families, written, declined };
   const key = identity(item, families);
   let index = state.items.findIndex((listed) => identity(listed, families) === key);
   if (index < 0 && options.anotherBox !== true) index = unknownToReplace(state, item);
@@ -258,12 +292,17 @@ export function useCheckStore(): CheckState {
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
   }, []);
-  const { profileId, items, signs, signsGiven, changed, lists } = data;
+  const { profileId, items, signs, signsGiven, changed, lists, written, declined } = data;
   const indexOf = useCallback(
     (ref: ItemRef) => items.findIndex((item) => sameRef(item.ref, ref)),
     [items],
   );
   const listOf = useCallback((item: CheckedItem) => lists[refKey(item.ref)], [lists]);
+  const writtenOf = useCallback((item: CheckedItem) => written[refKey(item.ref)], [written]);
+  const declinedOf = useCallback(
+    (item: CheckedItem) => declined[refKey(item.ref)] === true,
+    [declined],
+  );
   return useMemo(
     () => ({
       profileId,
@@ -277,6 +316,8 @@ export function useCheckStore(): CheckState {
       restore,
       indexOf,
       listOf,
+      writtenOf,
+      declinedOf,
       clearChanged,
       setSigns,
       reset,
@@ -293,6 +334,8 @@ export function useCheckStore(): CheckState {
       restore,
       indexOf,
       listOf,
+      writtenOf,
+      declinedOf,
       clearChanged,
       setSigns,
       reset,

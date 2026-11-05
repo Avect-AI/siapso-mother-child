@@ -1,10 +1,15 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Demo product written by hand for a medicine common in Senegal that the
 # BDPM import does not cover. Its availability in Senegal is not verified.
+# The brand is a name people commonly use for this medicine (the BDPM import
+# keeps only the first products of each substance, and Micropakine is not
+# among them): the resolver indexes it as another name of the generic.
 id: valproic-acid-generic
 names: { fr: 'Valproate (générique)', en: 'Valproate (generic)' }
-brands: []
-local-names: []
+brands: ['Micropakine']
+# Divalproate de sodium (valproate semisodium) is how DEPAKOTE boxes name it.
+local-names:
+  - { text: divalproate de sodium, lang: fr, checked: false }
 components:
   - { substance: valproic-acid }
 form: 'comprimé'

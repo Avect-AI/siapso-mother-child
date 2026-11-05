@@ -5,6 +5,8 @@ latin-name: Combretum micranthum
 names: { fr: 'Kinkéliba', en: 'Kinkeliba' }
 local-names:
   - { text: kinkéliba, lang: fr, checked: false }
+  - { text: quinquéliba, lang: fr, checked: false }
+  - { text: kenkéliba, lang: fr, checked: false }
 parts: [leaf]
 evidence: '0'
 message: kinkeliba

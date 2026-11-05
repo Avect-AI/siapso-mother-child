@@ -283,21 +283,78 @@ describe('Confirm: the strength on the box', () => {
     expect(checked[0]?.getAttribute('value')).toMatch(/^doliprane-1000-mg-/);
   });
 
-  it('preselects "I do not know" for a generic named without strength', async () => {
+  it('asks the strength of a generic as of a brand: nothing chosen, the strength first', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'paracetamol');
 
-    expect(screen.getByRole('radio', { name: 'Je ne sais pas' })).toBeChecked();
-    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual([
+    const answers = screen.getAllByRole('radio');
+    expect(answers.every((answer) => !(answer as HTMLInputElement).checked)).toBe(true);
+    expect(answers.map((radio) => radio.getAttribute('value'))).toEqual([
       'paracetamol-500-generic',
       'paracetamol-1000-generic',
       ':dont-know',
     ]);
+    expect(screen.getByRole('radio', { name: '500 mg, comprimé' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(screen.getByText('Choisissez un dosage, ou « Je ne sais pas ».')).toBeVisible();
+    expect(probe.current().items).toEqual([]);
 
+    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'product', id: 'paracetamol-generic' }, strengthUnknown: true },
     ]);
+  });
+
+  it('preselects the form typed when one product of the family has it (a syrup)', async () => {
+    await confirmFirst('Ajouter un médicament', 'Neo-Codion sirop');
+
+    const checked = screen
+      .getAllByRole('radio')
+      .filter((radio) => (radio as HTMLInputElement).checked);
+    expect(checked.map((radio) => radio.getAttribute('value'))).toEqual(['neo-codion-syrup']);
+  });
+});
+
+describe('Confirm: the name she typed', () => {
+  it('says the name typed when the product is shown under another one, up to the result', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'cytotec');
+
+    expect(product()).toHaveTextContent('Misoprostol (générique)');
+    expect(product()).toHaveTextContent('Vous avez écrit : cytotec');
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'misoprostol-generic' } },
+    ]);
+    const row = within(screen.getByRole('list', { name: 'Produits ajoutés' })).getByRole(
+      'listitem',
+    );
+    expect(row).toHaveTextContent('Misoprostol (générique)');
+    expect(row).toHaveTextContent('Vous avez écrit : cytotec');
+  });
+
+  it('says nothing more when the name shown is the one typed', async () => {
+    await confirmFirst('Ajouter un médicament', 'doliprane 1000');
+
+    expect(product()).not.toHaveTextContent('Vous avez écrit');
+  });
+
+  it('says when the product lacks a substance the name typed names', async () => {
+    await saveProfile(profileOf());
+    await renderApp({
+      settings: woman,
+      hash: '#/confirm/product',
+      entryState: inSession({ id: 'efferalgan-500-mg-67326925', query: 'efferalgan codeine' }),
+      packLoader: loaderOf(pack),
+    });
+
+    expect(
+      await screen.findByText(
+        "Codéine : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
+      ),
+    ).toBeVisible();
   });
 });
 
@@ -450,8 +507,9 @@ function ruleIdsOf(items: CheckedItem[]): (string | undefined)[] {
   return evaluate(pack, context).findings.map((finding) => finding.ruleId);
 }
 
-const EFFERALGAN_1000 = 'efferalgan-1000-mg-60025403';
-const SAME_BOX = `Est-ce la même boîte que EFFERALGAN 1000 mg, comprimé pelliculé${NBSP}?`;
+// The first of its strength by name: the forms of a brand are sorted the same way for every brand.
+const EFFERALGAN_1000 = 'efferalgan-1000-mg-67058605';
+const SAME_BOX = `Est-ce la même boîte que EFFERALGAN 1000 mg, comprimé effervescent${NBSP}?`;
 
 describe('Confirm: "I do not know" for a family already listed with a known strength', () => {
   async function listEfferalgan1000Times4() {
@@ -483,7 +541,7 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
     await user.click(within(sameBox).getByRole('radio', { name: 'Oui, la même' }));
     expect(screen.getByRole('textbox', { name: UNITS })).toHaveValue('4');
     expect(
-      screen.getByText('EFFERALGAN 1000 mg, comprimé pelliculé est déjà dans la liste.'),
+      screen.getByText('EFFERALGAN 1000 mg, comprimé effervescent est déjà dans la liste.'),
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Changer les unités par jour' }));
 

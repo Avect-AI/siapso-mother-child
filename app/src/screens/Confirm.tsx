@@ -3,15 +3,18 @@ import type { CheckedItem, Pack } from '@siapso/engine';
 import type { EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
+import { joinNames } from '../domain/result-view.js';
 import {
   candidateDisplayOf,
   candidateOf,
   displayOf,
   localNameOf,
+  missingSubstancesOf,
   needsUnitsPerDay,
   productFamilyOf,
   strengthChoiceOf,
   strengthOptionLabel,
+  writtenNameOf,
   type ConfirmCandidate,
 } from '../domain/search-index.js';
 import { parseUnits, stepUnits } from '../domain/units.js';
@@ -118,6 +121,16 @@ const ANNOUNCE_DELAY_MS = 700;
 /** The radio value of "it is another box", in the same-box question. */
 const OTHER_BOX = ':other-box';
 
+/** A substance name inside a list: "codéine", "acide ascorbique (vitamine C)". */
+function lowerFirst(name: string): string {
+  return name.charAt(0).toLocaleLowerCase() + name.slice(1);
+}
+
+/** The list at the start of the sentence: "Codéine et vitamine C". */
+function upperFirst(text: string): string {
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+}
+
 /** The product "yes" is about: an id, with its strength unknown when she said "I do not know". */
 interface Chosen {
   id: string;
@@ -194,10 +207,10 @@ function ConfirmForm({
   const query = entry.query ?? '';
   // Read once: the pack and the candidate do not change while the screen is open.
   const [choice] = useState(() => strengthChoiceOf(pack, candidate, query));
-  const [selected, setSelected] = useState<string | null>(() => {
-    if (choice?.preselected === 'unknown') return DONT_KNOW;
-    return choice?.preselected === 'candidate' ? candidate.id : null;
-  });
+  // Nothing chosen for her, generic or brand, unless she typed the strength or the form.
+  const [selected, setSelected] = useState<string | null>(() =>
+    choice?.preselected === 'candidate' ? candidate.id : null,
+  );
   // The answer to "is it the same box?": an index of the check, OTHER_BOX, or none yet.
   const [sameBox, setSameBox] = useState<string | null>(null);
   // What is typed in the units field, per target; a listed item starts from its count.
@@ -247,6 +260,13 @@ function ConfirmForm({
       : displayOf(pack, { kind: candidate.kind, id: chosen.id }, lang, chosen.strengthUnknown);
   const local =
     entry.matched === undefined ? undefined : localNameOf(pack, candidate, entry.matched);
+  // The name she typed, when the product is shown under another one (a local name says it already).
+  const written = local === undefined ? writtenNameOf(pack, candidate, query, lang) : undefined;
+  // A substance the name typed names that the product "yes" is about lacks ("efferalgan codéine").
+  const missing =
+    candidate.kind === 'product'
+      ? missingSubstancesOf(pack, chosen?.id ?? candidate.id, query, lang).map(lowerFirst)
+      : [];
   // Asked once the product is known: the strength first, then how many a day.
   const askUnits = writes !== null && !waitsForSameBox && needsUnitsPerDay(pack, writes.ref);
   let unitsKey = '';
@@ -306,6 +326,7 @@ function ConfirmForm({
     check.add(item, {
       ...(family === undefined ? {} : { family }),
       ...(anotherBox ? { anotherBox: true } : {}),
+      ...(written === undefined ? {} : { written }),
     });
     setLeaving(true);
     backToCheck(navigate, entry.stepsToCheck);
@@ -383,7 +404,16 @@ function ConfirmForm({
             {t('search.localName', { name: local.text, lang: t(`nameLang.${local.lang}`) })}
           </p>
         )}
+        {written === undefined ? null : (
+          <p className="meta">{t('check.writtenAs', { text: written })}</p>
+        )}
       </div>
+
+      {missing.length === 0 ? null : (
+        <Notice>
+          {t('confirm.missingSubstances', { substances: upperFirst(joinNames(missing, lang)) })}
+        </Notice>
+      )}
 
       {choice === null ? null : (
         <RadioGroup
