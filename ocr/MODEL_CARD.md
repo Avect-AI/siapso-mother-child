@@ -29,7 +29,7 @@ The only file derived by SIAPSO is `models/dict-latin.json`: the 836 characters 
 ## Evaluation
 
 - Spike of 2026-11-05 (spec section 4.5, synthetic set of 36 prescriptions, 144 images, the same two files): every product of the base found on the printed prescriptions in every photo condition (156 of 156 product lines on the development set, 88 of 88 on the held-out set), with no false product after the reading rules; 91.3 and 97.7 percent on a handwriting-style font proxy, which is not real handwriting.
-- Bench of 2026-11-06 (`pnpm ocr:bench`, `docs/ocr.md`): the pack's own worker read the four products of a synthetic printed page as a clean scan, a phone photo, a camera frame, a text PDF and a scanned PDF, offline; 2.1 to 2.4 s per page on a laptop, one thread.
+- Bench of 2026-11-06 (`pnpm ocr:bench`, `docs/ocr.md`): the pack's own worker read the four products of a synthetic printed page as a clean scan, a phone photo, a camera frame, a text PDF and a scanned PDF, offline; 2.1 to 3.4 s per page on a laptop over two runs, one thread.
 - Not measured: real prescriptions (they need consented, de-identified samples), real handwriting, phones.
 
 ## Limits and risks

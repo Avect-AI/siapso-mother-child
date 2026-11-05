@@ -72,16 +72,18 @@ The lines go to the reading of phase 1 (text lines in, candidate products out), 
 
 Measured with `pnpm ocr:bench` on 2026-11-06 on the laptop of the voice timings (Windows 11, 12 logical cores, headless Chromium 156 from Playwright 1.64.1), one thread (the page was not cross-origin isolated), on a synthetic printed prescription made by the bench (fake names; a clean scan, a phone photo turned and tilted, a text PDF and a scanned PDF of the photo):
 
-| Measure                                                                 | Time                    |
-| ----------------------------------------------------------------------- | ----------------------- |
-| Installation from the local server (28.9 MB, sizes and SHA-256 checked) | 0.6 s                   |
-| Models' load in the worker, from the Cache API                          | 0.7 s                   |
-| Clean scan, in the worker                                               | 2.4 s                   |
-| Phone photo (JPEG), in the worker                                       | 2.1 s                   |
-| Camera frame (the photo as an `ImageBitmap`), in the worker             | 2.2 s                   |
-| Text PDF (pdf.js text layer), in the worker                             | 0.19 s                  |
-| Scanned PDF (page drawn, then the OCR), in the worker                   | 2.1 s                   |
-| Clean scan on the page thread, CPU throttling 1x / 4x / 6x              | 2.5 s / 12.3 s / 18.7 s |
+| Measure                                                                 | Run 1                   | Run 2 (machine busier)  |
+| ----------------------------------------------------------------------- | ----------------------- | ----------------------- |
+| Installation from the local server (28.9 MB, sizes and SHA-256 checked) | 0.6 s                   | 1.6 s                   |
+| Models' load in the worker, from the Cache API                          | 0.7 s                   | 1.4 s                   |
+| Clean scan, in the worker                                               | 2.4 s                   | 3.1 s                   |
+| Phone photo (JPEG), in the worker                                       | 2.1 s                   | 3.3 s                   |
+| Camera frame (the photo as an `ImageBitmap`), in the worker             | 2.2 s                   | 3.4 s                   |
+| Text PDF (pdf.js text layer), in the worker                             | 0.19 s                  | 0.74 s                  |
+| Scanned PDF (page drawn, then the OCR), in the worker                   | 2.1 s                   | 3.2 s                   |
+| Clean scan on the page thread, CPU throttling 1x / 4x / 6x              | 2.5 s / 12.3 s / 18.7 s | 2.8 s / 15.7 s / 17.6 s |
+
+The second run shared the laptop with a test suite running at the same time: runs vary on one machine, as for the voice.
 
 - Every reading found the four products of the page, in their lines ("1. Doliprane 1000 mg cp", "2. Amoxicilline 500 mg gél", "3. Fer + Acide folique cp : 1 cp/jour pendant 3 mois", "4. Spasfon Lyoc 80 mg"); the photo, the camera frame and the scanned PDF read "mg_gél" for "mg gél". Nothing was requested once offline, nothing outside the bench origin, and before the installation only `ocr-pack.json` (on the install action) and no worker script.
 - DevTools CPU throttling does not reach workers, so the throttled runs use the same engine on the page thread (4x and 6x stand for a mid-range and an entry-level phone, as for the voice). The spike measured 3.9, 14.6 and 22.8 s with its own harness (spec section 4.6).
