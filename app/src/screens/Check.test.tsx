@@ -4,8 +4,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeAppDb } from '../data/db.js';
-import { listProfiles, saveProfile } from '../data/profiles.js';
+import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
+import { SESSION_CHANNEL } from '../state/tab-sync.js';
 import { probeCheck } from '../test/check-probe.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
@@ -219,6 +220,49 @@ describe('Check', () => {
     // The term used, so the right woman and term are seen before the result.
     expect(screen.getByText('Environ 26 semaines')).toBeVisible();
     expect(probe.current().profileId).toBe('a');
+  });
+
+  it('leaves the check of a woman deleted in another tab, and the list no longer names her', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Fatou' }));
+    const probe = probeCheck();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    await user.click(within(list).getByRole('button', { name: /^Awa / }));
+    expect(await screen.findByText('Profil : Awa')).toBeVisible();
+
+    await deleteProfile('a');
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'profile-deleted', mark: 'e'.repeat(31) + '3', id: 'a' });
+    other.close();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(screen.queryByText(/Awa/)).toBeNull();
+    expect(probe.current().pendingOf('a')).toBe(0);
+  });
+
+  it('stays on the check when another woman is deleted in another tab', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Fatou' }));
+    await renderApp({ settings: accompanied, hash: '#/', packLoader: loaderOf(pack) });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    await user.click(within(list).getByRole('button', { name: /^Awa / }));
+    expect(await screen.findByText('Profil : Awa')).toBeVisible();
+
+    await deleteProfile('b');
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'profile-deleted', mark: 'e'.repeat(31) + '7', id: 'b' });
+    other.close();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   });
 
   it('asks first whether the baby is born when her term is past 42 weeks, and lists nothing', async () => {

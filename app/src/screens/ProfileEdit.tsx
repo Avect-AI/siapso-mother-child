@@ -2,7 +2,7 @@
 import type { ConditionId } from '@siapso/engine';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
+import { deleteProfile, listProfiles, ProfileGoneError, saveProfile } from '../data/profiles.js';
 import { addDays, todayIso } from '../domain/dates.js';
 import {
   afterBirth,
@@ -36,6 +36,8 @@ import { useApp, withTimeout } from '../state/app-state.js';
 import { ownProfile, useCheck } from '../state/check-state.js';
 import { useDraft } from '../state/draft.js';
 import { inSession, sessionState } from '../state/entry-state.js';
+import { useLeaveWhenDeleted } from '../state/profile-gone.js';
+import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { CheckboxGroup, RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
@@ -247,7 +249,8 @@ export function ProfileQuestions({
   const { value: form, setValue: setForm, restored } = useDraft(draftKey, initial);
   // Each failed save attempt; from the first one, every error follows the answers live.
   const [attempts, setAttempts] = useState(0);
-  const [saveFailed, setSaveFailed] = useState(false);
+  // Why the last save did not go through: the phone refused it, or the profile was deleted meanwhile.
+  const [saveFailed, setSaveFailed] = useState<'failed' | 'gone' | false>(false);
   // A ref, not state: two taps in the same task both see it at once.
   const saving = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -387,11 +390,12 @@ export function ProfileQuestions({
       return;
     }
     try {
-      await withTimeout(saveProfile(profile), storageTimeoutMs);
+      // A profile read from storage is written only while it is still there.
+      await withTimeout(saveProfile(profile, { existing: base !== undefined }), storageTimeoutMs);
       onSaved(profile);
     } catch (failure) {
       console.warn('Profile not stored on this device', failure);
-      setSaveFailed(true);
+      setSaveFailed(failure instanceof ProfileGoneError ? 'gone' : 'failed');
       saving.current = false;
     }
   };
@@ -724,7 +728,11 @@ export function ProfileQuestions({
       </section>
 
       <div className="profile__save">
-        <div role="alert">{saveFailed ? <Notice>{t('profile.saveFailed')}</Notice> : null}</div>
+        <div role="alert">
+          {saveFailed === false ? null : (
+            <Notice>{t(saveFailed === 'gone' ? 'profile.goneOnSave' : 'profile.saveFailed')}</Notice>
+          )}
+        </div>
         {/* Never a save that does nothing: while the app no longer covers her, the
             way out is the delete offered with the notice (and below). */}
         {notCovered ? null : (
@@ -843,6 +851,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
   const { settings, storageTimeoutMs } = useApp();
   const { start, forget } = useCheck();
+  const { announceProfileDeleted } = useSession();
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
   const [ask] = useState(entryAsk);
@@ -910,6 +919,8 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
 
   const ready = loaded.status === 'ready' ? loaded : null;
   const base = ready?.base;
+  // Deleted in another tab: this form leaves, its answers with it.
+  useLeaveWhenDeleted(base?.id);
 
   return (
     <main className="screen profile">
@@ -923,6 +934,8 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
           onDeleted={() => {
             // Her list, on screen or waiting, is gone with her; the others stay.
             forget(base.id);
+            // The other tabs leave her screens too (her id on the channel only).
+            announceProfileDeleted(base.id);
             navigate('/', {
               replace: true,
               // Marks only on the entry: the pseudonym stays in memory (entry-state.ts).

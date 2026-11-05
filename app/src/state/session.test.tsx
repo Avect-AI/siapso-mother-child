@@ -10,16 +10,18 @@ import {
   getStoredSettings,
   getStoredVerifier,
   openAppDb,
+  readTabMarks,
   storeNewVerifier,
   storePack,
   storeSettings,
   storeLockout,
   storeVerifier,
+  updateTabMarks,
 } from '../data/db.js';
 import { listHistory, recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import { loadSavedContacts, saveContacts } from '../data/referral.js';
-import { isVaultOpen, LockedError } from '../data/vault.js';
+import { closeVault, isVaultOpen, LockedError } from '../data/vault.js';
 import {
   AUTO_LOCK_MS,
   checkCode,
@@ -929,7 +931,7 @@ describe('one code on the phone, whatever the tabs', () => {
   it('an erase only said, never done, leaves every tab as it was', async () => {
     const { other } = await twoOpenTabsWithCode();
     // A forged message and a forged epoch mark: the code is still stored.
-    localStorage.setItem(EPOCH_KEY, JSON.stringify({ erase: 'forged' }));
+    localStorage.setItem(EPOCH_KEY, JSON.stringify(['f'.repeat(31) + '2']));
     const forger = new BroadcastChannel(SESSION_CHANNEL);
     forger.postMessage('erase');
     forger.close();
@@ -1818,5 +1820,212 @@ describe('answers not saved when the session locks', () => {
     });
 
     expect(session.current().lockSoon).toBe(false);
+  });
+});
+
+describe('the tabs marks say nothing (live test round 2)', () => {
+  it('never name an event in storage, and are forgotten at the erase and at a new code', async () => {
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    await storeVerifier(await verifierOf(CODE));
+    const other = renderTab({ startUnlocked: true });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+
+    act(() => {
+      here.session.current().quickExit();
+    });
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    await waitFor(async () => {
+      expect(await readTabMarks()).toBeDefined();
+    });
+    const said = /quick|exit|erase|lock|profile/;
+    expect(localStorage.getItem(EPOCH_KEY)).not.toMatch(said);
+    expect(JSON.stringify(await readTabMarks())).not.toMatch(said);
+
+    await act(async () => {
+      await here.session.current().forgetCode();
+    });
+    expect(localStorage.getItem(EPOCH_KEY)).toBeNull();
+    expect(await readTabMarks()).toBeUndefined();
+
+    // Marks left by a tab of the person before: the next code takes them off.
+    const left = 'f'.repeat(31) + '1';
+    localStorage.setItem(EPOCH_KEY, JSON.stringify([left]));
+    await updateTabMarks(() => [left]);
+    await act(async () => {
+      expect(await here.session.current().createCode('7392')).toBe('made');
+    });
+    await waitFor(async () => {
+      expect(await readTabMarks()).toBeUndefined();
+    });
+    expect(localStorage.getItem(EPOCH_KEY)).toBeNull();
+  });
+});
+
+describe('a profile deleted in another tab (live test round 2)', () => {
+  it('reaches every other tab: its list and its answers not saved go, its id never stored', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const other = renderTab({ startUnlocked: true });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      other.check.current().start('bineta');
+      other.check.current().add({ ref: { kind: 'plant', id: 'kinkeliba' } });
+      other.check.current().start('awa');
+      other.session.current().keepDraft('profile:bineta', { pseudonym: 'Bineta' }, true);
+    });
+    expect(other.check.current().pendingOf('bineta')).toBe(1);
+
+    act(() => {
+      here.session.current().announceProfileDeleted('bineta');
+    });
+
+    await waitFor(() => {
+      expect(other.session.current().deletedProfile).toMatchObject({ id: 'bineta' });
+    });
+    expect(other.check.current().pendingOf('bineta')).toBe(0);
+    expect(other.session.current().draftFor('profile:bineta')).toBeNull();
+    expect(other.check.current().profileId).toBe('awa');
+    expect(here.session.current().deletedProfile).toBeNull();
+    expect(localStorage.getItem(EPOCH_KEY)).not.toContain('bineta');
+    expect(JSON.stringify(await readTabMarks())).not.toContain('bineta');
+  });
+
+  it('a tab that missed it knows a profile was deleted, not which, and drops the answers of any saved profile', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const deaf = renderTab({ startUnlocked: true, deaf: true });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(deaf.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      deaf.session.current().keepDraft('profile:mine', { pseudonym: 'Moi' }, true);
+    });
+
+    act(() => {
+      here.session.current().announceProfileDeleted('mine-id');
+    });
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(deaf.session.current().deletedProfile).toMatchObject({ id: null });
+    });
+    expect(deaf.session.current().draftFor('profile:mine')).toBeNull();
+  });
+});
+
+describe('changing the code (live test round 2)', () => {
+  const awa = profileOf({ id: 'a', pseudonym: 'Awa', conditions: ['hiv-cotrimoxazole'] });
+  const midwife = { id: 'c1', role: 'midwife', name: 'Mariama', phone: '000 000 001' } as const;
+
+  /** A phone with her profile and a contact, and a tab open with the code. */
+  async function openWithData() {
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    await storeVerifier(await verifierOf(CODE));
+    await openVaultOf(CODE);
+    await saveProfile(awa);
+    await saveContacts([midwife]);
+    closeVault();
+    const tab = renderTab();
+    await waitFor(() => {
+      expect(tab.session.current().status).toBe('locked');
+    });
+    await act(async () => {
+      expect(await tab.session.current().unlock(CODE)).toBe('ok');
+    });
+    return tab;
+  }
+
+  async function change(tab: ReturnType<typeof renderTab>, current: string, next: string) {
+    let result = '';
+    await act(async () => {
+      result = await tab.session.current().changeCode(current, next);
+    });
+    return result;
+  }
+
+  it('wraps every data key for the new code at once: the new code opens them, the old one no more', async () => {
+    const tab = await openWithData();
+    const other = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+    });
+
+    expect(await change(tab, CODE, '7392')).toBe('changed');
+
+    expect(tab.session.current().unlocked).toBe(true);
+    expect(await listProfiles()).toEqual([awa]);
+    const stored = await getStoredVerifier();
+    expect(stored?.version).toBe(2);
+    expect(await checkCode('7392', stored as CodeVerifier)).toBe(true);
+    expect(await checkCode(CODE, stored as CodeVerifier)).toBe(false);
+    expect(openedCode()).toBe(codeFingerprint(stored as CodeVerifier));
+    // Every other tab locks and asks for the new code.
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+
+    act(() => {
+      tab.session.current().lock();
+    });
+    await act(async () => {
+      expect(await tab.session.current().unlock(CODE)).toBe('wrong');
+    });
+    await act(async () => {
+      expect(await tab.session.current().unlock('7392')).toBe('ok');
+    });
+    expect(await listProfiles()).toEqual([awa]);
+    expect(await loadSavedContacts()).toEqual([midwife]);
+  });
+
+  it('leaves the old code working when the change stops in the middle', async () => {
+    const tab = await openWithData();
+    const before = await getStoredVerifier();
+    // The new verifier is written after the records, in the same transaction:
+    // refusing it stops the change half way.
+    let records = false;
+    const writes = failWrites((store) => {
+      if (store.name === 'profiles') records = true;
+      return records && store.name === 'settings';
+    });
+
+    expect(await change(tab, CODE, '7392')).toBe('failed');
+    writes.restore();
+
+    expect(await getStoredVerifier()).toEqual(before);
+    expect(tab.session.current().unlocked).toBe(true);
+    expect(await listProfiles()).toEqual([awa]);
+    act(() => {
+      tab.session.current().lock();
+    });
+    await act(async () => {
+      expect(await tab.session.current().unlock(CODE)).toBe('ok');
+    });
+    expect(await listProfiles()).toEqual([awa]);
+    expect(await loadSavedContacts()).toEqual([midwife]);
+  });
+
+  it('refuses a wrong current code, counts it, and changes nothing', async () => {
+    const tab = await openWithData();
+    const before = await getStoredVerifier();
+
+    expect(await change(tab, '1357', '7392')).toBe('wrong');
+
+    expect(await getStoredLockout()).toEqual({ failures: 1, lockedUntil: null });
+    expect(tab.session.current().lockout.failures).toBe(1);
+    expect(await getStoredVerifier()).toEqual(before);
+    expect(tab.session.current().unlocked).toBe(true);
+    expect(await listProfiles()).toEqual([awa]);
   });
 });

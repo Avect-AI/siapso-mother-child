@@ -9,6 +9,7 @@ import type { Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
+import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
@@ -49,6 +50,8 @@ export function Profiles() {
   const lang = useLang();
   const { storageTimeoutMs, pack, online } = useApp();
   const { start, pendingOf } = useCheck();
+  // A profile deleted in another tab: the list is read again, so she is no longer named.
+  const { deletedProfile } = useSession();
   const [, navigate] = useLocation();
   const note = useProfileNote();
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
@@ -69,7 +72,7 @@ export function Profiles() {
     return () => {
       live = false;
     };
-  }, [storageTimeoutMs]);
+  }, [storageTimeoutMs, deletedProfile]);
 
   const collator = new Intl.Collator(lang, { numeric: true, sensitivity: 'base' });
   const profiles =

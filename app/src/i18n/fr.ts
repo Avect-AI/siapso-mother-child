@@ -105,7 +105,7 @@ export const fr = {
     // yes, never a refusal. Never red: it is not a danger sign.
     weakTitle: 'Ce code est facile à deviner',
     weakLead:
-      "Une année, un même chiffre répété ou des chiffres qui se suivent (comme 1234) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une année de naissance.",
+      "Une date, une année, un même chiffre répété, des chiffres qui se suivent ou qui reviennent (comme 1234, 1212 ou 2580) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une date ou une année de naissance.",
     weakOther: 'Choisir un autre code',
     weakKeep: 'Garder ce code',
   },
@@ -290,6 +290,8 @@ export const fr = {
     noCondition: 'Aucune de ces situations',
     save: 'Enregistrer',
     saveFailed: "Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
+    // Deleted meanwhile (in another tab): never written back.
+    goneOnSave: "Ce profil a été supprimé de ce téléphone : il n'est pas enregistré.",
     // Deleting one profile and its history, after a last yes. Never red: not a danger sign.
     delete: 'Supprimer ce profil',
     deleteTitle: 'Supprimer le profil {name} ?',

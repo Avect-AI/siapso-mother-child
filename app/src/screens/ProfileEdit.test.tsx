@@ -9,6 +9,7 @@ import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { AppProvider, useApp } from '../state/app-state.js';
 import { inSession } from '../state/entry-state.js';
+import { SESSION_CHANNEL } from '../state/tab-sync.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { loaderOf, renderApp, seedSettings, shellPack, storeTestCode } from '../test/render-app.js';
 
@@ -683,6 +684,57 @@ describe('ProfileEdit: deleting a profile', () => {
     expect(screen.getByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();
     expect((await listProfiles()).map((p) => p.id)).toEqual(['b']);
     expect(await listHistory('a')).toEqual([]);
+  });
+
+  it('tells the other tabs which profile was deleted, on the channel only', async () => {
+    await saveProfile(stored({ id: 'a', pseudonym: 'Awa' }));
+    const heard: unknown[] = [];
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.onmessage = (event) => {
+      heard.push(event.data);
+    };
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/a');
+
+    await user.click(screen.getByRole('button', { name: 'Supprimer ce profil' }));
+    await user.click(screen.getByRole('button', { name: 'Supprimer le profil' }));
+
+    await vi.waitFor(() => {
+      expect(heard).toContainEqual(expect.objectContaining({ id: 'a' }));
+    });
+    other.close();
+  });
+
+  it('leaves the form of a profile deleted in another tab, its answers gone', async () => {
+    await saveProfile(stored({ id: 'a', pseudonym: 'Awa', conditions: ['hiv-cotrimoxazole'] }));
+    await saveProfile(stored({ id: 'b', pseudonym: 'Binta' }));
+    await openForm(accompanied, '#/profile/a');
+    expect(screen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Awa');
+
+    // Another tab deletes her, and says so.
+    await deleteProfile('a');
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'profile-deleted', mark: 'e'.repeat(31) + '3', id: 'a' });
+    other.close();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(screen.queryByText('Awa')).toBeNull();
+    expect(screen.getByText('Binta')).toBeVisible();
+  });
+
+  it('never writes back a profile deleted meanwhile: the save is refused and said', async () => {
+    await saveProfile(stored({ id: 'a', pseudonym: 'Awa', conditions: ['hiv-cotrimoxazole'] }));
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/a');
+    // Deleted from a tab that told nobody (no channel, no storage event).
+    await deleteProfile('a');
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Ce profil a été supprimé de ce téléphone : il n'est pas enregistré.",
+    );
+    expect(await listProfiles()).toEqual([]);
   });
 
   it('keeps the profile when the last step says no', async () => {

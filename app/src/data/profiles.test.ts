@@ -6,7 +6,13 @@ import { openVaultOf, verifierOf } from '../test/verifier.js';
 import { codeOpened, NoCodeError } from './code-guard.js';
 import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import { listHistory, recordHistory } from './history.js';
-import { deleteProfile, getProfile, listProfiles, saveProfile } from './profiles.js';
+import {
+  deleteProfile,
+  getProfile,
+  listProfiles,
+  ProfileGoneError,
+  saveProfile,
+} from './profiles.js';
 import { closeVault, LockedError } from './vault.js';
 
 // Profile data is written only while a code is on the phone (code-guard.ts),
@@ -49,6 +55,22 @@ describe('profiles', () => {
     closeAppDb();
 
     expect(await getProfile('a')).toEqual(saved);
+  });
+
+  it('refuses to write back a profile deleted meanwhile, in the same transaction', async () => {
+    const saved = profile('a', '2026-11-04T08:00:00.000Z', { conditions: ['hiv-cotrimoxazole'] });
+    await saveProfile(saved);
+    await saveProfile({ ...saved, pseudonym: 'Awa' }, { existing: true });
+    expect((await getProfile('a'))?.pseudonym).toBe('Awa');
+
+    await deleteProfile('a');
+
+    await expect(saveProfile(saved, { existing: true })).rejects.toBeInstanceOf(ProfileGoneError);
+    expect(await listProfiles()).toEqual([]);
+    expect(await (await openAppDb()).count('profiles')).toBe(0);
+    // A new profile has no record yet: written.
+    await saveProfile(profile('b', '2026-11-04T08:00:00.000Z'));
+    expect((await listProfiles()).map((p) => p.id)).toEqual(['b']);
   });
 
   it('lists the profiles from the oldest, then by id', async () => {

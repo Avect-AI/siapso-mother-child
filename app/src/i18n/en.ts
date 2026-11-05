@@ -86,7 +86,7 @@ export const en: Dictionary = {
     changeMode: 'Change mode',
     weakTitle: 'This code is easy to guess',
     weakLead:
-      'A year, one digit repeated or digits in a row (such as 1234) are the first codes someone else tries. Do not use a year of birth.',
+      'A date, a year, one digit repeated, or digits in a row or said again (such as 1234, 1212 or 2580) are the first codes someone else tries. Do not use a date or a year of birth.',
     weakOther: 'Choose another code',
     weakKeep: 'Keep this code',
   },
@@ -242,6 +242,7 @@ export const en: Dictionary = {
     noCondition: 'None of these situations',
     save: 'Save',
     saveFailed: 'This profile could not be saved on this phone. Try again.',
+    goneOnSave: 'This profile was deleted from this phone: it is not saved.',
     delete: 'Delete this profile',
     deleteTitle: 'Delete the profile {name}?',
     deleteTitleMine: 'Delete your profile?',

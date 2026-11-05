@@ -29,7 +29,9 @@ import { Unlock } from './screens/Unlock.js';
 import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
+import { useCheck } from './state/check-state.js';
 import { intoThisEpoch } from './state/entry-state.js';
+import { useLeaveWhenDeleted } from './state/profile-gone.js';
 import { useSession, type SessionStatus } from './state/session.js';
 import { Header } from './ui/Header.js';
 import { LockWarning } from './ui/LockWarning.js';
@@ -243,6 +245,18 @@ function AfterUnlock() {
 }
 
 /**
+ * The screens of a check (the list, the search, the confirmation, the signs,
+ * the result) leave when her profile is deleted in another tab; a passer-by
+ * has no profile to delete.
+ */
+function LeaveDeletedCheck() {
+  const { profileId, quick } = useCheck();
+  const passerBy = quick !== null && quick.id === profileId;
+  useLeaveWhenDeleted(passerBy ? null : profileId);
+  return null;
+}
+
+/**
  * A name for what is on screen, so a change of profile, of list searched or
  * of product confirmed counts as a new screen.
  */
@@ -403,6 +417,7 @@ function Screens() {
       ) : null}
       {screen === 'signs' ? <SignsNow /> : null}
       {screen === 'result' ? <Result /> : null}
+      {check !== null && screen === check.screen ? <LeaveDeletedCheck /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}
         message={t('autoLock.soon')}
