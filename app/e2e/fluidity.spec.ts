@@ -24,11 +24,12 @@ import {
 const BUDGETS: Record<string, Budget> = {
   // SCRUM-56 P1, the welcome in one screen: 17 taps and 12 screens before.
   j1: { taps: 14, keys: 20, screens: 9, scrolls: 3 },
-  j2a: { taps: 8, keys: 14, screens: 8, scrolls: 0 },
-  j2b: { taps: 12, keys: 25, screens: 11, scrolls: 1 },
-  j3a: { taps: 8, keys: 14, screens: 8, scrolls: 0 },
-  j3b: { taps: 17, keys: 22, screens: 10, scrolls: 4 },
-  j4: { taps: 15, keys: 16, screens: 9, scrolls: 4 },
+  // SCRUM-56 P2, the code opens at its length: one tap less ("Ouvrir") at each opening.
+  j2a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
+  j2b: { taps: 11, keys: 25, screens: 11, scrolls: 1 },
+  j3a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
+  j3b: { taps: 16, keys: 22, screens: 10, scrolls: 4 },
+  j4: { taps: 14, keys: 16, screens: 9, scrolls: 4 },
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
   j5c: { taps: 4, keys: 0, screens: 3, scrolls: 0 },

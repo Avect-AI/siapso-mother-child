@@ -5,7 +5,13 @@ import { seal } from '../domain/crypto.js';
 import type { HistoryEntry, Profile, ReferralContact } from '../domain/types.js';
 import { failWrites } from '../test/idb.js';
 import { profileOf } from '../test/knowledge-pack.js';
-import { codeKeysOf, legacyVerifier, openVaultOf, weakVerifier } from '../test/verifier.js';
+import {
+  codeKeysOf,
+  legacyVerifier,
+  openVaultOf,
+  weakVerifier,
+  withoutLength,
+} from '../test/verifier.js';
 import { CodeExistsError, codeFingerprint, NoCodeError } from './code-guard.js';
 import { getStoredVerifier, openAppDb, storeVerifier } from './db.js';
 import { listHistory, recordHistory } from './history.js';
@@ -232,6 +238,45 @@ describe('a phone that has a version 2 verifier', () => {
 
     expect(outcome).toEqual({ sealed: 0, rewrapped: 0, deleted: 0, skipped: 0 });
     expect(await dump()).toBe(before);
+  });
+
+  it("adds the code's length to a verifier kept without it, in the same pass, the code unchanged", async () => {
+    const keys = await codeKeysOf(CODE);
+    const before = withoutLength(keys.verifier);
+    await storeVerifier(before);
+    await openVaultOf(CODE);
+    await saveProfile(aminata);
+    // Someone writes a record in clear: the same transaction sweeps it.
+    await (await openAppDb()).put('history', checked);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const outcome = await sealStoredData({
+      current: { fingerprint: codeFingerprint(before), wrappingKey: keys.wrappingKey },
+      codeLength: CODE.length,
+    });
+
+    expect(outcome).toEqual({ sealed: 0, rewrapped: 0, deleted: 1, skipped: 0 });
+    // The same salt and hash: the same code, the same key, every tab still opened on it.
+    expect(await getStoredVerifier()).toEqual({ ...before, length: 4 });
+    expect(await listProfiles()).toEqual([aminata]);
+    vi.restoreAllMocks();
+  });
+
+  it('leaves a length already kept as it is, and keeps none it was not given', async () => {
+    const keys = await codeKeysOf(CODE);
+    await storeVerifier(keys.verifier);
+    const without = withoutLength(keys.verifier);
+    const current = { fingerprint: codeFingerprint(keys.verifier), wrappingKey: keys.wrappingKey };
+
+    await sealStoredData({ current, codeLength: 6 });
+    expect(await getStoredVerifier()).toEqual(keys.verifier);
+
+    await storeVerifier(without);
+    await sealStoredData({ current });
+    expect(await getStoredVerifier()).toEqual(without);
+    // A length that is not one of a code is never written.
+    await sealStoredData({ current, codeLength: 9 });
+    expect(await getStoredVerifier()).toEqual(without);
   });
 
   it('with a verifier made again: wraps every data key for the new key, skipping one that does not open', async () => {

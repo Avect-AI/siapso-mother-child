@@ -59,10 +59,9 @@ export async function openAgain(page: Page): Promise<void> {
 
 // ---------- metered ----------
 
-/** The code on the keypad, then "Ouvrir". */
+/** The code on the keypad: its 4th digit opens it (SCRUM-56 P2), no "Ouvrir". */
 export async function unlock(j: Journey): Promise<void> {
-  await j.keypad(CODE, 'code');
-  await j.tap(button(j.page, 'Ouvrir'), 'ouvrir', {
+  await j.keypad(CODE, 'code', {
     then: j.page.locator('main h1').filter({ hasNotText: 'Entrez votre code' }),
   });
 }

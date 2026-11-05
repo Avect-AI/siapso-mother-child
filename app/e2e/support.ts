@@ -166,12 +166,40 @@ export function seedBeforeUpdate(
   );
 }
 
-/** The code screen: the code, then "Ouvrir". */
+/**
+ * The length kept with the stored code (SCRUM-56), or null when none is (a
+ * code made before, or one written by seedBeforeUpdate).
+ */
+export function storedCodeLength(page: Page): Promise<number | null> {
+  return page.evaluate(
+    () =>
+      new Promise<number | null>((resolve, reject) => {
+        const open = indexedDB.open('siapso');
+        open.onerror = () => {
+          reject(new Error('cannot open the database'));
+        };
+        open.onsuccess = () => {
+          const get = open.result.transaction('settings').objectStore('settings').get('code');
+          get.onsuccess = () => {
+            open.result.close();
+            const length = (get.result as { length?: unknown } | undefined)?.length;
+            resolve(typeof length === 'number' ? length : null);
+          };
+        };
+      }),
+  );
+}
+
+/**
+ * The code screen: the code, tried at its last digit when it has the length
+ * kept with the stored one (SCRUM-56), otherwise with "Ouvrir".
+ */
 export async function unlock(page: Page, code: string = CODE, lang: Lang = 'fr') {
   const words = WORDS[lang];
   await expect(page.getByRole('heading', { level: 1, name: words.unlockTitle })).toBeVisible();
+  const length = await storedCodeLength(page);
   await page.getByLabel('Code', { exact: true }).fill(code);
-  await page.getByRole('button', { name: words.open }).click();
+  if (length !== code.length) await page.getByRole('button', { name: words.open }).click();
 }
 
 /**

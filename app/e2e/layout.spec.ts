@@ -4,7 +4,7 @@
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { CODE, expectWelcome, onboard } from './support.js';
+import { CODE, expectWelcome, onboard, unlock } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -220,12 +220,12 @@ test.describe('on a small phone (320 x 640)', () => {
     await tapCode(page);
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 
-    // The code asked again, with a wrong code said: "Ouvrir" still in the first screen.
+    // The code asked again: its 4th digit tries it (SCRUM-56), a wrong code said,
+    // and "Ouvrir" still in the first screen for a keyboard.
     await page.getByRole('button', { name: 'Quitter' }).click();
     await page.getByRole('button', { name: 'Ouvrir' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
     await tapCode(page, '1111');
-    await page.getByRole('button', { name: 'Ouvrir' }).click();
     await expect(page.getByLabel('Code', { exact: true })).toHaveAccessibleDescription(
       "Ce n'est pas le bon code. Encore 4 essais avant une attente.",
       { timeout: 15_000 },
@@ -233,11 +233,13 @@ test.describe('on a small phone (320 x 640)', () => {
     await page.evaluate(() => {
       window.scrollTo(0, 0);
     });
-    await tapCode(page);
+    await tapCode(page, CODE.slice(0, 3));
     const action = await buttonBottom(page, 'Ouvrir');
     expect(action.scrolled).toBe(0);
     expect(action.bottom).toBeLessThanOrEqual(640);
     await expectNoSeriousViolation(page);
+    await tapCode(page, CODE.slice(3));
+    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   });
 
   test('the band keeps to two rows, offline too, the danger shortcut always in its place', async ({
@@ -292,8 +294,7 @@ test.describe('on a desktop (1280 x 800)', () => {
     context,
   }) => {
     await expectShortcutInOnePlace(page, context);
-    await page.getByLabel('Code', { exact: true }).fill(CODE);
-    await page.getByRole('button', { name: 'Ouvrir' }).click();
+    await unlock(page);
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     expect(await bandRows(page)).toBe(1);
     await context.setOffline(true);
@@ -339,8 +340,7 @@ test.describe('at the one-row breakpoint', () => {
     context,
   }) => {
     await expectShortcutInOnePlace(page, context);
-    await page.getByLabel('Code', { exact: true }).fill(CODE);
-    await page.getByRole('button', { name: 'Ouvrir' }).click();
+    await unlock(page);
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
@@ -430,8 +430,7 @@ test.describe('on a small phone (320 x 640) with text at 200 percent', () => {
     await expectShortcutInOnePlace(page, context, largeText);
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
-    await page.getByLabel('Code', { exact: true }).fill(CODE);
-    await page.getByRole('button', { name: 'Ouvrir' }).click();
+    await unlock(page);
     await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
     await largeText(page);
     const band = page.getByRole('banner');

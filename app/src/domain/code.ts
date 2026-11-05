@@ -55,6 +55,12 @@ export interface CodeVerifier {
    * of the versions before SCRUM-39, whose hash is the PBKDF2 output itself.
    */
   version?: number;
+  /**
+   * The code's length (4 to 6), in clear (SCRUM-56): the code screen tries
+   * the code as soon as that many digits are in. Absent on a verifier kept
+   * before it was: the next right code adds it (data/migration.ts).
+   */
+  length?: number;
 }
 
 /** A code worked out: its verifier, to store, and the key that wraps the data keys, memory only. */
@@ -180,6 +186,7 @@ export async function createCodeKeys(
         hash: toBase64Url(check),
         iterations,
         version: VERIFIER_VERSION,
+        length: code.length,
       },
       wrappingKey,
     };
@@ -245,10 +252,32 @@ export function isCodeVerifier(value: unknown): value is CodeVerifier {
   );
 }
 
-/** The fields of a verifier, as stored (nothing else a value may carry). */
+/**
+ * The length of the code of `verifier` (SCRUM-56), or null when none is kept,
+ * or what is kept is not the length of a code (it is then left out, never
+ * the verifier: she can still type her code and "Ouvrir").
+ */
+export function codeLength(verifier: CodeVerifier): number | null {
+  const { length } = verifier as { length?: unknown };
+  return typeof length === 'number' &&
+    Number.isInteger(length) &&
+    length >= CODE_MIN &&
+    length <= CODE_MAX
+    ? length
+    : null;
+}
+
+/** The fields of a verifier, as stored (nothing else a value may carry, no length that is not one). */
 export function verifierFields(verifier: CodeVerifier): CodeVerifier {
   const { salt, hash, iterations, version } = verifier;
-  return version === undefined ? { salt, hash, iterations } : { salt, hash, iterations, version };
+  const length = codeLength(verifier);
+  return {
+    salt,
+    hash,
+    iterations,
+    ...(version === undefined ? {} : { version }),
+    ...(length === null ? {} : { length }),
+  };
 }
 
 export function isLockoutState(value: unknown): value is LockoutState {

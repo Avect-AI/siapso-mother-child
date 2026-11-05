@@ -10,6 +10,7 @@ import {
   CODE,
   expectWelcome,
   seedBeforeUpdate,
+  storedCodeLength,
   unlock,
   waitForServiceWorkerControl,
 } from './support.js';
@@ -274,4 +275,34 @@ test('"Quitter" in another tab while the first code after the update is worked o
   await expect(list.getByRole('button', { name: new RegExp(`^${AMINATA}`) })).toBeVisible({
     timeout: 20_000,
   });
+});
+
+test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digit opens it', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expectWelcome(page);
+  await seedBeforeUpdate(page, { settings: { lang: 'fr', mode: 'woman', onboarded: true } });
+  await page.reload();
+  const title = page.getByRole('heading', { level: 1, name: 'Entrez votre code' });
+  await expect(title).toBeVisible();
+  expect(await storedCodeLength(page)).toBeNull();
+
+  // No length kept: the 4 digits wait, nothing is tried before "Ouvrir".
+  await page.getByLabel('Code', { exact: true }).fill(CODE);
+  await expect(page.getByRole('status').filter({ hasText: 'Ouverture en cours.' })).toHaveCount(0);
+  await expect(title).toBeVisible();
+  await page.getByRole('button', { name: 'Ouvrir' }).click();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible({
+    timeout: 20_000,
+  });
+  // Kept with the right code, in the transaction that made the verifier again.
+  expect(await storedCodeLength(page)).toBe(4);
+
+  // The next opening: the 4th digit on the keys tries the code, nothing to press.
+  await page.reload();
+  await expect(title).toBeVisible();
+  const keypad = page.getByRole('group', { name: 'Clavier du code' });
+  for (const digit of CODE) await keypad.getByRole('button', { name: digit, exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });

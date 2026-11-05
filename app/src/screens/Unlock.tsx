@@ -18,14 +18,17 @@ const TRIES = 5;
  * The code, asked whenever the session is locked (at start, after two minutes
  * without interaction, from the neutral screen): the field with the phone's
  * numeric keypad and large keys on the screen, and the one primary action,
- * "Ouvrir". A wrong code says so and how many tries are left before a wait;
+ * "Ouvrir". The code is tried as soon as all its digits are in, when its
+ * length is kept with it (SCRUM-56): no "Ouvrir" to press, which stays for a
+ * keyboard, a screen reader and a code kept before its length was. Each such
+ * try is counted as every try. A wrong code says so and how many tries are left before a wait;
  * during a wait the screen counts it down and "Ouvrir" waits too. A screen
  * reader hears each outcome once (the countdown itself is not read out).
  * Nothing here says anything about a profile.
  */
 export function Unlock() {
   const t = useT();
-  const { unlock, lockout, codeUnavailable, codeRefused } = useSession();
+  const { unlock, lockout, codeUnavailable, codeRefused, codeLength } = useSession();
   const [, navigate] = useLocation();
   const [code, setCode] = useState('');
   const [problem, setProblem] = useState<
@@ -84,16 +87,16 @@ export function Unlock() {
     said = t('code.tryAgain');
   }
 
-  const submit = async () => {
+  const submit = async (typed: string = code) => {
     if (busy || waiting) return;
-    if (!isCode(code)) {
+    if (!isCode(typed)) {
       setProblem('invalid');
       field.current?.focus();
       return;
     }
     setBusy(true);
     setProblem(null);
-    const result = await unlock(code);
+    const result = await unlock(typed);
     // Open: this screen is gone. Otherwise the next try starts from an empty field.
     if (result === 'ok') return;
     setBusy(false);
@@ -145,6 +148,9 @@ export function Unlock() {
           onChange={(value) => {
             setCode(value);
             if (problem === 'invalid') setProblem(null);
+            // Every digit of the code is in (its length is kept with it): tried
+            // at once, counted as every try; "Ouvrir" stays for a keyboard.
+            if (codeLength !== null && value.length === codeLength) void submit(value);
           }}
         />
         <p className="sr-only" role="status">

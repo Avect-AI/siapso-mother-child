@@ -16,9 +16,19 @@ export async function makeCode(user: UserEvent, code: string = TEST_CODE): Promi
   await user.type(await screen.findByLabelText('Tapez-le encore'), code);
 }
 
-/** Gives the code on the code screen, then "Ouvrir". */
+/**
+ * Gives the code on the code screen: a code of the length kept with the
+ * stored one is tried at its last digit (SCRUM-56); otherwise "Ouvrir".
+ */
 export async function enterCode(user: UserEvent, code: string = TEST_CODE): Promise<void> {
   await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' });
-  await user.type(screen.getByLabelText('Code'), code);
-  await user.click(screen.getByRole('button', { name: 'Ouvrir' }));
+  const field = screen.getByLabelText<HTMLInputElement>('Code');
+  await user.type(field, code);
+  // Tried already: the screen says it is opening, or the try is over (the
+  // field emptied, or the screen gone).
+  const tried =
+    screen.queryByText('Ouverture en cours.') !== null ||
+    !field.isConnected ||
+    field.value !== code;
+  if (!tried) await user.click(screen.getByRole('button', { name: 'Ouvrir' }));
 }
