@@ -233,8 +233,9 @@ describe('result wording over the reference cases', () => {
   });
 });
 
-// These tests enumerate the whole registry; they take a few seconds, longer under coverage.
-describe('result wording beyond the reference cases', { timeout: 60_000 }, () => {
+// These tests enumerate the whole registry; they take a few seconds, about 40 s under
+// coverage since the registry holds 367 products (SCRUM-51).
+describe('result wording beyond the reference cases', { timeout: 120_000 }, () => {
   it('reads the fact of every danger sign with its own message in woman mode: no number, no forbidden word', () => {
     const own = pack.dangerSigns.filter((sign) => sign.message !== undefined);
     expect(own.length).toBeGreaterThan(0);
@@ -256,12 +257,11 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
   });
 
   it('never merges into one card two findings of one level that say different orientations', () => {
-    expect(mergeClashes(pack)).toEqual([]);
+    const repository = mergeClashes(pack);
+    expect(repository.shown).toEqual([]);
     // Artotec holds misoprostol and an NSAID: one card per item set and check
     // would merge their two orientations; the result gives each its card.
-    expect(mergeClashes(pack, false).some((clash) => clash.startsWith('product:artotec'))).toBe(
-      true,
-    );
+    expect(repository.merged.some((clash) => clash.startsWith('product:artotec'))).toBe(true);
     // Not vacuous: a rule on ibuprofen (another subject than the NSAID class of
     // its twin) with another orientation is caught, with the product and the rules.
     const rule = pack.rules.find((r) => r.id === 'nsaid-pregnancy-from-20-weeks');
@@ -279,7 +279,8 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
       rules: [...pack.rules, twin],
       messages: { ...pack.messages, fr: { ...pack.messages.fr, 'nsaid-twin': other } },
     };
-    const clashes = mergeClashes(clashing, false).filter((clash) => clash.includes('nsaid-twin'));
+    const twins = mergeClashes(clashing);
+    const clashes = twins.merged.filter((clash) => clash.includes('nsaid-twin'));
     expect(clashes.length).toBeGreaterThan(0);
     for (const clash of clashes) {
       expect(clash).toMatch(
@@ -287,12 +288,12 @@ describe('result wording beyond the reference cases', { timeout: 60_000 }, () =>
       );
     }
     // The result splits them: no card merges them.
-    expect(mergeClashes(clashing)).toEqual([]);
+    expect(twins.shown).toEqual([]);
   });
 });
 
 // These tests enumerate the whole registry; they take a few seconds, longer under coverage.
-describe('merge guard', { timeout: 60_000 }, () => {
+describe('merge guard', { timeout: 120_000 }, () => {
   it('also tries each product with its strength unknown, as the confirm screen can add it', () => {
     // A substance whose every product has a known strength: a rule above any
     // of them matches only a box whose strength is not known.
@@ -337,7 +338,7 @@ describe('merge guard', { timeout: 60_000 }, () => {
       },
     };
     // One card per item set and check would merge them (the result splits them).
-    expect(mergeClashes(clashing, false)).toContainEqual(
+    expect(mergeClashes(clashing).merged).toContainEqual(
       expect.stringMatching(/: C5 next-contact: plain-twin, strong-twin$/) as unknown,
     );
   });
@@ -398,10 +399,11 @@ function subsets<T>(values: readonly T[]): T[][] {
  * while breastfeeding a baby of unknown age, with every combination of the
  * conditions the rules name. Items the rules see alike are evaluated once
  * (seenBy). Each clash names the products or plants and the rule ids. The
- * cards are made as the result makes them (`split`, by the messages' own
- * orientations), or one per item set and check only (`split` false).
+ * cards are made, from one evaluation, as the result makes them (`shown`, by
+ * the messages' own orientations) and one per item set and check only
+ * (`merged`).
  */
-function mergeClashes(of: Pack, split = true): string[] {
+function mergeClashes(of: Pack): { shown: string[]; merged: string[] } {
   // Each product as listed with its strength, and as a box whose strength is
   // not known (the confirm screen's "Je ne sais pas"): a strength threshold
   // matches the second even when it matches no known strength.
@@ -444,7 +446,25 @@ function mergeClashes(of: Pack, split = true): string[] {
       .map((lang) => of.messages[lang][finding.message]?.orientation ?? `default ${finding.level}`)
       .join(' | ');
 
-  const clashes = new Set<string>();
+  const own = (finding: Finding) => of.messages.fr[finding.message]?.orientation;
+  const shown = new Set<string>();
+  const merged = new Set<string>();
+  const clashesOf = (groups: Finding[][], items: readonly CheckedItem[], into: Set<string>) => {
+    for (const group of groups) {
+      for (const level of new Set(group.map((f) => f.level))) {
+        const same = group.filter((f) => f.level === level);
+        if (new Set(same.map(orientationOf)).size < 2) continue;
+        const [first] = same;
+        const names = items.map((item) =>
+          'id' in item.ref
+            ? `${item.ref.kind}:${item.ref.id}${item.strengthUnknown === true ? ' (strength unknown)' : ''}`
+            : '',
+        );
+        const rules = same.map((f) => f.ruleId ?? f.message).sort();
+        into.add(`${names.join(' + ')}: ${first?.check ?? ''} ${level}: ${rules.join(', ')}`);
+      }
+    }
+  };
   for (const items of itemSets) {
     for (const conditions of subsets([...named])) {
       const context: EvaluationContext = {
@@ -454,22 +474,10 @@ function mergeClashes(of: Pack, split = true): string[] {
         items,
         signs: [],
       };
-      const own = (finding: Finding) => of.messages.fr[finding.message]?.orientation;
-      for (const group of cardGroups(evaluate(of, context).findings, split ? own : undefined)) {
-        for (const level of new Set(group.map((f) => f.level))) {
-          const same = group.filter((f) => f.level === level);
-          if (new Set(same.map(orientationOf)).size < 2) continue;
-          const [first] = same;
-          const names = items.map((item) =>
-            'id' in item.ref
-              ? `${item.ref.kind}:${item.ref.id}${item.strengthUnknown === true ? ' (strength unknown)' : ''}`
-              : '',
-          );
-          const rules = same.map((f) => f.ruleId ?? f.message).sort();
-          clashes.add(`${names.join(' + ')}: ${first?.check ?? ''} ${level}: ${rules.join(', ')}`);
-        }
-      }
+      const { findings } = evaluate(of, context);
+      clashesOf(cardGroups(findings, own), items, shown);
+      clashesOf(cardGroups(findings), items, merged);
     }
   }
-  return [...clashes].sort();
+  return { shown: [...shown].sort(), merged: [...merged].sort() };
 }
