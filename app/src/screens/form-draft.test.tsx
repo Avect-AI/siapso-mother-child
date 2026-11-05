@@ -231,7 +231,8 @@ describe('answers not saved at the auto-lock', () => {
       window.location.hash = '#/danger/call';
     });
     await screen.findByRole('heading', { level: 1, name: 'Qui appeler' });
-    await user.click(screen.getByRole('button', { name: 'Entrer le code' }));
+    // The way to the code comes once who to call has read its contacts.
+    await user.click(await screen.findByRole('button', { name: 'Entrer le code' }));
     await enterCode(user);
     // Back where the code was asked for: who to call.
     await screen.findByRole('heading', { level: 1, name: 'Qui appeler' });
