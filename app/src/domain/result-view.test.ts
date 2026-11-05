@@ -13,7 +13,11 @@ import {
 import { beforeAll, describe, expect, it } from 'vitest';
 import { translate, type MessageKey, type Vars } from '../i18n/translate.js';
 import { knowledgePack } from '../test/knowledge-pack.js';
-import { cappedEvaluation, withPossibleMatches } from './possible-matches.js';
+import {
+  cappedEvaluation,
+  evaluateWithPossibleMatches,
+  withPossibleMatches,
+} from './possible-matches.js';
 import { formatDate } from './dates.js';
 import { buildResultView, shownFindings, type ResultView } from './result-view.js';
 import type { Mode } from './types.js';
@@ -1144,6 +1148,60 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
     const own = view.findings.find((f) => f.level === 'unknown');
     expect(own?.title).toBe(text);
     expect(own?.possible).toBe(`Si ce n'est pas ce produit${NBSP}:`);
+  });
+
+  // Live test round 2 (depot-keeper#0): the second box keeps its own link.
+  it('gives a name that looks like a product already listed its own card, at the same level', () => {
+    const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    for (const [lang, possible, resembles] of [
+      [
+        'fr',
+        `Ce nom ressemble à Misoprostol (générique) (Misoprostol), déjà dans la liste. Si c'est ce produit${NBSP}:`,
+        'ressemble à Misoprostol (générique), déjà dans la liste',
+      ],
+      [
+        'en',
+        'This name looks like Misoprostol (generic) (Misoprostol), already in the list. If it is this product:',
+        'looks like Misoprostol (generic), already in the list',
+      ],
+    ] as const) {
+      const context = contextOf({ pregnancy: weeks(10), items: [miso, typed('cytotec 200')] });
+      const net = withPossibleMatches(pack, context.items, { declined: () => true });
+      const evaluation = evaluateWithPossibleMatches(pack, context, net);
+      const view = buildResultView(evaluation, pack, net.items, 'woman', lang, tOf(lang), [], {
+        possible: net.possible,
+      });
+      const listed = view.findings.find((f) => f.typed?.includes('cytotec 200') && f.resembles);
+      const own = view.findings.find((f) => f.title.startsWith('Misoprostol'));
+      expect(listed, lang).toMatchObject({ title: 'cytotec 200', possible, resembles });
+      expect(listed?.level, lang).toBe(own?.level);
+      expect(listed?.level, lang).not.toBe('unknown');
+    }
+  });
+
+  it('gives each name that looks like the same remedy its own card', () => {
+    const context = contextOf({
+      pregnancy: weeks(38),
+      conditions: ['uterine-scar'],
+      items: [typed('ricin'), typed('huile ricin')],
+    });
+    const net = withPossibleMatches(pack, context.items);
+    const view = buildResultView(
+      evaluateWithPossibleMatches(pack, context, net),
+      pack,
+      net.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      [],
+      { possible: net.possible },
+    );
+    for (const text of ['ricin', 'huile ricin']) {
+      expect(
+        view.findings.find((f) => f.title === text && f.level === 'danger')?.possible,
+        text,
+      ).toBe(`Ce nom ressemble à Huile de ricin (Ricinus communis). Si c'est ce remède${NBSP}:`);
+    }
   });
 
   it('says nothing of the kind on the grey card of a name that looks like nothing', () => {

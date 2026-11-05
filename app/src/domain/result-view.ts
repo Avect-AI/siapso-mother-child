@@ -307,11 +307,13 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
 function possibleOf(scope: Scope, finding: Finding): string | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
-  if (item !== undefined && item.ref.kind !== 'unrecognised') {
+  if (index !== undefined && item !== undefined && item.ref.kind !== 'unrecognised') {
     const shown = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true);
     const name = shown.detail === undefined ? shown.name : `${shown.name} (${shown.detail})`;
-    const key = item.ref.kind === 'plant' ? 'result.possiblePlant' : 'result.possibleProduct';
-    return scope.t(key, { name });
+    // A product or remedy already in the list: "Ce nom ressemble à ..., déjà dans la liste."
+    const listed = scope.possible?.get(index)?.listed === true ? 'Listed' : '';
+    const kind = item.ref.kind === 'plant' ? 'Plant' : 'Product';
+    return scope.t(`result.possible${kind}${listed}`, { name });
   }
   // The grey card of the name typed itself, read after its possible match: "Si ce n'est pas ce produit :".
   for (const [added, { forItem }] of scope.possible ?? []) {
@@ -326,9 +328,12 @@ function possibleOf(scope: Scope, finding: Finding): string | undefined {
 function resemblesOf(scope: Scope, finding: Finding): string | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
-  if (item === undefined || item.ref.kind === 'unrecognised') return undefined;
+  if (index === undefined || item === undefined || item.ref.kind === 'unrecognised') {
+    return undefined;
+  }
   const name = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true).name;
-  return scope.t('result.resembles', { name });
+  const listed = scope.possible?.get(index)?.listed === true;
+  return scope.t(listed ? 'result.resemblesListed' : 'result.resembles', { name });
 }
 
 /** The text typed ("cytotec") for each product of a card shown under another name. */

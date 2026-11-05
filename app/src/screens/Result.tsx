@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 import {
-  evaluate,
   TERM_LOOKAHEAD_DAYS,
   type CheckedItem,
   type ConditionId,
@@ -14,7 +13,7 @@ import { todayIso } from '../domain/dates.js';
 import { isStale } from '../domain/staleness.js';
 import { babyLine } from '../domain/profile-summary.js';
 import {
-  cappedEvaluation,
+  evaluateWithPossibleMatches,
   withPossibleMatches,
   type PossibleMatch,
 } from '../domain/possible-matches.js';
@@ -547,15 +546,13 @@ export function Result() {
     try {
       const context = contextFromProfile(loaded.profile, { items, signs }, loaded.today, notBefore);
       // A name typed as not recognised is evaluated as what it clearly names
-      // too; a resemblance short of a clear name is not kept after she said
-      // "none of these", and never makes the result a danger.
+      // too, even when that is already in the list; a resemblance short of a
+      // clear name is not kept after she said "none of these", and never makes
+      // the result a danger.
       const net = withPossibleMatches(pack, context.items, { declined: check.declinedOf });
       return {
         status: 'ready',
-        evaluation: cappedEvaluation(
-          evaluate(pack, { ...context, items: net.items }),
-          net.possible,
-        ),
+        evaluation: evaluateWithPossibleMatches(pack, context, net),
         items: net.items,
         checked: context.items,
         possible: net.possible,

@@ -461,6 +461,25 @@ describe('Confirm: the name she typed', () => {
       ),
     ).toBeVisible();
   });
+
+  // Live test round 2 (depot-keeper#1): Advil is ibuprofen.
+  it('says when the product lacks the substance of a brand the name typed names', async () => {
+    await saveProfile(profileOf());
+    await renderApp({
+      settings: woman,
+      hash: '#/confirm/product',
+      entryState: inSession({ id: 'codeine-generic', query: 'Advil codéine' }),
+      packLoader: loaderOf(pack),
+    });
+
+    // The matcher reads the no-break space before the colon as a space.
+    expect(
+      await screen.findByText(
+        'ADVIL : ibuprofène, pas dans ce produit. Comparez avec le nom sur la boîte.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Codéine :/)).toBeNull();
+  });
 });
 
 describe('Confirm: a product already listed', () => {

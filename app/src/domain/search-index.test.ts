@@ -10,6 +10,7 @@ import {
   candidateOf,
   displayOf,
   localNameOf,
+  missingBrandSubstancesOf,
   missingSubstancesOf,
   needsUnitsPerDay,
   productFamilyOf,
@@ -500,6 +501,27 @@ describe('missingSubstancesOf', () => {
     expect(missingSubstancesOf(pack, 'efferalgan-codeine', 'efferalgan codeine', 'en')).toEqual([]);
     expect(missingSubstancesOf(pack, 'efferalgan-500-mg-67326925', 'efferalgan', 'fr')).toEqual([]);
     expect(missingSubstancesOf(pack, 'gone', 'codeine', 'fr')).toEqual([]);
+  });
+});
+
+describe('missingBrandSubstancesOf', () => {
+  it('names each brand of the query whose substances the product lacks, with them', () => {
+    expect(missingBrandSubstancesOf(pack, 'codeine-generic', 'Advil codéine', 'fr')).toEqual([
+      { brand: 'ADVIL', substances: ['Ibuprofène'] },
+    ]);
+    expect(missingBrandSubstancesOf(pack, 'codeine-generic', 'Advil codéine', 'en')).toEqual([
+      { brand: 'ADVIL', substances: ['Ibuprofen'] },
+    ]);
+  });
+
+  it('names none when the product holds them, nor for a substance named, nor a product gone', () => {
+    const antarene = 'antarene-codeine-200-mg-30-mg-63755329';
+    expect(missingBrandSubstancesOf(pack, antarene, 'Advil codéine', 'fr')).toEqual([]);
+    // The codeine an ADVIL lacks is named, not implied: missingSubstancesOf says it.
+    expect(missingBrandSubstancesOf(pack, 'advil-200-mg-68634000', 'Advil codéine', 'fr')).toEqual(
+      [],
+    );
+    expect(missingBrandSubstancesOf(pack, 'gone', 'Advil codéine', 'fr')).toEqual([]);
   });
 });
 

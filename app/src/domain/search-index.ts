@@ -14,6 +14,7 @@ import {
   normalize,
   parseStrength,
   plainText,
+  queryMentions,
   withoutStopWords,
   type Candidate,
   type ResolverIndex,
@@ -289,6 +290,45 @@ export function missingSubstancesOf(
   return namedSubstances(indexedOf(pack).index, query)
     .filter((id) => !held.has(id))
     .map((id) => pack.substances.find((s) => s.id === id)?.names[lang] ?? id);
+}
+
+/** A brand typed in the query and the substances it implies that the product lacks. */
+export interface MissingBrandSubstances {
+  /** As the pack writes it ("ADVIL"). */
+  brand: string;
+  /** In the language. */
+  substances: string[];
+}
+
+/**
+ * For each brand the query names, the substances every product of that brand
+ * holds and the product lacks, in the language ("Advil codéine" for a
+ * codeine-only product: ADVIL, ibuprofène), for the confirm screen to say so.
+ * A substance the query names itself is left to missingSubstancesOf. Empty
+ * when it lacks none, or is not in the pack.
+ */
+export function missingBrandSubstancesOf(
+  pack: Pack,
+  productId: string,
+  query: string,
+  lang: Lang,
+): MissingBrandSubstances[] {
+  const product = productOf(pack, productId);
+  if (product === undefined) return [];
+  const held = new Set(product.components.map((c) => c.substance));
+  const mentions = queryMentions(indexedOf(pack).index, query);
+  const named = new Set(
+    mentions.flatMap((mention) => (mention.kind === 'substance' ? mention.substances : [])),
+  );
+  return mentions.flatMap((mention) => {
+    if (mention.kind !== 'brand') return [];
+    const lacking = mention.substances.filter((id) => !held.has(id) && !named.has(id));
+    if (lacking.length === 0) return [];
+    const substances = lacking.map(
+      (id) => pack.substances.find((s) => s.id === id)?.names[lang] ?? id,
+    );
+    return [{ brand: mention.name, substances }];
+  });
 }
 
 /** What the confirm screen needs of a candidate: who it is and the other products of its family. */

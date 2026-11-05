@@ -4,7 +4,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { normalize, search, withoutStopWords } from '@siapso/resolver';
 import { contextFromProfile } from './context.js';
-import { cappedEvaluation, withPossibleMatches } from './possible-matches.js';
+import {
+  cappedEvaluation,
+  evaluateWithPossibleMatches,
+  withPossibleMatches,
+} from './possible-matches.js';
 import { productFamilyOf, searchIndexOf } from './search-index.js';
 
 let pack: Pack;
@@ -290,12 +294,129 @@ describe('withPossibleMatches', () => {
     expect(net.possible.size).toBe(0);
   });
 
-  it('adds nothing for a product or remedy already in the check, nor twice', () => {
+  // Live test round 2 (depot-keeper#0, safety-auditor#10): every name typed
+  // gets its own resemblance, even when what it looks like is already listed.
+  it('gives a name typed that looks like a product already in the check that item, as listed', () => {
     const advil: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
-    expect(withPossibleMatches(pack, [advil, typed('advil')]).items).toHaveLength(2);
-    const twice = withPossibleMatches(pack, [typed('advil 400'), typed('Advil 400 mg')]);
-    expect(twice.items).toHaveLength(3);
-    expect([...twice.possible.values()].map((p) => p.forItem)).toEqual([0]);
+    const net = withPossibleMatches(pack, [advil, typed('advil')]);
+    expect(net.items).toEqual([advil, typed('advil'), advil]);
+    expect([...net.possible]).toEqual([
+      [2, { forItem: 1, typed: 'advil', strength: 'very-strong', sameAs: 0, listed: true }],
+    ]);
+  });
+
+  it('gives each name typed that looks like the same product its own possible match', () => {
+    const net = withPossibleMatches(pack, [typed('advil 400'), typed('Advil 400 mg')]);
+    expect(net.items).toHaveLength(4);
+    expect([...net.possible]).toEqual([
+      [2, { forItem: 0, typed: 'advil 400', strength: 'very-strong' }],
+      [3, { forItem: 1, typed: 'Advil 400 mg', strength: 'very-strong', sameAs: 2 }],
+    ]);
+    expect(net.items[3]).toEqual(net.items[2]);
+  });
+
+  it('puts the resemblances of items already there after every possible match of its own', () => {
+    const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const net = withPossibleMatches(pack, [miso, typed('cytotec 200'), typed('huile de ricin')]);
+    expect(net.items.map((item) => item.ref)).toEqual([
+      miso.ref,
+      { kind: 'unrecognised', text: 'cytotec 200' },
+      { kind: 'unrecognised', text: 'huile de ricin' },
+      { kind: 'plant', id: 'castor-oil' },
+      miso.ref,
+    ]);
+    expect(net.possible.get(4)).toMatchObject({ forItem: 1, sameAs: 0, listed: true });
+  });
+
+  it('keeps a weak resemblance of an item already there out after "none of these", as any', () => {
+    const advil: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
+    const net = withPossibleMatches(pack, [advil, typed('advi')], { declined: () => true });
+    expect(net.items).toHaveLength(2);
+  });
+
+  // Live test round 2 (depot-keeper#1): a name that names two brands or a
+  // brand and a substance no single product holds keeps a possible match for each.
+  it('keeps a possible match for each brand or substance the first one lacks', () => {
+    const net = withPossibleMatches(pack, [typed('advil cytotec')], { declined: () => true });
+    const ids = net.items.slice(1).map((item) => (item.ref as { id: string }).id);
+    expect(ids).toHaveLength(2);
+    expect(ids).toContain('misoprostol-generic');
+    expect(ids.some((id) => id.startsWith('advil-'))).toBe(true);
+    for (const match of net.possible.values()) {
+      expect(match).toMatchObject({ forItem: 0, typed: 'advil cytotec', strength: 'very-strong' });
+    }
+  });
+
+  it('keeps one possible match when one product holds every substance named', () => {
+    const net = withPossibleMatches(pack, [typed('Advil codéine')]);
+    expect(net.items.slice(1)).toEqual([
+      {
+        ref: { kind: 'product', id: 'antarene-codeine-200-mg-30-mg-63755329' },
+        strengthUnknown: true,
+      },
+    ]);
+  });
+});
+
+describe('evaluateWithPossibleMatches', () => {
+  const at = (weeks: number, items: CheckedItem[]) =>
+    contextFromProfile(
+      profileOf({ term: { kind: 'weeks', weeks, givenOn: '2026-11-05' } }),
+      { items, signs: [] },
+      '2026-11-05',
+    );
+
+  it('gives a name typed that looks like a listed product the cards of that product', () => {
+    const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const context = at(10, [miso, typed('cytotec 200')]);
+    const net = withPossibleMatches(pack, context.items, { declined: () => true });
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    const own = evaluation.findings.filter((f) => f.items.includes(0) && f.ruleId !== undefined);
+    const copies = evaluation.findings.filter((f) => f.items.includes(2));
+    expect(own.length).toBeGreaterThan(0);
+    expect(copies.map((f) => [f.ruleId, f.level])).toEqual(own.map((f) => [f.ruleId, f.level]));
+    // Never twice for the engine: no finding holds both.
+    expect(evaluation.findings.some((f) => f.items.includes(0) && f.items.includes(2))).toBe(false);
+    expect(evaluation.level).toBe(evaluate(pack, context).level);
+  });
+
+  it('gives each name typed that looks like castor oil its card at 37 weeks with a scar', () => {
+    const context = contextFromProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 37, givenOn: '2026-11-05' },
+        conditions: ['uterine-scar'],
+      }),
+      { items: [typed('ricin'), typed('huile ricin'), typed('huile de castor')], signs: [] },
+      '2026-11-05',
+    );
+    const net = withPossibleMatches(pack, context.items);
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    expect(evaluation.level).toBe('danger');
+    for (const index of [3, 4, 5]) {
+      expect(
+        evaluation.findings.some((f) => f.items.includes(index) && f.level === 'danger'),
+        String(index),
+      ).toBe(true);
+    }
+  });
+
+  it('holds the copy of a danger below a danger when its resemblance is only strong', () => {
+    const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const context = at(36, [miso, typed('misopristol')]);
+    const net = withPossibleMatches(pack, context.items);
+    expect(net.possible.get(2)?.strength).toBe('strong');
+    const evaluation = evaluateWithPossibleMatches(pack, context, net);
+    expect(evaluation.level).toBe('danger');
+    const copy = evaluation.findings.find((f) => f.items.includes(2) && f.ruleId !== undefined);
+    expect(copy?.level).toBe('before-next-dose');
+  });
+
+  it('is the engine and the hold as before when nothing is listed twice', () => {
+    const context = at(26, [typed('Advil 400 mg comprimé pelliculé')]);
+    const net = withPossibleMatches(pack, context.items);
+    expect(evaluateWithPossibleMatches(pack, context, net)).toEqual(
+      cappedEvaluation(evaluate(pack, { ...context, items: net.items }), net.possible),
+    );
   });
 
   it('never lowers the level: the base knows castor oil at term with a scar is a danger', () => {

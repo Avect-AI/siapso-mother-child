@@ -9,6 +9,7 @@ import {
   candidateOf,
   displayOf,
   localNameOf,
+  missingBrandSubstancesOf,
   missingSubstancesOf,
   needsUnitsPerDay,
   productFamilyOf,
@@ -286,6 +287,11 @@ function ConfirmForm({
     candidate.kind === 'product'
       ? missingSubstancesOf(pack, chosen?.id ?? candidate.id, query, lang).map(lowerFirst)
       : [];
+  // The substances of a brand the name typed names that it lacks ("Advil codéine": ibuprofène).
+  const missingOfBrands =
+    candidate.kind === 'product'
+      ? missingBrandSubstancesOf(pack, chosen?.id ?? candidate.id, query, lang)
+      : [];
   // Asked once the product is known: the strength first, then how many a day.
   const askUnits = writes !== null && !waitsForSameBox && needsUnitsPerDay(pack, writes.ref);
   let unitsKey = '';
@@ -498,6 +504,14 @@ function ConfirmForm({
           {t('confirm.missingSubstances', { substances: upperFirst(joinNames(missing, lang)) })}
         </Notice>
       )}
+      {missingOfBrands.map(({ brand, substances }) => (
+        <Notice key={brand}>
+          {t('confirm.missingBrandSubstances', {
+            brand,
+            substances: joinNames(substances.map(lowerFirst), lang),
+          })}
+        </Notice>
+      ))}
 
       {choice === null ? null : (
         <RadioGroup

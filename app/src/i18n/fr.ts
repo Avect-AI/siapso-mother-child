@@ -483,6 +483,10 @@ export const fr = {
     // The name typed names a substance the product chosen does not have ("efferalgan codéine").
     missingSubstances:
       "{substances} : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
+    // The name typed names a brand whose substance the product chosen does not have
+    // ("Advil codéine" for a codeine-only product): the brand, then the substances.
+    missingBrandSubstances:
+      '{brand} : {substances}, pas dans ce produit. Comparez avec le nom sur la boîte.',
   },
   result: {
     title: 'Résultat',
@@ -566,10 +570,14 @@ export const fr = {
     // A name typed as not recognised that looks like a product or remedy of the base.
     possibleProduct: "Ce nom ressemble à {name}. Si c'est ce produit :",
     possiblePlant: "Ce nom ressemble à {name}. Si c'est ce remède :",
+    // The same, for a product or remedy already in the list (a second box, another spelling).
+    possibleProductListed: "Ce nom ressemble à {name}, déjà dans la liste. Si c'est ce produit :",
+    possiblePlantListed: "Ce nom ressemble à {name}, déjà dans la liste. Si c'est ce remède :",
     // The grey card of the name typed, read after its possible match.
     possibleNotProduct: "Si ce n'est pas ce produit :",
     possibleNotPlant: "Si ce n'est pas ce remède :",
     resembles: 'ressemble à {name}',
+    resemblesListed: 'ressemble à {name}, déjà dans la liste',
     term: {
       estimated: 'Terme estimé : ce résultat tient compte de toutes les semaines possibles.',
       unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',
