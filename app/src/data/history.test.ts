@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 import type { Evaluation } from '@siapso/engine';
 import { IDBFactory } from 'fake-indexeddb';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { HistoryEntry } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
-import { closeAppDb } from './db.js';
+import { verifierOf } from '../test/verifier.js';
+import { closeAppDb, storeVerifier } from './db.js';
 import {
   forgetVisit,
   HISTORY_PER_PROFILE,
@@ -13,6 +14,11 @@ import {
   recordHistory,
   recordHistoryOnce,
 } from './history.js';
+
+// Profile data is written only while a code is on the phone (code-guard.ts).
+beforeEach(async () => {
+  await storeVerifier(await verifierOf('2468'));
+});
 
 function entry(profileId: string, n: number): HistoryEntry {
   return {
@@ -114,6 +120,7 @@ describe('recordHistoryOnce', () => {
     await expect(recordHistoryOnce(entry('p3', 1))).rejects.toThrow('storage refused');
     globalThis.indexedDB = new IDBFactory();
     closeAppDb();
+    await storeVerifier(await verifierOf('2468'));
     expect(await recordHistoryOnce(entry('p3', 2))).toBe(true);
   });
 });

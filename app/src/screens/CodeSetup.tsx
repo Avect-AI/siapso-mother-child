@@ -34,7 +34,9 @@ export function CodeSetup({
   const [step, setStep] = useState<Step>('choose');
   const [first, setFirst] = useState('');
   const [code, setCode] = useState('');
-  const [problem, setProblem] = useState<'invalid' | 'mismatch' | null>(null);
+  const [problem, setProblem] = useState<'invalid' | 'mismatch' | 'exists' | 'unsaved' | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const shown = useRef(step);
@@ -69,12 +71,31 @@ export function CodeSetup({
       return;
     }
     setBusy(true);
-    await createCode(first);
-    onCreated?.();
+    const made = await createCode(first);
+    if (made === 'made') {
+      onCreated?.();
+      return;
+    }
+    // Not made: a code was already there (the code screen comes and asks for it),
+    // or the phone did not keep it. Either way, a new start, with the reason.
+    setBusy(false);
+    setFirst('');
+    setCode('');
+    setStep('choose');
+    setProblem(made);
+    field.current?.focus();
   };
 
   const error =
-    problem === 'invalid' ? t('code.invalid') : problem === 'mismatch' ? t('code.mismatch') : '';
+    problem === 'invalid'
+      ? t('code.invalid')
+      : problem === 'mismatch'
+        ? t('code.mismatch')
+        : problem === 'exists'
+          ? t('code.exists')
+          : problem === 'unsaved'
+            ? t('code.notSaved')
+            : '';
   return (
     <main className="screen code-setup">
       <div className="code-setup__intro">

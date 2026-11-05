@@ -12,6 +12,7 @@ import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
 import { ContactEdit, Contacts, type ContactTarget } from './screens/Contacts.js';
 import { Danger } from './screens/Danger.js';
+import { CONTACT_EDIT_PATH, editedId, PROFILE_EDIT_PATH } from './screens/edit-route.js';
 import { FORGOT_PATH, ForgotCode } from './screens/ForgotCode.js';
 import { Home } from './screens/Home.js';
 import { Neutral, UNLOCK_PATH } from './screens/Neutral.js';
@@ -59,12 +60,22 @@ type Screen =
   | 'contacts'
   | 'contact'
   | 'profile'
+  | 'mode'
   | CheckRoute['screen'];
 
-/** /contacts (the list), /contacts/new and /contacts/<id>; null for any other route. */
+/**
+ * /contacts (the list), /contacts/new and /contacts/edit (the contact in the
+ * entry's state, never in the address); null for any other route, and for
+ * /contacts/edit once the contact is not known (a reload). /contacts/<id> is
+ * still read: an earlier version left such addresses in the history.
+ */
 function contactRoute(location: string): 'list' | ContactTarget | null {
   if (location === '/contacts') return 'list';
   if (location === '/contacts/new') return { kind: 'new' };
+  if (location === CONTACT_EDIT_PATH) {
+    const id = editedId();
+    return id === null ? null : { kind: 'edit', id };
+  }
   const match = /^\/contacts\/([^/]+)$/.exec(location);
   const id = match?.[1] === undefined ? null : decoded(match[1]);
   return id ? { kind: 'edit', id } : null;
@@ -97,11 +108,18 @@ function checkRoute(location: string): CheckRoute | null {
 /**
  * The profile a route opens. A woman has one profile: /profile and
  * /profile/new both open hers. In accompanied mode both open a new one (the
- * list of profiles is the start). /profile/<id> opens that profile.
+ * list of profiles is the start). /profile/edit opens the profile in the
+ * entry's state (never in the address; none once it is not known, a reload).
+ * /profile/<id> is still read: an earlier version left such addresses in the
+ * history.
  */
 function profileTarget(location: string, mode: Mode | null): ProfileTarget | null {
   if (location === '/profile' || location === '/profile/new') {
     return mode === 'accompanied' ? { kind: 'new' } : { kind: 'mine' };
+  }
+  if (location === PROFILE_EDIT_PATH) {
+    const id = editedId();
+    return id === null ? null : { kind: 'edit', id };
   }
   const match = /^\/profile\/([^/]+)$/.exec(location);
   return match?.[1] ? { kind: 'edit', id: decodeURIComponent(match[1]) } : null;
@@ -123,7 +141,7 @@ function profileTarget(location: string, mode: Mode | null): ProfileTarget | nul
 function screenFor(
   location: string,
   settings: { ready: boolean; onboarded: boolean; mode: Mode | null },
-  session: { status: SessionStatus; exited: boolean },
+  session: { status: SessionStatus; exited: boolean; codeUnavailable: boolean },
   profile: ProfileTarget | null,
   check: CheckRoute | null,
   contact: 'list' | ContactTarget | null,
@@ -131,7 +149,14 @@ function screenFor(
   if (location === '/danger') return 'danger';
   if (location === CALL_PATH) return 'call';
   if (!settings.ready) return 'loading';
-  if (!settings.onboarded) return 'welcome';
+  // The welcome only while no code is known (none stored, or storage unreadable):
+  // with a code stored (a welcome cut short), the code comes first, then the mode.
+  if (
+    !settings.onboarded &&
+    (session.status === 'new' || session.status === 'loading' || session.codeUnavailable)
+  ) {
+    return 'welcome';
+  }
   if (location === '/settings') return 'settings';
   // The knowledge base and the licences hold no profile data: open locked or not.
   if (location === '/status') return 'status';
@@ -146,6 +171,8 @@ function screenFor(
     return session.exited ? 'neutral' : 'unlock';
   }
   if (location === UNLOCK_PATH) return 'unlocked';
+  // Open, and no mode was kept (a welcome cut short): who uses the app, first.
+  if (settings.mode === null) return 'mode';
   if (profile) return 'profile';
   if (check) return check.screen;
   if (contact !== null) return contact === 'list' ? 'contacts' : 'contact';
@@ -223,8 +250,15 @@ function screenKey(
 
 function Screens() {
   const [location] = useLocation();
-  const { settings, settingsReady, online } = useApp();
+  const { settings, settingsReady, online, setSettings } = useApp();
   const session = useSession();
+  // A welcome cut short (the app closed after the code was made): this tab
+  // opened that code, so the welcome is over; a missing mode is asked next.
+  useEffect(() => {
+    if (session.unlocked && settingsReady && !settings.onboarded) {
+      void setSettings({ onboarded: true });
+    }
+  }, [session.unlocked, settingsReady, settings.onboarded, setSettings]);
   const t = useT();
   const profile = profileTarget(location, settings.mode);
   const check = checkRoute(location);
@@ -262,6 +296,12 @@ function Screens() {
   // After a quick exit, Back lands on entries of screens with profile data:
   // each is replaced by the neutral one as it is reached.
   if (screen === 'neutral' && location !== '/') return <Redirect to="/" replace />;
+  // The quick exit, once the code is given; before it too on the danger signs
+  // and who to call, where signs may be ticked without the code.
+  const exitShown =
+    settings.onboarded &&
+    (session.unlocked ||
+      (session.status === 'locked' && (screen === 'danger' || screen === 'call')));
   return (
     <>
       {screen === 'welcome' ? null : (
@@ -277,14 +317,11 @@ function Screens() {
                 ? 'danger'
                 : null
           }
-          quickExit={
-            session.unlocked && settings.onboarded
-              ? { label: t('header.quickExit'), onExit: session.quickExit }
-              : null
-          }
+          quickExit={exitShown ? { label: t('header.quickExit'), onExit: session.quickExit } : null}
         />
       )}
       {screen === 'welcome' ? <Welcome /> : null}
+      {screen === 'mode' ? <Welcome modeOnly /> : null}
       {screen === 'code' ? <CodeSetup mode={session.mode} /> : null}
       {screen === 'unlock' ? <Unlock /> : null}
       {screen === 'forgot' ? <ForgotCode /> : null}
@@ -294,8 +331,10 @@ function Screens() {
       {screen === 'about' ? <About /> : null}
       {screen === 'home' ? <Home /> : null}
       {screen === 'profiles' ? <Profiles /> : null}
-      {screen === 'danger' ? <Danger /> : null}
-      {screen === 'call' ? <Referral /> : null}
+      {/* A new epoch (a lock, two minutes idle while locked) starts them again:
+          the signs ticked are forgotten. */}
+      {screen === 'danger' ? <Danger key={session.epoch} /> : null}
+      {screen === 'call' ? <Referral key={session.epoch} /> : null}
       {screen === 'contacts' ? <Contacts /> : null}
       {screen === 'contact' && contact !== null && contact !== 'list' ? (
         <ContactEdit key={key} target={contact} />

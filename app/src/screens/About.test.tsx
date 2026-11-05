@@ -101,6 +101,25 @@ describe('About', () => {
     expect(within(list).queryAllByRole('link')).toHaveLength(linked.length);
   });
 
+  it('says the links of the sources open with the Internet, and says nothing without a link', async () => {
+    const { unmount } = await renderApp({
+      settings: woman,
+      hash: '#/about',
+      packLoader: loaderOf(real),
+    });
+    expect(await screen.findByText("Ces liens s'ouvrent avec Internet.")).toBeVisible();
+    unmount();
+
+    const source = { id: 's', name: 'Offline source', licence: 'x', url: 'urn:no-link' };
+    await renderApp({
+      settings: woman,
+      hash: '#/about',
+      packLoader: loaderOf({ ...real, sources: [source] }),
+    });
+    await screen.findByRole('list', { name: 'Sources de la base' });
+    expect(screen.queryByText("Ces liens s'ouvrent avec Internet.")).toBeNull();
+  });
+
   it('does not make a link of an address that is not http or https', async () => {
     const source = { id: 's', name: 'Odd source', licence: 'x', url: 'javascript:alert(1)' };
     await renderApp({

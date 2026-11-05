@@ -2,13 +2,18 @@
 import type { Pack } from '@siapso/engine';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, noPack, renderApp } from '../test/render-app.js';
+import { loaderOf, noPack, renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 // Whole journeys (search, confirm, back to the check) through the real pack: on a
 // loaded machine with coverage they take longer than the 5 s default.
@@ -252,7 +257,10 @@ describe('Search', () => {
     });
 
     expect(await screen.findByRole('searchbox')).toHaveValue('');
-    expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
+    // The screen's effect rewrites its entry just after the field shows.
+    await waitFor(() => {
+      expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
+    });
     // A name typed in this session is kept on the entry, with its epoch.
     window.history.replaceState(inSession({ query: 'doliprane' }), '');
     expect(sessionState()).toMatchObject({ query: 'doliprane' });

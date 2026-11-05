@@ -102,8 +102,17 @@ function nextAfterSave(): string | null {
   return state.next === '/check' ? '/check' : null;
 }
 
-/** Digits only, for the numeric keypad; the value stays text until validation. */
-const NUMBER_INPUT = { inputMode: 'numeric', pattern: '[0-9]*', maxLength: 3 } as const;
+/**
+ * Digits only, for the numeric keypad; the value stays text until validation.
+ * Never kept in the browser's form history: on a shared phone it would offer
+ * her term to whoever fills the next profile, even after the erase.
+ */
+const NUMBER_INPUT = {
+  inputMode: 'numeric',
+  pattern: '[0-9]*',
+  maxLength: 3,
+  autoComplete: 'off',
+} as const;
 
 /**
  * What the app retains from what was typed, in words, right under it. A live

@@ -30,11 +30,15 @@ function Choice({ label, hint, onChoose }: { label: string; hint: string; onChoo
  * then the code, typed twice: hers in woman mode, the accompanying person's
  * in accompanied mode. Each answer is stored; the code ends the welcome and
  * opens Home (woman mode) or the list of profiles (accompanied mode).
+ *
+ * `modeOnly`: the end of a welcome cut short (the code was made, then the app
+ * closed before a mode was kept): once the code is given, who uses the app,
+ * and that answer ends the welcome.
  */
-export function Welcome() {
+export function Welcome({ modeOnly = false }: { modeOnly?: boolean }) {
   const t = useT();
   const { settings, setSettings, settingsUnavailable } = useApp();
-  const [step, setStep] = useState<Step>('language');
+  const [step, setStep] = useState<Step>(modeOnly ? 'mode' : 'language');
   const question = useRef<HTMLHeadingElement>(null);
   const shown = useRef(step);
 
@@ -51,6 +55,10 @@ export function Welcome() {
     setStep('mode');
   };
   const chooseMode = (mode: Mode) => {
+    if (modeOnly) {
+      void setSettings({ mode, onboarded: true });
+      return;
+    }
     void setSettings({ mode });
     setStep('code');
   };

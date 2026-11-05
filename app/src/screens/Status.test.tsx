@@ -207,6 +207,18 @@ describe('Status', () => {
     await user.click(screen.getByRole('button', { name: "Revenir à l'accueil" }));
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   });
+
+  it('says whether this phone opens the app without the Internet, pack or not', async () => {
+    await renderApp({ settings: woman, hash: '#/status', packLoader: noPack });
+
+    const phone = await screen.findByRole('region', { name: 'Sur ce téléphone' });
+    // The test browser has no service worker.
+    expect(
+      within(phone).getByText(
+        "Ce navigateur ne peut pas garder l'application pour l'ouvrir sans Internet. Ouvrez-la dans Chrome.",
+      ),
+    ).toBeVisible();
+  });
 });
 
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };

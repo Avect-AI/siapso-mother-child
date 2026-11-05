@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
+import { AUTO_LOCK_MS } from '../domain/code.js';
 import type { Settings } from '../domain/types.js';
 import { enterCode } from '../test/code-steps.js';
 import { profileOf } from '../test/knowledge-pack.js';
-import { renderApp } from '../test/render-app.js';
+import { renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -34,7 +40,7 @@ describe('Profiles', () => {
     ]);
     expect(within(list).getByRole('link', { name: 'Modifier le profil de Awa' })).toHaveAttribute(
       'href',
-      '#/profile/b',
+      '#/profile/edit',
     );
     const add = screen.getByRole('button', { name: 'Ajouter un profil' });
     expect(add).toHaveClass('button--primary');
@@ -44,11 +50,55 @@ describe('Profiles', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Nouveau profil' })).toBeVisible();
   });
 
+  it('opens her profile without its id in the address, and again after a lock', async () => {
+    await saveProfile(profileOf({ id: 'profile-of-awa', pseudonym: 'Awa' }));
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/' });
+
+    await user.click(await screen.findByRole('link', { name: 'Modifier le profil de Awa' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Modifier le profil' }),
+    ).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Awa');
+    expect(window.location.hash).toBe('#/profile/edit');
+    expect(JSON.stringify(window.history.state)).not.toContain('profile-of-awa');
+
+    // Two minutes without a touch lock it: the code brings her profile back.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      act(() => {
+        window.dispatchEvent(new Event('pointerdown'));
+      });
+      act(() => {
+        vi.advanceTimersByTime(AUTO_LOCK_MS);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' }),
+    ).toBeVisible();
+    await enterCode(user);
+    expect(await screen.findByRole('textbox', { name: 'Surnom' })).toHaveValue('Awa');
+    expect(window.location.hash).toBe('#/profile/edit');
+  });
+
+  it('goes to the list when the profile to change is not known any more (a reload)', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await renderApp({ settings: accompanied, hash: '#/profile/edit' });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+  });
+
   it('says when there is no profile yet', async () => {
     await renderApp({ settings: accompanied, hash: '#/' });
 
     expect(await screen.findByText('Aucun profil sur ce téléphone pour le moment.')).toBeVisible();
     expect(screen.queryByRole('list', { name: /^Profils enregistrés/ })).toBeNull();
+    // The start of accompanied mode, as Home is for a woman: whether the phone works offline.
+    expect(document.querySelector('main .offline-ready')).toHaveAttribute('role', 'status');
   });
 
   it('is never rendered while locked: the code first, then the list', async () => {

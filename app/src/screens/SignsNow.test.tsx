@@ -9,7 +9,12 @@ import { saveProfile } from '../data/profiles.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, noPack, renderApp } from '../test/render-app.js';
+import { loaderOf, noPack, renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 20_000 });
 

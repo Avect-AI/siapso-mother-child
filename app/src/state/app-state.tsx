@@ -26,6 +26,7 @@ import {
 } from '../data/pack-loader.js';
 import type { PackOrigin } from '../data/pack-verify.js';
 import type { Settings } from '../domain/types.js';
+import { storageKeeper } from '../pwa/storage.js';
 import { CheckContext, useCheckStore } from './check-state.js';
 import { SessionProvider, type SessionOptions } from './session.js';
 
@@ -35,8 +36,11 @@ export interface AppState {
   settingsReady: boolean;
   /** The settings could not be read or stored on this phone: choices may not be kept. */
   settingsUnavailable: boolean;
-  /** Changes the settings at once, then stores them; resolves when stored or given up. */
-  setSettings: (patch: Partial<Settings>) => Promise<void>;
+  /**
+   * Changes the settings at once, then stores them; resolves when stored or
+   * given up. `store: false` changes them in memory only (another tab stored them).
+   */
+  setSettings: (patch: Partial<Settings>, options?: { store?: boolean }) => Promise<void>;
   pack: Pack | null;
   /** Why no pack could be loaded (null while loading and once loaded). */
   packError: string | null;
@@ -148,14 +152,12 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** Asks the browser not to evict our data under storage pressure; a refusal changes nothing. */
+/**
+ * Asks the browser not to evict our data under storage pressure (pwa/storage.ts);
+ * a refusal changes nothing, the status screen says it.
+ */
 function requestPersistentStorage(): void {
-  if (!('storage' in navigator)) return;
-  try {
-    navigator.storage.persist().catch(() => undefined);
-  } catch {
-    // Some browsers expose storage without persist: nothing to do.
-  }
+  void storageKeeper.keep();
 }
 
 export function AppProvider({
@@ -218,6 +220,18 @@ export function AppProvider({
     };
   }, [storageTimeoutMs]);
 
+  // At each launch after the welcome, and once the app is installed: the
+  // browser is asked again to keep the data, until it does.
+  useEffect(() => {
+    if (settingsReady && latest.current.onboarded) requestPersistentStorage();
+  }, [settingsReady]);
+  useEffect(() => {
+    window.addEventListener('appinstalled', requestPersistentStorage);
+    return () => {
+      window.removeEventListener('appinstalled', requestPersistentStorage);
+    };
+  }, []);
+
   useEffect(() => {
     let live = true;
     packLoader().then(
@@ -244,12 +258,13 @@ export function AppProvider({
   }, [packRollback]);
 
   const setSettings = useCallback(
-    async (patch: Partial<Settings>) => {
+    async (patch: Partial<Settings>, { store = true }: { store?: boolean } = {}) => {
       const before = latest.current;
       const next = { ...before, ...patch };
       latest.current = next;
       // The screen follows the choice at once; storage never holds it up.
       setSettingsState(next);
+      if (!store) return;
       if (!before.onboarded && next.onboarded) requestPersistentStorage();
       try {
         await withTimeout(storeSettings(next), storageTimeoutMs);

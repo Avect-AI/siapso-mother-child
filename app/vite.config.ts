@@ -265,6 +265,11 @@ export const workbox = {
   // never answered with the app page: a missing file stays missing.
   navigateFallbackDenylist: [/\/voice\//, /\/config\//],
   cleanupOutdatedCaches: true,
+  // The first install takes control of the page that registered it, so the
+  // page can say at once that the phone is ready without the Internet
+  // (src/pwa/service-worker.ts). An update still waits for the user: no
+  // skipWaiting, the update prompt sends it.
+  clientsClaim: true,
 };
 
 /** Lines framed loudly, so a build log cannot hide them. */
@@ -354,7 +359,8 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
       VitePWA({
         // A waiting version takes over only when the user accepts the update prompt.
         registerType: 'prompt',
-        // main.tsx registers the worker through virtual:pwa-register/react.
+        // main.tsx registers the worker with workbox-window, before the first
+        // render (src/pwa/service-worker.ts).
         injectRegister: false,
         // start_url and scope are left to vite-plugin-pwa, which sets both to
         // Vite's resolved base (import.meta.env.BASE_URL, `--base` included);

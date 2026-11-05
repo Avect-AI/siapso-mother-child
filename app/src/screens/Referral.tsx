@@ -32,12 +32,14 @@ interface Opened {
   signs: string[];
   instruction: InstructionSource | null;
   /**
-   * The epoch a result left the state in (entry-state.ts), when it came from
-   * a result: its instruction and the check's signs say something about her,
-   * so they show only while open, in that epoch. Undefined for the danger
-   * signs screen, whose signs were given without the code.
+   * The epoch the state was left in (entry-state.ts). From a result, its
+   * instruction and the check's signs say something about her, so they show
+   * only while open, in that epoch. From the danger signs screen, the signs
+   * were given without the code: they show locked or not, in that epoch.
    */
   epoch: string | undefined;
+  /** Opened from the danger signs screen, with signs given without the code. */
+  withoutCode: boolean;
 }
 
 function instructionOf(value: unknown): InstructionSource | null {
@@ -52,28 +54,36 @@ function instructionOf(value: unknown): InstructionSource | null {
  * when given in this visit (an entry left before a quick exit gives nothing).
  */
 function openedWith(): Opened {
-  const { signs, instruction, epoch } = visitState();
+  const { signs, instruction, epoch, public: withoutCode } = visitState();
   return {
     signs: Array.isArray(signs)
       ? [...new Set(signs.filter((s): s is string => typeof s === 'string'))]
       : [],
     instruction: instructionOf(instruction),
     epoch: typeof epoch === 'string' ? epoch : undefined,
+    withoutCode: withoutCode === true,
   };
 }
 
 /**
- * What may show of what the screen was opened with. From a result, while
- * locked or after a lock (a new epoch): no sign of the check, and only the
- * standard danger instruction, since a danger was said.
+ * What may show of what the screen was opened with. After its epoch (a lock,
+ * or two minutes idle while locked), or from a result while locked: no sign,
+ * and only the standard danger instruction, since a danger was said.
  */
 function shownOf(opened: Opened, unlocked: boolean): Opened {
+  const said: Opened = {
+    signs: [],
+    instruction: { standard: true },
+    epoch: undefined,
+    withoutCode: false,
+  };
+  if (opened.withoutCode) return opened.epoch === epochToken() ? opened : said;
   // A result's own instruction always comes with an epoch; one without is not trusted either.
   const fromResult =
     opened.epoch !== undefined || (opened.instruction !== null && 'message' in opened.instruction);
   if (!fromResult) return opened;
   if (unlocked && opened.epoch === epochToken()) return opened;
-  return { signs: [], instruction: { standard: true }, epoch: undefined };
+  return said;
 }
 
 function ContactRow({ contact, primary }: { contact: ReferralContact; primary: boolean }) {

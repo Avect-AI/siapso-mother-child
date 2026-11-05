@@ -85,6 +85,10 @@ function FindingMeta({ finding }: { finding: FindingView }) {
       {sources === undefined ? null : (
         <div className="result-card__sources">
           <p>{t('result.sources')}</p>
+          {/* Offline, a link opens the browser's error page: say so before. */}
+          {sources.some((source) => source.url !== undefined) ? (
+            <p>{t('offline.linksNeedInternet')}</p>
+          ) : null}
           <ul>
             {bySource(sources).map((group) => (
               <li key={group.name}>

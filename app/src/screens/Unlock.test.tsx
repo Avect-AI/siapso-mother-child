@@ -2,7 +2,7 @@
 import type { Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { storeLockout } from '../data/db.js';
 import { recordHistory } from '../data/history.js';
 import { saveProfile } from '../data/profiles.js';
@@ -11,8 +11,13 @@ import type { Settings } from '../domain/types.js';
 import { inSession } from '../state/entry-state.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp, TEST_CODE } from '../test/render-app.js';
+import { loaderOf, renderApp, storeTestCode, TEST_CODE } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 30_000 });
 

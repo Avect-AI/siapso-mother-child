@@ -2,13 +2,18 @@
 import type { Pack } from '@siapso/engine';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp } from '../test/render-app.js';
+import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -122,6 +127,9 @@ describe('Quick exit', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Signes de danger' }),
     ).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
+    // The signs are ticked without the code: the quick exit hides them there too.
+    expect(
+      within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }),
+    ).toBeVisible();
   });
 });

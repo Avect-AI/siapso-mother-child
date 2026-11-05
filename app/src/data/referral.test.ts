@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReferralContact } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
-import { closeAppDb } from './db.js';
+import { verifierOf } from '../test/verifier.js';
+import { closeAppDb, storeVerifier } from './db.js';
 import {
   fetchDeploymentReferral,
   loadReferral,
@@ -15,6 +16,11 @@ import {
   parseReferral,
   saveContacts,
 } from './referral.js';
+
+// Profile data is written only while a code is on the phone (code-guard.ts).
+beforeEach(async () => {
+  await storeVerifier(await verifierOf('2468'));
+});
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

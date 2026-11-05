@@ -4,6 +4,7 @@ import 'fake-indexeddb/auto';
 import { cleanup, configure } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
 import { afterEach } from 'vitest';
+import { codeOpened } from '../data/code-guard.js';
 import { closeAppDb } from '../data/db.js';
 import { forgetVisit } from '../data/history.js';
 
@@ -22,5 +23,7 @@ afterEach(() => {
   closeAppDb();
   // Each test is a new visit: the history records every check again.
   forgetVisit();
+  // And a new page: it has opened no code yet.
+  codeOpened(null);
   globalThis.indexedDB = new IDBFactory();
 });

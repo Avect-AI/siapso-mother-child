@@ -30,6 +30,7 @@ import { DialLink } from '../ui/DialLink.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
 import { TextField } from '../ui/TextField.js';
+import { CONTACT_EDIT_PATH, editEntry } from './edit-route.js';
 
 /** The contact screen a route opens: a new contact, or one saved on this phone. */
 export type ContactTarget = { kind: 'new' } | { kind: 'edit'; id: string };
@@ -87,6 +88,7 @@ function ContactDial({ contact }: { contact: ReferralContact }) {
 export function Contacts() {
   const t = useT();
   const { storageTimeoutMs } = useApp();
+  const [, navigate] = useLocation();
   const [saved, setSaved] = useState<Saved>({ status: 'loading' });
   const [provided, setProvided] = useState<ReferralContact[]>([]);
   const [change, setChange] = useState<Change | null>(() => {
@@ -152,10 +154,15 @@ export function Contacts() {
                 <ContactText contact={contact} />
                 <ContactDial contact={contact} />
                 <div className="contacts__actions">
+                  {/* The id goes in the entry's state, never in the address (edit-route.ts). */}
                   <a
                     className="button button--quiet"
-                    href={`#/contacts/${encodeURIComponent(contact.id)}`}
+                    href={`#${CONTACT_EDIT_PATH}`}
                     aria-label={t('contacts.editNamed', { who })}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      navigate(CONTACT_EDIT_PATH, { state: editEntry(contact.id) });
+                    }}
                   >
                     {t('contacts.edit')}
                   </a>

@@ -30,6 +30,12 @@ describe('service worker precache', () => {
     expect(workbox.navigateFallback).toBe('index.html');
   });
 
+  it('takes control of the page at its first install, so the page can say it is ready offline', () => {
+    expect(workbox.clientsClaim).toBe(true);
+    // An update still waits for the user (registerType 'prompt'): no skipWaiting.
+    expect('skipWaiting' in workbox).toBe(false);
+  });
+
   it('keeps the signature of a signed pack offline: manifest.sig is precached when present', () => {
     // One pattern for both, so an unsigned build (no .sig file) has no pattern that matches nothing.
     expect(workbox.globPatterns.filter((pattern) => pattern.startsWith('pack/'))).toEqual([

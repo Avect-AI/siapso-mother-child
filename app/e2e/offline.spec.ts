@@ -118,6 +118,30 @@ test('after one load the precache alone starts the app, Home and the danger sign
   await expect(fresh.getByText('Allez au poste de santé maintenant.')).toBeVisible();
 });
 
+test('Home says the phone is ready without the Internet once the precache controls the page', async ({
+  page,
+  context,
+}) => {
+  await onboard(page, 'woman');
+
+  // Until then it asks to keep the Internet on; then, without a reload, it is ready.
+  const ready = page.getByRole('main').getByText('Prêt sans Internet', { exact: true });
+  await expect(ready).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/^Gardez Internet encore un moment/)).toHaveCount(0);
+  expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  const cached = await cachedPaths(page);
+  expect(cached).toEqual(expect.arrayContaining(['/index.html', '/pack/manifest.json']));
+
+  // In airplane mode it opens, and the status screen says the same.
+  await context.setOffline(true);
+  await page.reload();
+  await unlock(page);
+  await expect(ready).toBeVisible();
+  await page.getByRole('link', { name: 'Base de connaissances' }).click();
+  const phone = page.getByRole('region', { name: 'Sur ce téléphone' });
+  await expect(phone.getByText('Prêt sans Internet', { exact: true })).toBeVisible();
+});
+
 test('the service worker precaches every fragment the pack manifest lists', async ({ page }) => {
   await page.goto('/');
   await waitForServiceWorkerControl(page);

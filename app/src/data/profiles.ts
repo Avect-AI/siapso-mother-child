@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Pseudonymous profiles, kept in IndexedDB on the phone only.
 import type { Profile } from '../domain/types.js';
+import { requireCode } from './code-guard.js';
 import { openAppDb } from './db.js';
 
 function byCreation(a: Profile, b: Profile): number {
@@ -18,9 +19,12 @@ export async function getProfile(id: string): Promise<Profile | undefined> {
   return (await openAppDb()).get('profiles', id);
 }
 
-/** Stores `profile`, replacing the one with the same id. */
+/** Stores `profile`, replacing the one with the same id; NoCodeError while no code is on the phone. */
 export async function saveProfile(profile: Profile): Promise<void> {
-  await (await openAppDb()).put('profiles', profile);
+  const tx = (await openAppDb()).transaction(['profiles', 'settings'], 'readwrite');
+  await requireCode(tx);
+  await tx.objectStore('profiles').put(profile);
+  await tx.done;
 }
 
 /** Removes the profile with this id; nothing happens when there is none. */

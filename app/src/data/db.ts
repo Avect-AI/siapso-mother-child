@@ -12,11 +12,15 @@ import {
   type LockoutState,
 } from '../domain/code.js';
 import type { HistoryEntry, Profile, ReferralContact, Settings } from '../domain/types.js';
+import { CodeExistsError, requireCodeForSettings } from './code-guard.js';
 import { compareVersions, isVersion, originKey, type PackOrigin } from './pack-verify.js';
 
 export type PackSlot = 'current' | 'previous';
 
-type SettingsKey = 'settings' | 'code' | 'lockout';
+type SettingsKey = 'settings' | 'code' | 'lockout' | 'tabs';
+
+/** The copy of the tabs' epoch (state/tab-sync.ts): one random mark per kind of event. */
+type TabMarks = Partial<Record<'lock' | 'quick-exit' | 'erase', string>>;
 
 /**
  * A validated pack and its fingerprint: the version, date and clinical
@@ -57,7 +61,7 @@ interface SiapsoDb extends DBSchema {
    * The settings, the verifier of the code (never the code itself) and the
    * wrong codes in a row with the end of their wait, each under its own key.
    */
-  settings: { key: SettingsKey; value: Settings | CodeVerifier | LockoutState };
+  settings: { key: SettingsKey; value: Settings | CodeVerifier | LockoutState | TabMarks };
   profiles: { key: string; value: Profile };
   history: { key: string; value: HistoryEntry; indexes: { profileId: string } };
   /** The referral contacts saved on this phone, in their order, under one key (version 2). */
@@ -231,8 +235,20 @@ export async function getStoredSettings(): Promise<Settings | undefined> {
   return (await (await openAppDb()).get('settings', 'settings')) as Settings | undefined;
 }
 
+/**
+ * Stores the settings. A change of the mode or of the welcome goes through
+ * only from the tab that opened the code stored, or from a phone with no code
+ * (code-guard.ts): NoCodeError otherwise, and nothing is stored. The language
+ * changes from any tab.
+ */
 export async function storeSettings(settings: Settings): Promise<void> {
-  await (await openAppDb()).put('settings', settings, 'settings');
+  const tx = (await openAppDb()).transaction('settings', 'readwrite');
+  const before = (await tx.store.get('settings')) as Settings | undefined;
+  if (before?.mode !== settings.mode || before.onboarded !== settings.onboarded) {
+    await requireCodeForSettings(tx);
+  }
+  await tx.store.put(settings, 'settings');
+  await tx.done;
 }
 
 /** The verifier of the code, when one was made on this phone (a stored value that is not one: none). */
@@ -246,6 +262,24 @@ export async function storeVerifier(verifier: CodeVerifier): Promise<void> {
   await (await openAppDb()).put('settings', { salt, hash, iterations }, 'code');
 }
 
+/**
+ * Stores the verifier of a code just made, in one readwrite transaction that
+ * refuses (CodeExistsError, nothing changed) when a code is already stored: a
+ * tab left on the welcome never makes a second code over hers.
+ */
+export async function storeNewVerifier(verifier: CodeVerifier): Promise<void> {
+  const tx = (await openAppDb()).transaction('settings', 'readwrite');
+  if (isCodeVerifier(await tx.store.get('code'))) {
+    // Abandoned on purpose: its end is not an error to report.
+    tx.done.catch(() => undefined);
+    tx.abort();
+    throw new CodeExistsError();
+  }
+  const { salt, hash, iterations } = verifier;
+  await tx.store.put({ salt, hash, iterations }, 'code');
+  await tx.done;
+}
+
 /** The wrong codes in a row and their wait, kept across a reload (a stored value that is not one: none). */
 export async function getStoredLockout(): Promise<LockoutState | undefined> {
   const stored = await (await openAppDb()).get('settings', 'lockout');
@@ -255,6 +289,20 @@ export async function getStoredLockout(): Promise<LockoutState | undefined> {
 export async function storeLockout(lockout: LockoutState): Promise<void> {
   const { failures, lockedUntil } = lockout;
   await (await openAppDb()).put('settings', { failures, lockedUntil }, 'lockout');
+}
+
+/** The copy of the tabs' epoch, as stored (state/tab-sync.ts reads only its marks). */
+export async function readTabMarks(): Promise<unknown> {
+  return (await openAppDb()).get('settings', 'tabs');
+}
+
+/** Adds one mark to the copy of the tabs' epoch, in one transaction. */
+export async function addTabMark(event: keyof TabMarks, mark: string): Promise<void> {
+  const tx = (await openAppDb()).transaction('settings', 'readwrite');
+  const stored: unknown = await tx.store.get('tabs');
+  const marks = typeof stored === 'object' && stored !== null ? (stored as TabMarks) : {};
+  await tx.store.put({ ...marks, [event]: mark }, 'tabs');
+  await tx.done;
 }
 
 /**

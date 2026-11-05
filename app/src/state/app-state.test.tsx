@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 import type { Pack } from '@siapso/engine';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { closeAppDb, getStoredSettings, storeSettings } from '../data/db.js';
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
+import { storageKeeper } from '../pwa/storage.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { loaderOf } from '../test/render-app.js';
 import { AppProvider, STORAGE_TIMEOUT_MS, useApp } from './app-state.js';
@@ -234,6 +235,45 @@ describe('AppProvider settings', () => {
 
     expect(persist).toHaveBeenCalledTimes(1);
     expect(screen.getByText(/"onboarded":true/)).toBeInTheDocument();
+  });
+
+  it('asks again at each launch while the data may be evicted, and once the app is installed', async () => {
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    const persist = vi.fn(() => Promise.resolve(false));
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(false), persist },
+      configurable: true,
+    });
+    renderProbe();
+
+    await waitFor(() => {
+      expect(persist).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(storageKeeper.getSnapshot()).toBe('best-effort');
+    });
+
+    act(() => {
+      window.dispatchEvent(new Event('appinstalled'));
+    });
+    await waitFor(() => {
+      expect(persist).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('asks nothing at launch once the data is kept for good', async () => {
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    const persist = vi.fn(() => Promise.resolve(true));
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(true), persist },
+      configurable: true,
+    });
+    renderProbe();
+
+    await waitFor(() => {
+      expect(storageKeeper.getSnapshot()).toBe('persistent');
+    });
+    expect(persist).not.toHaveBeenCalled();
   });
 });
 

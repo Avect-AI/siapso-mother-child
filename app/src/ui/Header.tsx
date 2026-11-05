@@ -9,7 +9,8 @@ export type HeaderPage = 'home' | 'danger' | null;
 /**
  * The shell band on every screen after the welcome questions: the app mark
  * and name (back home), the danger signs shortcut, always in the same place,
- * locked or not, then, once the code is given, the quick exit, and the
+ * locked or not, then the quick exit when the caller gives one (once the code
+ * is given, and before it on the danger signs and who to call), and the
  * offline badge. Takes its text from the caller.
  */
 export function Header({
@@ -26,7 +27,7 @@ export function Header({
   online: boolean;
   /** The open page, announced with aria-current. */
   current: HeaderPage;
-  /** The quick exit, shown while the session is open; null while locked. */
+  /** The quick exit; null where the caller offers none (App.tsx decides where). */
   quickExit: { label: string; onExit: () => void } | null;
 }) {
   return (

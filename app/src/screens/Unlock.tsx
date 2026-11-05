@@ -33,7 +33,7 @@ function waitMessage(ms: number): [MessageKey, Vars] {
  */
 export function Unlock() {
   const t = useT();
-  const { unlock, lockout, codeUnavailable } = useSession();
+  const { unlock, lockout, codeUnavailable, codeRefused } = useSession();
   const [, navigate] = useLocation();
   const [code, setCode] = useState('');
   const [problem, setProblem] = useState<'wrong' | 'invalid' | null>(null);
@@ -100,6 +100,8 @@ export function Unlock() {
     <main className="screen unlock">
       <h1 tabIndex={-1}>{t('code.title')}</h1>
       {codeUnavailable ? <Notice>{t('code.unavailable')}</Notice> : null}
+      {/* A code made in this tab was refused: the one on the phone is asked. */}
+      {codeRefused ? <Notice>{t('code.exists')}</Notice> : null}
       <form
         className="code-form"
         noValidate

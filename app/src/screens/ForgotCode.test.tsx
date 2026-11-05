@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getStoredSettings, getStoredVerifier, openAppDb, storeLockout } from '../data/db.js';
 import { recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import { loadSavedContacts, saveContacts } from '../data/referral.js';
 import type { Settings } from '../domain/types.js';
 import { profileOf } from '../test/knowledge-pack.js';
-import { renderApp } from '../test/render-app.js';
+import { renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 30_000 });
 

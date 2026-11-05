@@ -1,47 +1,44 @@
 // SPDX-License-Identifier: MIT
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { RegisterSWOptions } from 'vite-plugin-pwa/types';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/index.js';
+import { createServiceWorkerStore } from './service-worker.js';
 import { ServiceWorkerUpdate } from './ServiceWorkerUpdate.js';
 
-// The register module of vite-plugin-pwa, replaced: the test plays the
-// service worker's part by calling the options the component passed.
-const sw = vi.hoisted(() => ({
-  options: undefined as RegisterSWOptions | undefined,
-  needRefresh: false,
-  update: vi.fn(() => Promise.resolve()),
-}));
+type Listener = (event: { isUpdate?: boolean }) => void;
 
-vi.mock('virtual:pwa-register/react', () => ({
-  useRegisterSW: (options: RegisterSWOptions) => {
-    sw.options = options;
-    return {
-      needRefresh: [sw.needRefresh, () => undefined],
-      offlineReady: [false, () => undefined],
-      updateServiceWorker: sw.update,
-    };
-  },
-}));
+/** A store over a fake workbox-window, already in control: the test plays the worker's part. */
+function startedStore() {
+  const listeners = new Map<string, Listener[]>();
+  const workbox = {
+    addEventListener: (type: string, listener: Listener) => {
+      listeners.set(type, [...(listeners.get(type) ?? []), listener]);
+    },
+    register: () => Promise.resolve({}),
+    messageSkipWaiting: vi.fn(),
+  };
+  const store = createServiceWorkerStore({
+    container: { controller: {}, addEventListener: () => undefined },
+    createWorkbox: () => workbox,
+    onError: () => undefined,
+  });
+  store.start();
+  const emit = (type: string, event: { isUpdate?: boolean } = {}) => {
+    act(() => {
+      for (const listener of listeners.get(type) ?? []) listener(event);
+    });
+  };
+  return { store, workbox, emit };
+}
 
-function renderUpdate(reload: () => void) {
+function renderUpdate(reload: () => void, store = startedStore().store) {
   return render(
     <I18nProvider lang="fr">
-      <ServiceWorkerUpdate reload={reload} />
+      <ServiceWorkerUpdate reload={reload} store={store} />
     </I18nProvider>,
   );
 }
-
-beforeEach(() => {
-  sw.options = undefined;
-  sw.needRefresh = false;
-  sw.update.mockClear();
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe('ServiceWorkerUpdate', () => {
   it('shows nothing until a new version is waiting', () => {
@@ -50,49 +47,32 @@ describe('ServiceWorkerUpdate', () => {
   });
 
   it('reloads this window only after its user accepted and the new version took control', async () => {
-    sw.needRefresh = true;
+    const { store, workbox, emit } = startedStore();
     const reload = vi.fn();
-    renderUpdate(reload);
+    renderUpdate(reload, store);
+    emit('waiting');
 
     await userEvent.click(screen.getByRole('button', { name: 'Mettre à jour' }));
-    expect(sw.update).toHaveBeenCalledTimes(1);
+    expect(workbox.messageSkipWaiting).toHaveBeenCalledTimes(1);
     expect(reload).not.toHaveBeenCalled();
 
-    act(() => {
-      sw.options?.onNeedReload?.();
-    });
+    emit('controlling', { isUpdate: true });
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it('never reloads when another window accepted the update; keeps the prompt for its own user', async () => {
-    sw.needRefresh = true;
+    const { store, workbox, emit } = startedStore();
     const reload = vi.fn();
-    renderUpdate(reload);
+    renderUpdate(reload, store);
+    emit('waiting');
 
-    act(() => {
-      sw.options?.onNeedReload?.();
-    });
+    emit('controlling', { isUpdate: true });
     expect(reload).not.toHaveBeenCalled();
     expect(screen.getByRole('status')).toHaveTextContent('Une nouvelle version est prête.');
 
     // The new version already controls this window: no worker is waiting any more.
     await userEvent.click(screen.getByRole('button', { name: 'Mettre à jour' }));
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(sw.update).not.toHaveBeenCalled();
-  });
-
-  it('logs a failed registration instead of crashing', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    renderUpdate(vi.fn());
-
-    act(() => {
-      sw.options?.onRegisterError?.(new Error('no service worker here'));
-    });
-
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringMatching(/service worker/i),
-      expect.objectContaining({ message: 'no service worker here' }),
-    );
-    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(workbox.messageSkipWaiting).not.toHaveBeenCalled();
   });
 });

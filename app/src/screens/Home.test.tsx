@@ -29,6 +29,22 @@ describe('Home', () => {
     expect(screen.getByText('Cet outil ne remplace pas un soignant.')).toBeVisible();
   });
 
+  it('says, after its actions, whether the phone opens the app without the Internet', async () => {
+    await renderApp({ settings: onboarded });
+    await screen.findByRole('banner');
+
+    // The test browser has no service worker: Home says so, and what to do.
+    const line = document.querySelector('main .offline-ready');
+    expect(line).toHaveAttribute('role', 'status');
+    expect(line).toHaveTextContent(
+      "Ce navigateur ne peut pas garder l'application pour l'ouvrir sans Internet. Ouvrez-la dans Chrome.",
+    );
+    const profile = screen.getByRole('link', { name: 'Mon profil' });
+    expect(profile.compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it('links to the profile, the settings, the knowledge base status and the about screen', async () => {
     await renderApp({ settings: onboarded });
     await screen.findByRole('banner');
@@ -98,7 +114,7 @@ describe('Home', () => {
     expect(screen.queryByText(/Les informations sur les produits/)).toBeNull();
   });
 
-  it('says when the choices made at the welcome screen could not be kept', async () => {
+  it('opens nothing on a code the phone could not keep, and says so', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     breakIndexedDB('SecurityError');
     const user = userEvent.setup();
@@ -108,12 +124,13 @@ describe('Home', () => {
     await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
     await makeCode(user);
 
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
-    expect(
-      screen.getByText(
-        "Ce téléphone n'a pas pu garder vos réglages. Vos choix seront peut-être à refaire.",
-      ),
-    ).toBeVisible();
+    // A code storage did not keep opens nothing: the welcome asks again, and says why.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Code')).toHaveAccessibleDescription(
+        /Le code n'a pas pu être enregistré sur ce téléphone\. Essayez encore\.$/,
+      );
+    });
+    expect(screen.queryByRole('button', { name: 'Regarder un produit' })).toBeNull();
   });
 
   it('says nothing about settings when they are stored', async () => {

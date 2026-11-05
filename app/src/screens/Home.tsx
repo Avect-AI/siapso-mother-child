@@ -4,19 +4,21 @@ import { useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
+import { OfflineReadiness } from './OfflineReadiness.js';
 import { useSavedNote } from './saved-note.js';
 
 /**
  * Home in woman mode (accompanied mode opens on the list of profiles): what
  * the app is for and its one primary action, held together, then the way to
- * her profile, the settings, the knowledge base status and the about screen.
+ * her profile and whether the phone opens the app without the Internet yet,
+ * then the settings, the knowledge base status and the about screen.
  * The primary action opens the check for her profile (the check screen opens
  * the profile screen first when there is none). After a save it says the
  * profile was saved, once.
  */
 export function Home() {
   const t = useT();
-  const { packError, settingsUnavailable } = useApp();
+  const { packError, settingsUnavailable, online } = useApp();
   const [, navigate] = useLocation();
   const saved = useSavedNote();
 
@@ -46,6 +48,8 @@ export function Home() {
         <a className="button button--secondary home__profile" href="#/profile">
           {t('home.profileMine')}
         </a>
+        {/* After the actions, so the primary one follows the question. */}
+        <OfflineReadiness online={online} />
       </div>
       <div className="home__closing">
         <a className="button button--quiet home__settings" href="#/settings">

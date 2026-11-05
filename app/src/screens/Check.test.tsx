@@ -7,7 +7,12 @@ import { listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp } from '../test/render-app.js';
+import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 // Whole journeys (search, confirm, back to the check) through the real pack: on a
 // loaded machine with coverage they take longer than the 5 s default.

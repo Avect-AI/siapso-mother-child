@@ -51,6 +51,10 @@ export function About() {
         ) : (
           <>
             <p>{t('about.sourcesLead')}</p>
+            {/* Offline, a link opens the browser's error page: say so before. */}
+            {pack.sources.some((source) => isWebAddress(source.url)) ? (
+              <p>{t('offline.linksNeedInternet')}</p>
+            ) : null}
             <ul aria-label={t('about.sourcesTitle')} className="about__sources">
               {pack.sources.map((source) => (
                 <li key={source.id}>

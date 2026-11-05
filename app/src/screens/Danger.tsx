@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { signsByGroup, SIGN_GROUPS } from '../domain/signs.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
-import { forgetStaleEntry, inVisit, visitState } from '../state/entry-state.js';
+import { forgetStaleEntry, inSession, sessionState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
@@ -12,10 +12,11 @@ import { CALL_PATH } from './Referral.js';
 
 /**
  * The signs ticked on this history entry, so that back from who to call finds
- * them ticked (in this visit only: a quick exit forgets them).
+ * them ticked: in this epoch only, so a lock, a quick exit, two minutes
+ * without interaction or hidden while locked, and a reload forget them.
  */
 function keptSigns(): string[] {
-  const { dangerSigns } = visitState();
+  const { dangerSigns } = sessionState();
   return Array.isArray(dangerSigns)
     ? dangerSigns.filter((sign): sign is string => typeof sign === 'string')
     : [];
@@ -33,7 +34,9 @@ function keptSigns(): string[] {
  * kept to be said when calling.
  * While the pack loads, nothing is said about the list; once loading failed,
  * or the loaded pack lists none, a notice says so in words (never a silent
- * gap). Nothing is kept but the ticks on this history entry.
+ * gap). Nothing is kept but the ticks, in memory, for this history entry and
+ * this epoch: given without the code, they go with the quick exit (offered
+ * here before the code too) and after two minutes without interaction.
  */
 export function Danger() {
   const t = useT();
@@ -42,7 +45,7 @@ export function Danger() {
   const [, navigate] = useLocation();
   const [chosen, setChosen] = useState<string[]>(keptSigns);
 
-  // Signs ticked in an earlier visit go from the history, not only unread.
+  // Signs ticked in an earlier visit or epoch go from the history, not only unread.
   useEffect(() => {
     forgetStaleEntry();
   }, []);
@@ -50,7 +53,7 @@ export function Danger() {
   const choose = (id: string, checked: boolean) => {
     const next = checked ? [...chosen.filter((s) => s !== id), id] : chosen.filter((s) => s !== id);
     setChosen(next);
-    window.history.replaceState(inVisit({ ...visitState(), dangerSigns: next }), '');
+    window.history.replaceState(inSession({ ...sessionState(), dangerSigns: next }), '');
   };
 
   let list = null;
@@ -64,9 +67,10 @@ export function Danger() {
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
-            // The emergency action never refuses; the signs ticked go along for the call.
+            // The emergency action never refuses; the signs ticked go along for the call,
+            // marked as given without the code.
             navigate(CALL_PATH, {
-              state: inVisit({ instruction: { standard: true }, signs: chosen }),
+              state: inSession({ instruction: { standard: true }, signs: chosen, public: true }),
             });
           }}
         >

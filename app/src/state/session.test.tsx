@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 import { act, render, waitFor } from '@testing-library/react';
 import { IDBFactory } from 'fake-indexeddb';
+import { useEffect } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { codeFingerprint, codeOpened, openedCode } from '../data/code-guard.js';
 import {
+  eraseProfilesAndCode,
   getStoredLockout,
   getStoredSettings,
   getStoredVerifier,
   openAppDb,
+  storeNewVerifier,
   storePack,
   storeSettings,
   storeLockout,
@@ -22,14 +26,16 @@ import {
   type CodeVerifier,
   type LockoutState,
 } from '../domain/code.js';
+import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { breakIndexedDB } from '../test/idb.js';
 import { profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, shellPack } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
 import { verifierOf, weakVerifier } from '../test/verifier.js';
-import { AppProvider } from './app-state.js';
-import { epochToken, inVisit, visitState } from './entry-state.js';
+import { AppProvider, useApp } from './app-state.js';
+import { epochToken, inSession, inVisit, sessionState, visitState } from './entry-state.js';
+import { EPOCH_KEY, SESSION_CHANNEL } from './tab-sync.js';
 
 const CODE = '2468';
 
@@ -39,18 +45,44 @@ vi.setConfig({ testTimeout: 30_000 });
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  localStorage.clear();
 });
 
-function renderTab() {
+/** Reads the settings of one tab. */
+function SettingsProbe({ onSettings }: { onSettings: (settings: Settings) => void }) {
+  const { settings } = useApp();
+  useEffect(() => {
+    onSettings(settings);
+  }, [settings, onSettings]);
+  return null;
+}
+
+/**
+ * A tab of the app. `deaf`: it misses every message from the other tabs, as a
+ * frozen tab or one kept in the back-forward cache does.
+ */
+function renderTab({
+  startUnlocked = false,
+  deaf = false,
+}: { startUnlocked?: boolean; deaf?: boolean } = {}) {
   const session = probeSession();
   const check = probeCheck();
+  let settings: Settings | undefined;
+  if (deaf) vi.stubGlobal('BroadcastChannel', undefined);
   const view = render(
-    <AppProvider packLoader={loaderOf(shellPack())}>
+    <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked }}>
       {session.element}
       {check.element}
+      <SettingsProbe
+        onSettings={(latest) => {
+          settings = latest;
+        }}
+      />
     </AppProvider>,
   );
-  return { session, check, view };
+  vi.unstubAllGlobals();
+  return { session, check, view, settings: () => settings };
 }
 
 async function renderSession({
@@ -296,28 +328,26 @@ describe('session', () => {
     expect(stored === undefined ? false : await checkCode('135790', stored)).toBe(true);
   });
 
-  it('opens new in memory when the phone storage refuses the code, and still locks', async () => {
+  it('opens nothing when the phone storage refuses the code: no code it could not keep', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { session } = await renderSession({ code: null });
     await waitFor(() => {
       expect(session.current().status).toBe('new');
     });
     const db = await openAppDb();
-    vi.spyOn(db, 'put').mockRejectedValue(new Error('QuotaExceededError'));
+    vi.spyOn(db, 'transaction').mockImplementation(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
 
+    let made = '';
     await act(async () => {
-      await session.current().createCode('1357');
+      made = await session.current().createCode('1357');
     });
-    expect(session.current().unlocked).toBe(true);
 
-    act(() => {
-      session.current().lock();
-    });
-    let result = '';
-    await act(async () => {
-      result = await session.current().unlock('1357');
-    });
-    expect(result).toBe('ok');
+    expect(made).toBe('unsaved');
+    expect(session.current().unlocked).toBe(false);
+    expect(session.current().keyMaterial()).toBeNull();
+    expect(session.current().status).toBe('new');
   });
 });
 
@@ -461,6 +491,7 @@ describe('session across tabs and failures', () => {
 
   it('a forgotten code erases the profiles, contacts, history and code, keeps the language and the pack', async () => {
     await storeSettings({ lang: 'en', mode: 'accompanied', onboarded: true });
+    await storeVerifier(await verifierOf(CODE));
     await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
     await saveContacts([{ id: 'c1', role: 'relay', name: 'Mariama', phone: '000 000 001' }]);
     await recordHistory({
@@ -499,5 +530,521 @@ describe('session across tabs and failures', () => {
     expect(await getStoredLockout()).toBeUndefined();
     expect(await getStoredSettings()).toEqual({ lang: 'en', mode: null, onboarded: false });
     expect(await db.get('pack', 'current')).toBeDefined();
+  });
+});
+
+describe('session across the tabs of one phone', () => {
+  async function twoOpenTabs(options: { deaf?: boolean } = {}) {
+    await storeVerifier(await verifierOf(CODE));
+    const other = renderTab({ startUnlocked: true, ...options });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+    return { other, here };
+  }
+
+  it('"Quitter" in one tab locks every other tab and forgets what each held', async () => {
+    const { other, here } = await twoOpenTabs();
+    act(() => {
+      other.session.current().holdScreen('/confirm/product', null);
+      other.check.current().start('p1');
+    });
+
+    act(() => {
+      here.session.current().quickExit();
+    });
+
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(other.session.current().exited).toBe(true);
+    expect(other.session.current().keyMaterial()).toBeNull();
+    expect(other.session.current().takeHeldScreen()).toBeNull();
+    expect(other.check.current().profileId).toBeNull();
+  });
+
+  it('a lock asked in one tab locks the others, and they forget the screen they held', async () => {
+    const { other, here } = await twoOpenTabs();
+
+    act(() => {
+      here.session.current().lock();
+    });
+
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(other.session.current().exited).toBe(false);
+    // The screen it locked on is not held: the code opens the start.
+    act(() => {
+      other.session.current().holdScreen('/confirm/product', null);
+    });
+    expect(other.session.current().takeHeldScreen()).toBeNull();
+  });
+
+  it('an auto-lock stays in its own tab: each tab counts its own two minutes', async () => {
+    const post = vi.spyOn(BroadcastChannel.prototype, 'postMessage');
+    const { session } = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(session.current().unlocked).toBe(true);
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().touch();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS);
+    });
+
+    expect(session.current().status).toBe('locked');
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('an erase in one tab sends every tab back to the welcome, and the old code opens nothing', async () => {
+    await storeSettings({ lang: 'en', mode: 'woman', onboarded: true });
+    await storeVerifier(await verifierOf(CODE));
+    const locked = renderTab();
+    const open = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(locked.session.current().status).toBe('locked');
+      expect(open.settings()?.onboarded).toBe(true);
+    });
+    act(() => {
+      open.check.current().start('a');
+    });
+
+    await act(async () => {
+      await locked.session.current().forgetCode();
+    });
+
+    await waitFor(() => {
+      expect(open.session.current().status).toBe('new');
+    });
+    expect(open.session.current().keyMaterial()).toBeNull();
+    expect(open.settings()).toEqual({ lang: 'en', mode: null, onboarded: false });
+    expect(open.check.current().profileId).toBeNull();
+    let result = '';
+    await act(async () => {
+      result = await open.session.current().unlock(CODE);
+    });
+    expect(result).toBe('unavailable');
+  });
+
+  it('a tab that missed the message (frozen, cached) applies it as soon as it comes back', async () => {
+    const { other, here } = await twoOpenTabs({ deaf: true });
+
+    act(() => {
+      here.session.current().quickExit();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(other.session.current().unlocked).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+    });
+    expect(other.session.current().status).toBe('locked');
+    expect(other.session.current().exited).toBe(true);
+  });
+
+  it('a code screen in another tab says the wrong codes counted since, not its own old count', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const first = renderTab();
+    const second = renderTab();
+    await waitFor(() => {
+      expect(first.session.current().status).toBe('locked');
+      expect(second.session.current().status).toBe('locked');
+    });
+    for (const tab of [first, first, second, second]) {
+      await act(async () => {
+        await tab.session.current().unlock('0000');
+      });
+    }
+
+    await waitFor(() => {
+      expect(first.session.current().lockout.failures).toBe(4);
+    });
+  });
+
+  it('a code screen that missed the count reads it again when it comes back', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const asleep = renderTab({ deaf: true });
+    const awake = renderTab();
+    await waitFor(() => {
+      expect(asleep.session.current().status).toBe('locked');
+      expect(awake.session.current().status).toBe('locked');
+    });
+    await act(async () => {
+      await asleep.session.current().unlock('0000');
+    });
+    for (let i = 0; i < 3; i += 1) {
+      await act(async () => {
+        await awake.session.current().unlock('0000');
+      });
+    }
+    expect(asleep.session.current().lockout.failures).toBe(1);
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(asleep.session.current().lockout.failures).toBe(4);
+    });
+  });
+});
+
+describe('danger signs ticked without the code', () => {
+  it('are forgotten after two minutes without interaction while locked', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().touch();
+    });
+    window.history.replaceState(inSession({ dangerSigns: ['bleeding'] }), '');
+    const before = session.current().epoch;
+
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS - 1);
+    });
+    expect(sessionState()).toMatchObject({ dangerSigns: ['bleeding'] });
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+
+    expect(sessionState()).toEqual({});
+    expect(session.current().epoch).not.toBe(before);
+    expect(session.current().status).toBe('locked');
+  });
+
+  it('are forgotten when the page comes back after more than two minutes hidden', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const start = Date.now();
+    window.history.replaceState(inSession({ dangerSigns: ['bleeding'] }), '');
+
+    act(() => {
+      setVisibility('hidden');
+    });
+    vi.setSystemTime(start + 60_000);
+    act(() => {
+      setVisibility('visible');
+    });
+    expect(sessionState()).toMatchObject({ dangerSigns: ['bleeding'] });
+
+    act(() => {
+      setVisibility('hidden');
+    });
+    vi.setSystemTime(start + 60_000 + AUTO_LOCK_MS + 1);
+    act(() => {
+      setVisibility('visible');
+    });
+    expect(sessionState()).toEqual({});
+  });
+
+  it('are forgotten at every lock', async () => {
+    const { session } = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(session.current().unlocked).toBe(true);
+    });
+    window.history.replaceState(inSession({ dangerSigns: ['bleeding'] }), '');
+    const before = session.current().epoch;
+
+    act(() => {
+      session.current().lock();
+    });
+
+    expect(sessionState()).toEqual({});
+    expect(session.current().epoch).not.toBe(before);
+  });
+});
+
+describe('one code on the phone, whatever the tabs', () => {
+  /** The code another tab made: stored as the welcome stores it, with its settings. */
+  async function codeMadeElsewhere(code = CODE) {
+    const made = await verifierOf(code);
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: false });
+    await storeNewVerifier(made);
+    return made;
+  }
+
+  it('refuses a second code made on the welcome of another tab, and asks for hers', async () => {
+    const welcome = renderTab();
+    await waitFor(() => {
+      expect(welcome.session.current().status).toBe('new');
+    });
+    const hers = await codeMadeElsewhere();
+
+    let made = '';
+    await act(async () => {
+      made = await welcome.session.current().createCode('1111');
+    });
+
+    expect(made).toBe('exists');
+    expect(welcome.session.current().status).toBe('locked');
+    expect(welcome.session.current().keyMaterial()).toBeNull();
+    expect(await getStoredVerifier()).toEqual(hers);
+    let result = '';
+    await act(async () => {
+      result = await welcome.session.current().unlock('1111');
+    });
+    expect(result).toBe('wrong');
+    await act(async () => {
+      result = await welcome.session.current().unlock(CODE);
+    });
+    expect(result).toBe('ok');
+  });
+
+  it('sends a tab on the welcome to the code screen as soon as another tab makes the code', async () => {
+    const first = renderTab();
+    const second = renderTab();
+    await waitFor(() => {
+      expect(first.session.current().status).toBe('new');
+      expect(second.session.current().status).toBe('new');
+    });
+
+    await act(async () => {
+      await first.session.current().createCode(CODE);
+    });
+
+    await waitFor(() => {
+      expect(second.session.current().status).toBe('locked');
+    });
+  });
+
+  it('a tab that missed it reads the stored code when it comes back', async () => {
+    const deaf = renderTab({ deaf: true });
+    await waitFor(() => {
+      expect(deaf.session.current().status).toBe('new');
+    });
+    await codeMadeElsewhere();
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(deaf.session.current().status).toBe('locked');
+    });
+  });
+
+  it('an erase only said, never done, leaves every tab as it was', async () => {
+    const { other } = await twoOpenTabsWithCode();
+    // A forged message and a forged epoch mark: the code is still stored.
+    localStorage.setItem(EPOCH_KEY, JSON.stringify({ erase: 'forged' }));
+    const forger = new BroadcastChannel(SESSION_CHANNEL);
+    forger.postMessage('erase');
+    forger.close();
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(other.session.current().status).toBe('unlocked');
+    expect(other.settings()?.onboarded).toBe(true);
+  });
+
+  it('holds the code it opened, so its writes check that code (data/code-guard.ts)', async () => {
+    const welcome = renderTab();
+    await waitFor(() => {
+      expect(welcome.session.current().status).toBe('new');
+    });
+    await act(async () => {
+      await welcome.session.current().createCode(CODE);
+    });
+    const stored = await getStoredVerifier();
+    expect(stored === undefined ? null : codeFingerprint(stored)).toBe(openedCode());
+
+    act(() => {
+      welcome.session.current().lock();
+    });
+    codeOpened(null);
+    await act(async () => {
+      await welcome.session.current().unlock(CODE);
+    });
+    expect(stored === undefined ? null : codeFingerprint(stored)).toBe(openedCode());
+  });
+
+  it('locks a tab whose code was erased and made again elsewhere, once it comes back', async () => {
+    const deaf = renderTab({ startUnlocked: false, deaf: true });
+    await storeVerifier(await verifierOf(CODE));
+    await act(async () => {
+      await deaf.session.current().unlock(CODE);
+    });
+    await waitFor(() => {
+      expect(deaf.session.current().unlocked).toBe(true);
+    });
+    // Without any message: erased, then another code made.
+    await eraseProfilesAndCode();
+    const his = await verifierOf('1111');
+    await storeNewVerifier(his);
+
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+    });
+
+    await waitFor(() => {
+      expect(deaf.session.current().status).toBe('locked');
+    });
+    let result = '';
+    await act(async () => {
+      result = await deaf.session.current().unlock(CODE);
+    });
+    expect(result).toBe('wrong');
+  });
+
+  async function twoOpenTabsWithCode() {
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: false });
+    await storeVerifier(await verifierOf(CODE));
+    codeOpened(await verifierOf(CODE));
+    await storeSettings({ lang: 'fr', mode: 'woman', onboarded: true });
+    codeOpened(null);
+    const other = renderTab({ startUnlocked: true });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.settings()?.onboarded).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+    return { other, here };
+  }
+});
+
+describe('a code made while storage is slow or the welcome was cut short', () => {
+  /**
+   * Holds a readwrite transaction on the settings, as another tab in the
+   * middle of a write: the app's writes wait behind it. `release` ends it,
+   * after writing `code` (another tab's code) when given.
+   */
+  async function holdSettings() {
+    await openAppDb();
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('siapso');
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        reject(new Error('cannot open the database'));
+      };
+    });
+    const tx = db.transaction('settings', 'readwrite');
+    const store = tx.objectStore('settings');
+    let held = true;
+    let code: CodeVerifier | undefined;
+    const spin = () => {
+      if (held) {
+        store.get('code').onsuccess = spin;
+      } else if (code !== undefined) {
+        store.put(code, 'code');
+      }
+    };
+    spin();
+    const done = new Promise<void>((resolve) => {
+      tx.oncomplete = () => {
+        db.close();
+        resolve();
+      };
+    });
+    return {
+      release(write?: CodeVerifier) {
+        code = write;
+        held = false;
+        return done;
+      },
+    };
+  }
+
+  function renderSlowTab() {
+    const session = probeSession();
+    render(
+      <AppProvider packLoader={loaderOf(shellPack())} storageTimeoutMs={200}>
+        {session.element}
+      </AppProvider>,
+    );
+    return session;
+  }
+
+  it('opens only once the stalled store shows its own code', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const session = renderSlowTab();
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+    const hold = await holdSettings();
+
+    let made: Promise<string> = Promise.resolve('');
+    act(() => {
+      made = session.current().createCode(CODE);
+    });
+    // The store waits beyond the timeout: nothing is opened meanwhile.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(session.current().unlocked).toBe(false);
+
+    await hold.release();
+    let result = '';
+    await act(async () => {
+      result = await made;
+    });
+
+    expect(result).toBe('made');
+    expect(session.current().unlocked).toBe(true);
+    const stored = await getStoredVerifier();
+    expect(stored === undefined ? false : await checkCode(CODE, stored)).toBe(true);
+  });
+
+  it('never opens when another code was stored while its store stalled: it asks for that one', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const session = renderSlowTab();
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+    const hold = await holdSettings();
+    const his = await verifierOf('1111');
+
+    let made: Promise<string> = Promise.resolve('');
+    act(() => {
+      made = session.current().createCode(CODE);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    await hold.release(his);
+    let result = '';
+    await act(async () => {
+      result = await made;
+    });
+
+    expect(result).toBe('exists');
+    expect(session.current().unlocked).toBe(false);
+    expect(session.current().keyMaterial()).toBeNull();
+    expect(session.current().status).toBe('locked');
+    expect(await getStoredVerifier()).toEqual(his);
+  });
+
+  it('a code refused while this tab knows the stored one still ends on the code screen', async () => {
+    const { session, settings } = renderTab();
+    await storeVerifier(await verifierOf(CODE));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+
+    let made = '';
+    await act(async () => {
+      made = await session.current().createCode('1111');
+    });
+
+    expect(made).toBe('exists');
+    expect(session.current().status).toBe('locked');
+    expect(session.current().codeRefused).toBe(true);
+    expect(settings()?.onboarded).toBe(true);
   });
 });

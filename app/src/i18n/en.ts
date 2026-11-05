@@ -24,6 +24,22 @@ export const en: Dictionary = {
     offline: 'Offline',
     quickExit: 'Exit',
   },
+  offline: {
+    ready: 'Ready without the Internet',
+    preparing:
+      'Keep the Internet on a little longer: the app is getting ready to work without a network.',
+    unsupported:
+      'This browser cannot keep the app to open it without the Internet. Open it in Chrome.',
+    failed:
+      'The app could not get ready to work without a network. Open it again with the Internet.',
+    reconnect:
+      'Turn the Internet back on: the app has not finished getting ready to work without a network.',
+    phoneTitle: 'On this phone',
+    persistent: "This phone keeps the app's data.",
+    bestEffort:
+      'The data may be erased if the phone runs short of space. Add the app to the home screen to help the phone keep it.',
+    linksNeedInternet: 'These links open with the Internet.',
+  },
   code: {
     title: 'Enter your code',
     label: 'Code',
@@ -37,6 +53,8 @@ export const en: Dictionary = {
     waitHours: 'Too many tries. Wait {count} hours, then try again.',
     tryAgain: 'You can try again.',
     unavailable: 'The code could not be read on this phone. Close the app, then open it again.',
+    exists: 'A code already exists on this phone: enter it to open the app.',
+    notSaved: 'The code could not be saved on this phone. Try again.',
     keypad: 'Code keypad',
     erase: 'Erase',
     digitsNone: 'No digit',

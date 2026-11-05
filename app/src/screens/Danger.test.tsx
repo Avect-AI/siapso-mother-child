@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 import type { DangerSign, Pack } from '@siapso/engine';
-import { screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AUTO_LOCK_MS } from '../domain/code.js';
+import type { Settings } from '../domain/types.js';
 import { hangIndexedDB } from '../test/idb.js';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, pendingPack, renderApp, shellPack } from '../test/render-app.js';
@@ -29,6 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
 });
 
 describe('Danger signs', () => {
@@ -225,3 +228,118 @@ describe('Danger signs', () => {
     expect(window.history.state).toBeNull();
   });
 });
+
+describe('Danger signs ticked without the code', () => {
+  const english: Settings = { lang: 'en', mode: 'woman', onboarded: true };
+
+  async function tickLocked() {
+    await renderApp({
+      settings: english,
+      hash: '#/danger',
+      packLoader: loaderOf(shellPack(signs)),
+      locked: true,
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('checkbox', { name: 'Bleeding' }));
+    return user;
+  }
+
+  it('offers the quick exit before the code: it hides the signs and leaves the neutral screen', async () => {
+    const user = await tickLocked();
+    // Nothing she ticked is written on the history entry.
+    expect(JSON.stringify(window.history.state)).not.toContain('bleeding');
+
+    // Shown once the session has read that a code is on the phone.
+    await user.click(
+      await within(screen.getByRole('banner')).findByRole('button', { name: 'Exit' }),
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+    expect(window.history.state).toBeNull();
+    await user.click(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Danger signs' }),
+    );
+    expect(await screen.findByRole('checkbox', { name: 'Bleeding' })).not.toBeChecked();
+  });
+
+  it('are unticked after two minutes without interaction', async () => {
+    await tickLocked();
+    expect(screen.getByRole('checkbox', { name: 'Bleeding' })).toBeChecked();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      // The two minutes start again on the fake clock.
+      act(() => {
+        window.dispatchEvent(new Event('pointerdown'));
+      });
+      act(() => {
+        vi.advanceTimersByTime(AUTO_LOCK_MS - 1);
+      });
+      expect(screen.getByRole('checkbox', { name: 'Bleeding' })).toBeChecked();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole('checkbox', { name: 'Bleeding' })).not.toBeChecked();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leave who to call when the page comes back after two minutes hidden, and Back finds none', async () => {
+    const user = await tickLocked();
+    await user.click(screen.getByRole('button', { name: 'It is serious now' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Who to call' })).toBeVisible();
+    expect(screen.getByText('Say these signs on the phone or at the health post:')).toBeVisible();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const start = Date.now();
+      act(() => {
+        setVisibility('hidden');
+      });
+      vi.setSystemTime(start + AUTO_LOCK_MS + 1);
+      act(() => {
+        setVisibility('visible');
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    // A danger was said: the instruction stays, the signs go.
+    expect(screen.getByRole('alert')).toHaveTextContent('Go to the health post now.');
+    expect(screen.queryByText('Say these signs on the phone or at the health post:')).toBeNull();
+    window.history.back();
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#/danger');
+    });
+    expect(await screen.findByRole('checkbox', { name: 'Bleeding' })).not.toBeChecked();
+  });
+
+  it('are unticked when the session locks', async () => {
+    await renderApp({
+      settings: english,
+      hash: '#/danger',
+      packLoader: loaderOf(shellPack(signs)),
+    });
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('checkbox', { name: 'Bleeding' }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      act(() => {
+        window.dispatchEvent(new Event('pointerdown'));
+      });
+      act(() => {
+        vi.advanceTimersByTime(AUTO_LOCK_MS);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(screen.getByRole('checkbox', { name: 'Bleeding' })).not.toBeChecked();
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Exit' })).toBeVisible();
+  });
+});
+
+function setVisibility(state: 'hidden' | 'visible') {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, value: state });
+  document.dispatchEvent(new Event('visibilitychange'));
+}

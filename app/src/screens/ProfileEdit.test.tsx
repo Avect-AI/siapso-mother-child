@@ -3,12 +3,17 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App.js';
-import { closeAppDb, storeSettings } from '../data/db.js';
+import { closeAppDb } from '../data/db.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { AppProvider, useApp } from '../state/app-state.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
-import { loaderOf, renderApp, shellPack } from '../test/render-app.js';
+import { loaderOf, renderApp, seedSettings, shellPack, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
@@ -187,7 +192,7 @@ describe('ProfileEdit: the common case', () => {
         </button>
       );
     }
-    await storeSettings(woman);
+    await seedSettings(woman);
     window.location.hash = '#/profile';
     render(
       <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
@@ -593,5 +598,20 @@ describe('ProfileEdit: storage', () => {
     );
     expect(option(/^Enceinte/, 'Oui')).toBeChecked();
     expect(screen.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  });
+});
+
+describe('ProfileEdit: what the browser keeps', () => {
+  it('lets the browser keep no typed term or age in its form history', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'En semaines'));
+    await user.click(option(/^Allaite/, 'Oui'));
+    await user.click(option('Âge du bébé', 'En semaines'));
+
+    for (const name of ['Nombre de semaines', 'Âge en semaines']) {
+      expect(screen.getByRole('textbox', { name })).toHaveAttribute('autocomplete', 'off');
+    }
   });
 });

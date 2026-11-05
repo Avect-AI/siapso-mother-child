@@ -12,6 +12,7 @@ import { findForbiddenWording } from '@siapso/engine';
 import { isReferralContact, REFERRAL_ROLES, telHref } from '../domain/contacts.js';
 import { readReferralFile, type ReferralConfig } from '../domain/referral-file.js';
 import type { ReferralContact } from '../domain/types.js';
+import { requireCode } from './code-guard.js';
 import { openAppDb } from './db.js';
 
 export type { ReferralConfig } from '../domain/referral-file.js';
@@ -102,7 +103,8 @@ export async function loadSavedContacts(): Promise<ReferralContact[]> {
  * the order of the circuit (relay, Bajenu Gox, ICP, midwife, other; the
  * order given within a role): the first one is the first to call, never
  * just the first one entered. Throws a RangeError, and keeps nothing, for a
- * contact the circuit could not dial or two contacts with one id.
+ * contact the circuit could not dial or two contacts with one id; NoCodeError
+ * while no code is on the phone.
  */
 export async function saveContacts(contacts: readonly ReferralContact[]): Promise<void> {
   const ids = new Set<string>();
@@ -118,7 +120,10 @@ export async function saveContacts(contacts: readonly ReferralContact[]): Promis
     name,
     phone,
   }));
-  await (await openAppDb()).put('contacts', copies, 'saved');
+  const tx = (await openAppDb()).transaction(['contacts', 'settings'], 'readwrite');
+  await requireCode(tx);
+  await tx.objectStore('contacts').put(copies, 'saved');
+  await tx.done;
 }
 
 /** The contacts in the order of the circuit's roles; the order given within a role. */

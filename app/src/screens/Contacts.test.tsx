@@ -6,7 +6,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadSavedContacts, saveContacts } from '../data/referral.js';
 import type { ReferralContact, Settings } from '../domain/types.js';
-import { renderApp } from '../test/render-app.js';
+import { renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 // What a test makes fail: keeping the contacts.
 const failure = vi.hoisted(() => ({ save: null as Error | null }));
@@ -110,6 +115,20 @@ describe('Contacts', () => {
     expect(await loadSavedContacts()).toEqual([
       { id: 'c1', role: 'midwife', name: 'Awa', phone: '+999 000 004' },
     ]);
+  });
+
+  it('never puts the id of the contact changed in the address', async () => {
+    await saveContacts([{ ...AWA, id: 'contact-of-awa' }]);
+    await renderApp({ settings: accompanied, hash: '#/contacts' });
+    const user = userEvent.setup();
+
+    const edit = await screen.findByRole('link', { name: 'Modifier Awa (Relais)' });
+    expect(edit).toHaveAttribute('href', '#/contacts/edit');
+    await user.click(edit);
+
+    expect(await screen.findByRole('radio', { name: 'Relais' })).toBeChecked();
+    expect(window.location.href).not.toContain('contact-of-awa');
+    expect(JSON.stringify(window.history.state)).not.toContain('contact-of-awa');
   });
 
   it('takes a contact off the phone, with a way to put it back', async () => {

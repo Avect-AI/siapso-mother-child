@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: MIT
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import type { Profile } from '../domain/types.js';
-import { closeAppDb } from './db.js';
+import { verifierOf } from '../test/verifier.js';
+import { closeAppDb, storeVerifier } from './db.js';
 import { deleteProfile, getProfile, listProfiles, saveProfile } from './profiles.js';
+
+// Profile data is written only while a code is on the phone (code-guard.ts).
+beforeEach(async () => {
+  await storeVerifier(await verifierOf('2468'));
+});
 
 function profile(id: string, createdAt: string, patch: Partial<Profile> = {}): Profile {
   return {

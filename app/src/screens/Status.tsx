@@ -10,6 +10,7 @@ import { useApp } from '../state/app-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
+import { PhoneFacts } from './OfflineReadiness.js';
 
 /** What the source section says about the stored copy, by the reason it is used. */
 const FALLBACK_TEXT: Record<PackFallback, MessageKey> = {
@@ -119,6 +120,7 @@ export function Status() {
     packOrigin,
     readPackPrevious,
     acceptsUnsigned,
+    online,
   } = useApp();
   const { unlocked } = useSession();
   const [, navigate] = useLocation();
@@ -212,6 +214,7 @@ export function Status() {
           ) : null}
         </>
       )}
+      <PhoneFacts online={online} />
       <a className="button button--secondary status__about" href="#/about">
         {t('nav.about')}
       </a>

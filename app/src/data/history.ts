@@ -4,6 +4,7 @@
 // the pack version, so a later visit can see what was said and why.
 import type { CheckedItem, Evaluation } from '@siapso/engine';
 import type { HistoryEntry } from '../domain/types.js';
+import { requireCode } from './code-guard.js';
 import { openAppDb } from './db.js';
 
 /** Evaluations kept per profile; older ones are removed. */
@@ -47,13 +48,18 @@ export function historyEntryOf({
   };
 }
 
-/** Stores an evaluation, then keeps only the last HISTORY_PER_PROFILE of its profile. */
+/**
+ * Stores an evaluation, then keeps only the last HISTORY_PER_PROFILE of its
+ * profile; NoCodeError while no code is on the phone.
+ */
 export async function recordHistory(entry: HistoryEntry): Promise<void> {
-  const tx = (await openAppDb()).transaction('history', 'readwrite');
-  await tx.store.put(entry);
-  const all = await tx.store.index('profileId').getAll(entry.profileId);
+  const tx = (await openAppDb()).transaction(['history', 'settings'], 'readwrite');
+  await requireCode(tx);
+  const store = tx.objectStore('history');
+  await store.put(entry);
+  const all = await store.index('profileId').getAll(entry.profileId);
   const old = all.sort(newestFirst).slice(HISTORY_PER_PROFILE);
-  await Promise.all(old.map((stale) => tx.store.delete(stale.id)));
+  await Promise.all(old.map((stale) => store.delete(stale.id)));
   await tx.done;
 }
 

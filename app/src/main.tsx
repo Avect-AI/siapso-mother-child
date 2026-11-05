@@ -2,10 +2,15 @@
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { serviceWorker } from './pwa/service-worker.js';
 import { ServiceWorkerUpdate } from './pwa/ServiceWorkerUpdate.js';
 import { AppProvider } from './state/app-state.js';
 import './styles/tokens.css';
 import './styles/base.css';
+
+// First, before the first render and the pack's download: the sooner the
+// precache starts, the sooner the phone works without the Internet.
+serviceWorker.start();
 
 const container = document.getElementById('root');
 if (!container) {

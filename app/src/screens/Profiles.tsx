@@ -8,6 +8,8 @@ import { useApp, withTimeout } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
+import { editEntry, PROFILE_EDIT_PATH } from './edit-route.js';
+import { OfflineReadiness } from './OfflineReadiness.js';
 import { useSavedNote } from './saved-note.js';
 
 type Loaded =
@@ -23,7 +25,7 @@ type Loaded =
 export function Profiles() {
   const t = useT();
   const lang = useLang();
-  const { storageTimeoutMs } = useApp();
+  const { storageTimeoutMs, online } = useApp();
   const { start } = useCheck();
   const [, navigate] = useLocation();
   const saved = useSavedNote();
@@ -85,10 +87,15 @@ export function Profiles() {
               >
                 {profile.pseudonym}
               </Button>
+              {/* Her id goes in the entry's state, never in the address (edit-route.ts). */}
               <a
                 className="button button--quiet profiles__edit"
-                href={`#/profile/${encodeURIComponent(profile.id)}`}
+                href={`#${PROFILE_EDIT_PATH}`}
                 aria-label={t('profiles.editNamed', { name: profile.pseudonym })}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(PROFILE_EDIT_PATH, { state: editEntry(profile.id) });
+                }}
               >
                 {t('profiles.edit')}
               </a>
@@ -105,6 +112,7 @@ export function Profiles() {
       >
         {t('profiles.add')}
       </Button>
+      <OfflineReadiness online={online} />
       <a className="button button--quiet profiles__settings" href="#/settings">
         {t('home.settings')}
       </a>

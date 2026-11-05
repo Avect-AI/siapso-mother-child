@@ -839,9 +839,9 @@ a {
  * Header: the ultramarine shell band. The app name leads home; the danger
  * signs shortcut keeps its place at the end of the row (it drops under the
  * name only when large text leaves no room), locked or not. Once the code is
- * given the quick exit follows it, at the end of the band: beside it on a wide
- * screen, at the end of a row of its own on a phone. The offline badge sits
- * under them.
+ * given (and before it on the danger signs and who to call) the quick exit
+ * follows it, at the end of the band: beside it on a wide screen, at the end
+ * of a row of its own on a phone. The offline badge sits under them.
  */
 
 .header {
@@ -1090,7 +1090,6 @@ a {
 .home__saved {
   font-weight: var(--font-weight-strong);
 }
-
 /* The settings link and the closing line, low on the screen. */
 .home__closing {
   display: grid;
@@ -1299,6 +1298,7 @@ a {
  */
 .status__intro,
 .status__source,
+.status__phone,
 .status__rollback,
 .status__confirm,
 .about__section {
@@ -1309,6 +1309,7 @@ a {
 
 /* Under the screen's title, a section heading is one step smaller. */
 .status__source h2,
+.status__phone h2,
 .status__rollback h2,
 .about__section h2 {
   font-size: var(--font-size-title);

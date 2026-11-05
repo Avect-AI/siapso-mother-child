@@ -23,6 +23,25 @@ export const fr = {
     // The quick exit: locks at once and shows the neutral screen.
     quickExit: 'Quitter',
   },
+  // Whether this phone opens the app without the Internet (Home, the list of
+  // profiles, the status screen), whether it keeps the app's data for good,
+  // and what needs the Internet.
+  offline: {
+    ready: 'Prêt sans Internet',
+    preparing:
+      "Gardez Internet encore un moment : l'application se prépare pour fonctionner sans réseau.",
+    unsupported:
+      "Ce navigateur ne peut pas garder l'application pour l'ouvrir sans Internet. Ouvrez-la dans Chrome.",
+    failed:
+      "L'application n'a pas pu se préparer pour fonctionner sans réseau. Rouvrez-la avec Internet.",
+    reconnect:
+      "Reconnectez Internet : l'application n'a pas fini de se préparer pour fonctionner sans réseau.",
+    phoneTitle: 'Sur ce téléphone',
+    persistent: "Ce téléphone garde les données de l'application.",
+    bestEffort:
+      "Les données peuvent être effacées si le téléphone manque de place. Ajoutez l'application à l'écran d'accueil pour aider le téléphone à les garder.",
+    linksNeedInternet: "Ces liens s'ouvrent avec Internet.",
+  },
   // The code that opens the profiles on a shared phone (spec section 2, Codes).
   code: {
     title: 'Entrez votre code',
@@ -39,6 +58,9 @@ export const fr = {
     tryAgain: 'Vous pouvez essayer à nouveau.',
     unavailable:
       "Le code n'a pas pu être lu sur ce téléphone. Fermez l'application, puis rouvrez-la.",
+    // A code made in a tab while one was already on the phone (another tab, a welcome cut short).
+    exists: "Un code existe déjà sur ce téléphone : entrez-le pour ouvrir l'application.",
+    notSaved: "Le code n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
     keypad: 'Clavier du code',
     erase: 'Effacer',
     // Said to a screen reader as the keys on the screen are tapped.

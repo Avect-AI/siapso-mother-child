@@ -17,8 +17,13 @@ import { inSession, inVisit } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp, TEST_CODE } from '../test/render-app.js';
+import { loaderOf, renderApp, storeTestCode, TEST_CODE } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 vi.setConfig({ testTimeout: 20_000 });
 
@@ -286,7 +291,7 @@ describe('Who to call', () => {
   it('opens at once, and says when the phone storage does not answer, never a blank', async () => {
     hangIndexedDB();
     serveDeployment();
-    await renderApp({ hash: '#/danger/call', storageTimeoutMs: 50 });
+    await renderApp({ hash: '#/danger/call', storageTimeoutMs: 50, open: true });
 
     expect(screen.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
     expect(screen.getByText('Les contacts se chargent.')).toHaveAttribute('role', 'status');
@@ -303,7 +308,7 @@ describe('Who to call', () => {
 describe('Who to call, details', () => {
   it('says the saved contacts could not be read, never that there are none', async () => {
     hangIndexedDB();
-    await renderApp({ hash: '#/danger/call', storageTimeoutMs: 50 });
+    await renderApp({ hash: '#/danger/call', storageTimeoutMs: 50, open: true });
 
     expect(
       await screen.findByText(
@@ -432,7 +437,11 @@ describe('Who to call, before the code', () => {
     expect(screen.queryByText('Aucun contact enregistré sur ce téléphone.')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Modifier les contacts' })).toBeNull();
     expect(screen.getByText(LOCKED_NOTE)).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
+    // Signs may be ticked here without the code: the quick exit is offered before it too,
+    // once the session has read that a code is on the phone.
+    expect(
+      await within(screen.getByRole('banner')).findByRole('button', { name: 'Quitter' }),
+    ).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Entrer le code' }));
     expect(

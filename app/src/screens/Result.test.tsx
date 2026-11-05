@@ -9,7 +9,12 @@ import { saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, noPack, pendingPack, renderApp } from '../test/render-app.js';
+import { loaderOf, noPack, pendingPack, renderApp, storeTestCode } from '../test/render-app.js';
+
+// Profile data is written only while a code is on the phone (data/code-guard.ts).
+beforeEach(async () => {
+  await storeTestCode();
+});
 
 // What a test makes fail: the engine, or reading the profile.
 const failure = vi.hoisted(() => ({
@@ -412,6 +417,18 @@ describe('Result: accompanied mode', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
     // One finding: no summary, the card says it all.
     expect(screen.queryByRole('list', { name: 'Résumé' })).toBeNull();
+  });
+
+  it('says that the links of the sources open with the Internet', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL], settings: accompanied });
+
+    const card = await screen.findByRole('article');
+    const sources = within(card).getByText('Sources :').closest('.result-card__sources');
+    expect(sources).not.toBeNull();
+    expect(
+      within(sources as HTMLElement).getByText("Ces liens s'ouvrent avec Internet."),
+    ).toBeVisible();
   });
 
   it('pairs each risk of a merged card with its own detailed risk and evidence level', async () => {
