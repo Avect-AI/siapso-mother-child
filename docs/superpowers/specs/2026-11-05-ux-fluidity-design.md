@@ -1,6 +1,6 @@
 # SIAPSO Mother-Child: a lighter check flow (fluidity study and redesign)
 
-Status: proposed on 2026-11-05, for review by the controller and the team before any implementation; revised the same day after the safety review of PR #63 (one-tap adding limited to exact names, the daily count in view, when the danger signs answer is forgotten, the term read again during a check, no other woman named on a check, concealed content kept out of the outputs, history keeping the highest level shown, the plan's order, and three committee questions).
+Status: proposed on 2026-11-05, for review by the controller and the team before any implementation; revised the same day after the safety review of PR #63 (one-tap adding limited to exact names, the daily count in view, when the danger signs answer is forgotten, the term read again during a check, no other woman named on a check, concealed content kept out of the outputs, history keeping the highest level shown, the plan's order, and six committee questions, Q-C4 to Q-C9).
 Tickets: SCRUM-56 (fluidity of the user experience), SCRUM-59 (pharmacist and health professional use, added the same day); SCRUM-57 (prescription scan or upload) is designed in its own ticket and gets a slot here.
 Context: `PRODUCT.md`, `DESIGN.md`, `docs/intended-use.md`, `docs/privacy.md`, `docs/superpowers/specs/2026-11-03-implementation-design.md` (called "the implementation design" below; its section numbers are used as they are).
 
@@ -486,15 +486,18 @@ Team (product and privacy):
 
 Clinical committee:
 
-- **Q-C1.** Orientation wording for a professional (who the pharmacist tells, and when), and the default question to the prescriber.
-- **Q-C2.** Should the patient handout carry the danger signs ("Allez au poste de santé maintenant si : ...")?
-- **Q-C3.** Is "Dosage non précisé" acceptable on the result for the products whose strength no rule reads (S10)?
+- **Q-C1.** Orientation wording for a professional (who the pharmacist tells, and when), and the default question to the prescriber (see also Q-C7).
+- **Q-C2.** Should the patient handout carry the danger signs ("Allez au poste de santé maintenant si : ...")? (see also Q-C9)
+- **Q-C3.** Is "Dosage non précisé" acceptable on the result for the products whose strength no rule reads (S10)? (see also Q-C8)
 
 Raised by the safety review of this specification (PR #63), for the committee:
 
 - **Q-C4.** Which matches may add a product in one tap (S11, 8.4): an exact or very strong name only, as specified, and should a remedy found by a local name, or a product found by a brand that several families share, always ask "Est-ce bien <nom> ?"?
 - **Q-C5.** How long may "no danger sign now" hold within one check (S14, 8.5): until the check is left, her answers change or the app locks (two minutes idle), as specified, or should some changes of the list (a product with a rule that requires a sign, a danger added) ask it again?
 - **Q-C6.** For a product under a daily maximum rule (paracetamol), is a daily count field shown open with "Je ne sais pas" enough (S10, 8.4), or should an unknown count add a line to the result (as the `max-dose-not-computable` note does when the strength is missing) so that nobody reads the absence of a daily maximum card as an all-clear?
+- **Q-C7** (to answer with Q-C1 and Q-R9). In the patient handout, the woman-mode orientation ("Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.") is given for a prescription just dispensed: does it in effect delay a treatment she needs, by sending her to show a product she has just been given before taking it? What should the handout say instead, if anything?
+- **Q-C8** (to answer with Q-C3). Is "Dosage non précisé" acceptable wording for the woman herself, on her result and in the handout, or does it read as a fault of hers or of the box?
+- **Q-C9** (to answer with Q-C2). Should the patient handout carry the danger signs, and if so which ones and in which words?
 
 ## 15. Regulatory questions raised by the professional use (to list, not to resolve)
 
@@ -508,7 +511,7 @@ The professional use changes the intended use. Today (`docs/intended-use.md`): "
 - **Q-R6. Liability and claims.** Who answers for a missed alert or a wrong one in professional use; how the mode may be described without claiming a validation the app does not have (`PRODUCT.md`, Evidence on Hand).
 - **Q-R7. Who may use it.** Self-declared at the welcome, no check: is that acceptable, and how are depot keepers kept out of a mode meant for pharmacists?
 - **Q-R8. Pharmacovigilance.** The link with adverse event reports (SCRUM-41) and the format the ARP expects.
-- **Q-R9. "Never tell to stop, start or change a treatment."** Whether a note that asks the prescriber a question stays within this rule, and the exact wording allowed.
+- **Q-R9. "Never tell to stop, start or change a treatment."** Whether a note that asks the prescriber a question stays within this rule, and the exact wording allowed; and whether the handout's orientation on a prescription just dispensed stays within it or delays a needed treatment (Q-C7).
 
 ## Appendix A. Baseline screenshots by journey
 
