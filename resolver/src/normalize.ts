@@ -64,6 +64,21 @@ export function normalize(text: string): string {
 }
 
 /**
+ * A word with the spelling variants that change no sound only: `ph`, `qu`,
+ * `y`, a doubled consonant, a trailing `e` (as normalize read words before
+ * the live test round 2). A short word close to a name only once read as it
+ * sounds ("raisin", "risin" for "ricin") is not that name (lightCleaned).
+ */
+function lightWord(word: string): string {
+  const spelled = word
+    .replaceAll('ph', 'f')
+    .replaceAll('qu', 'k')
+    .replaceAll('y', 'i')
+    .replace(/([b-df-hj-np-tv-z])\1+/g, '$1');
+  return spelled.length > 4 && spelled.endsWith('e') ? spelled.slice(0, -1) : spelled;
+}
+
+/**
  * Words of pharmaceutical forms and packaging, French and English: they say
  * nothing about which medicine it is ("comprimé blanc" named every tablet),
  * but they tell the forms of one product apart ("sirop", "effervescent").
@@ -375,14 +390,33 @@ export function isSaltWord(word: string): boolean {
   return SALT_SET.has(word);
 }
 
-/** The words kept, without the linking words left at either end. */
-function trimmed(words: readonly string[], kept: readonly boolean[]): string {
-  const left = words.filter((_, index) => kept[index]);
+/** The indexes of the words kept, without the linking words left at either end. */
+function trimmed(words: readonly string[], kept: readonly boolean[]): number[] {
+  const left = words.flatMap((_, index) => (kept[index] === true ? [index] : []));
   let start = 0;
   let end = left.length;
-  while (start < end && EDGE_LINKS.has(left[start] ?? '')) start += 1;
-  while (end > start && EDGE_LINKS.has(left[end - 1] ?? '')) end -= 1;
-  return left.slice(start, end).join(' ');
+  while (start < end && EDGE_LINKS.has(words[left[start] ?? -1] ?? '')) start += 1;
+  while (end > start && EDGE_LINKS.has(words[left[end - 1] ?? -1] ?? '')) end -= 1;
+  return left.slice(start, end);
+}
+
+/** The indexes of the normalised words withoutStopWords keeps. */
+function keptIndexes(words: readonly string[], keep: ReadonlySet<string>): number[] {
+  const salt = (word: string) => SALT_SET.has(word) && !keep.has(word);
+  const kept = words.map((word) => !STOP_SET.has(word) && !salt(word));
+  words.forEach((word, index) => {
+    if (!salt(word)) return;
+    for (const near of [index - 1, index + 1]) {
+      if (SALT_LINKS.has(words[near] ?? '')) kept[near] = false;
+    }
+  });
+  const indexes = trimmed(words, kept);
+  if (indexes.length > 0 || !words.some(salt)) return indexes;
+  // Only salt words (and stop-words) were there: the salt words are the name.
+  return trimmed(
+    words,
+    words.map((word) => !STOP_SET.has(word)),
+  );
 }
 
 /**
@@ -396,21 +430,28 @@ function trimmed(words: readonly string[], kept: readonly boolean[]): string {
 export function withoutStopWords(normalized: string, keep: ReadonlySet<string> = NO_WORDS): string {
   if (normalized === '') return '';
   const words = normalized.split(' ');
-  const salt = (word: string) => SALT_SET.has(word) && !keep.has(word);
-  const kept = words.map((word) => !STOP_SET.has(word) && !salt(word));
-  words.forEach((word, index) => {
-    if (!salt(word)) return;
-    for (const near of [index - 1, index + 1]) {
-      if (SALT_LINKS.has(words[near] ?? '')) kept[near] = false;
-    }
-  });
-  const text = trimmed(words, kept);
-  if (text !== '' || !words.some(salt)) return text;
-  // Only salt words (and stop-words) were there: the salt words are the name.
-  return trimmed(
-    words,
-    words.map((word) => !STOP_SET.has(word)),
-  );
+  return keptIndexes(words, keep)
+    .map((index) => words[index])
+    .join(' ');
+}
+
+/**
+ * The words of a text that matching keeps (withoutStopWords, without age
+ * words), each with the spelling variants that change no sound only
+ * (lightWord): "huile de raisin" is "raisin" and "Huile de ricin" "ricin",
+ * where normalize reads "raisin" and "risin", one letter apart. It tells a
+ * short word close to a name as written from one close to it only as it
+ * sounds.
+ */
+export function lightCleaned(text: string, keep: ReadonlySet<string> = NO_WORDS): string {
+  const plain = plainText(text);
+  if (plain === '') return '';
+  const words = plain.split(' ');
+  const folded = words.map(simplifyWord);
+  return keptIndexes(folded, keep)
+    .filter((index) => !AGE_GROUP_OF.has(folded[index] ?? ''))
+    .map((index) => lightWord(words[index] ?? ''))
+    .join(' ');
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   formWords,
   isFormWord,
   isSaltWord,
+  lightCleaned,
   normalize,
   plainText,
   splitAgeWords,
@@ -96,6 +97,46 @@ export interface CompiledName {
    * of "DEPAKINE CHRONO") does not lead it.
    */
   leading: ReadonlySet<string>;
+  /**
+   * The name as matched with the spelling variants that change no sound only
+   * (lightCleaned): a short query close to the name only once read as it
+   * sounds is not this name ("raisin" and "ricin").
+   */
+  light: string;
+}
+
+/** What scoring reads of a name (scoreName): the name as matched, or as lightly spelt. */
+export type Scorable = Pick<
+  CompiledName,
+  'norm' | 'tri' | 'compact' | 'compactTri' | 'words' | 'containable' | 'spoken'
+>;
+
+const lightNames = new WeakMap<CompiledName, Scorable>();
+
+/** The name spelt as written (CompiledName.light), to be scored as names are; made once. */
+export function lightNameOf(name: CompiledName): Scorable {
+  let light = lightNames.get(name);
+  if (light === undefined) {
+    const norm = name.light;
+    const compact = norm.replaceAll(' ', '');
+    const parts = norm.split(' ');
+    light = {
+      norm,
+      tri: trigrams(norm),
+      compact,
+      compactTri: trigrams(compact),
+      words:
+        parts.length > 1
+          ? parts
+              .filter((part) => part.length >= MIN_ABBREVIATION_LENGTH)
+              .map((part) => ({ norm: part, tri: trigrams(part) }))
+          : [],
+      // A name inside a longer text is not read for a short query.
+      containable: false,
+    };
+    lightNames.set(name, light);
+  }
+  return light;
 }
 
 /** A word this short before a brand is a prefix joined to it ("Néo-Codion", "BI PROFENID"). */
@@ -349,6 +390,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         containable: containable(norm),
         // Once every substance name is known (below).
         leading: new Set<string>(),
+        light: lightCleaned(name.text, keepSalts),
       });
     }
   }

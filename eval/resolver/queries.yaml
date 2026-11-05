@@ -1434,3 +1434,9 @@
     type: brand,
     expect: { kind: product, id: toplexil-0-33-mg-ml-62982231 },
   }
+# A short word or a first name close to a name only once read as it sounds
+# (review of SCRUM-51): raisin and résine are not ricin, Coura is not CURACNE.
+- { query: raisin, type: noise, expect: none }
+- { query: huile de raisin, type: noise, expect: none }
+- { query: 'résine', type: noise, expect: none }
+- { query: Coura, type: noise, expect: none }

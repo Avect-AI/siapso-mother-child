@@ -67,6 +67,25 @@ describe('the resolver on the repository pack', () => {
     }
   });
 
+  // Review of SCRUM-51: a short word or a first name close to a name only
+  // once read as it sounds proposes nothing; real spellings still do.
+  it('proposes no lookalike that only the folding of a short word makes', () => {
+    for (const [query, id] of [
+      ['raisin', 'castor-oil'],
+      ['huile de raisin', 'castor-oil'],
+      ['résine', 'castor-oil'],
+      ['Coura', 'curacne-10-mg-62318935'],
+      ['coura', 'curacne-10-mg-62318935'],
+    ] as const) {
+      const found = search(index, query, { limit: 10 }).map((c) => c.id);
+      expect(found, query).not.toContain(id);
+    }
+    expect(first('rissin')).toBe('castor-oil');
+    expect(first('risin')).toBe('castor-oil');
+    expect(first('ngeur')).toBe('guiera');
+    expect(first('cotrim')).toMatch(/^cotrimoxazole-/);
+  });
+
   it('finds the plants by their names in the standard Wolof orthography', () => {
     const wolof: Record<string, string> = {
       dakhar: 'tamarind',

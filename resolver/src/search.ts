@@ -1,8 +1,14 @@
 // SPDX-License-Identifier: MIT
 import { damerauLevenshtein } from './distance.js';
-import { compiledOf, containable, infoOf, MIN_WORD_LENGTH } from './index-build.js';
-import type { CompiledIndex, CompiledName } from './index-build.js';
-import { formWords, normalize, splitAgeWords, withoutStopWords } from './normalize.js';
+import { compiledOf, containable, infoOf, lightNameOf, MIN_WORD_LENGTH } from './index-build.js';
+import type { CompiledIndex, CompiledName, Scorable } from './index-build.js';
+import {
+  formWords,
+  lightCleaned,
+  normalize,
+  splitAgeWords,
+  withoutStopWords,
+} from './normalize.js';
 import { parseStrength } from './strength.js';
 import { jaccard, trigrams } from './trigrams.js';
 import type {
@@ -152,7 +158,7 @@ function compareInFamily(a: Match, b: Match, strengthTyped: boolean): number {
  * short common word ("sel") does not reach "Fer et sélénium" through the start
  * of a longer word inside the name.
  */
-function prefixMatches(name: CompiledName, query: string): boolean {
+function prefixMatches(name: Scorable, query: string): boolean {
   if (name.norm.startsWith(query)) return true;
   return (
     query.length >= MIN_WORD_PREFIX_LENGTH && name.words.some((word) => word.norm.startsWith(query))
@@ -176,7 +182,7 @@ interface ScoredQuery {
 /** A whole name of this many letters or more, spelt within one edit, is a near match. */
 const NEAR_NAME_LENGTH = 6;
 
-function scoreName(name: CompiledName, query: ScoredQuery, floor: number): Scored {
+function scoreName(name: Scorable, query: ScoredQuery, floor: number): Scored {
   const text = query.text;
   if (text.length < MIN_PREFIX_LENGTH) {
     // 1 or 2 characters: an exact whole name or whole word only.
@@ -237,6 +243,8 @@ interface CleanQuery {
   ages: string[];
   /** The form words of the query: they choose between the forms of one product. */
   forms: string[];
+  /** The text of the name part, for lightCleaned. */
+  text: string;
 }
 
 function cleanQuery(query: string, compiled: CompiledIndex): CleanQuery {
@@ -247,7 +255,36 @@ function cleanQuery(query: string, compiled: CompiledIndex): CleanQuery {
   const { text, ages } = splitAgeWords(
     withoutStopWords(normalize(parsed.text), compiled.keepSalts),
   );
-  return { wanted: parsed.strengthMg, normalized: text, ages, forms: formWords(parsed.text) };
+  return {
+    wanted: parsed.strengthMg,
+    normalized: text,
+    ages,
+    forms: formWords(parsed.text),
+    text: parsed.text,
+  };
+}
+
+/**
+ * A query of this many letters or fewer (as matched, spaces aside) reaches a
+ * name it does not equal only when the match holds on both spelt as written
+ * too (lightCleaned): read as it sounds, the short word "raisin" is one
+ * letter from "ricin" and "Coura" starts "CURACNE" (review of SCRUM-51).
+ */
+const SHORT_FOLDED_LENGTH = 6;
+
+/** The kinds of match that a short query must also reach as written. */
+const CHECKED_AS_WRITTEN: ReadonlySet<MatchKind> = new Set([
+  'prefix',
+  'near',
+  'fuzzy',
+  'fuzzy-word',
+]);
+
+/** The query as written (lightCleaned), as scoreName reads a query. */
+function scoredAsWritten(text: string, compiled: CompiledIndex): ScoredQuery {
+  const light = lightCleaned(text, compiled.keepSalts);
+  const compact = light.replaceAll(' ', '');
+  return { text: light, tri: trigrams(light), compact, compactTri: trigrams(compact) };
 }
 
 /** Whether a product has the strength typed, in mg, or writes it in its name when it has none. */
@@ -422,7 +459,7 @@ export function search(
   const relativeCutoff = options.relativeCutoff ?? DEFAULT_RELATIVE_CUTOFF;
   const kinds = options.kinds;
   const compiled = compiledOf(index);
-  const { wanted, normalized, ages: queryAges, forms } = cleanQuery(query, compiled);
+  const { wanted, normalized, ages: queryAges, forms, text } = cleanQuery(query, compiled);
   if (normalized === '' || limit <= 0) return [];
   const queryTri = trigrams(normalized);
   const compactQuery = normalized.replaceAll(' ', '');
@@ -440,6 +477,9 @@ export function search(
   // A brand named implies its substances ("Advil codéine": ibuprofen and
   // codeine): a product lacking one ranks after the ones that hold them all.
   const required = new Set([...named, ...mentions.implied]);
+  // A short query reaches a name it does not equal only as written too.
+  const asWritten =
+    compactQuery.length <= SHORT_FOLDED_LENGTH ? scoredAsWritten(text, compiled) : undefined;
 
   const bestById = new Map<string, Match>();
   // The products one of whose names starts with the query as a whole word.
@@ -448,6 +488,14 @@ export function search(
     if (kinds && !kinds.includes(name.entry.kind)) continue;
     const missing = missingFrom(name.entry, required);
     let { score: raw, kind } = scoreName(name, scored, minScore);
+    if (
+      asWritten !== undefined &&
+      raw >= minScore &&
+      CHECKED_AS_WRITTEN.has(kind) &&
+      scoreName(lightNameOf(name), asWritten, minScore).score < minScore
+    ) {
+      raw = 0;
+    }
     if (kind === 'word' && name.leading.has(normalized)) leading.add(name.entry.id);
     if (onlySubstances && name.substance !== undefined && missing === 0) {
       const exact = (name.entry.substances ?? []).length === named.size;

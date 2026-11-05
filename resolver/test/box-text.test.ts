@@ -208,6 +208,26 @@ describe('a name contained in a longer text', () => {
     }
   });
 
+  // Review of SCRUM-51: read as it sounds, "raisin" is one letter from
+  // "ricin" ("risin"); a short word close to a name only once folded is not
+  // proposed, while a spelling of the same sound stays the name itself.
+  it('proposes no name that a short word is close to only as it sounds', () => {
+    for (const query of ['raisin', 'huile de raisin', 'résine', 'Raisins']) {
+      expect(ids(query), query).not.toContain('castor-oil');
+    }
+    for (const query of ['risin', 'rissin', 'ricin']) {
+      expect(search(index, query)[0], query).toMatchObject({ id: 'castor-oil', match: 'exact' });
+    }
+  });
+
+  it('keeps a short spelling close to a name as written: ricen, miso', () => {
+    expect(ids('ricen')[0]).toBe('castor-oil');
+    expect(search(index, 'miso')[0]).toMatchObject({
+      id: 'misoprostol-generic',
+      match: 'prefix',
+    });
+  });
+
   it('needs a word of 4 characters or more, and never the word "générique" alone', () => {
     expect(ids('un générique de la pharmacie')).toEqual([]);
     expect(ids('générique')).toEqual([]);
