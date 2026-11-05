@@ -33,7 +33,7 @@ HERE = Path(__file__).resolve().parent
 SOURCE = HERE / "requirements.in"
 LOCK = HERE / "requirements.txt"
 PYTORCH_INDEX = "https://download.pytorch.org/whl/cpu"
-CUTOFF = "2026-10-20T23:59:59"
+CUTOFF = "2026-10-22T23:59:59"
 PYTHONS = [(3, 10), (3, 11), (3, 12)]
 
 

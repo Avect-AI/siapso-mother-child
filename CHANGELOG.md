@@ -50,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The `danger-sign` message speaks of one sign ("Ce signe peut mettre la vie..."), as each danger sign gets its own card.
 - Knowledge: the orientation for castor oil at term with a uterine scar says "Montrez ce que vous prenez à la sage-femme aujourd'hui", which fits one product or several; rule and danger sign locators hold the record or document title only, their remarks are YAML comments.
 - Confirm: a known strength chosen while its family is listed with the strength unknown asks "Est-ce la même boîte que ... ?" first; the same box becomes the known strength in the list ("..., dosage non connu, devient ... dans la liste."), another box is listed apart. A family whose products have no strength in mg (DERMOVAL cream and gel) is named by its brand alone, never by one product she did not choose.
+- Speech conversion lock (`speech/convert/`): torch 2.8.0 to 2.10.0, onnx 1.19.1 to 1.22.0 and filelock 4.1.0 to 4.2.1 (Python 3.11 and 3.12; Python 3.10 keeps 4.1.0, which has no patched version), closing the open Dependabot alerts of these three packages; cutoff for new pins moved to 2026-10-22. `docs/dependencies.md` lists the alerts and the exceptions. Supersedes Dependabot pull request 28.
 
 ### Fixed
 

@@ -4,20 +4,22 @@
 #   speech/convert/.venv/Scripts/python speech/convert/lock.py hash
 #   speech/convert/.venv/Scripts/python speech/convert/lock.py check
 # Every version, transitive ones included, was published on or before
-# 2026-10-20 (PyPI and PyTorch index dates checked on 2026-11-04).
+# 2026-10-22 (PyPI and PyTorch index dates checked on 2026-11-05).
 # optimum-onnx 0.1.0 requires optimum 2.1 and transformers below 4.58, which
 # fixes the rest of the set; onnxruntime 1.23.2 needs Python 3.10 to 3.12
-# here. Supported: Windows x86_64, Linux x86_64 and aarch64, macOS arm64.
+# here. filelock 4.2.1, the fix of the open alerts, needs Python 3.11; Python 3.10
+# keeps 4.1.0 (no fixed version supports it, see docs/dependencies.md).
+# Supported: Windows x86_64, Linux x86_64 and aarch64, macOS arm64.
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Direct requirements. torch: the CPU build (the PyPI build for Linux pulls
 # the CUDA libraries); macOS has a single build.
-torch==2.8.0+cpu ; sys_platform != "darwin"
-torch==2.8.0 ; sys_platform == "darwin"
+torch==2.10.0+cpu ; sys_platform != "darwin"
+torch==2.10.0 ; sys_platform == "darwin"
 transformers==4.57.6
 optimum==2.1.0
 optimum-onnx[onnxruntime]==0.1.0
-onnx==1.19.1
+onnx==1.22.0
 onnxruntime==1.23.2
 numpy==2.2.6
 huggingface-hub==0.36.2
@@ -31,7 +33,8 @@ cffi==2.1.1
 charset-normalizer==3.5.2
 colorama==0.4.6 ; sys_platform == "win32"
 coloredlogs==15.0.1
-filelock==4.1.0
+filelock==4.2.1 ; python_version >= "3.11"
+filelock==4.1.0 ; python_version < "3.11"
 flatbuffers==25.12.19
 fsspec==2026.9.0
 hf-xet==1.7.0 ; platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "arm64" or platform_machine == "aarch64"

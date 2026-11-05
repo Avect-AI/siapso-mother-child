@@ -55,6 +55,7 @@ The first measure decoded up to 448 tokens: the same 55.6 %, 69.5 % and 30.0 % i
 - `pnpm voice:convert`: build the packs into `speech/convert/out/` (`speech/convert/README.md`).
 - `pnpm voice:install-local`: copy them, with the ONNX Runtime files and the licence texts, to `app/public/voice/` for local preview and phone tests (`docs/testing.md`).
 - `pnpm eval:speech`: word error rate of the packs on FLEURS and on consented volunteer recordings, with Transformers.js in Node; protocol, consent forms and committed results in `eval/speech/`. Baseline of 2026-11-04 (100 sentences per language): Wolof pack 54.1 % on `wo_sn`, French pack 30.3 % on `fr_fr`. Name accuracy is pending recordings.
+- Conversion tool versions (hashed lock `speech/convert/requirements.txt`, moved to patched versions on 2026-11-05, alerts in `docs/dependencies.md`): torch 2.10.0 (CPU build), onnx 1.22.0, onnxruntime 1.23.2, transformers 4.57.6, optimum 2.1.0, optimum-onnx 0.1.0, filelock 4.2.1 (Python 3.11 and 3.12; 4.1.0 on 3.10). After the move, the French pack was converted again and the 20-sentence FLEURS check gave the same 30.0 % (534 words) as before.
 - `pnpm voice:bench`: the timing bench below (`BENCH_PORT`, default 4180; `BENCH_OUT` writes the JSON report).
 
 ## Timings

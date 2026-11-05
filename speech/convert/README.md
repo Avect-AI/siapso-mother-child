@@ -11,7 +11,7 @@
 
 ## Steps
 
-From the repository root (Python 3.10, 3.11 or 3.12, the range with wheels for the pinned set; Windows x86_64, Linux x86_64 or aarch64, macOS arm64; no GPU needed, about 6 GB of free disk):
+From the repository root (Python 3.10, 3.11 or 3.12, the range with wheels for the pinned set; prefer 3.11 or 3.12, because `filelock` 4.2.1, the patched version, needs Python 3.11 and 3.10 keeps 4.1.0; Windows x86_64, Linux x86_64 or aarch64, macOS arm64; no GPU needed, about 6 GB of free disk):
 
 ```sh
 pnpm voice:convert                 # both packs; or: pnpm voice:convert --pack whisper-base-fr-q8
@@ -20,7 +20,7 @@ pnpm voice:install-local           # copies them to app/public/voice/ with the O
 
 `pnpm voice:convert` runs `sh tools/hygiene/py.sh speech/convert/convert.py`, which:
 
-1. stops with a clear message outside Python 3.10 to 3.12, creates the virtual environment `speech/convert/.venv` and installs `requirements.txt` with `pip install --require-hashes --only-binary=:all:` (every version pinned, transitive ones included, all published on or before 2026-10-20, each with the sha256 of its wheels; `torch` is the CPU build, from the PyTorch CPU index), then runs itself inside it. A missing pin, a changed file or a package with no wheel fails the installation;
+1. stops with a clear message outside Python 3.10 to 3.12, creates the virtual environment `speech/convert/.venv` and installs `requirements.txt` with `pip install --require-hashes --only-binary=:all:` (every version pinned, transitive ones included, all published on or before 2026-10-22, each with the sha256 of its wheels; `torch` is the CPU build, from the PyTorch CPU index), then runs itself inside it. A missing pin, a changed file or a package with no wheel fails the installation;
 2. downloads the source model at the pinned revision (`huggingface_hub`);
 3. exports it to ONNX with past key values with optimum (`automatic-speech-recognition-with-past`): `encoder_model.onnx` and `decoder_model_merged.onnx` (one decoder for the first step and the cached steps);
 4. quantises both graphs with ONNX Runtime dynamic quantisation, int8 weights, per channel, reduced range, subgraphs included: the `q8` data type of Transformers.js (`onnx/<name>_quantized.onnx`). Quantised operators: MatMul, and Gather for the token embedding (159 MB in 32-bit floats for Whisper small, 40 MB in int8; no measurable change in Wolof word error rate with the Wolof prompt, see `docs/voice.md` for the limits of that comparison);
