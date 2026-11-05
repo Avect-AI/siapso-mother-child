@@ -1,0 +1,20 @@
+{
+  "note": "Synthetic input, one run per graph, one thread, WebAssembly build of ONNX Runtime Web in Node (not a browser, not a phone). Indicative only.",
+  "onnxruntimeWeb": "1.31.0-dev.20260914-8d85527a0",
+  "node": "v26.13.0",
+  "cpu": "AMD Ryzen 5 8640HS w/ Radeon 760M Graphics",
+  "q8": {
+    "pack": "whisper-base-fr-q8",
+    "encoderMs": 2103,
+    "encoderOutputFinite": true,
+    "decoderFirstStepMs": 172,
+    "decoderOutputFinite": true
+  },
+  "q4": {
+    "pack": "whisper-base-fr-q4",
+    "encoderMs": 3112,
+    "encoderOutputFinite": true,
+    "decoderFirstStepMs": 508,
+    "decoderOutputFinite": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "comment": "Example data config for finetune.py. Copy it outside the repository, check every licence on the source's own page on the day you train, and fill the folders. kind 'open-folder' = a published dataset downloaded to a folder, kind 'consented-folder' = SIAPSO recordings (needs a consent reference SIAPSO-CONSENT-YYYY-NNNN and a CNERS reference CNERS-YYYY-XXXX); both use a Hugging Face audiofolder layout (audio files and a metadata.csv with a file_name column and the text column). A source with a non-commercial or unverified licence is refused; CC-BY-SA needs --allow-share-alike (see README).",
+  "sources": [
+    {
+      "name": "fleurs-wo-train",
+      "lang": "wo",
+      "kind": "hub",
+      "location": "google/fleurs",
+      "config": "wo_sn",
+      "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "split": "train",
+      "textColumn": "transcription",
+      "licence": "CC-BY-4.0"
+    },
+    {
+      "name": "kallaama-wo",
+      "lang": "wo",
+      "kind": "open-folder",
+      "location": "/data/kallaama-wolof",
+      "note": "Kallaama: OpenSLR says CC BY 4.0, the ACL copy of the paper says CC BY-NC 4.0. Refused until the team has confirmed the licence in writing; then use --allow-source kallaama-wo.",
+      "textColumn": "transcription",
+      "licence": "UNVERIFIED-CONFLICT"
+    },
+    {
+      "name": "fleurs-fr-train",
+      "lang": "fr",
+      "kind": "hub",
+      "location": "google/fleurs",
+      "config": "fr_fr",
+      "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+      "split": "train",
+      "textColumn": "transcription",
+      "licence": "CC-BY-4.0"
+    }
+  ]
+}

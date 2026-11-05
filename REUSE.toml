@@ -48,6 +48,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 [[annotations]]
 path = [
   "speech/convert/lock.py",
+  "speech/train/data.example.json",
   "speech/eval/report.ts",
   "tools/knowledge/src/load.ts",
   "tools/knowledge/test/*.test.ts",

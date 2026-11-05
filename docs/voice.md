@@ -90,6 +90,12 @@ Throttling only approximates a phone. Before the voice screen ships, measure on 
 
 To run the bench page on a phone: `pnpm --filter @siapso/speech exec vite build --config bench/vite.config.ts`, then `pnpm --filter @siapso/speech exec vite preview --config bench/vite.config.ts`, forward port 4180 over USB (`docs/testing.md`) and call `siapsoBench` from the remote DevTools console.
 
+## Lighter model (SCRUM-42)
+
+Goal: under 100 MB and usable on an entry-level phone. Measured on 2026-11-05 (`eval/speech/results/2026-11-05-4bit-summary.md`): 4-bit weights (MatMulNBits, block 32, embedding kept in int8) take the Wolof model files from 298.7 MB to 207.8 MB and the FLEURS word error rate from 54.1 % to 57.1 %; the French base pack goes from 110.2 MB to 83.0 MB and from 30.3 % to 32.1 % (100 sentences each, Node). Quantisation alone does not reach 100 MB for Whisper small, and 4-bit weights were not faster (Node, and a WebAssembly run of the encoder): they cut download and memory, not compute. The way to under 100 MB is a smaller model (Whisper base 4-bit is 83 MB), which must be fine-tuned for Wolof: that needs a GPU and consented data, so `speech/train/` holds the plan (`README.md`: data, licences, CNERS opinion, consent), the script (`finetune.py`, not run) and the options with sizes (`distill.md`).
+
+Browser support: Transformers.js 4.3.1 has the `q4` data type, and the ONNX Runtime Web build it pins contains the `MatMulNBits` operator and ran the 4-bit encoder and a decoder step in WebAssembly in Node (`speech/eval/wasm-q4-check.mjs`, output `eval/speech/results/2026-11-05-wasm-q4-check.json`; the encoder took 3.1 s against 2.1 s in 8-bit, one run on synthetic input, indicative only). A committed test (`speech/test/wasm-matmulnbits.test.ts`) checks that the pinned WebAssembly binaries contain `MatMulNBits` and run a 4-bit fixture correctly. Not tested in a browser or on a phone, and the app's worker and the pack manifest only know `q8` today.
+
 ## For the voice screen (SCRUM-31)
 
 - Build the app's worker as an ES module (`worker: { format: 'es' }`) and resolve ONNX Runtime Web with the `onnxruntime-web-use-extern-wasm` condition, as `speech/bench/vite.config.ts` does; otherwise Vite copies a 25 MB wasm file into the app bundle.

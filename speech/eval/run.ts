@@ -9,7 +9,8 @@
 //
 // Options: --pack-dir (default app/public/voice, else speech/convert/out),
 // --pack <id> (repeatable), --count (FLEURS utterances per language, 100),
-// --date, --out-dir, --no-fleurs.
+// --date, --out-dir, --no-fleurs, --dtype (q8 by default; q4 for the 4-bit
+// experiment of speech/convert/quantize_q4.py, packs named `*-q4`).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -151,6 +152,9 @@ async function main(): Promise<void> {
     );
   if (packDir === undefined) throw new Error('No voice pack found: run `pnpm voice:convert`');
   const packs = argValues(args, '--pack').length > 0 ? argValues(args, '--pack') : DEFAULT_PACKS;
+  // q8 (default, the shipped packs) or q4 (the 4-bit experiment, speech/convert/quantize_q4.py).
+  const dtype = argValues(args, '--dtype')[0] ?? 'q8';
+  if (dtype !== 'q8' && dtype !== 'q4') throw new Error('--dtype must be q8 or q4');
 
   const manifestFile = path.join(ROOT, 'eval', 'speech', 'manifest.yaml');
   const manifest = parseManifest(await readFile(manifestFile, 'utf8'));
@@ -184,7 +188,7 @@ async function main(): Promise<void> {
       await readFile(path.join(packDir, id, 'voice-pack.json'), 'utf8'),
     ) as PackInfo;
     const transcriber = (await pipeline('automatic-speech-recognition', id, {
-      dtype: 'q8',
+      dtype,
       device: 'cpu',
       local_files_only: true,
     })) as unknown as Transcriber;
@@ -269,7 +273,7 @@ async function main(): Promise<void> {
   }
 
   const environment = [
-    `Packs: ${packs.map((p) => `\`${p}\``).join(', ')}, the 8-bit ONNX graphs of the voice packs (\`speech/convert/\`), read from \`${path.basename(packDir)}\`.`,
+    `Packs: ${packs.map((p) => `\`${p}\``).join(', ')}, the ${dtype === 'q4' ? '4-bit (MatMulNBits)' : '8-bit'} ONNX graphs of the voice packs (\`speech/convert/\`), read from \`${path.basename(packDir)}\`.`,
     `Decoding: greedy, at most ${String(MAX_NEW_TOKENS)} new tokens, the decoder prompt recorded in each pack (Wolof: \`<|startoftranscript|>\` alone; French: \`<|startoftranscript|><|fr|><|transcribe|><|notimestamps|>\`), as the browser worker.`,
     `Runtime: Transformers.js ${transformersVersion} in Node ${process.version} with onnxruntime-node (CPU), ${os.platform()} ${os.arch()}, ${cpuModel()}, ${String(os.cpus().length)} logical cores. The browser uses ONNX Runtime Web (WebAssembly): same graphs, same decoding, but another ONNX Runtime build, so a word or two may differ.`,
     'Times are from this machine, not from a phone: see `docs/voice.md` for phone timings.',

@@ -30,6 +30,10 @@ Output: `speech/convert/out/<pack id>/` (git-ignored, like the venv and `app/pub
 
 `pnpm voice:install-local` (`speech/scripts/install-local.mjs`) copies each pack to `app/public/voice/<pack id>/`, adds `runtime/ort-wasm-simd-threaded.asyncify.{mjs,wasm}` from the `onnxruntime-web` version that `@huggingface/transformers` uses and the licence texts (`licenses/`, `NOTICE.md`), and records them in `voice-pack.json`. A deployment serves that folder as it is.
 
+## 4-bit experiment
+
+`quantize_q4.py` (SCRUM-42) builds a 4-bit variant of a pack from the 32-bit export that `convert.py --keep-work` leaves in `out/work/<pack id>/export/`: `MatMulNBits` weights (round to nearest, symmetric, block size 32), embedding in int8 as in the 8-bit pack, written as `onnx/*_q4.onnx` in `out/<pack id minus -q8>-q4/`. Measure it with `pnpm eval:speech --pack-dir speech/convert/out --pack whisper-small-wolof-q4 --dtype q4`. Results and the limits of the experiment: `docs/voice.md`, `speech/train/README.md`. The training and distillation plan for a smaller model is in `speech/train/`, with its own hashed lock (`lock.py hash --dir speech/train`).
+
 ## Changing a pinned version
 
 Edit `requirements.in` (keep every version on or before the cutoff, and the platform markers), then, in the venv:

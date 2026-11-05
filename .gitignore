@@ -67,5 +67,12 @@ test-results/
 # Local agent worktrees
 .claude/worktrees/
 
+# The 537-byte MatMulNBits test fixture is not a model weight
+!speech/test/fixtures/matmulnbits-4bit.onnx
+
+# Voice training: FLEURS audio cache and runs, never committed
+fleurs-cache/
+speech/train/runs/
+
 # DHIS2 export: restricted data, never committed
 open-data/dhis2/out/
