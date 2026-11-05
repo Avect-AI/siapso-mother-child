@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Avect-AI/siapso-mother-child/open-data/schema/event.schema.json",
+  "title": "SIAPSO open data event",
+  "description": "One check, summarised without identifying anyone: no profile id, no product name, no free text, no date finer than the ISO week, no place finer than the region. Every field is a number, an enumeration or a fixed pattern, and no other field is allowed. Rules a schema cannot state are checked by the code: the week exists in the ISO calendar (week 53 only in years that have one), and the sum of findings in one event is at most 30.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["week", "region", "mode", "level", "findings", "unknownItems", "unrecognisedNames"],
+  "properties": {
+    "week": {
+      "description": "ISO 8601 week of the check.",
+      "type": "string",
+      "pattern": "^20[0-9]{2}-W(0[1-9]|[1-4][0-9]|5[0-3])$"
+    },
+    "region": {
+      "description": "Stable id of one of the 14 regions of Senegal.",
+      "enum": [
+        "dakar",
+        "diourbel",
+        "fatick",
+        "kaffrine",
+        "kaolack",
+        "kedougou",
+        "kolda",
+        "louga",
+        "matam",
+        "saint-louis",
+        "sedhiou",
+        "tambacounda",
+        "thies",
+        "ziguinchor"
+      ]
+    },
+    "mode": {
+      "description": "Who ran the check.",
+      "enum": ["woman", "accompanied"]
+    },
+    "level": {
+      "description": "Highest level of the result (unknown is the grey result, which has no finding).",
+      "enum": ["unknown", "next-contact", "before-next-dose", "danger"]
+    },
+    "findings": {
+      "description": "Number of findings per check id in this check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12"],
+      "properties": {
+        "C1": { "$ref": "#/$defs/count" },
+        "C2": { "$ref": "#/$defs/count" },
+        "C3": { "$ref": "#/$defs/count" },
+        "C4": { "$ref": "#/$defs/count" },
+        "C5": { "$ref": "#/$defs/count" },
+        "C6": { "$ref": "#/$defs/count" },
+        "C7": { "$ref": "#/$defs/count" },
+        "C8": { "$ref": "#/$defs/count" },
+        "C9": { "$ref": "#/$defs/count" },
+        "C10": { "$ref": "#/$defs/count" },
+        "C11": { "$ref": "#/$defs/count" },
+        "C12": { "$ref": "#/$defs/count" }
+      }
+    },
+    "unknownItems": {
+      "description": "Number of items whose substance could not be determined.",
+      "$ref": "#/$defs/count"
+    },
+    "unrecognisedNames": {
+      "description": "Number of typed names that were not recognised (the names themselves are never sent).",
+      "$ref": "#/$defs/count"
+    }
+  },
+  "if": { "properties": { "level": { "const": "unknown" } } },
+  "then": { "properties": { "findings": { "$ref": "#/$defs/noFindings" } } },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0, "maximum": 20 },
+    "noFindings": {
+      "type": "object",
+      "properties": {
+        "C1": { "const": 0 },
+        "C2": { "const": 0 },
+        "C3": { "const": 0 },
+        "C4": { "const": 0 },
+        "C5": { "const": 0 },
+        "C6": { "const": 0 },
+        "C7": { "const": 0 },
+        "C8": { "const": 0 },
+        "C9": { "const": 0 },
+        "C10": { "const": 0 },
+        "C11": { "const": 0 },
+        "C12": { "const": 0 }
+      }
+    }
+  }
+}

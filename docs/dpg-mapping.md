@@ -92,7 +92,7 @@ Evidence:
 
 Pending:
 
-- Field dictionary for `open-data/` (planned in the aggregated open data task).
+- Field dictionary for `open-data/` in `open-data/fields.md`, method and rules in `open-data/README.md`.
 - An architecture overview and a roadmap page (neither is written yet).
 - Documentation in French for field users.
 
@@ -107,7 +107,7 @@ Evidence:
 
 Pending:
 
-- Aggregated open data (`open-data/`) is not produced yet.
+- Aggregated open data (`open-data/`): CSV and JSON Schema, with small cells suppressed. The mechanism and a synthetic test file exist; no real data is published because the app does not send events yet.
 - No export of a user profile is offered; by design no personal data leaves the phone by default. Whether a user export is wanted is a product decision for the team.
 
 ## 7. Privacy and Applicable Laws

@@ -1,0 +1,16 @@
+# TEST DATA: synthetic, not real people
+week,region,status,checks,level_unknown,level_next_contact,level_before_next_dose,level_danger,grey_share_percent,findings_c1,findings_c2,findings_c3,findings_c4,findings_c5,findings_c6,findings_c7,findings_c8,findings_c9,findings_c10,findings_c11,findings_c12,unknown_items,unrecognised_names
+2026-W45,dakar,published,51-100,15,35,20,10,20,9,11,8,11,15,12,10,7,10,15,13,8,24,79
+2026-W45,diourbel,published,11-20,<5,6,6,<5,suppressed,<5,<5,<5,<5,<5,<5,<5,5,<5,<5,<5,<5,6,23
+2026-W45,fatick,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,kaffrine,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,kaolack,published,21-50,7,8,5,5,30,<5,<5,<5,<5,<5,<5,<5,<5,<5,6,<5,7,11,27
+2026-W45,kedougou,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,kolda,published,11-20,5,<5,<5,<5,suppressed,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,7,8
+2026-W45,louga,published,11-20,<5,<5,<5,<5,suppressed,<5,<5,<5,<5,<5,<5,5,<5,<5,<5,<5,<5,6,17
+2026-W45,matam,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,saint-louis,published,21-50,10,9,8,<5,suppressed,5,5,6,<5,<5,<5,7,5,<5,<5,<5,<5,17,31
+2026-W45,sedhiou,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,tambacounda,suppressed,,,,,,,,,,,,,,,,,,,,
+2026-W45,thies,published,21-50,8,15,12,5,20,6,10,<5,<5,7,<5,<5,<5,5,<5,5,8,11,47
+2026-W45,ziguinchor,published,11-20,<5,8,<5,<5,suppressed,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,<5,14

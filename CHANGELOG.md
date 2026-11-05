@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Aggregated open data (`open-data/`, `tools/open-data/`): a pseudonymous event format validated by a JSON Schema with no extra field and no free text, deterministic counts per ISO week and region of Senegal, suppression of every (week, region) row with 10 checks or fewer, masking of counts below 5, bands for the number of checks, all 14 regions in every file, and a release policy (one immutable file per week, 4 weeks after it ends), a field dictionary, and a synthetic test file clearly labelled as test data. The app does not send events yet; `pnpm open-data:build` builds the sample CSV.
 - Licensing and governance: `REUSE.toml` (REUSE 3.3) with the SPDX texts in `LICENSES/` (MIT, CC-BY-4.0, OFL-1.1, Apache-2.0), `reuse lint` in CI (pinned in `tools/reuse/requirements.txt`), `MEDICAL_DISCLAIMER.md`, `TRADEMARKS.md`, `GOVERNANCE.md` (clinical double review by a pharmacist and a midwife, rule withdrawal within 24 hours, public change log), `THIRD_PARTY_NOTICES.md`, `docs/dpg-mapping.md` (Digital Public Goods Standard) and `docs/intended-use.md`, the shared intended-use paragraph checked by a test.
 - Repository foundation: README, MIT licence, contributing guide, code of conduct, security policy, product context (`PRODUCT.md`).
 - Text hygiene check (`tools/hygiene/hygiene.py`): no em dash, no emoji, no AI attribution, Conventional Commits subjects. Enforced by a Claude Code hook, git hooks and CI.

@@ -18,6 +18,8 @@
     "knowledge:import-bdpm": "siapso-pack import-bdpm",
     "eval:resolver": "pnpm --filter @siapso/pack-tools exec tsx src/eval-resolver.ts",
     "build": "pnpm knowledge:build && pnpm -r --if-present build",
+    "open-data:sample": "node tools/open-data/bin/siapso-open-data.js sample --output open-data/test-data/events.sample.jsonl --label \"TEST DATA: synthetic events, not real people\"",
+    "open-data:build": "node tools/open-data/bin/siapso-open-data.js build --input open-data/test-data/events.sample.jsonl --week 2026-W45 --release r1 --release-date 2026-12-06 --out-dir open-data/published --test",
     "budget:app": "node tools/budget/check-app-size.mjs",
     "e2e": "pnpm --filter @siapso/app e2e",
     "voice:convert": "sh tools/hygiene/py.sh speech/convert/convert.py",

@@ -1,0 +1,22 @@
+{
+  "name": "@siapso/open-data",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aggregated open data: counts per ISO week and region, small cells suppressed.",
+  "bin": {
+    "siapso-open-data": "./bin/siapso-open-data.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@siapso/engine": "workspace:*",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "tsx": "4.23.15"
+  }
+}
