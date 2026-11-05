@@ -7,7 +7,9 @@ fr:
   fact: 'Ce produit est utilisé traditionnellement.'
   risk: "On connaît mal les effets de ce produit pendant la grossesse ou l'allaitement."
   orientation: "Dites à la sage-femme à la prochaine visite que ce produit est utilisé : c'est pour protéger la mère et le bébé, ce n'est pas un reproche."
+  orientation-accompanied: "Dites à la sage-femme à sa prochaine visite que ce produit est utilisé : c'est pour protéger la mère et le bébé, ce n'est pas un reproche."
 en:
   fact: 'This product is used traditionally.'
   risk: 'The effects of this product during pregnancy or breastfeeding are poorly known.'
   orientation: 'Tell the midwife at the next visit that this product is used: this is to protect the mother and the baby, not to blame anyone.'
+  orientation-accompanied: 'Tell the midwife at her next visit that this product is used: this is to protect the mother and the baby, not to blame anyone.'

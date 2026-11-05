@@ -10,7 +10,7 @@ message: rifampicin-contraception
 sources:
   - source: openfda
     locator: 'Rifampin capsules drug label, Epic Pharma, LLC, set_id 0391f1e1-70d4-4b15-8b58-055bb6a385b8, effective 20231220, information for patients'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name.exact:%22RIFAMPIN%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0391f1e1-70d4-4b15-8b58-055bb6a385b8'
     accessed: 2026-11-04
     quote: 'The patient should be advised that the reliability of oral or other systemic hormonal contraceptives may be affected'
 review:

@@ -5,7 +5,8 @@ import { Link, useLocation } from 'wouter';
 import { EMERGENCY_NUMBERS } from '../config/emergency.js';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
 import { dialNameOf, phoneGroups, telHref } from '../domain/contacts.js';
-import type { InstructionSource } from '../domain/result-view.js';
+import { keepUnits, type InstructionSource } from '../domain/result-view.js';
+import { displayOf } from '../domain/search-index.js';
 import type { EmergencyNumber, ReferralContact } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
@@ -23,6 +24,13 @@ import { UNLOCK_PATH } from './Neutral.js';
 /** The route of who to call, under the danger signs. */
 export const CALL_PATH = '/danger/call';
 
+/** A product or remedy of a result's danger, as the item refers to it (shown by name). */
+interface DangerProduct {
+  kind: 'product' | 'plant';
+  id: string;
+  strengthUnknown?: true;
+}
+
 /**
  * What the screen was opened with: the signs ticked, and the instruction to
  * give, as the message that says it (never its words, so a change of language
@@ -32,6 +40,13 @@ export const CALL_PATH = '/danger/call';
 interface Opened {
   signs: string[];
   instruction: InstructionSource | null;
+  /**
+   * From a result whose danger comes from product rules: those products, said
+   * with the signs ("Dites aussi ce qu'elle prend"), and whether no danger sign
+   * was ticked (the banner is then named "Danger : à montrer maintenant").
+   */
+  products: DangerProduct[];
+  productDanger: boolean;
   /**
    * The epoch the state was left in (entry-state.ts). From a result, its
    * instruction and the check's signs say something about her, so they show
@@ -50,17 +65,34 @@ function instructionOf(value: unknown): InstructionSource | null {
   return typeof message === 'string' && message !== '' ? { message } : null;
 }
 
+/** The products of the state: product or plant references only, each once. */
+function productsOf(value: unknown): DangerProduct[] {
+  if (!Array.isArray(value)) return [];
+  const products: DangerProduct[] = [];
+  for (const entry of value as unknown[]) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const { kind, id, strengthUnknown } = entry as Record<string, unknown>;
+    if ((kind !== 'product' && kind !== 'plant') || typeof id !== 'string' || id === '') continue;
+    if (products.some((p) => p.kind === kind && p.id === id)) continue;
+    products.push(strengthUnknown === true ? { kind, id, strengthUnknown: true } : { kind, id });
+  }
+  return products;
+}
+
 /**
- * The history entry's state: the signs (strings only) and the instruction,
- * when given in this visit (an entry left before a quick exit gives nothing).
+ * The history entry's state: the signs (strings only), the instruction and
+ * the products of a danger, when given in this visit (an entry left before a
+ * quick exit gives nothing).
  */
 function openedWith(): Opened {
-  const { signs, instruction, epoch, public: withoutCode } = visitState();
+  const { signs, instruction, products, productDanger, epoch, public: withoutCode } = visitState();
   return {
     signs: Array.isArray(signs)
       ? [...new Set(signs.filter((s): s is string => typeof s === 'string'))]
       : [],
     instruction: instructionOf(instruction),
+    products: productsOf(products),
+    productDanger: productDanger === true,
     epoch: typeof epoch === 'string' ? epoch : undefined,
     withoutCode: withoutCode === true,
   };
@@ -69,12 +101,14 @@ function openedWith(): Opened {
 /**
  * What may show of what the screen was opened with. After its epoch (a lock,
  * or two minutes idle while locked), or from a result while locked: no sign,
- * and only the standard danger instruction, since a danger was said.
+ * no product, and only the standard danger instruction, since a danger was said.
  */
 function shownOf(opened: Opened, unlocked: boolean): Opened {
   const said: Opened = {
     signs: [],
     instruction: { standard: true },
+    products: [],
+    productDanger: false,
     epoch: undefined,
     withoutCode: false,
   };
@@ -151,7 +185,10 @@ function emergencyLinks(
  * "Allez au poste de santé maintenant." from the danger signs screen (she said
  * it is serious now), the result's own instruction from a result; without a
  * danger, the orientation with its condition, as on the danger signs screen.
- * Then the signs ticked, to say when calling; then, under "Circuit de
+ * The banner is named "Danger : à montrer maintenant" when the result's danger
+ * comes from a product and no sign was ticked, never "Signe de danger".
+ * Then the signs ticked, to say when calling, and the products of a result's
+ * danger ("Dites aussi ce qu'elle prend :"); then, under "Circuit de
  * référence", where to go: the built-in line and under it the deployment's
  * circuit text. Last, the contacts of the phone: "Aucun contact
  * enregistré sur ce téléphone." when there is none, and, once the code is
@@ -167,7 +204,7 @@ function emergencyLinks(
 export function Referral() {
   const t = useT();
   const lang = useLang();
-  const { pack, packError, storageTimeoutMs } = useApp();
+  const { pack, packError, storageTimeoutMs, settings } = useApp();
   const { unlocked, status } = useSession();
   const [, navigate] = useLocation();
   const [opened] = useState(openedWith);
@@ -222,6 +259,17 @@ export function Referral() {
     const sign = pack?.dangerSigns.find((d) => d.id === id);
     return sign === undefined ? [] : [sign.label[lang]];
   });
+  // What she takes, named as on the result, in the language of the moment.
+  const products =
+    pack === null
+      ? []
+      : shown.products.map(({ kind, id, strengthUnknown }) =>
+          keepUnits(displayOf(pack, { kind, id }, lang, strengthUnknown === true).name),
+        );
+  // A danger from a product, no sign ticked: never called a danger sign.
+  const levelLabel =
+    shown.productDanger && labels.length === 0 ? t('result.dangerProductLevel') : t('level.danger');
+  const mode = settings.mode ?? 'woman';
   const contacts = circuit?.contacts ?? [];
   // Locked with a code on the phone: the saved contacts wait for it.
   const behindCode = !unlocked && status !== 'new';
@@ -281,7 +329,7 @@ export function Referral() {
           <p className="orientation">{t('danger.orientation')}</p>
         </div>
       ) : (
-        <DangerBanner levelLabel={t('level.danger')} title={instruction} headingLevel={2} />
+        <DangerBanner levelLabel={levelLabel} title={instruction} headingLevel={2} />
       )}
 
       {/* The signs to say when calling. */}
@@ -291,6 +339,17 @@ export function Referral() {
           <ul>
             {labels.map((label) => (
               <li key={label}>{label}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* What she takes, when the danger comes from it. */}
+      {products.length === 0 ? null : (
+        <div className="referral__signs">
+          <p>{t(mode === 'accompanied' ? 'call.productsAccompanied' : 'call.productsWoman')}</p>
+          <ul>
+            {products.map((name) => (
+              <li key={name}>{name}</li>
             ))}
           </ul>
         </div>

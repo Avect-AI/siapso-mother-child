@@ -14,12 +14,12 @@ message: moringa-with-amodiaquine
 sources:
   - source: literature
     locator: 'Olawoye OS, Adeagbo BA, Bolaji OO. Moringa oleifera leaf powder alters the pharmacokinetics of amodiaquine in healthy human volunteers. J Clin Pharm Ther. 2018. doi:10.1111/jcpt.12725. PMID 29920710'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=29920710&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/29920710/'
     accessed: 2026-11-03
     quote: 'AUC of DEAQ increased significantly by 40.4% (P = .006) and by 188% (P = .001) after CA and PT, respectively.'
   - source: literature
     locator: 'Olawoye OS, Adeagbo BA, Bolaji OO. Moringa oleifera leaf powder alters the pharmacokinetics of amodiaquine in healthy human volunteers. J Clin Pharm Ther. 2018. doi:10.1111/jcpt.12725. PMID 29920710'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=29920710&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/29920710/'
     accessed: 2026-11-03
     quote: 'The study established pharmacokinetic interaction between AQ and MO when given together or following a long period of ingestion of MO.'
 review:

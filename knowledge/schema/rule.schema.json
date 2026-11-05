@@ -36,7 +36,8 @@
             "maxProperties": 1,
             "properties": {
               "with": { "$ref": "#/$defs/subject" },
-              "condition": { "$ref": "#/$defs/condition" }
+              "condition": { "$ref": "#/$defs/condition" },
+              "sign": { "$ref": "#/$defs/id" }
             }
           }
         },
@@ -63,6 +64,7 @@
           }
         },
         "max-mg-per-day": { "type": "number", "exclusiveMinimum": 0 },
+        "from-mg-per-day": { "type": "number", "exclusiveMinimum": 0 },
         "strength-above-mg": { "type": "number", "exclusiveMinimum": 0 }
       }
     },
@@ -70,6 +72,10 @@
     "evidence": { "enum": ["A", "B", "C", "D", "E", "0"] },
     "danger-rationale": { "type": "string", "minLength": 1, "pattern": "\\S" },
     "message": { "$ref": "#/$defs/id" },
+    "possible-message": {
+      "description": "Max-dose only: the message of a finding reached only with the highest strength of a family (the excess depends on the box).",
+      "$ref": "#/$defs/id"
+    },
     "sources": { "type": "array", "items": { "$ref": "#/$defs/source-ref" } },
     "review": {
       "type": "object",

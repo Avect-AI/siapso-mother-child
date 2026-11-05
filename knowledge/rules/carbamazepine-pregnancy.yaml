@@ -39,12 +39,12 @@ sources:
     quote: 'Si une femme devient enceinte alors qu’elle prend de la carbamazépine, elle doit être orientée vers un spécialiste afin de réévaluer le traitement par la carbamazépine et d’envisager des alternatives thérapeutiques.'
   - source: openfda
     locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, pregnancy'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8d409411-aa9f-4f3a-a52c-fbcb0c3ec053'
     accessed: 2026-11-05
     quote: 'Carbamazepine can cause fetal harm when administered to a pregnant woman.'
   - source: openfda
     locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, pregnancy'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8d409411-aa9f-4f3a-a52c-fbcb0c3ec053'
     accessed: 2026-11-05
     quote: 'Women with epilepsy who become pregnant should not abruptly discontinue antiepileptic drugs, including TEGRETOL, due to the risk of status epilepticus or severe seizures, which may be life-threatening.'
 review:

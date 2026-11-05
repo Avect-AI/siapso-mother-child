@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from 'vitest';
-import { entriesFromPack } from '../src/index.js';
+import { entriesFromPack, productFamily } from '../src/index.js';
 
 const PACK = {
   substances: [
@@ -198,5 +198,27 @@ describe('entriesFromPack', () => {
       plants: [],
     });
     expect(odd[0]?.detail).toBe('');
+  });
+});
+
+describe('productFamily', () => {
+  it('gives the family of each product entry, the same as entriesFromPack', () => {
+    for (const product of PACK.products) {
+      const families = entries.filter((e) => e.id === product.id).map((e) => e.family);
+      expect(families.length, product.id).toBeGreaterThan(0);
+      for (const family of families) expect(productFamily(product), product.id).toBe(family);
+    }
+  });
+
+  it('is the brand without its age words, or the sorted substances of a generic', () => {
+    const adult = {
+      id: 'doliprane-adultes',
+      names: { fr: 'DOLIPRANE ADULTES 1000 mg', en: 'DOLIPRANE ADULTES 1000 mg' },
+      brands: ['DOLIPRANE ADULTES'],
+      localNames: [],
+      components: [{ substance: 'paracetamol', strengthMg: 1000 }],
+    };
+    expect(productFamily(adult)).toBe(productFamily(PACK.products[0] ?? adult));
+    expect(productFamily(PACK.products[1] ?? adult)).toBe('substances:paracetamol');
   });
 });

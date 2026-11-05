@@ -72,7 +72,8 @@ test('huile de ricin typed among the medicines at term with a scar: asked first,
   await seeResult(page);
 
   await expect(page.getByRole('alert')).toContainText('Danger');
-  await expect(page.getByRole('button', { name: 'Voir qui appeler' })).toBeVisible();
+  // The banner's action, and the product danger card's (live test round 2).
+  await expect(page.getByRole('button', { name: 'Voir qui appeler' }).first()).toBeVisible();
   await expect(
     page.getByRole('article', {
       name: /^Danger\s: à montrer maintenant\. Vous avez écrit\s:\s«\shuile de ricin\s»$/,
@@ -261,5 +262,6 @@ test('"huile de ricin bio" kept as typed after "none of these" keeps the danger 
   const alert = page.getByRole('alert');
   await expect(alert).toContainText('Danger');
   await expect(alert).toContainText('(ressemble à Huile de ricin)');
-  await expect(page.getByRole('button', { name: 'Voir qui appeler' })).toBeVisible();
+  // The banner's action, and the product danger card's (live test round 2).
+  await expect(page.getByRole('button', { name: 'Voir qui appeler' }).first()).toBeVisible();
 });

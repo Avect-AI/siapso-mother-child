@@ -108,6 +108,10 @@ function fixtureMessages(lang: 'fr' | 'en', ids: string[]): Record<string, Messa
       lang === 'fr'
         ? { fact: 'Quantité totale inconnue (test).', risk: 'Risque de test.' }
         : { fact: 'Total amount unknown (fixture).', risk: 'Fixture risk.' },
+    'max-dose-may-exceed':
+      lang === 'fr'
+        ? { fact: 'Selon la boîte (test).', risk: 'Risque de test.' }
+        : { fact: 'Depends on the box (fixture).', risk: 'Fixture risk.' },
   };
   for (const id of ids) {
     messages[id] =

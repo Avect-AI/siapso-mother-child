@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: tramadol-late-pregnancy
+fr:
+  fact: 'Ce produit contient du tramadol, un médicament contre la douleur.'
+  risk: "Des cas ont été rapportés : pris longtemps pendant la grossesse, le tramadol peut provoquer un syndrome de manque chez le nouveau-né, et pris avant l'accouchement, il peut changer sa respiration."
+  risk-detail: "La notice française décrit un syndrome de sevrage chez le nouveau-né après une utilisation prolongée, et des changements de la respiration du nouveau-né quand le tramadol est pris avant ou pendant l'accouchement. La notice américaine le déconseille pendant le travail et juste avant."
+en:
+  fact: 'This product contains tramadol, a medicine for pain.'
+  risk: "Cases have been reported: taken for a long time during pregnancy, tramadol can cause withdrawal in the newborn, and taken before the birth, it can change the newborn's breathing."
+  risk-detail: "The French label describes a withdrawal syndrome in the newborn after a prolonged use, and changes in the newborn's breathing when tramadol is taken before or during labour. The US label advises against it during labour and just before."

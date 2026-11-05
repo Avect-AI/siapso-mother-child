@@ -124,6 +124,14 @@
 - id: paracetamol
   names: { fr: 'Paracétamol', en: 'Paracetamol' }
   classes: []
+  # The lowest strength of an adult form of the registry (CODOLIPRANE ADULTES
+  # 400 mg; the adult tablets, capsules and sachets are 400 to 1000 mg). With
+  # the box of unknown strength, the certain daily amount leaves out the lower
+  # strengths of a family (DOLIPRANE 200 or 300 mg and EFFERALGAN 80 to 250 mg
+  # powders are children's forms); a family with no strength of 400 mg or more
+  # (KLIPAL 300 mg) is read as it is. An engineering default for the clinical
+  # committee (knowledge/README.md, R-2).
+  adult-min-strength-mg: 400
 - id: perindopril
   names: { fr: 'Périndopril', en: 'Perindopril' }
   classes: [raas-blocker]

@@ -36,6 +36,8 @@ export interface ExpectedFinding {
   items: number[];
   sign?: string;
   term?: TermPrecision;
+  /** For a finding reached only through the term look-ahead: where its window starts. */
+  'window-start'?: number;
 }
 
 export interface ExpectedOutput {
@@ -53,6 +55,8 @@ export interface CaseItem {
   unrecognised?: string;
   'units-per-day'?: number;
   'long-term'?: boolean;
+  /** The product is confirmed but the strength on its box is not known. */
+  'strength-unknown'?: boolean;
 }
 
 export interface ReferenceCase {
@@ -187,6 +191,7 @@ function itemOf(item: CaseItem): CheckedItem {
   };
   if (item['units-per-day'] !== undefined) checked.unitsPerDay = item['units-per-day'];
   if (item['long-term'] !== undefined) checked.longTerm = item['long-term'];
+  if (item['strength-unknown'] !== undefined) checked.strengthUnknown = item['strength-unknown'];
   return checked;
 }
 
@@ -240,6 +245,7 @@ export function projectOf(evaluation: Evaluation): ExpectedOutput {
       if (f.evidence !== undefined) out.evidence = f.evidence;
       if (f.sign !== undefined) out.sign = f.sign;
       if (f.term !== undefined) out.term = f.term;
+      if (f.windowStart !== undefined) out['window-start'] = f.windowStart;
       return out;
     }),
     reminders: evaluation.reminders.map((n) => n.ruleId),

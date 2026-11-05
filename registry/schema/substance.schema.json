@@ -16,7 +16,12 @@
         "en": { "type": "string", "pattern": "\\S" }
       }
     },
-    "classes": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+    "classes": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+    "adult-min-strength-mg": {
+      "description": "The lowest strength in mg of an adult form: with the box of unknown strength, the certain amount of a daily maximum leaves out the lower strengths of the family (children's forms).",
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }

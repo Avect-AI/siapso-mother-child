@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-49-paracetamol-strength-unknown-7-units
+title: '24 weeks, paracetamol generic, strength not known, 7 a day: above the daily maximum whatever the box, and possibly toxic, said apart'
+context:
+  pregnancy: { weeks: 24 }
+  items:
+    - { product: paracetamol-generic, units-per-day: 7, strength-unknown: true }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-overdose,
+        message: paracetamol-overdose-possible,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

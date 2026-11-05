@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Kidney failure ticked in the profile, during pregnancy, breastfeeding or not.
+# No dose figure: the threshold lives only in the rule (strength-above-mg).
+id: aspirin-renal-failure
+fr:
+  fact: "Ce produit contient de l'aspirine à une dose plus forte que la petite dose parfois prescrite, ou à une dose inconnue, et la femme a une maladie des reins (insuffisance rénale)."
+  risk: "Avec une maladie des reins, l'aspirine à forte dose peut abîmer davantage les reins, comme les autres anti-inflammatoires."
+  risk-detail: "La notice française contre-indique l'aspirine à forte dose quand l'insuffisance rénale est sévère, et signale qu'un usage régulier des médicaments contre la douleur peut abîmer les reins. L'aspirine à petite dose prescrite par un médecin est un cas différent."
+  orientation: "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise. S'il a été prescrit, ne changez rien sans l'avis du médecin."
+  orientation-accompanied: "Montrez ce produit à la sage-femme ou à l'infirmier avant qu'elle en reprenne. S'il a été prescrit, elle ne doit rien changer sans l'avis du médecin."
+en:
+  fact: 'This product contains aspirin at a higher dose than the small dose sometimes prescribed, or at an unknown dose, and the woman has a kidney disease (kidney failure).'
+  risk: 'With a kidney disease, high-dose aspirin can harm the kidneys further, like the other anti-inflammatory medicines.'
+  risk-detail: 'The French label contraindicates high-dose aspirin when kidney failure is severe, and warns that a regular use of painkillers can damage the kidneys. Low-dose aspirin prescribed by a doctor is a different case.'
+  orientation: "Show this product to the midwife, the nurse or the pharmacist before the next dose. If it was prescribed, change nothing without the doctor's advice."
+  orientation-accompanied: "Show this product to the midwife or the nurse before she takes any more. If it was prescribed, she changes nothing without the doctor's advice."

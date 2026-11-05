@@ -49,6 +49,25 @@ function namedByItsBrand(product: PackNames['products'][number]): boolean {
 }
 
 /**
+ * The family of a product: `brand:` and its first brand without its age words
+ * for a brand product ("DOLIPRANE ADULTES" is a DOLIPRANE), `substances:` and
+ * its sorted substances for a generic. The confirm screen offers the products
+ * of a family as its strengths; the knowledge pack carries it with each
+ * product, so the engine reads the same strengths when the box is not known.
+ */
+export function productFamily(product: PackNames['products'][number]): string {
+  const brand = product.brands[0];
+  if (namedByItsBrand(product) && brand !== undefined) {
+    // The age words of a brand ("DOLIPRANE ADULTES") name a variant of the
+    // brand, not another brand: one family, whose age variants a query word
+    // chooses between.
+    return `brand:${splitAgeWords(normalize(brand)).text}`;
+  }
+  const substances = [...new Set(product.components.map((c) => c.substance))].sort();
+  return `substances:${substances.join('+')}`;
+}
+
+/**
  * Index entries of a pack. A brand product is indexed at priority 3 by its
  * names, brands and local names, and a second time at priority 1 by the INN
  * of its substances, so that a plain INN query lists generics first; its
@@ -84,15 +103,8 @@ export function entriesFromPack(pack: PackNames): IndexEntry[] {
       ...new Set(product.components.map((component) => component.substance)),
     ].sort();
     const brandProduct = namedByItsBrand(product);
-    // The age words of a brand ("DOLIPRANE ADULTES") name a variant of the
-    // brand, not another brand: one family, whose age variants a query word
-    // chooses between.
-    const family =
-      brandProduct && product.brands[0] !== undefined
-        ? `brand:${splitAgeWords(normalize(product.brands[0])).text}`
-        : `substances:${substanceIds.join('+')}`;
     const base = {
-      family,
+      family: productFamily(product),
       strengths: product.components.flatMap((component) =>
         component.strengthMg === undefined ? [] : [component.strengthMg],
       ),

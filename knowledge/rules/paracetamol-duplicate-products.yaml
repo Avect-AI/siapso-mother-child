@@ -11,12 +11,12 @@ message: paracetamol-duplicate-products
 sources:
   - source: openfda
     locator: 'TYLENOL Extra Strength (acetaminophen) drug label, Kenvue Brands LLC, set_id 015a6179-bacb-452d-b594-4de628ddc11d, effective 20241107'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Tylenol+Extra+Strength%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=015a6179-bacb-452d-b594-4de628ddc11d'
     accessed: 2026-11-03
     quote: 'Do not use with any other drug containing acetaminophen (prescription or nonprescription).'
   - source: openfda
     locator: 'TYLENOL Extra Strength (acetaminophen) drug label, Kenvue Brands LLC, set_id 015a6179-bacb-452d-b594-4de628ddc11d, effective 20241107'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Tylenol+Extra+Strength%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=015a6179-bacb-452d-b594-4de628ddc11d'
     accessed: 2026-11-03
     quote: 'Liver warning This product contains acetaminophen. Severe liver damage may occur'
   - source: bdpm

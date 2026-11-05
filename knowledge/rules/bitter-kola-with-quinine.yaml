@@ -14,12 +14,12 @@ message: bitter-kola-with-quinine
 sources:
   - source: literature
     locator: 'Igbinoba SI, Onyeji CO, Akanmu MA, et al. Effect of dehusked Garcinia kola seeds on the overall pharmacokinetics of quinine in healthy Nigerian volunteers. J Clin Pharmacol. 2015. doi:10.1002/jcph.414. PMID 25328082'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=25328082&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/25328082/'
     accessed: 2026-11-03
     quote: 'Concurrent administration of quinine with G. kola reduced quinine tmax by 48% (group A), mean Cmax by 19% and 26% in groups A and B, respectively'
   - source: literature
     locator: 'Igbinoba SI, Onyeji CO, Akanmu MA, et al. Effect of dehusked Garcinia kola seeds on the overall pharmacokinetics of quinine in healthy Nigerian volunteers. J Clin Pharmacol. 2015. doi:10.1002/jcph.414. PMID 25328082'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=25328082&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/25328082/'
     accessed: 2026-11-03
     quote: 'In conclusion, an herb-drug interaction was noted with concurrent quinine and G. kola administration.'
 review:

@@ -15,12 +15,12 @@ message: sp-with-cotrimoxazole
 sources:
   - source: literature
     locator: 'Pons-Duran C, Wassenaar MJ, Yovo KE, et al. Intermittent preventive treatment regimens for malaria in HIV-positive pregnant women. Cochrane Database Syst Rev. 2024. doi:10.1002/14651858.CD006689.pub3. PMID 39324693'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=39324693&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/39324693/'
     accessed: 2026-11-03
     quote: 'HIV-positive women on daily cotrimoxazole prophylaxis (recommended for prevention of opportunistic infections in people with HIV) cannot receive SP due to adverse drug interactions'
   - source: literature
     locator: 'González R, Nhampossa T, Mombo-Ngoma G, et al. Safety and efficacy of dihydroartemisinin-piperaquine for intermittent preventive treatment of malaria in pregnant women with HIV from Gabon and Mozambique: a randomised, double-blind, placebo-controlled trial. Lancet Infect Dis. 2024. doi:10.1016/S1473-3099(23)00738-7. PMID 38224706'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=38224706&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/38224706/'
     accessed: 2026-11-03
     quote: 'is contraindicated in women with HIV who are receiving co-trimoxazole prophylaxis'
   - source: ansm-thesaurus
@@ -30,13 +30,13 @@ sources:
     quote: "Anémie mégaloblastique, plus particulièrement à fortes doses des deux produits (déficit en acide folique par l'association de deux 2-4 diaminopyrimidines)."
   - source: openfda
     locator: 'Bactrim / Bactrim DS (sulfamethoxazole and trimethoprim) drug label, Sun Pharmaceutical Industries, set_id f59d0c04-9c66-4d53-a0e1-cb55570deb62, effective 20241230, drug interactions table'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22sulfamethoxazole+and+trimethoprim%22+AND+openfda.brand_name%3A%22Bactrim%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=f59d0c04-9c66-4d53-a0e1-cb55570deb62'
     accessed: 2026-11-03
     quote: 'Pyrimethamine Avoid concurrent use'
   - source: who
     # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
     locator: 'WHO guidelines for malaria, 13 August 2025: intermittent preventive treatment in pregnancy and sulfa-based medicines'
-    url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+    url: 'https://iris.who.int/handle/10665/382254'
     accessed: 2026-11-03
 review:
   status: draft

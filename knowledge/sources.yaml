@@ -23,7 +23,13 @@ allowed:
     licence: 'CC0 1.0 / public domain'
     url: 'https://open.fda.gov/'
     version: 'Label version or access date, given in each citation'
-    notice: 'openFDA drug labels, US Food and Drug Administration, CC0 1.0 / public domain.'
+    notice: 'openFDA drug labels, US Food and Drug Administration, CC0 1.0 / public domain. Citation links open the same labels on DailyMed (US National Library of Medicine, https://dailymed.nlm.nih.gov/), which shows the latest version of a label, not necessarily the effective date cited.'
+    # The openFDA API answers JSON: a citation links the readable page of the
+    # same label (its set_id) on DailyMed, the US National Library of
+    # Medicine's display of the FDA labels. DailyMed shows the latest version,
+    # which may be newer than the effective date in the locator; the quote was
+    # read in the version cited.
+    link-hosts: [dailymed.nlm.nih.gov]
     documents: en
     fr:
       name: 'Notices de médicaments des États-Unis (openFDA)'

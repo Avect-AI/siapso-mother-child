@@ -23,7 +23,7 @@ sources:
     quote: 'En cas de prise à partir de la 20 ème semaine d’aménorrhée, une surveillance cardiaque et rénale du fœtus pourrait s’avérer nécessaire.'
   - source: openfda
     locator: 'Advil (ibuprofen) drug label, Haleon US Holdings LLC, set_id 1f01c10a-9434-91a4-2ee4-352315a6b610, effective 20260729'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact%3A%22Advil%22+AND+openfda.generic_name.exact%3A%22IBUPROFEN%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=1f01c10a-9434-91a4-2ee4-352315a6b610'
     accessed: 2026-11-03
     quote: 'It is especially important not to use ibuprofen at 20 weeks or later in pregnancy unless definitely directed to do so by a doctor'
   - source: fda-dsc

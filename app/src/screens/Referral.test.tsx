@@ -667,11 +667,15 @@ describe('Who to call, from a result', () => {
     const instruction = pack.messages.fr['castor-oil-term-uterine-scar']?.orientation ?? 'missing';
     expect(await screen.findByRole('heading', { level: 2, name: instruction })).toBeVisible();
 
-    await user.click(screen.getByRole('button', { name: 'Voir qui appeler' }));
+    // The banner's action (the castor oil card offers the same way, live test round 2).
+    const calls = screen.getAllByRole('button', { name: 'Voir qui appeler' });
+    expect(calls).toHaveLength(2);
+    await user.click(calls[0] as HTMLElement);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
-    // A product's danger: its own instruction, not a sign's.
+    // A product's danger: its own instruction and level name, not a sign's.
     expect(screen.getByRole('heading', { level: 2, name: instruction })).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(/^Danger : à montrer maintenant/);
     expect(screen.queryByText('Dites ces signes au téléphone ou au poste de santé :')).toBeNull();
     expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
     vi.useRealTimers();

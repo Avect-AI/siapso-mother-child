@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# The possible excess of paracetamol-overdose (possible-message): the strength
+# on the box is not known, and the daily amount reaches twice the maximum only
+# with the highest strength of the product's family. Held at before the next
+# dose by the engine (committee question R-2), it still says the liver risk,
+# today and even without signs, with who to call. No dose figure.
+id: paracetamol-overdose-possible
+fr:
+  fact: "Le dosage écrit sur la boîte n'est pas connu : avec le plus fort dosage de ce produit, la quantité prise chaque jour atteindrait le double de la quantité maximale."
+  risk: "Selon le dosage de la boîte, cette quantité peut abîmer gravement le foie. Les signes d'une atteinte du foie n'apparaissent souvent qu'après un ou deux jours."
+  orientation: 'Montrez les boîtes au poste de santé aujourd’hui, même si tout semble aller bien.'
+  orientation-accompanied: 'Montrez les boîtes au poste de santé aujourd’hui, même si elle se sent bien.'
+en:
+  fact: 'The strength written on the box is not known: with the highest strength of this product, the amount taken each day would reach twice the daily maximum.'
+  risk: 'Depending on the strength of the box, this amount can seriously damage the liver. Signs of liver damage often appear only one or two days later.'
+  orientation: 'Show the boxes at the health post today, even if everything seems fine.'
+  orientation-accompanied: 'Show the boxes at the health post today, even if she feels well.'

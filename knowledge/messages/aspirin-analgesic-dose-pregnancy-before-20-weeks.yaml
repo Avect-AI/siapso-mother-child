@@ -1,15 +1,18 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # No dose figure: the threshold lives only in the rule (strength-above-mg).
 # Worded as nsaid-pregnancy-before-20-weeks, with the prescribed low-dose case
-# of aspirin-analgesic-dose-pregnancy.
+# of aspirin-analgesic-dose-pregnancy: the kidney risk from 12 weeks is in the
+# risk both modes read (live test round 2, SCRUM-52).
 id: aspirin-analgesic-dose-pregnancy-before-20-weeks
 fr:
   fact: "Ce produit contient de l'aspirine à une dose plus forte que la petite dose parfois prescrite pendant la grossesse, ou à une dose inconnue."
-  risk: 'Des études ont observé plus de fausses couches quand ce type de médicament est pris au début de la grossesse.'
-  risk-detail: "La notice française indique qu'avant le sixième mois, l'aspirine à forte dose ne doit être prescrite qu'en cas de nécessité absolue. À partir de 12 semaines d'aménorrhée, elle peut aussi gêner le travail des reins du bébé. L'aspirine à petite dose prescrite par un médecin pour certaines grossesses est un cas différent."
+  risk: "Des études ont observé plus de fausses couches quand ce type de médicament est pris au début de la grossesse. À partir de douze semaines d'aménorrhée, la notice signale aussi qu'il peut gêner le travail des reins du bébé."
+  risk-detail: "La notice française indique qu'avant le sixième mois, l'aspirine à forte dose ne doit être prescrite qu'en cas de nécessité absolue. L'aspirine à petite dose prescrite par un médecin pour certaines grossesses est un cas différent."
   orientation: "Dites-le à la sage-femme à la prochaine visite. S'il a été prescrit, ne changez rien sans l'avis du médecin."
+  orientation-accompanied: "Dites-le à la sage-femme à sa prochaine visite. S'il a été prescrit, elle ne doit rien changer sans l'avis du médecin."
 en:
   fact: 'This product contains aspirin at a higher dose than the small dose sometimes prescribed during pregnancy, or at an unknown dose.'
-  risk: 'Studies have seen more miscarriages when this type of medicine is taken early in pregnancy.'
-  risk-detail: "The French label says that before the sixth month high-dose aspirin should be prescribed only when absolutely necessary. From 12 weeks of amenorrhoea, it can also disturb the work of the baby's kidneys. Low-dose aspirin prescribed by a doctor for some pregnancies is a different case."
+  risk: "Studies have seen more miscarriages when this type of medicine is taken early in pregnancy. From twelve weeks of amenorrhoea, the label also warns that it can disturb the work of the baby's kidneys."
+  risk-detail: 'The French label allows high-dose aspirin before the sixth month only when it is absolutely necessary. Low-dose aspirin prescribed by a doctor for some pregnancies is a different case.'
   orientation: "Tell the midwife at the next visit. If it was prescribed, change nothing without the doctor's advice."
+  orientation-accompanied: "Tell the midwife at her next visit. If it was prescribed, she changes nothing without the doctor's advice."

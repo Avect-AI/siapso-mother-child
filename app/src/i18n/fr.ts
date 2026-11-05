@@ -121,6 +121,9 @@ export const fr = {
   conceal: {
     situations: 'Situations masquées : touchez pour les afficher',
     note: "Information masquée : touchez pour l'afficher",
+    // The reminders of a result, always behind a tap (docs/privacy.md): the
+    // button says what it holds, never a secret.
+    reminders: 'Rappels : touchez pour les afficher',
   },
   home: {
     title: 'Un médicament ou un remède ?',
@@ -522,18 +525,39 @@ export const fr = {
       'before-next-dose':
         "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
       'next-contact': 'Dites-le à la sage-femme à la prochaine visite.',
-      // Who and when (PRODUCT.md principle 2), in words that suit both modes.
-      unknown: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
+      // Who and when (PRODUCT.md principle 2): the words of the grey messages of
+      // the pack, so two grey cards never name different people.
+      unknown: 'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.',
     },
     // Accompanied mode, before the next dose: said to the person helping, at a
     // home visit or a sale at a depot (the depot keeper is not the pharmacist):
     // before she takes it again, to a health worker, never read as an order to
-    // start. The other levels keep the defaults above, the words of the grey
-    // messages of the pack, so two cards never name different people.
+    // start. The pack messages say the same in their accompanied orientation,
+    // so two cards never name different people.
     orientationAccompanied:
       "Montrez ce produit à la sage-femme ou à l'infirmier avant qu'elle en reprenne.",
     orientationProductsAccompanied:
       "Montrez ces produits à la sage-femme ou à l'infirmier avant qu'elle en reprenne.",
+    // Accompanied mode, the other levels: her next visit, never "la prochaine
+    // visite" (whose? a passer-by at a depot has no visit with the keeper).
+    orientationAccompaniedLevel: {
+      'next-contact': 'Dites-le à la sage-femme à sa prochaine visite.',
+      unknown: "Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite.",
+    },
+    // The next-contact level name in accompanied mode: her next visit.
+    levelAccompanied: {
+      'next-contact': 'À dire à sa prochaine visite',
+    },
+    // A finding reached only through the term look-ahead: when she reaches its window.
+    aheadWoman:
+      'Vous atteindrez {week} semaines dans {within} semaines au plus : ce produit demande alors plus de prudence.',
+    aheadAccompanied:
+      'Elle atteindra {week} semaines dans {within} semaines au plus : ce produit demande alors plus de prudence.',
+    // The same, for a term only estimated (months, a range): perhaps.
+    aheadWomanEstimated:
+      'Vous atteindrez peut-être {week} semaines dans les {within} semaines à venir : ce produit demande alors plus de prudence.',
+    aheadAccompaniedEstimated:
+      'Elle atteindra peut-être {week} semaines dans les {within} semaines à venir : ce produit demande alors plus de prudence.',
     // A danger held at "before the next dose" because the name typed only looks
     // like the product (possible-matches.ts): never a lower urgency when it may
     // have been taken, so it branches on intake (go now if taken, else show it
@@ -554,9 +578,12 @@ export const fr = {
     // danger sign (DESIGN.md, Levels): a product is never called a sign.
     dangerProductLevel: 'Danger : à montrer maintenant',
     // A situation ticked in the profile that no rule of the knowledge base reads.
+    // Never "add the medicine": it may already be on the list, with its own card.
     conditionNote:
-      '{situation} : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Ajoutez à la liste chaque médicament pris pour ce traitement ou cette maladie : il sera regardé comme les autres.',
+      "{situation} : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Un médicament pris pour ce traitement ou cette maladie n'est regardé que s'il est dans la liste.",
     conditionOrientation: 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
+    conditionOrientationAccompanied:
+      'Parlez-en à la sage-femme ou au médecin à sa prochaine visite.',
     // The heading of those notes, said before the cards.
     situations: 'Situations non prises en compte',
     // The reminders section, hidden behind a tap, when it holds none.
@@ -639,7 +666,15 @@ export const fr = {
     rules: 'Règles : {ids}',
     notes: 'À noter aussi',
     reminders: 'Rappels',
+    // The fixed line (spec section 2): in woman mode to her, in accompanied mode
+    // about her. Beside a daily maximum or a product danger it never says to
+    // change nothing: not to take more.
     noChange: 'Ne changez rien à votre traitement sans en parler à un professionnel.',
+    noChangeAccompanied:
+      'Elle ne doit rien changer à son traitement sans en parler à un professionnel.',
+    noMore: "N'en prenez pas plus avant d'en avoir parlé à un professionnel.",
+    noMoreAccompanied:
+      "Elle ne doit pas en prendre plus avant d'en avoir parlé à un professionnel.",
     version: 'Base de connaissances {version} du {date}',
     notValidated: "Contenu non validé cliniquement : ne l'utilisez pas seul pour décider.",
     // The same as notValidated, short, near the top of the result (the full line closes it).
@@ -680,6 +715,9 @@ export const fr = {
   call: {
     title: 'Qui appeler',
     signsLabel: 'Dites ces signes au téléphone ou au poste de santé :',
+    // From a result whose danger comes from a product: what she takes, to say too.
+    productsWoman: 'Dites aussi ce que vous prenez :',
+    productsAccompanied: "Dites aussi ce qu'elle prend :",
     contactsLabel: 'Contacts à appeler',
     loading: 'Les contacts se chargent.',
     none: 'Aucun contact enregistré sur ce téléphone.',

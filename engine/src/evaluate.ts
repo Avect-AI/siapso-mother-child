@@ -53,20 +53,69 @@ function compareFindings(a: Finding, b: Finding): number {
   );
 }
 
-function ruleFinding(rule: Rule, match: RuleMatch): Finding {
-  const { level, capped } = capForEvidence(rule.level, rule.evidence, rule.kind);
+/**
+ * The level a finding is held at when its danger is not certain now: a daily
+ * maximum exceeded only by a possible total (it depends on the box), or a
+ * window reached only through the term look-ahead (still ahead).
+ */
+const HELD_LEVEL = 'before-next-dose';
+
+/** A finding of a rule, and whether it is a possible excess the rule's level was held from. */
+interface RuledFinding {
+  finding: Finding;
+  /** Reached only with the highest strength of a family. */
+  possible: boolean;
+  /** Its rule's level was above the held level (a possible overdose). */
+  held: boolean;
+}
+
+function ruleFinding(rule: Rule, match: RuleMatch): RuledFinding {
+  const capped = capForEvidence(rule.level, rule.evidence, rule.kind);
+  const possible = match.possible === true;
+  // An excess that depends on the box, and a window still ahead, are never
+  // more than before the next dose: never a danger "go now" for what is not
+  // certain now. A possible excess says so with its own message.
+  const held =
+    (possible || match.windowStart !== undefined) &&
+    levelRank(capped.level) > levelRank(HELD_LEVEL);
   const finding: Finding = {
-    level,
+    level: held ? HELD_LEVEL : capped.level,
     check: CHECK_OF_KIND[rule.kind],
     ruleId: rule.id,
     evidence: rule.evidence,
     items: match.items,
-    message: rule.message,
-    capped,
+    message: possible ? (rule.possibleMessage ?? BUILTIN_MESSAGES.maxDoseMayExceed) : rule.message,
+    capped: capped.capped,
     sources: copySources(rule.sources),
   };
   if (match.term) finding.term = match.term;
-  return finding;
+  if (match.windowStart !== undefined) finding.windowStart = match.windowStart;
+  return { finding, possible, held: possible && held };
+}
+
+/** Every value of `part` is in `whole`. */
+function within(part: readonly number[], whole: readonly number[]): boolean {
+  return part.every((index) => whole.includes(index));
+}
+
+/**
+ * A possible excess is left out when a certain excess of at least its level
+ * already lists its items: the card already says the amount is too high,
+ * whatever the box. Never a possible overdose (a danger rule held at before
+ * the next dose): it says more than the certain card.
+ */
+function withoutSaidExcess(ruled: readonly RuledFinding[]): Finding[] {
+  const certain = ruled.filter((r) => r.finding.check === 'C7' && !r.possible);
+  return ruled
+    .filter(
+      ({ finding: f, possible, held }) =>
+        !possible ||
+        held ||
+        !certain.some(
+          ({ finding: c }) => levelRank(c.level) >= levelRank(f.level) && within(f.items, c.items),
+        ),
+    )
+    .map((r) => r.finding);
 }
 
 function reminderOf(rule: Rule): Reminder {
@@ -124,21 +173,34 @@ export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
     keys: context.items.map((item) => entryKey(pack, item)),
   };
 
-  const findings: Finding[] = [];
+  const ruled: RuledFinding[] = [];
   const reminders: Reminder[] = [];
   const notes: Note[] = [];
+  // The dose notes, each with the items whose total cannot be computed.
+  const doseNotes: { note: Note; items: number[] }[] = [];
   for (const rule of pack.rules) {
     const match = applyRule(rule, scope);
     // C7 is a level check: a total it cannot compute gives a note, never a
     // level. When the rule already triggered C7 the finding is enough, and the
     // note would contradict it.
-    if (!match && uncomputableDoseItems(rule, scope).length > 0) {
-      notes.push(noteOf(rule, 'dose', BUILTIN_MESSAGES.maxDoseNotComputable));
+    const uncomputable = match ? [] : uncomputableDoseItems(rule, scope);
+    if (uncomputable.length > 0) {
+      doseNotes.push({
+        note: noteOf(rule, 'dose', BUILTIN_MESSAGES.maxDoseNotComputable),
+        items: uncomputable,
+      });
     }
     if (!match) continue;
     if (rule.kind === 'reminder') reminders.push(reminderOf(rule));
     else if (rule.kind === 'contraception-info') notes.push(noteOf(rule, 'contraception'));
-    else findings.push(ruleFinding(rule, match));
+    else ruled.push(ruleFinding(rule, match));
+  }
+  const findings = withoutSaidExcess(ruled);
+  // Nor when another rule's dose finding already lists those items (a card
+  // saying the maximum is exceeded, beside a note saying it cannot tell).
+  const doseItems = findings.filter((f) => f.check === 'C7').map((f) => f.items);
+  for (const { note, items } of doseNotes) {
+    if (!doseItems.some((listed) => within(items, listed))) notes.push(note);
   }
 
   const withFinding = new Set(findings.flatMap((f) => f.items));
@@ -148,12 +210,13 @@ export function evaluate(pack: Pack, context: EvaluationContext): Evaluation {
   });
   findings.push(...dangerSignFindings(pack, context.signs));
   findings.sort(compareFindings);
+  notes.sort(byRuleId);
 
   return {
     level: maxLevel(findings.map((f) => f.level)),
     findings,
     reminders: reminders.sort(byRuleId),
-    notes: notes.sort(byRuleId),
+    notes,
     pack: { version: pack.version, date: pack.date, clinicallyValidated: pack.clinicallyValidated },
   };
 }

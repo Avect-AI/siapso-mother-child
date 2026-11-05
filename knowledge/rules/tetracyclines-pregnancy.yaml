@@ -23,7 +23,7 @@ sources:
     quote: "L'administration de cyclines au cours des deuxième et troisième trimestres expose le fœtus au risque de coloration des dents de lait."
   - source: openfda
     locator: 'Doxycycline hyclate drug label, NuCare Pharmaceuticals, Inc., set_id 0106a3d3-db4d-f6ee-e063-6294a90a25e9, effective 20260826'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22doxycycline+hyclate%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=0106a3d3-db4d-f6ee-e063-6294a90a25e9'
     accessed: 2026-11-03
     quote: 'The use of drugs of the tetracycline class during tooth development (last half of pregnancy, infancy and childhood to the age of 8 years) may cause permanent discoloration'
 review:

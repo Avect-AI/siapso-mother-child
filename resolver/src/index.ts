@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 export { damerauLevenshtein } from './distance.js';
-export { entriesFromPack } from './from-pack.js';
+export { entriesFromPack, productFamily } from './from-pack.js';
 export type { PackNames } from './from-pack.js';
 export { buildIndex } from './index-build.js';
 export {

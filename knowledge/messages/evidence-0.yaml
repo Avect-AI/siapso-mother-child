@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: CC-BY-4.0
 # Grey message of the remedies without reliable data. Woman mode hides the
-# fact, so the risk names its subject and stands alone, said positively.
+# fact, so the risk names its subject and stands alone, said positively. The
+# orientation is the one of every grey card (live test round 2, SCRUM-52).
 id: evidence-0
 fr:
   fact: "Nous n'avons pas d'information fiable sur ce produit pendant la grossesse ou l'allaitement."
   risk: 'On ne sait pas si ce produit peut faire du mal.'
-  orientation: 'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.'
+  orientation: 'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.'
+  orientation-accompanied: "Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite."
 en:
   fact: 'We have no reliable information on this product during pregnancy or breastfeeding.'
   risk: 'We do not know whether this product can cause harm.'
-  orientation: 'Show it to the midwife or the pharmacist at the next visit.'
+  orientation: 'Show this product to the midwife or the pharmacist at the next visit.'
+  orientation-accompanied: 'Show this product to the midwife or the nurse at her next visit.'

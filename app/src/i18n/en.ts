@@ -98,6 +98,7 @@ export const en: Dictionary = {
   conceal: {
     situations: 'Hidden situations: tap to show them',
     note: 'Hidden information: tap to show it',
+    reminders: 'Reminders: tap to show them',
   },
   home: {
     title: 'A medicine or a remedy?',
@@ -435,12 +436,27 @@ export const en: Dictionary = {
       'before-next-dose':
         'Show this product to the midwife, the nurse or the pharmacist before the next dose.',
       'next-contact': 'Tell the midwife at the next visit.',
-      unknown: 'Show it to the midwife or the pharmacist at the next visit.',
+      unknown: 'Show this product to the midwife or the pharmacist at the next visit.',
     },
     orientationAccompanied:
       'Show this product to the midwife or the nurse before she takes any more.',
     orientationProductsAccompanied:
       'Show these products to the midwife or the nurse before she takes any more.',
+    orientationAccompaniedLevel: {
+      'next-contact': 'Tell the midwife at her next visit.',
+      unknown: 'Show this product to the midwife or the nurse at her next visit.',
+    },
+    levelAccompanied: {
+      'next-contact': 'Tell at her next visit',
+    },
+    aheadWoman:
+      'You will reach {week} weeks within {within} weeks: this product then calls for more caution.',
+    aheadAccompanied:
+      'She will reach {week} weeks within {within} weeks: this product then calls for more caution.',
+    aheadWomanEstimated:
+      'You may reach {week} weeks within the next {within} weeks: this product then calls for more caution.',
+    aheadAccompaniedEstimated:
+      'She may reach {week} weeks within the next {within} weeks: this product then calls for more caution.',
     orientationHeld: {
       product:
         'If it has already been taken, go to the health post now and show it. If not, show it to the midwife or the nurse before taking any, to find out whether it is this product.',
@@ -454,8 +470,10 @@ export const en: Dictionary = {
     callNow: 'See who to call',
     dangerProductLevel: 'Danger: show now',
     conditionNote:
-      '{situation}: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
+      '{situation}: our knowledge base does not take this situation into account yet, and neither does this result. A medicine taken for this treatment or this illness is looked at only if it is on the list.',
     conditionOrientation: 'Talk about it with the midwife or the doctor at the next visit.',
+    conditionOrientationAccompanied:
+      'Talk about it with the midwife or the doctor at her next visit.',
     situations: 'Situations not taken into account',
     noReminder: 'No reminder for this result.',
     unknown: {
@@ -516,6 +534,11 @@ export const en: Dictionary = {
     notes: 'Also note',
     reminders: 'Reminders',
     noChange: 'Do not change anything in your treatment without talking to a professional.',
+    noChangeAccompanied:
+      'She does not change anything in her treatment without talking to a professional.',
+    // Never "do not take": a forbidden phrase (it reads as an order to stop).
+    noMore: 'Take no more of it before talking to a professional.',
+    noMoreAccompanied: 'She does not take any more of it before talking to a professional.',
     version: 'Knowledge base {version} of {date}',
     notValidated: 'Content not clinically validated: do not use it alone to decide.',
     notValidatedShort: 'Content not clinically validated.',
@@ -548,6 +571,8 @@ export const en: Dictionary = {
   call: {
     title: 'Who to call',
     signsLabel: 'Say these signs on the phone or at the health post:',
+    productsWoman: 'Also say what you take:',
+    productsAccompanied: 'Also say what she takes:',
     contactsLabel: 'Contacts to call',
     loading: 'Loading the contacts.',
     none: 'No contact saved on this phone.',

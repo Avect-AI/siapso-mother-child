@@ -11,6 +11,7 @@
 // hold a dose), the rule, the reminders and the contraception notes.
 import {
   BUILTIN_MESSAGES,
+  TERM_LOOKAHEAD_DAYS,
   type CheckedItem,
   type ConditionId,
   type Evaluation,
@@ -71,6 +72,8 @@ export interface FindingView {
    * like, and that what follows holds if it is that product or remedy.
    */
   possible?: string;
+  /** The Latin name inside `possible` (a remedy's), so the screen reads it in Latin. */
+  possibleLatin?: string;
   /**
    * For a card about a possible match, said after its level wherever the
    * level is said alone (the summary): "ressemble à Huile de ricin".
@@ -109,11 +112,17 @@ export interface FindingView {
   /**
    * Below the danger level, an orientation that says to go now if something
    * happens ("si le bébé dort beaucoup ... allez au poste de santé
-   * maintenant"): the card offers who to call too.
+   * maintenant"), and a danger that comes from a product: the card offers who
+   * to call too.
    */
   callNow?: true;
   /** "Terme estimé" or "terme inconnu", when a pregnancy window matched on a range. */
   termNote?: string;
+  /**
+   * When the card is reached only through the term look-ahead: when she
+   * reaches its window ("Elle atteindra 20 semaines dans 4 semaines au plus").
+   */
+  ahead?: string;
   /** Accompanied mode only: the sources of every finding of the card, each once. */
   sources?: SourceView[];
   /** Accompanied mode only: every rule of the card, in the same order. */
@@ -189,17 +198,35 @@ export interface ResultView {
   levelNote?: string;
   /** A finding is a danger: the screen leads with the danger banner. */
   danger: boolean;
+  /**
+   * The danger comes from a product rule alone, no danger sign: who to call
+   * names it "Danger : à montrer maintenant", never "Signe de danger".
+   */
+  productDanger: boolean;
+  /**
+   * The items (indexes into the evaluated items) of the danger findings that
+   * come from a product rule: who to call says them too ("Dites aussi ce
+   * qu'elle prend").
+   */
+  dangerItems: number[];
   /** One per item set and check, in engine order (shownFindings). */
   findings: FindingView[];
   /** Accompanied mode only. */
   reminders: NoteView[];
-  /** Dose notes in both modes; contraception notes in accompanied mode only. */
+  /** Dose notes in both modes, each text once; contraception notes in accompanied mode only. */
   notes: NoteView[];
   /**
    * Both modes: one note per situation of the profile that no rule of the pack
    * reads, said before the cards, since the whole result leaves it out.
    */
   situations: NoteView[];
+  /**
+   * The situations are shown at a tap only: one of them could say her HIV
+   * status to whoever sees the screen. The knowledge pack always reads that
+   * situation, so it is never listed and the notes show in clear; a pack that
+   * stopped reading it would hide them again.
+   */
+  situationsConcealed: boolean;
   fixedLines: string[];
   versionLine: string;
   notValidated: boolean;
@@ -224,11 +251,14 @@ function keyOf(finding: Finding): string {
  * `orientationOf` (a message's own orientation, undefined for the level's
  * default), a finding whose level the group already has with another
  * orientation starts a card of its own: misoprostol and the NSAID of Artotec
- * keep their two orientations. The evaluation is not changed.
+ * keep their two orientations. A finding for which it says `false` (a possible
+ * toxic amount, a danger still ahead: cardOrientationOf) joins its card
+ * whatever the others say, where orientationFinding chooses who to show and
+ * when. The evaluation is not changed.
  */
 export function cardGroups(
   findings: readonly Finding[],
-  orientationOf?: (finding: Finding) => string | undefined,
+  orientationOf?: (finding: Finding) => string | undefined | false,
 ): Finding[][] {
   const groups = new Map<string, Finding[][]>();
   for (const finding of findings) {
@@ -236,8 +266,12 @@ export function cardGroups(
     const cards = groups.get(key) ?? [];
     const fits = (card: readonly Finding[]) =>
       orientationOf === undefined ||
+      orientationOf(finding) === false ||
       card.every(
-        (other) => other.level !== finding.level || orientationOf(other) === orientationOf(finding),
+        (other) =>
+          other.level !== finding.level ||
+          orientationOf(other) === false ||
+          orientationOf(other) === orientationOf(finding),
       );
     const card = cards.find(fits);
     if (card) card.push(finding);
@@ -330,8 +364,11 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
   return names.length === 0 ? [{ name: scope.t(`level.${finding.level}`), typed: false }] : names;
 }
 
-/** "Ce nom ressemble à ADVIL 400 mg (Ibuprofène 400 mg). Si c'est ce produit :", for a card about a possible match. */
-function possibleOf(scope: Scope, finding: Finding): string | undefined {
+/**
+ * "Ce nom ressemble à ADVIL 400 mg (Ibuprofène 400 mg). Si c'est ce produit :",
+ * for a card about a possible match, with the Latin name of a remedy apart.
+ */
+function possibleOf(scope: Scope, finding: Finding): { text: string; latin?: string } | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
   if (index !== undefined && item !== undefined && item.ref.kind !== 'unrecognised') {
@@ -340,13 +377,17 @@ function possibleOf(scope: Scope, finding: Finding): string | undefined {
     // A product or remedy already in the list: "Ce nom ressemble à ..., déjà dans la liste."
     const listed = scope.possible?.get(index)?.listed === true ? 'Listed' : '';
     const kind = item.ref.kind === 'plant' ? 'Plant' : 'Product';
-    return scope.t(`result.possible${kind}${listed}`, { name });
+    const text = scope.t(`result.possible${kind}${listed}`, { name });
+    return shown.detailLang === 'la' && shown.detail !== undefined
+      ? { text, latin: shown.detail }
+      : { text };
   }
   // The grey card of the name typed itself, read after its possible match: "Si ce n'est pas ce produit :".
   for (const [added, { forItem }] of scope.possible ?? []) {
     const ref = scope.items[added]?.ref;
     if (!finding.items.includes(forItem) || ref === undefined) continue;
-    return scope.t(ref.kind === 'plant' ? 'result.possibleNotPlant' : 'result.possibleNotProduct');
+    const key = ref.kind === 'plant' ? 'result.possibleNotPlant' : 'result.possibleNotProduct';
+    return { text: scope.t(key) };
   }
   return undefined;
 }
@@ -385,13 +426,14 @@ export function joinNames(names: readonly string[], lang: Lang): string {
 }
 
 /**
- * The level's default orientation (spec section 10): before the next dose, in
- * accompanied mode, worded for the person helping, at a visit or at a sale
- * (before she takes any, to a health worker); the other levels say the same
- * in both modes, as the grey messages of the pack do. For "we do not know" it
- * first says that there is no reliable information and that nobody knows
- * whether the product can harm, leaving out what the card has just said
- * (`said`: what is read before the orientation).
+ * The level's default orientation (spec section 10): in accompanied mode,
+ * worded for the person helping, at a visit or at a sale, about her (before
+ * she takes any, to a health worker; at her next visit), as the accompanied
+ * orientations of the pack messages, so the cards of one result name the same
+ * people and timing in each mode. For "we do not know" it first says that
+ * there is no reliable information and that nobody knows whether the product
+ * can harm, leaving out what the card has just said (`said`: what is read
+ * before the orientation).
  */
 function defaultOrientation(scope: Scope, finding: Finding, said: string): string {
   const { t, mode } = scope;
@@ -403,7 +445,10 @@ function defaultOrientation(scope: Scope, finding: Finding, said: string): strin
     }
     return t(several ? 'result.orientationProducts' : 'result.orientation.before-next-dose');
   }
-  const orientation = t(`result.orientation.${finding.level}`);
+  const orientation =
+    accompanied && finding.level !== 'danger'
+      ? t(`result.orientationAccompaniedLevel.${finding.level}`)
+      : t(`result.orientation.${finding.level}`);
   if (finding.level !== 'unknown') return orientation;
   const text = said.toLowerCase().replace(/[’]/g, "'");
   const says = (...keys: MessageKey[]) => keys.some((key) => text.includes(t(key)));
@@ -424,10 +469,77 @@ function defaultOrientation(scope: Scope, finding: Finding, said: string): strin
  */
 function heldDanger(scope: Scope, finding: Finding): 'product' | 'plant' | undefined {
   if (finding.level === 'danger' || finding.ruleId === undefined) return undefined;
+  // A daily maximum that depends on the box, and a window still ahead, are held
+  // by the engine, not for a resemblance.
+  if (finding.check === 'C7' || finding.windowStart !== undefined) return undefined;
   if (scope.pack.rules.find((r) => r.id === finding.ruleId)?.level !== 'danger') return undefined;
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const kind = index === undefined ? undefined : scope.items[index]?.ref.kind;
   return kind === 'product' || kind === 'plant' ? kind : undefined;
+}
+
+/** The level the pack's rule of a finding declares, when the finding is a rule's. */
+function declaredLevel(scope: Pick<Scope, 'pack'>, finding: Finding): Level | undefined {
+  return finding.ruleId === undefined
+    ? undefined
+    : scope.pack.rules.find((r) => r.id === finding.ruleId)?.level;
+}
+
+/**
+ * A danger rule the engine held at a lower level because its window is still
+ * ahead (reached only through the term look-ahead): its "go now" waits.
+ */
+function dangerAhead(scope: Pick<Scope, 'pack'>, finding: Finding): boolean {
+  return (
+    finding.windowStart !== undefined &&
+    finding.level !== 'danger' &&
+    declaredLevel(scope, finding) === 'danger'
+  );
+}
+
+/**
+ * A possible toxic amount: a daily maximum of a danger rule reached only with
+ * the highest strength of a box of unknown strength, held at before the next
+ * dose (committee question R-2), which still says today and who to call.
+ */
+function possibleOverdose(scope: Pick<Scope, 'pack'>, finding: Finding): boolean {
+  return (
+    finding.check === 'C7' &&
+    finding.level !== 'danger' &&
+    finding.windowStart === undefined &&
+    declaredLevel(scope, finding) === 'danger'
+  );
+}
+
+/**
+ * The finding whose message says who to show and when on a card: among the
+ * findings of the card's level, a possible toxic amount first, else the first
+ * that is not a danger still ahead; none (the level's default) when every one
+ * is a danger still ahead.
+ */
+function orientationFinding(scope: Scope, group: readonly Finding[]): Finding | undefined {
+  const level = group[0]?.level;
+  const same = group.filter((f) => f.level === level);
+  return same.find((f) => possibleOverdose(scope, f)) ?? same.find((f) => !dangerAhead(scope, f));
+}
+
+/**
+ * What the result groups the findings of one item set and check by
+ * (cardGroups): a finding's own orientation in the language (undefined for
+ * the level's default), so two findings of one level that say different
+ * things get a card each (Artotec: misoprostol and an NSAID); `false` for a
+ * possible toxic amount or a danger still ahead, which stay with their card,
+ * where orientationFinding chooses who to show and when.
+ */
+export function cardOrientationOf(
+  pack: Pack,
+  lang: Lang,
+): (finding: Finding) => string | undefined | false {
+  const scope = { pack };
+  return (finding) =>
+    possibleOverdose(scope, finding) || dangerAhead(scope, finding)
+      ? false
+      : pack.messages[lang][finding.message]?.orientation;
 }
 
 /** The words that say now in an orientation (whole words, any case). */
@@ -466,17 +578,24 @@ function dangerInstruction(
   };
 }
 
-/** A card under a danger banner leaves who to call to the banner's action. */
-function withoutCall(card: FindingView): FindingView {
-  if (card.callNow === undefined) return card;
+/**
+ * A card under a danger banner leaves who to call to the banner's action,
+ * except a danger that comes from a product: its card says its instruction
+ * and who to call too, so a card read aloud on its own says what to do.
+ */
+function withoutCall(card: FindingView, productDanger: boolean): FindingView {
+  if (card.callNow === undefined || productDanger) return card;
   const rest: FindingView = { ...card };
   delete rest.callNow;
   return rest;
 }
 
-/** A danger card whose orientation is the banner's instruction leaves it to the banner. */
-function saidInBanner(card: CardView, instruction: string): FindingView {
-  return card.level === 'danger' && card.orientation === instruction
+/**
+ * A danger sign card whose orientation is the banner's instruction leaves it
+ * to the banner (said once); a product danger card keeps it.
+ */
+function saidInBanner(card: CardView, instruction: string, productDanger: boolean): FindingView {
+  return card.level === 'danger' && !productDanger && card.orientation === instruction
     ? { ...card, orientation: { inBanner: true } }
     : card;
 }
@@ -496,13 +615,23 @@ function aboutTheBase(finding: Finding): boolean {
 }
 
 /**
+ * The name of a level: in accompanied mode, the next visit is hers ("À dire à
+ * sa prochaine visite"), the words of the accompanied orientations.
+ */
+function levelName(t: Translate, level: Level, mode: Mode): string {
+  return mode === 'accompanied' && level === 'next-contact'
+    ? t('result.levelAccompanied.next-contact')
+    : t(`level.${level}`);
+}
+
+/**
  * The level name of a finding: a danger that comes from a product rule is
  * never called a danger sign (DESIGN.md, Levels).
  */
-function levelLabelOf(t: Translate, finding: Finding): string {
+function levelLabelOf(t: Translate, finding: Finding, mode: Mode): string {
   return finding.level === 'danger' && finding.sign === undefined
     ? t('result.dangerProductLevel')
-    : t(`level.${finding.level}`);
+    : levelName(t, finding.level, mode);
 }
 
 /**
@@ -592,18 +721,26 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   // intake: go now if it was taken, else show it first to find out whether it
   // is the product (committee question N-3). Its urgency is never lowered.
   const held = heldDanger(scope, finding);
+  const accompanied = scope.mode === 'accompanied';
+  // Who to show and when comes from the finding of the card's level that
+  // says it best: a possible toxic amount first (today, with who to call),
+  // never a danger still ahead (its "go now" waits for its window).
+  const voice = orientationFinding(scope, group);
+  const spoken = voice === undefined ? undefined : messageOf(scope, voice.message);
+  // In accompanied mode, the message's own words for the person helping, about her.
+  const own = (accompanied ? spoken?.orientationAccompanied : undefined) ?? spoken?.orientation;
   const orientation =
     held === undefined
-      ? (message.orientation ?? defaultOrientation(scope, finding, said))
+      ? (own ?? defaultOrientation(scope, finding, said))
       : t(
-          scope.mode === 'accompanied'
+          accompanied
             ? `result.orientationHeld.${held}Accompanied`
             : `result.orientationHeld.${held}`,
         );
   const view: CardView = {
     key: `${keyOf(finding)}|${finding.ruleId ?? finding.message}`,
     level: finding.level,
-    levelLabel: levelLabelOf(t, finding),
+    levelLabel: levelLabelOf(t, finding, scope.mode),
     title: joinNames(shown, scope.lang),
     names: shown,
     risks,
@@ -613,10 +750,23 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   const typed = names.filter((n) => n.typed).map((n) => n.name);
   if (typed.length > 0) view.typed = typed;
   const heard = names.filter((n) => n.typed && n.said === true).map((n) => n.name);
-  if (finding.level !== 'danger' && NOW[scope.lang].test(orientation)) view.callNow = true;
+  // A product danger offers who to call on its card; below the danger level, a
+  // card whose orientation says to go now if something happens does too.
+  const productDanger = finding.level === 'danger' && !sign;
+  const possibleToxic = voice !== undefined && possibleOverdose(scope, voice);
+  if (
+    productDanger ||
+    possibleToxic ||
+    (finding.level !== 'danger' && NOW[scope.lang].test(orientation))
+  ) {
+    view.callNow = true;
+  }
   if (signFact) view.lead = message.fact;
   const possible = possibleOf(scope, finding);
-  if (possible !== undefined) view.possible = possible;
+  if (possible !== undefined) {
+    view.possible = possible.text;
+    if (possible.latin !== undefined) view.possibleLatin = possible.latin;
+  }
   const resembles = resemblesOf(scope, finding);
   if (resembles !== undefined) view.resembles = resembles;
   const written = writtenOf(scope, finding);
@@ -628,6 +778,20 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   if (voiced.length > 0) view.said = voiced;
   if (finding.term === 'estimated' || finding.term === 'unknown') {
     view.termNote = t(`result.term.${finding.term}`);
+  }
+  // When she reaches the window of a finding of the card reached only through
+  // the look-ahead; "perhaps" for a term only estimated.
+  const ahead = group.find((f) => f.windowStart !== undefined);
+  if (ahead?.windowStart !== undefined) {
+    const estimated = ahead.term === 'estimated' || ahead.term === 'unknown';
+    const key = accompanied
+      ? estimated
+        ? 'result.aheadAccompaniedEstimated'
+        : 'result.aheadAccompanied'
+      : estimated
+        ? 'result.aheadWomanEstimated'
+        : 'result.aheadWoman';
+    view.ahead = t(key, { week: ahead.windowStart, within: TERM_LOOKAHEAD_DAYS / 7 });
   }
   if (mode === 'woman') return view;
 
@@ -643,13 +807,28 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
 function noteView(scope: Scope, note: Reminder, kind: Note['kind'] | 'reminder'): NoteView {
   const message = messageOf(scope, note.message);
   const view: NoteView = { key: `${kind}:${note.ruleId}`, text: `${message.fact} ${message.risk}` };
-  if (message.orientation !== undefined) view.orientation = message.orientation;
+  const orientation =
+    (scope.mode === 'accompanied' ? message.orientationAccompanied : undefined) ??
+    message.orientation;
+  if (orientation !== undefined) view.orientation = orientation;
   if (kind === 'contraception') view.concealed = true;
   return view;
 }
 
+/**
+ * The notes a mode shows, each message once: two daily maximums of one
+ * substance (paracetamol-max-daily, paracetamol-overdose) give the same dose
+ * note, said once.
+ */
 function shownNotes(notes: readonly Note[], mode: Mode): Note[] {
-  return notes.filter((note) => note.kind === 'dose' || mode === 'accompanied');
+  const seen = new Set<string>();
+  return notes.filter((note) => {
+    if (note.kind !== 'dose' && mode !== 'accompanied') return false;
+    const key = `${note.kind}|${note.message}`;
+    if (note.kind === 'dose' && seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Whether a rule of the pack reads a situation, as a requirement or as an exception. */
@@ -662,18 +841,28 @@ function readByARule(pack: Pack, condition: ConditionId): boolean {
 }
 
 /**
+ * The situations whose mere mention can say a secret to whoever sees the
+ * screen (docs/privacy.md): a note about one of them hides the whole section.
+ */
+const SENSITIVE_CONDITIONS: readonly ConditionId[] = ['hiv-cotrimoxazole'];
+
+/**
  * One note, in both modes, for each situation of the profile that no rule of
  * the pack reads: the result says plainly that it does not take it into
  * account, rather than staying silent about a question the profile asked.
  */
 function conditionNotes(scope: Scope, conditions: readonly ConditionId[]): NoteView[] {
-  const { pack, t } = scope;
+  const { pack, t, mode } = scope;
   return distinct(conditions)
     .filter((condition) => !readByARule(pack, condition))
     .map((condition) => ({
       key: `condition:${condition}`,
       text: t('result.conditionNote', { situation: t(`profile.condition.${condition}`) }),
-      orientation: t('result.conditionOrientation'),
+      orientation: t(
+        mode === 'accompanied'
+          ? 'result.conditionOrientationAccompanied'
+          : 'result.conditionOrientation',
+      ),
     }));
 }
 
@@ -681,10 +870,25 @@ function conditionNotes(scope: Scope, conditions: readonly ConditionId[]): NoteV
  * The level name of the result, said first in the danger banner: a danger
  * sign's when a sign is present, else the product danger's.
  */
-function resultLevelLabel(t: Translate, evaluation: Evaluation): string {
-  if (evaluation.level !== 'danger') return t(`level.${evaluation.level}`);
+function resultLevelLabel(t: Translate, evaluation: Evaluation, mode: Mode): string {
+  if (evaluation.level !== 'danger') return levelName(t, evaluation.level, mode);
   const sign = evaluation.findings.some((f) => f.level === 'danger' && f.sign !== undefined);
   return sign ? t('level.danger') : t('result.dangerProductLevel');
+}
+
+/**
+ * The fixed line that ends every result (spec section 2): "change nothing in
+ * the treatment without a professional", to her or about her. Beside a daily
+ * maximum or a danger that comes from a product it would contradict the card
+ * ("before the next dose", "go now"), so it says not to take more instead.
+ */
+function fixedLine(t: Translate, evaluation: Evaluation, mode: Mode): string {
+  const more = evaluation.findings.some(
+    (f) => f.check === 'C7' || (f.level === 'danger' && f.sign === undefined),
+  );
+  const accompanied = mode === 'accompanied';
+  if (more) return t(accompanied ? 'result.noMoreAccompanied' : 'result.noMore');
+  return t(accompanied ? 'result.noChangeAccompanied' : 'result.noChange');
 }
 
 /**
@@ -713,31 +917,51 @@ export function buildResultView(
     version: evaluation.pack.version,
     date: formatDate(evaluation.pack.date, lang),
   };
-  const levelLabel = resultLevelLabel(t, evaluation);
+  const levelLabel = resultLevelLabel(t, evaluation, mode);
   const danger = evaluation.level === 'danger';
   // A message's own orientation, so that one card never hides another of its level.
-  const groups = cardGroups(
-    evaluation.findings,
-    (finding) => pack.messages[lang][finding.message]?.orientation,
-  );
+  const groups = cardGroups(evaluation.findings, cardOrientationOf(pack, lang));
   const cards = groups.map((group) => findingView(scope, group));
   const instruction = danger ? dangerInstruction(scope, cards, groups) : null;
   const headline = instruction?.text ?? levelLabel;
+  // Whether each card is a danger that comes from a product (not a danger sign).
+  const fromProduct = groups.map((group) => {
+    const first = group[0];
+    return first?.level === 'danger' && first.sign === undefined;
+  });
+  const productFindings = evaluation.findings.filter(
+    (f) => f.level === 'danger' && f.sign === undefined,
+  );
+  const situations = conditionNotes(scope, conditions);
   const view: ResultView = {
     level: evaluation.level,
     levelLabel,
     headline,
     danger,
-    // The danger instruction is said once, in the banner, and who to call is its
-    // action alone: it carries the danger and the signs, a card's link would not.
-    findings: danger ? cards.map((card) => withoutCall(saidInBanner(card, headline))) : cards,
+    productDanger:
+      danger &&
+      productFindings.length > 0 &&
+      evaluation.findings.every((f) => f.sign === undefined),
+    dangerItems: [...new Set(productFindings.flatMap((f) => f.items))].sort((a, b) => a - b),
+    // A danger sign's instruction is said once, in the banner, and who to call
+    // is the banner's action: it carries the danger and the signs. A product
+    // danger card says its own instruction and offers who to call too.
+    findings: danger
+      ? cards.map((card, index) => {
+          const product = fromProduct[index] === true;
+          return withoutCall(saidInBanner(card, headline, product), product);
+        })
+      : cards,
     reminders:
       mode === 'accompanied'
         ? evaluation.reminders.map((reminder) => noteView(scope, reminder, 'reminder'))
         : [],
     notes: shownNotes(evaluation.notes, mode).map((note) => noteView(scope, note, note.kind)),
-    situations: conditionNotes(scope, conditions),
-    fixedLines: [t('result.noChange')],
+    situations,
+    situationsConcealed: situations.some((note) =>
+      SENSITIVE_CONDITIONS.some((condition) => note.key === `condition:${condition}`),
+    ),
+    fixedLines: [fixedLine(t, evaluation, mode)],
     versionLine: t('result.version', { version: scope.version, date: scope.date }),
     notValidated: !evaluation.pack.clinicallyValidated,
     closing: t('result.closing'),
