@@ -26,9 +26,9 @@ function newestFirst(
 }
 
 /**
- * The entry of an evaluation: every rule id of its findings, in engine order
- * (the screen shows one card per item set and check; the history keeps them
- * all), and copies of the items and signs.
+ * The entry of an evaluation: every rule id of its findings, each once, in
+ * engine order (the screen shows one card per item set and check; the history
+ * keeps them all), and copies of the items and signs.
  */
 export function historyEntryOf({
   id,
@@ -51,7 +51,10 @@ export function historyEntryOf({
     at,
     packVersion: evaluation.pack.version,
     level: evaluation.level,
-    ruleIds: evaluation.findings.flatMap((f) => (f.ruleId === undefined ? [] : [f.ruleId])),
+    // Each rule once: a name typed that looks like a listed product copies its cards.
+    ruleIds: [
+      ...new Set(evaluation.findings.flatMap((f) => (f.ruleId === undefined ? [] : [f.ruleId]))),
+    ],
     items: items.map((item) => ({ ...item, ref: { ...item.ref } })),
     signs: [...signs],
   };

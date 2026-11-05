@@ -269,4 +269,38 @@ describe('historyEntryOf', () => {
     // A copy: changing the check later does not change the history.
     expect(made.items[0]).not.toBe(items[0]);
   });
+
+  // A name typed that looks like a listed product copies its cards (SCRUM-51):
+  // a rule is kept once, in the order it first appears.
+  it('keeps each rule id once', () => {
+    const finding = (ruleId: string, item: number) => ({
+      level: 'danger' as const,
+      check: 'C1' as const,
+      ruleId,
+      items: [item],
+      message: ruleId,
+      capped: false,
+      sources: [],
+    });
+    const made = historyEntryOf({
+      id: 'h2',
+      at: '2026-11-05T09:00:00.000Z',
+      profileId: 'p1',
+      evaluation: {
+        level: 'danger',
+        findings: [
+          finding('misoprostol-late-pregnancy', 0),
+          finding('misoprostol-pregnancy', 0),
+          finding('misoprostol-late-pregnancy', 2),
+          finding('misoprostol-pregnancy', 2),
+        ],
+        reminders: [],
+        notes: [],
+        pack: { version: '0.1.0', date: '2026-11-04', clinicallyValidated: false },
+      },
+      items: [],
+      signs: [],
+    });
+    expect(made.ruleIds).toEqual(['misoprostol-late-pregnancy', 'misoprostol-pregnancy']);
+  });
 });
