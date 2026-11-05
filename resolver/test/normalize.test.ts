@@ -11,6 +11,17 @@ describe('plainText', () => {
     expect(plainText('Néo-Codion')).toBe('neo codion');
     expect(plainText(' -- ')).toBe('');
   });
+
+  // The Wolof orthography writes ñ and ŋ for the sounds French spelling
+  // writes "gn" or "ny" and "ng" (SCRUM-61): ñ is not n.
+  it('reads the Wolof letters ñ as ny and ŋ as ng, ë and é as e', () => {
+    expect(plainText('Ñaar')).toBe('nyaar');
+    expect(plainText('dañu')).toBe('danyu');
+    expect(plainText('ŋeen')).toBe('ngeen');
+    expect(plainText('gëm déedéet')).toBe('gem deedeet');
+    // Decomposed (NFD) input reads the same.
+    expect(plainText('ñaar')).toBe('nyaar');
+  });
 });
 
 describe('normalize: base rules', () => {

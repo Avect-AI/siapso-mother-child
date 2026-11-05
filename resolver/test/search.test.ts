@@ -233,3 +233,24 @@ describe('search options', () => {
     );
   });
 });
+
+describe('how a candidate matched, at an equal score', () => {
+  // SCRUM-61: "efaralgan" is the brand EFFERALGAN within one edit (near), at
+  // the same score as a close word of its French name (fuzzy-word): the
+  // clearer way it matched is the one said.
+  it('says the clearer kind of match of its names', () => {
+    const index = buildIndex([
+      entry({
+        id: 'efferalgan-1000',
+        priority: 3,
+        names: [
+          { text: 'EFFERALGAN 1000 mg, comprimé effervescent', lang: 'fr' },
+          { text: 'EFFERALGAN', lang: 'brand' },
+        ],
+      }),
+    ]);
+    const [first] = search(index, 'efaralgan');
+    expect(first?.id).toBe('efferalgan-1000');
+    expect(first?.match).toBe('near');
+  });
+});

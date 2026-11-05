@@ -121,6 +121,23 @@ function compare(a: Match, b: Match, byName = false): number {
   );
 }
 
+/** The kinds of match, clearest first: at an equal score, a candidate says the clearest. */
+const KIND_ORDER: readonly MatchKind[] = [
+  'exact',
+  'word',
+  'contained',
+  'substances',
+  'prefix',
+  'near',
+  'fuzzy',
+  'fuzzy-word',
+];
+
+/** Whether a kind of match says more clearly which name it is than another. */
+function clearer(kind: MatchKind, than: MatchKind): boolean {
+  return KIND_ORDER.indexOf(kind) < KIND_ORDER.indexOf(than);
+}
+
 /** Only for newborns or children: an age group, and not the adults'. */
 function onlyForChildren(ages: ReadonlySet<string>): boolean {
   return ages.size > 0 && !ages.has('adult');
@@ -523,7 +540,12 @@ export function search(
       missing,
     };
     const known = bestById.get(name.entry.id);
-    if (!known || compare(match, known) < 0) bestById.set(name.entry.id, match);
+    const order = known === undefined ? -1 : compare(match, known);
+    // At an equal rank, the clearer way one of its names matched is the one
+    // said ("efaralgan": EFFERALGAN within one edit, not a close word).
+    if (order < 0 || (order === 0 && known !== undefined && clearer(match.kind, known.kind))) {
+      bestById.set(name.entry.id, match);
+    }
   }
 
   const bestByFamily = new Map<string, Match>();

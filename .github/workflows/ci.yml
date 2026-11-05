@@ -56,6 +56,8 @@ jobs:
         run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
       - run: pnpm knowledge:check
       - run: pnpm eval:resolver
+      # The products found inside a sentence (eval/speech/sentences.yaml, SCRUM-61).
+      - run: pnpm eval:sentences
       # pnpm build is the demo build (Vite mode demo, app/.env.demo, into
       # app/dist-demo): it accepts the unsigned pack and is never published.
       # CI does not sign packs: the release workflow will, with a protected

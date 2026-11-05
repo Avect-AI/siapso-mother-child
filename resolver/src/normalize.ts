@@ -39,14 +39,19 @@ function simplifyWord(word: string): string {
 }
 
 /**
- * Lowercase, strip accents, turn apostrophes, hyphens and any other character
- * that is not a letter or a digit into spaces, collapse spaces and trim. The
- * text as written, every spelling kept: the order of names and their first
- * letter are read on it ("Cytotec" under C, "comprimé" before "gélule").
+ * Lowercase, read the Wolof letters ñ as "ny" and ŋ as "ng" (the sounds French
+ * spelling writes "gn" and "ng": "dañu", "danyu"), strip accents (ë and é are
+ * e), turn apostrophes, hyphens and any other character that is not a letter
+ * or a digit into spaces, collapse spaces and trim. The text as written, every
+ * spelling kept: the order of names and their first letter are read on it
+ * ("Cytotec" under C, "comprimé" before "gélule").
  */
 export function plainText(text: string): string {
   return text
     .toLowerCase()
+    .normalize('NFC')
+    .replaceAll('ñ', 'ny')
+    .replaceAll('ŋ', 'ng')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')

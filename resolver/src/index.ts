@@ -3,6 +3,8 @@ export { damerauLevenshtein } from './distance.js';
 export { entriesFromPack, productFamily } from './from-pack.js';
 export type { PackNames } from './from-pack.js';
 export { buildIndex } from './index-build.js';
+export { matchStrength } from './match-strength.js';
+export type { MatchStrength } from './match-strength.js';
 export {
   AGE_WORDS,
   formWords,
@@ -13,6 +15,15 @@ export {
   STOP_WORDS,
   withoutStopWords,
 } from './normalize.js';
+export { productsInSentence, respellingsOf } from './sentence.js';
+export type { SentenceProduct } from './sentence.js';
+export {
+  AMBIGUOUS_NAME_WORDS,
+  FILLER_WORDS,
+  JOINING_WORDS,
+  LINKING_WORDS,
+  WEAK_ALONE_WORDS,
+} from './sentence-words.js';
 export { parseStrength } from './strength.js';
 export type { ParsedQuery } from './strength.js';
 export {

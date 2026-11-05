@@ -1,0 +1,1687 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Products named inside a sentence (SCRUM-61, see eval/speech/README.md).
+# Sentences written the way people speak to the app or the way the voice
+# writes them (lowercase, little punctuation, French names spelt as heard by
+# the Wolof voice). No real patient data: every sentence and first name is
+# invented. The expectations were written from the registry (product ids,
+# brands, local names), not from the output of the resolver.
+#   lang: fr (French), wo (Wolof grammar; a medicine keeps its French or brand
+#         name, as Wolof speakers say it), mix (French and Wolof mixed).
+#   type: plain (names said as written), misspelt (a name spelt as heard),
+#         none (no product: symptoms, food, first names, a medicine the base
+#         does not have).
+#   expect: one item per product named: { kind, id } (any product of its
+#         family is right), or { any: [...] } when several families are
+#         equally right; mg when a strength is said with it.
+
+# French: one product.
+- {
+    text: "j'ai pris du doliprane ce matin",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "hier soir j'ai pris deux comprimés de paracétamol",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'je prends de la nivaquine depuis trois jours',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "on m'a prescrit du coartem pour le palu",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "j'ai acheté de l'advil à la pharmacie",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: "elle a pris de l'ibuprofène pour le mal de dos",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: "je mets de l'huile de ricin sur le ventre",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: 'ma mère me donne de la tisane de kinkéliba le matin',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "j'ai pris un cachet d'efferalgan",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: "le docteur m'a donné du bactrim",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: cotrimoxazole-generic },
+              { kind: product, id: bactrim-65181349 },
+              { kind: product, id: bactrim-forte-64121235 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris de la quinine",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: quinine-generic }],
+  }
+- {
+    text: "on m'a donné la SP au poste de santé",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: sp }],
+  }
+- {
+    text: 'je prends du kardégic 75 tous les jours',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: kardegic-160-mg-61348441, mg: 75 }],
+  }
+- {
+    text: "j'ai pris un doliprane 1000",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332, mg: 1000 }],
+  }
+- { text: "elle mange de l'argile", lang: fr, type: plain, expect: [{ kind: plant, id: clay }] }
+- {
+    text: "je mange du kaolin quand j'ai des nausées",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: clay }],
+  }
+- {
+    text: 'je mets du gingembre dans mon thé',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: ginger }],
+  }
+- {
+    text: 'je prends du moringa en poudre',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- { text: 'je bois du jus de bissap', lang: fr, type: plain, expect: [{ kind: plant, id: bissap }] }
+- {
+    text: "le pharmacien m'a vendu du cytotec",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: "j'ai pris du tramadol pour la douleur",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "il m'a donné de la codéine",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: codeine-generic }],
+  }
+- {
+    text: "je prends de la dépakine pour l'épilepsie",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: depakine-200-mg-67623734 }],
+  }
+- {
+    text: "j'ai pris de l'amoxicilline 1 g",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+          mg: 1000,
+        },
+      ],
+  }
+- {
+    text: "j'ai pris du flagyl",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: metronidazole-generic },
+              { kind: product, id: flagyl-250-mg-68818192 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "je prends de l'aspirine",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: aspirin-generic },
+              { kind: product, id: aspro-500-effervescent-68985138 },
+              { kind: product, id: aspegic-500-mg-61162942 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai mis de la voltarène sur mon genou",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: voltarene-50-mg-62431527 },
+              { kind: product, id: voltarene-emulgel-1-63855240 },
+              { kind: product, id: diclofenac-generic },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'je prends du tardyferon pour le sang',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: tardyferon-50-mg-61879666 }],
+  }
+- {
+    text: "on m'a donné de l'ascofer",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: ascofer-33-mg-61521103 }],
+  }
+- {
+    text: "j'ai pris du ponstan pour les règles",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: mefenamic-acid-generic }],
+  }
+- {
+    text: "j'ai pris un dafalgan codéine",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: dafalgan-codeine-61109911 }],
+  }
+- {
+    text: "j'ai pris de l'efferalgan codéine",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-codeine }],
+  }
+- {
+    text: 'je prends du néo-codion pour la toux',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: neo-codion }],
+  }
+- {
+    text: "j'ai pris un sachet de fervex",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: fervex-adultes-69329731 }],
+  }
+- {
+    text: "j'ai pris de la doxycycline",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: doxycycline-generic },
+              { kind: product, id: doxy-100-mg-61722191 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "on m'a donné de l'artésunate amodiaquine",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: asaq }],
+  }
+- { text: "j'ai pris du fansidar", lang: fr, type: plain, expect: [{ kind: product, id: sp }] }
+- {
+    text: "j'ai bu une tisane de feuilles de neem",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: neem }],
+  }
+- {
+    text: 'je prends un comprimé de rifampicine chaque matin',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: rifampicin-generic }],
+  }
+- {
+    text: "j'ai pris de l'efferalgan un gramme",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605, mg: 1000 }],
+  }
+- {
+    text: 'je prends du paracétamol 500 le soir',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic, mg: 500 }],
+  }
+- {
+    text: 'je mâche de la noix de cola',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: cola-nut }],
+  }
+- {
+    text: 'elle croque du kola amer',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: garcinia-kola }],
+  }
+
+# French: several products.
+- {
+    text: "la sage-femme m'a donné du fer et de l'acide folique",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+        {
+          any:
+            [
+              { kind: product, id: acide-folique-arrow-5-mg-67320915 },
+              { kind: product, id: acide-folique-biogaran-0-4-mg-60369895 },
+              { kind: product, id: acide-folique-ccd-0-4-mg-68502917 },
+              { kind: product, id: acide-folique-viatris-5-mg-69661235 },
+              { kind: product, id: speciafoldine-5-mg-69630186 },
+              { kind: product, id: fer-acide-folique },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris de l'advil et du coartem",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000 },
+        { kind: product, id: artemether-lumefantrine-generic },
+      ],
+  }
+- {
+    text: "hier j'ai pris du doliprane et de la nivaquine",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: "elle prend du fer, de l'acide folique et de la SP",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+        {
+          any:
+            [
+              { kind: product, id: acide-folique-arrow-5-mg-67320915 },
+              { kind: product, id: acide-folique-biogaran-0-4-mg-60369895 },
+              { kind: product, id: acide-folique-ccd-0-4-mg-68502917 },
+              { kind: product, id: acide-folique-viatris-5-mg-69661235 },
+              { kind: product, id: speciafoldine-5-mg-69630186 },
+              { kind: product, id: fer-acide-folique },
+            ],
+        },
+        { kind: product, id: sp },
+      ],
+  }
+- {
+    text: "le paracétamol et l'ibuprofène",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic }, { kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'je prends du moringa et du kinkéliba',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }, { kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "j'ai pris du cytotec avec de l'advil",
+    lang: fr,
+    type: plain,
+    expect:
+      [{ kind: product, id: misoprostol-generic }, { kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'doliprane, efferalgan et dafalgan',
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+      ],
+  }
+- {
+    text: 'je lui ai donné du bissap et du gingembre',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: bissap }, { kind: plant, id: ginger }],
+  }
+- {
+    text: "on m'a donné de la quinine et du fer",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: quinine-generic },
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+      ],
+  }
+- {
+    text: "j'ai pris du tramadol puis de la codéine",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+        { kind: product, id: codeine-generic },
+      ],
+  }
+- {
+    text: 'advil 400 et doliprane 1000',
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000, mg: 400 },
+        { kind: product, id: doliprane-500-mg-63368332, mg: 1000 },
+      ],
+  }
+- {
+    text: 'je prends du kardégic et du tardyferon',
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: kardegic-160-mg-61348441 },
+        { kind: product, id: tardyferon-50-mg-61879666 },
+      ],
+  }
+- {
+    text: "de l'huile de ricin et de l'argile",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: plant, id: castor-oil }, { kind: plant, id: clay }],
+  }
+
+# French: a name spelt as heard or typed with a fault.
+- {
+    text: "j'ai pris du dolipran",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "j'ai pris du paracetamole",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'je prends de la nivaquinne',
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "j'ai pris du misopristol",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: "j'ai pris de l'amoxiciline",
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "on m'a donné du coartème",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "je prends de l'efferalgane",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: "j'ai pris de l'asprine",
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: aspirin-generic },
+              { kind: product, id: aspro-500-effervescent-68985138 },
+              { kind: product, id: aspegic-500-mg-61162942 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris de la codeine",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: codeine-generic }],
+  }
+- {
+    text: "je mets de l'huile de rissin",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: "j'ai pris du cytotek",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: "j'ai pris de l'ibuprofen",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'je bois du quinqueliba',
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "j'ai pris de la doliprane et de la nivakine",
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: "on m'a donné du metronidasol",
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: metronidazole-generic },
+              { kind: product, id: flagyl-250-mg-68818192 },
+              { kind: product, id: metronidazole-arrow-250-mg-67914540 },
+              { kind: product, id: metronidazole-biogaran-250-mg-60480276 },
+            ],
+        },
+      ],
+  }
+
+# French: harder cases (a short form, letters said one by one, a strength
+# said before the name, two names without a word between them).
+- {
+    text: "j'ai pris 500 mg de paracétamol",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic, mg: 500 }],
+  }
+- {
+    text: 'je prends de la vitamine c',
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: laroscorbine-1-g-69435752 },
+              { kind: product, id: laroscorbine-500-mg-sans-sucre-62158929 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris de l'efferalgan vitamine c",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-vitamine-c-500-mg-200-mg-62947643 }],
+  }
+- {
+    text: "on m'a donné la S.P. au poste",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: sp }],
+  }
+- {
+    text: "j'ai pris du para",
+    lang: fr,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: "j'ai pris paracétamol codéine",
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: codoliprane-500-mg-30-mg-60904643 },
+              { kind: product, id: dafalgan-codeine-61109911 },
+              { kind: product, id: efferalgan-codeine },
+              { kind: product, id: claradol-codeine-500-mg-20-mg-64226827 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris du cotrim",
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: cotrimoxazole-generic },
+              { kind: product, id: bactrim-65181349 },
+              { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'doliprane nivaquine',
+    lang: fr,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: 'advil cytotec',
+    lang: fr,
+    type: plain,
+    expect:
+      [{ kind: product, id: advil-200-mg-68634000 }, { kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'elle a pris du flazil',
+    lang: fr,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: metronidazole-generic },
+              { kind: product, id: flagyl-250-mg-68818192 },
+            ],
+        },
+      ],
+  }
+
+# French: no product.
+- { text: 'Malika et Adama sont venues me voir', lang: fr, type: none, expect: [] }
+- { text: 'on est allés à Kolda puis à Kaolack', lang: fr, type: none, expect: [] }
+- { text: 'je bois du jus de bouye', lang: fr, type: none, expect: [] }
+- { text: "j'ai mal à la tête depuis hier", lang: fr, type: none, expect: [] }
+- { text: "j'ai mangé du riz avec du poisson", lang: fr, type: none, expect: [] }
+- { text: 'je mange du pain le matin', lang: fr, type: none, expect: [] }
+- { text: 'Fatou est allée au marché', lang: fr, type: none, expect: [] }
+- { text: 'Aminata a de la fièvre', lang: fr, type: none, expect: [] }
+- { text: 'je ne prends rien', lang: fr, type: none, expect: [] }
+- { text: "j'ai pris de la metformine", lang: fr, type: none, expect: [] }
+- { text: "on m'a donné du spasfon", lang: fr, type: none, expect: [] }
+- { text: "j'ai pris un médicament contre la toux", lang: fr, type: none, expect: [] }
+- { text: 'le comprimé blanc du dispensaire', lang: fr, type: none, expect: [] }
+- { text: "je bois beaucoup d'eau et du lait", lang: fr, type: none, expect: [] }
+- { text: 'elle a mangé des noix de cajou', lang: fr, type: none, expect: [] }
+- { text: "c'est très amer", lang: fr, type: none, expect: [] }
+- { text: 'je prends des vitamines', lang: fr, type: none, expect: [] }
+- { text: "j'ai bu du café avec du sucre", lang: fr, type: none, expect: [] }
+- { text: "j'ai pris un sirop", lang: fr, type: none, expect: [] }
+- { text: 'Khady et Coumba sont enceintes', lang: fr, type: none, expect: [] }
+- { text: 'Codou a accouché hier', lang: fr, type: none, expect: [] }
+- { text: "je mets de l'huile de coco", lang: fr, type: none, expect: [] }
+- { text: "j'ai mangé des nems au restaurant", lang: fr, type: none, expect: [] }
+- { text: "Seynabou prend le bus pour aller à l'hôpital", lang: fr, type: none, expect: [] }
+
+# Wolof: one product.
+- {
+    text: 'dama naan doliprane ndax sama bopp dafa metti',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dafa am feebar, mu naan nivaquine',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'dama jël kinkéliba ci suba',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'sama yaay dafa ma jox nebeday',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'dama naan nebedaay bu bari',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'dama lekk nebeday ak ceeb',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- { text: 'dafay naan bissap', lang: wo, type: plain, expect: [{ kind: plant, id: bissap }] }
+- { text: 'dama naan dakhar', lang: wo, type: plain, expect: [{ kind: plant, id: tamarind }] }
+- { text: 'mu ngi naan daxar', lang: wo, type: plain, expect: [{ kind: plant, id: tamarind }] }
+- { text: 'dafa jël nguer', lang: wo, type: plain, expect: [{ kind: plant, id: guiera }] }
+- {
+    text: 'dama naan ngeer ngir sama biir',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: guiera }],
+  }
+- {
+    text: 'dama tëgg nim ci sama yaram',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: neem }],
+  }
+- { text: 'dama lekk guro', lang: wo, type: plain, expect: [{ kind: plant, id: cola-nut }] }
+- { text: 'dama naan jinjeer', lang: wo, type: plain, expect: [{ kind: plant, id: ginger }] }
+- {
+    text: 'doktoor bi jox na ma coartem',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- { text: 'jox na ma SP', lang: wo, type: plain, expect: [{ kind: product, id: sp }] }
+- {
+    text: 'dama naan quinine',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: quinine-generic }],
+  }
+- {
+    text: 'dama naan paracétamol',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'dafa naan advil',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'dama jël efferalgan',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: 'dama jël tramadol',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'mu ngi naan cytotec',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'dama naan fer',
+    lang: wo,
+    type: plain,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: 'dama naan amoxicilline',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan doliprane mille',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332, mg: 1000 }],
+  }
+- {
+    text: 'dama jox sama liir nebeday',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'dama naan huile de ricin',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+
+# Wolof: several products.
+- {
+    text: 'doliprane ak nivaquine',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: 'dama naan doliprane ak nivaquine',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- {
+    text: 'dama jël coartem ak doliprane',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: artemether-lumefantrine-generic },
+        { kind: product, id: doliprane-500-mg-63368332 },
+      ],
+  }
+- {
+    text: 'dama naan kinkéliba ak nebeday',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: kinkeliba }, { kind: plant, id: moringa }],
+  }
+- {
+    text: 'jox na ma fer ak SP',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+        { kind: product, id: sp },
+      ],
+  }
+- {
+    text: 'dama naan bissap ak jinjeer',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: bissap }, { kind: plant, id: ginger }],
+  }
+- {
+    text: 'dafa naan advil ak tramadol',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000 },
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama jël nivaquine, doliprane ak quinine',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: chloroquine-generic },
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: quinine-generic },
+      ],
+  }
+- {
+    text: 'dama naan dakhar ak guro',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: tamarind }, { kind: plant, id: cola-nut }],
+  }
+- {
+    text: 'mu naan cytotec ak advil',
+    lang: wo,
+    type: plain,
+    expect:
+      [{ kind: product, id: misoprostol-generic }, { kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'dama naan nim ak kinkéliba',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: plant, id: neem }, { kind: plant, id: kinkeliba }],
+  }
+
+# Wolof: French names as the Wolof voice writes them.
+- {
+    text: 'dama naan doliparan',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama naan parasetamol',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'dafa jël amoksisilin',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan ibiporofen',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'mu naan nivakin',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'dama naan koartem',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'dama jël sitotek',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'dama naan efferalgaan',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: 'dama naan kodeyin',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: codeine-generic }],
+  }
+- {
+    text: 'dama jël baktirim',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: cotrimoxazole-generic },
+              { kind: product, id: bactrim-65181349 },
+              { kind: product, id: bactrim-forte-64121235 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan asipirin',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: aspirin-generic },
+              { kind: product, id: aspro-500-effervescent-68985138 },
+              { kind: product, id: aspegic-500-mg-61162942 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan kinin',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: quinine-generic }],
+  }
+- {
+    text: 'dama naan metronidasol',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: metronidazole-generic },
+              { kind: product, id: flagyl-250-mg-68818192 },
+              { kind: product, id: metronidazole-arrow-250-mg-67914540 },
+              { kind: product, id: metronidazole-biogaran-250-mg-60480276 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan doksisiklin',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: doxycycline-generic },
+              { kind: product, id: doxy-100-mg-61722191 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan tramadool',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan palasetamol',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'dama naan dolibrane',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'mu naan kardejik',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: kardegic-160-mg-61348441 }],
+  }
+- {
+    text: 'dama naan nivakin ak doliparan',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        { kind: product, id: chloroquine-generic },
+        { kind: product, id: doliprane-500-mg-63368332 },
+      ],
+  }
+- {
+    text: 'dama naan kotrimoksasol',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: cotrimoxazole-generic },
+              { kind: product, id: bactrim-65181349 },
+              { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan nivakinu',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'dama jël ibiprofen ak parasetamol',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: ibuprofen-generic }, { kind: product, id: paracetamol-generic }],
+  }
+
+# Wolof: harder cases (a strength in Wolof words, v said as f or b, a name
+# cut short or split by the voice, a syllable left out).
+- {
+    text: 'dama naan doliprane junni',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332, mg: 1000 }],
+  }
+- {
+    text: 'dafa naan nifakin',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'dama naan nibakin',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'dama naan dolipa',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama naan doli prane',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama naan amoksilin',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan efaralgan',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: 'dama jël tarmadol',
+    lang: wo,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan koartemu',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'dama naan ibuborofen',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'dama naan paratamol',
+    lang: wo,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- { text: 'dama naan huile de nim', lang: wo, type: plain, expect: [{ kind: plant, id: neem }] }
+- { text: 'dama togg reenu nguer', lang: wo, type: plain, expect: [{ kind: plant, id: guiera }] }
+- {
+    text: 'dama naan doliprane ñaari yoon ci bis',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'efferalgan bu weex bi',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: 'dama naan dafalgan ak efferalgan',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: dafalgan-1000-mg-62887947 },
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+      ],
+  }
+- {
+    text: 'dama naan bactrim forte',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: bactrim-forte-64121235 },
+              { kind: product, id: cotrimoxazole-generic },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan aspirine ndax sama bopp',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: aspirin-generic },
+              { kind: product, id: aspro-500-effervescent-68985138 },
+              { kind: product, id: aspegic-500-mg-61162942 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'doliprane nivaquine rekk laa naan',
+    lang: wo,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+
+# Wolof: no product.
+- { text: 'Fanta, Nafi ak Ndeye Sokhna ñoo ñëw', lang: wo, type: none, expect: [] }
+- { text: 'dama dem Kolda ak Kaolack', lang: wo, type: none, expect: [] }
+- { text: 'dama naan ataya ak nana', lang: wo, type: none, expect: [] }
+- { text: 'Astou dafa jënd cakri', lang: wo, type: none, expect: [] }
+- { text: 'dama feebar, sama bopp dafa metti', lang: wo, type: none, expect: [] }
+- { text: 'dama lekk ceeb ak jën', lang: wo, type: none, expect: [] }
+- { text: 'mburu ak meew laa lekk', lang: wo, type: none, expect: [] }
+- { text: 'Fatou ak Awa dañu dem marse', lang: wo, type: none, expect: [] }
+- { text: 'sama goro dafa feebar', lang: wo, type: none, expect: [] }
+- { text: 'waaw, dama naan ndox', lang: wo, type: none, expect: [] }
+- { text: 'déedéet, naanuma dara', lang: wo, type: none, expect: [] }
+- { text: 'sama liir dafa am sibiru', lang: wo, type: none, expect: [] }
+- { text: 'Codou ak Coura ñoo ñëw', lang: wo, type: none, expect: [] }
+- { text: 'dama dem lopitaan ngir sama biir', lang: wo, type: none, expect: [] }
+- { text: 'dama naan attaya', lang: wo, type: none, expect: [] }
+- { text: 'dama naan kafe tuubaa', lang: wo, type: none, expect: [] }
+- { text: 'dama jël garab gu ñuul', lang: wo, type: none, expect: [] }
+- { text: 'Aminata dafa ëmb', lang: wo, type: none, expect: [] }
+- { text: 'Mame Diarra dafa sonn lool', lang: wo, type: none, expect: [] }
+
+# French and Wolof mixed.
+- {
+    text: "j'ai pris doliprane bi",
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama prendre paracétamol',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: 'dafa am palu, mu prendre nivaquine',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'le docteur jox na ma coartem',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "j'ai pris nebeday ce matin",
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'dama naan kinkéliba le soir',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'ma mère dafa ma jox huile de ricin',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: 'dama acheter advil ci pharmacie bi',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'dama prendre doliprane 1000',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332, mg: 1000 }],
+  }
+- {
+    text: 'dama naan ibuprofène pour sama bopp',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'comprimé bi, doliprane la',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'mu ngi prendre cytotec',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'dama prendre kinkéliba chaque matin',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "j'ai pris SP bi ci poste de santé",
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: sp }],
+  }
+- {
+    text: 'elle prend tramadol ndax douleur bi',
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama naan ibuprofène 400 mg',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: ibuprofen-generic, mg: 400 }],
+  }
+- {
+    text: 'le docteur dafa ma jox quinine',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: quinine-generic }],
+  }
+- {
+    text: 'dama mettre huile de ricin ci sama biir',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: 'sage-femme bi donné na ma fer ak acide folique',
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+        {
+          any:
+            [
+              { kind: product, id: acide-folique-arrow-5-mg-67320915 },
+              { kind: product, id: acide-folique-biogaran-0-4-mg-60369895 },
+              { kind: product, id: acide-folique-ccd-0-4-mg-68502917 },
+              { kind: product, id: acide-folique-viatris-5-mg-69661235 },
+              { kind: product, id: speciafoldine-5-mg-69630186 },
+              { kind: product, id: fer-acide-folique },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai bu bissap ak jinjeer",
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: bissap }, { kind: plant, id: ginger }],
+  }
+- {
+    text: 'dama prendre coartem ak doliprane',
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: artemether-lumefantrine-generic },
+        { kind: product, id: doliprane-500-mg-63368332 },
+      ],
+  }
+- {
+    text: "j'ai pris advil ak tramadol",
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: advil-200-mg-68634000 },
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'le moringa ak le kinkéliba',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }, { kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'dama naan nivaquine et quinine',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: product, id: chloroquine-generic }, { kind: product, id: quinine-generic }],
+  }
+- {
+    text: 'dama prendre fer ak SP',
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+        { kind: product, id: sp },
+      ],
+  }
+- {
+    text: 'dama prendre amoksisilin',
+    lang: mix,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai pris doliparan bi",
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'mu prendre parasetamol ak ibiporofen',
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: paracetamol-generic }, { kind: product, id: ibuprofen-generic }],
+  }
+- {
+    text: 'dama prendre efferalgane ak koartem',
+    lang: mix,
+    type: misspelt,
+    expect:
+      [
+        { kind: product, id: efferalgan-1000-mg-67058605 },
+        { kind: product, id: artemether-lumefantrine-generic },
+      ],
+  }
+- {
+    text: 'le docteur jox na ma sitotek',
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'dama prendre nivakin',
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "j'ai pris kodeyin",
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: codeine-generic }],
+  }
+- {
+    text: 'dama naan huile de rissin',
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: 'dama prendre kardejik 75',
+    lang: mix,
+    type: misspelt,
+    expect: [{ kind: product, id: kardegic-160-mg-61348441, mg: 75 }],
+  }
+- {
+    text: 'la sage-femme dafa ma jox doksisiklin',
+    lang: mix,
+    type: misspelt,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: doxycycline-generic },
+              { kind: product, id: doxy-100-mg-61722191 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'dama prendre racine de nguer',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: guiera }],
+  }
+- {
+    text: 'dama naan feuilles de moringa',
+    lang: mix,
+    type: plain,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'dama prendre doliprane ak nivaquine le soir',
+    lang: mix,
+    type: plain,
+    expect:
+      [
+        { kind: product, id: doliprane-500-mg-63368332 },
+        { kind: product, id: chloroquine-generic },
+      ],
+  }
+- { text: "j'ai mal ci sama bopp", lang: mix, type: none, expect: [] }
+- { text: 'Touba, Thiès ak Rufisque', lang: mix, type: none, expect: [] }
+- { text: 'Dior dafa naan lait caillé', lang: mix, type: none, expect: [] }
+- { text: 'dama naan jus de bouye', lang: mix, type: none, expect: [] }
+- { text: 'dama manger ceeb ak poisson', lang: mix, type: none, expect: [] }
+- { text: 'Awa dafa enceinte', lang: mix, type: none, expect: [] }
+- { text: 'je vais au marché ak sama doom', lang: mix, type: none, expect: [] }
+- { text: 'dama prendre médicament bu weex', lang: mix, type: none, expect: [] }
+- { text: 'le comprimé bi dafa weex', lang: mix, type: none, expect: [] }
+- { text: 'dama boire lait ak café', lang: mix, type: none, expect: [] }
+- { text: 'Mame Diarra dafa am fièvre', lang: mix, type: none, expect: [] }
+- { text: 'dama prendre spasfon', lang: mix, type: none, expect: [] }
+- { text: "j'ai pris smecta ak ndox", lang: mix, type: none, expect: [] }
+- { text: 'sama goro moo ma jox mburu', lang: mix, type: none, expect: [] }

@@ -1,0 +1,397 @@
+// SPDX-License-Identifier: MIT
+// The products named inside a sentence (SCRUM-61): a voice transcript or a
+// typed text says more than the name ("dama naan doliprane ak nivaquine",
+// "j'ai pris de l'advil et du coartem"), and the name may be spelt as a Wolof
+// speaker writes a French word ("doliparan").
+import { describe, expect, it } from 'vitest';
+import {
+  AMBIGUOUS_NAME_WORDS,
+  buildIndex,
+  FILLER_WORDS,
+  normalize,
+  productsInSentence,
+  respellingsOf,
+  WEAK_ALONE_WORDS,
+} from '../src/index.js';
+import type { IndexEntry } from '../src/index.js';
+
+function product(
+  id: string,
+  names: IndexEntry['names'],
+  extra: Partial<IndexEntry> = {},
+): IndexEntry {
+  return {
+    id,
+    kind: 'product',
+    family: id,
+    display: { fr: id, en: id },
+    names,
+    priority: 3,
+    detail: '',
+    componentCount: 1,
+    ...extra,
+  };
+}
+
+function plant(id: string, names: IndexEntry['names']): IndexEntry {
+  return {
+    id,
+    kind: 'plant',
+    family: id,
+    display: { fr: id, en: id },
+    names,
+    priority: 2,
+    detail: '',
+  };
+}
+
+const index = buildIndex([
+  product(
+    'doliprane-500',
+    [
+      { text: 'DOLIPRANE 500 mg, comprimé', lang: 'fr' },
+      { text: 'DOLIPRANE', lang: 'brand' },
+    ],
+    { family: 'brand:dolipran', strengths: [500], substances: ['paracetamol'] },
+  ),
+  product(
+    'doliprane-1000',
+    [
+      { text: 'DOLIPRANE 1000 mg, comprimé', lang: 'fr' },
+      { text: 'DOLIPRANE', lang: 'brand' },
+    ],
+    { family: 'brand:dolipran', strengths: [1000], substances: ['paracetamol'] },
+  ),
+  product(
+    'codoliprane',
+    [
+      { text: 'CODOLIPRANE 500 mg/30 mg, comprimé', lang: 'fr' },
+      { text: 'CODOLIPRANE', lang: 'brand' },
+      { text: 'Doliprane codéine', lang: 'fr' },
+    ],
+    {
+      family: 'brand:kodolipran',
+      substances: ['codeine', 'paracetamol'],
+      componentCount: 2,
+    },
+  ),
+  product(
+    'paracetamol-generic',
+    [
+      { text: 'Paracétamol (générique)', lang: 'fr' },
+      { text: 'paracétamol', lang: 'inn', substance: 'paracetamol' },
+    ],
+    { family: 'substances:paracetamol', priority: 2, substances: ['paracetamol'] },
+  ),
+  product(
+    'codeine-generic',
+    [
+      { text: 'Codéine (générique)', lang: 'fr' },
+      { text: 'codéine', lang: 'inn', substance: 'codeine' },
+    ],
+    { family: 'substances:codeine', priority: 2, substances: ['codeine'] },
+  ),
+  product(
+    'chloroquine-generic',
+    [
+      { text: 'Chloroquine (générique)', lang: 'fr' },
+      { text: 'Nivaquine', lang: 'brand' },
+      { text: 'chloroquine', lang: 'inn', substance: 'chloroquine' },
+    ],
+    { family: 'substances:chloroquine', priority: 2, substances: ['chloroquine'] },
+  ),
+  product(
+    'advil-200',
+    [
+      { text: 'ADVIL 200 mg, comprimé enrobé', lang: 'fr' },
+      { text: 'ADVIL', lang: 'brand' },
+    ],
+    { family: 'brand:advil', strengths: [200], substances: ['ibuprofen'] },
+  ),
+  product(
+    'ibuprofen-generic',
+    [
+      { text: 'Ibuprofène (générique)', lang: 'fr' },
+      { text: 'ibuprofène', lang: 'inn', substance: 'ibuprofen' },
+    ],
+    { family: 'substances:ibuprofen', priority: 2, substances: ['ibuprofen'] },
+  ),
+  product(
+    'artemether-lumefantrine-generic',
+    [
+      { text: 'Artéméther-luméfantrine (générique)', lang: 'fr' },
+      { text: 'Coartem', lang: 'brand' },
+    ],
+    {
+      family: 'substances:artemether+lumefantrine',
+      priority: 2,
+      substances: ['artemether', 'lumefantrine'],
+      componentCount: 2,
+    },
+  ),
+  product('iron-generic', [{ text: 'Fer (générique)', lang: 'fr' }], {
+    family: 'substances:iron',
+    priority: 2,
+    substances: ['iron'],
+  }),
+  product('fer-acide-folique', [{ text: 'Fer et acide folique', lang: 'fr' }], {
+    family: 'substances:folic-acid+iron',
+    priority: 2,
+    substances: ['folic-acid', 'iron'],
+    componentCount: 2,
+  }),
+  product(
+    'sp',
+    [
+      { text: 'SP (sulfadoxine-pyriméthamine)', lang: 'fr' },
+      { text: 'Fansidar', lang: 'brand' },
+    ],
+    {
+      family: 'substances:pyrimethamine+sulfadoxine',
+      priority: 2,
+      substances: ['pyrimethamine', 'sulfadoxine'],
+      componentCount: 2,
+    },
+  ),
+  product(
+    'amoxicilline',
+    [
+      { text: 'AMOXICILLINE 500 mg, gélule', lang: 'fr' },
+      { text: 'amoxicilline', lang: 'inn', substance: 'amoxicillin' },
+    ],
+    { family: 'brand:amoxisilin', strengths: [500], substances: ['amoxicillin'] },
+  ),
+  product(
+    'kardegic',
+    [
+      { text: 'KARDEGIC 75 mg, poudre pour solution buvable en sachet', lang: 'fr' },
+      { text: 'KARDEGIC', lang: 'brand' },
+    ],
+    { family: 'brand:kardegik', strengths: [75], substances: ['aspirin'] },
+  ),
+  product(
+    'metronidazole-generic',
+    [
+      { text: 'Métronidazole (générique)', lang: 'fr' },
+      { text: 'métronidazole', lang: 'inn', substance: 'metronidazole' },
+    ],
+    { family: 'substances:metronidazole', priority: 2, substances: ['metronidazole'] },
+  ),
+  product(
+    'efferalgan-500',
+    [
+      { text: 'EFFERALGAN 500 mg, comprimé effervescent', lang: 'fr' },
+      { text: 'EFFERALGAN', lang: 'brand' },
+    ],
+    { family: 'brand:eferalgan', strengths: [500], substances: ['paracetamol'] },
+  ),
+  product(
+    'efferalgan-vitamine-c',
+    [
+      { text: 'EFFERALGAN VITAMINE C 500 mg/200 mg, comprimé effervescent', lang: 'fr' },
+      { text: 'EFFERALGAN VITAMINE C', lang: 'brand' },
+    ],
+    {
+      family: 'brand:eferalgan vitamin c',
+      substances: ['ascorbic-acid', 'paracetamol'],
+      componentCount: 2,
+    },
+  ),
+  plant('moringa', [
+    { text: 'Moringa', lang: 'fr' },
+    { text: 'nebeday', lang: 'wo' },
+  ]),
+  plant('kinkeliba', [{ text: 'Kinkéliba', lang: 'fr' }]),
+  plant('castor-oil', [{ text: 'Huile de ricin', lang: 'fr' }]),
+  plant('cola-nut', [
+    { text: 'Noix de cola', lang: 'fr' },
+    { text: 'guro', lang: 'wo' },
+    { text: 'goro', lang: 'wo' },
+  ]),
+  plant('bitter-leaf', [{ text: 'Feuille amère', lang: 'fr' }]),
+  plant('neem', [
+    { text: 'Neem', lang: 'fr' },
+    { text: 'nim', lang: 'wo' },
+  ]),
+]);
+
+/** The families found, in their order. */
+const families = (sentence: string): string[] =>
+  productsInSentence(index, sentence).map((found) => found.candidate.family);
+
+describe('productsInSentence: names inside a sentence', () => {
+  it('finds the product a French sentence names', () => {
+    const [found, ...others] = productsInSentence(index, "J'ai pris du Doliprane ce matin.");
+    expect(others).toEqual([]);
+    expect(found?.candidate.family).toBe('brand:dolipran');
+    expect(found?.text).toBe('Doliprane');
+    expect(found?.strength).toBe('very-strong');
+    expect(found?.checked).toBe(true);
+  });
+
+  it('finds the products a Wolof sentence names', () => {
+    expect(families('Dama naan nebeday bi')).toEqual(['moringa']);
+    expect(families('dafa jël kinkéliba ak garab yi')).toEqual(['kinkeliba']);
+  });
+
+  it('finds several products, in the order they are said', () => {
+    expect(families('doliprane ak nivaquine')).toEqual([
+      'brand:dolipran',
+      'substances:chloroquine',
+    ]);
+    expect(families("j'ai pris de l'advil et du coartem")).toEqual([
+      'brand:advil',
+      'substances:artemether+lumefantrine',
+    ]);
+    expect(families('dama naan coartem, doliprane')).toEqual([
+      'substances:artemether+lumefantrine',
+      'brand:dolipran',
+    ]);
+  });
+
+  it('keeps a name of several words whole', () => {
+    const [oil] = productsInSentence(index, "j'ai bu de l'huile de ricin hier");
+    expect(oil?.candidate.id).toBe('castor-oil');
+    expect(oil?.text).toBe('huile de ricin');
+    const [nut] = productsInSentence(index, 'mu ngi lekk noix de cola');
+    expect(nut?.candidate.id).toBe('cola-nut');
+    expect(nut?.text).toBe('noix de cola');
+  });
+
+  it('reads two names without a joining word as the product that bears both', () => {
+    expect(families('doliprane codéine')).toEqual(['brand:kodolipran']);
+  });
+
+  it('reads two names joined by "et", "ak" or "avec" as two products', () => {
+    expect(families('doliprane ak codéine')).toEqual(['brand:dolipran', 'substances:codeine']);
+    expect(families('paracétamol et codéine')).toEqual([
+      'substances:paracetamol',
+      'substances:codeine',
+    ]);
+  });
+
+  it('keeps a joining word inside a name said whole', () => {
+    expect(families('dama naan fer et acide folique')).toEqual(['substances:folic-acid+iron']);
+  });
+
+  it('never reads across punctuation', () => {
+    expect(families('Doliprane. Codéine.')).toEqual(['brand:dolipran', 'substances:codeine']);
+  });
+
+  it('ends a name with a letter alone only when the words make a whole name', () => {
+    expect(families("j'ai pris de l'efferalgan vitamine c")).toEqual(['brand:eferalgan vitamin c']);
+    expect(families("efferalgan c'est bon")).toEqual(['brand:eferalgan']);
+  });
+
+  it('names a family once', () => {
+    expect(families('doliprane ak doliprane')).toEqual(['brand:dolipran']);
+  });
+});
+
+describe('productsInSentence: a strength said with the name', () => {
+  it('reads a strength said after the name, in digits or in words', () => {
+    const [digits] = productsInSentence(index, 'dama naan doliprane 1000 mg tey');
+    expect(digits?.strengthMg).toBe(1000);
+    expect(digits?.text).toBe('doliprane 1000 mg');
+    expect(digits?.candidate.id).toBe('doliprane-1000');
+    const [words] = productsInSentence(index, "j'ai pris doliprane mille ce matin");
+    expect(words?.strengthMg).toBe(1000);
+    expect(words?.text).toBe('doliprane mille');
+  });
+
+  it('never reads a count or a small number without a unit as a strength', () => {
+    for (const sentence of ['ñaar doliprane', 'doliprane 2 fois par jour', 'doliprane 2']) {
+      const [found] = productsInSentence(index, sentence);
+      expect(found?.candidate.family, sentence).toBe('brand:dolipran');
+      expect(found?.strengthMg, sentence).toBeUndefined();
+    }
+  });
+});
+
+describe('productsInSentence: no product', () => {
+  it('finds nothing in a sentence that names no product', () => {
+    for (const sentence of [
+      'dama feebar, sama bopp dafa metti',
+      "j'ai mangé du riz et du poisson avec du pain",
+      'Fatou ak Awa dañu dem marché',
+      'ceeb ak jën',
+      'waaw',
+      '',
+      ' ... ',
+    ]) {
+      expect(productsInSentence(index, sentence), sentence).toEqual([]);
+    }
+  });
+
+  it('never takes a common word that starts a name for the product alone', () => {
+    expect(families("j'ai mangé des noix de cajou")).toEqual([]);
+    expect(families("c'est amer")).toEqual([]);
+  });
+
+  it('offers unticked a name that is also a common word', () => {
+    // "goro" is a Wolof name of the cola nut, and also an in-law.
+    const [found] = productsInSentence(index, 'sama goro dafa feebar');
+    expect(found?.candidate.id).toBe('cola-nut');
+    expect(found?.checked).toBe(false);
+  });
+
+  it('reads the short name SP said alone in a sentence', () => {
+    expect(families('dama jël SP ci poste bi')).toEqual(['substances:pyrimethamine+sulfadoxine']);
+  });
+
+  it('reads letters written one by one with dots as one word ("S.P.")', () => {
+    const [found] = productsInSentence(index, "on m'a donné la S.P. au poste");
+    expect(found?.candidate.family).toBe('substances:pyrimethamine+sulfadoxine');
+    expect(found?.text).toBe('S.P.');
+    // A letter and a dot alone is no such word.
+    expect(families("c'est M. Diop")).toEqual([]);
+  });
+});
+
+describe('productsInSentence: names spelt as a Wolof speaker writes them', () => {
+  it('reads a vowel put between two consonants, the name then being strong', () => {
+    // One vowel put in: the brand within one edit (near).
+    expect(families('dama naan doliparan')).toEqual(['brand:dolipran']);
+    // Two changes from the name: read with the vowel taken out, then near.
+    const [found] = productsInSentence(index, 'dafa naan ibiporofen');
+    expect(found?.candidate.family).toBe('substances:ibuprofen');
+    expect(found?.strength).toBe('strong');
+    expect(found?.checked).toBe(true);
+    expect(found?.readAs).toBe('ibiprofen');
+  });
+
+  it('reads r for l, b for p and a final vowel added', () => {
+    expect(families('mu naan palasetamol')).toEqual(['substances:paracetamol']);
+    expect(families('dama naan dolibrane')).toEqual(['brand:dolipran']);
+    expect(families('dama jël nivakinu')).toEqual(['substances:chloroquine']);
+  });
+
+  // The Wolof orthography writes x for the sound French spells kh: a Wolof
+  // writer spells the French x as ks, the French soft g as j, and z as s.
+  it('reads ks for x, j for a soft g and s for z', () => {
+    expect(families('dama naan amoksisilin')).toEqual(['brand:amoxisilin']);
+    expect(families('mu ngi jël kardejik')).toEqual(['brand:kardegik']);
+    expect(families('dafa naan metronidasol')).toEqual(['substances:metronidazole']);
+  });
+});
+
+describe('respellingsOf', () => {
+  it('changes one thing at a time', () => {
+    expect(respellingsOf('dolipran')).toEqual(['doripran', 'dolibran', 'doliplan']);
+    // Only the vowels that break a French cluster (pr, br, tr, dr, kr, gr, fr, vr, pl, bl, kl, gl, fl).
+    expect(respellingsOf('dolipran')).not.toContain('dlipran');
+    expect(respellingsOf('amoksisilin')).toContain('amoxisilin');
+    expect(respellingsOf('kardejik')).toContain('kardegik');
+    expect(respellingsOf('metronidasol')).toContain('metronidazol');
+    expect(respellingsOf('nivakinu')).toContain('nivakin');
+  });
+});
+
+describe('the word lists of a sentence', () => {
+  it('lists words that are none of the names of the index', () => {
+    for (const word of [...FILLER_WORDS, ...WEAK_ALONE_WORDS]) {
+      expect(normalize(word), word).not.toBe('');
+    }
+    expect(AMBIGUOUS_NAME_WORDS).toContain('goro');
+  });
+});
