@@ -17,7 +17,7 @@ const LONG_INSTRUCTION = 40;
  * in text beside its octagon, then the instruction (`title`, the banner's
  * largest line), then one action. When the banner shows, its action is the
  * screen's only primary action; every other button on the screen is secondary.
- * Without `action` and `onAction` (who to call: the call buttons below are
+ * Without `action` and `onAction` (who to call: the call buttons above it are
  * the actions) the banner says the level and the instruction only.
  *
  * The level and the instruction are an alert region: screen readers say them

@@ -138,7 +138,7 @@ describe('Who to call', () => {
     const circuit = screen.getByRole('region', { name: 'Circuit de référence' });
     expect(within(circuit).getByText(CIRCUIT_LINE)).toBeVisible();
     expect(
-      within(within(circuit).getByRole('list', { name: "Numéros d'urgence" })).getAllByRole('link'),
+      within(screen.getByRole('list', { name: "Numéros d'urgence" })).getAllByRole('link'),
     ).toHaveLength(2);
     // A keyboard reaches an action in the main area: the emergency links come first.
     const main = screen.getByRole('main');
@@ -232,7 +232,7 @@ describe('Who to call', () => {
     expect(line.compareDocumentPosition(national) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('puts the call links first: the numbers before where to go, the signs to say after them', async () => {
+  it('puts the calls first, whatever the length of the instruction: the danger instruction, the signs and where to go after them', async () => {
     await renderApp({
       settings: woman,
       hash: '#/danger/call',
@@ -241,18 +241,46 @@ describe('Who to call', () => {
     });
     const fever = pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr ?? 'missing';
 
-    const { samu } = await waitForEmergencyLinks();
+    const { samu, firefighters } = await waitForEmergencyLinks();
     const after = (first: Node, second: Node) =>
       Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
-    const circuit = screen.getByRole('region', { name: 'Circuit de référence' });
-    // In the section: the heading, the numbers, then where to go.
-    expect(after(within(circuit).getByRole('heading', { level: 2 }), samu)).toBe(true);
-    expect(after(samu, within(circuit).getByText(CIRCUIT_LINE))).toBe(true);
-    // The signs to say when calling come after the numbers, before the phone's contacts.
+    // The screen's title, then its first link: a call.
+    expect(within(screen.getByRole('main')).getAllByRole('link')[0]).toBe(samu);
+    expect(after(screen.getByRole('heading', { level: 1 }), samu)).toBe(true);
+    // The calls, then the danger instruction (the banner, after the last call).
+    const alert = screen.getByRole('alert');
+    expect(after(firefighters, alert)).toBe(true);
+    // Then the signs to say when calling.
     const said = screen.getByText('Dites ces signes au téléphone ou au poste de santé :');
-    expect(after(circuit, said)).toBe(true);
+    expect(after(alert, said)).toBe(true);
     expect(after(said, screen.getByText(fever))).toBe(true);
-    expect(after(said, screen.getByText('Aucun contact enregistré sur ce téléphone.'))).toBe(true);
+    // Then where to go, under its heading.
+    const circuit = screen.getByRole('region', { name: 'Circuit de référence' });
+    expect(after(screen.getByText(fever), circuit)).toBe(true);
+    expect(within(circuit).getByText(CIRCUIT_LINE)).toBeVisible();
+    // Last, the contacts of the phone.
+    expect(after(circuit, screen.getByText('Aucun contact enregistré sur ce téléphone.'))).toBe(
+      true,
+    );
+  });
+
+  it('puts the contacts before the emergency numbers, and both before the instruction', async () => {
+    await saveContacts([AWA]);
+    window.history.replaceState(
+      inSession({ instruction: { message: 'castor-oil-term-uterine-scar' } }),
+      '',
+      '#/danger/call',
+    );
+    await renderApp({ settings: woman, hash: '#/danger/call', packLoader: loaderOf(pack) });
+    const own = pack.messages.fr['castor-oil-term-uterine-scar']?.orientation ?? 'missing';
+
+    const awa = await screen.findByRole('link', { name: 'Appeler Awa (Relais), 000 000 001' });
+    const instruction = await screen.findByRole('heading', { level: 2, name: own });
+    const after = (first: Node, second: Node) =>
+      Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(within(screen.getByRole('main')).getAllByRole('link')[0]).toBe(awa);
+    expect(after(awa, emergencyLinks().samu)).toBe(true);
+    expect(after(emergencyLinks().firefighters, instruction)).toBe(true);
   });
 
   it('opens at once, and says when the phone storage does not answer, never a blank', async () => {

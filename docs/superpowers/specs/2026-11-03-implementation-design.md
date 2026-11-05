@@ -230,7 +230,7 @@ A product or plant with no finding gives an `unknown` finding: plants use their 
 7. Confirm: candidate details, "Oui, c'est ce produit" / "Non"; optional units per day for products with a maximum-dose rule.
 8. Danger signs now: checklist with "Aucun de ces signes" as the first, explicit choice.
 9. Result: headline level (name, pictogram, colour), one card per finding, reminders and notes (accompanied mode), fixed sentences, version line, "non valide cliniquement".
-10. Danger signs (reachable in one tap from every screen through the header): the fixed list and the referral circuit with call buttons: the contacts of the phone and the deployment, then always the emergency numbers (built in or the deployment's) and where to go, locked or not, then the signs to say; once the code is given, a way to add or change the contacts in both modes (the contacts screen calls each number too).
+10. Danger signs (reachable in one tap from every screen through the header): the fixed list and the referral circuit with call buttons: the contacts of the phone and the deployment, then always the emergency numbers (built in or the deployment's), locked or not, all before the danger instruction so that a call stays in the first screen whatever its length; then the signs to say and where to go; once the code is given, a way to add or change the contacts in both modes (the contacts screen calls each number too).
 11. Knowledge base status and About: version, date, rule count, "base perimee" warning after 90 days, intended use, disclaimer, licences, sources, repository link.
 
 Navigation: hash routes, browser back works everywhere, one primary action per screen, the danger signs button and quick exit always visible after unlock.

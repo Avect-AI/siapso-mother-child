@@ -180,8 +180,83 @@ test('online without a deployment file: the app page is never read as one', asyn
   expect(warnings).toEqual([]);
 });
 
-test.describe('on a small phone (360 x 560), from a danger result', () => {
+test.describe('on a small phone (360 x 560), a call is in the first screen', () => {
   test.use({ viewport: { width: 360, height: 560 } });
+
+  /**
+   * The longest instruction the danger banner can give with the pack of this
+   * build: the standard one, and the orientation of every danger rule and of
+   * every danger sign, in both languages.
+   */
+  async function longestDangerInstruction(page: Page): Promise<string> {
+    const fragment = async (file: string): Promise<unknown> =>
+      (await page.request.get(`/pack/${file}`)).json();
+    const rules = (await fragment('rules.json')) as { level: string; message: string }[];
+    const signs = (await fragment('danger-signs.json')) as { message?: string }[];
+    const ids = new Set([
+      ...rules.filter((rule) => rule.level === 'danger').map((rule) => rule.message),
+      ...signs.map((sign) => sign.message ?? 'danger-sign'),
+    ]);
+    const texts = ['Allez au poste de santé maintenant.', 'Go to the health post now.'];
+    for (const lang of ['fr', 'en']) {
+      const messages = (await fragment(`messages.${lang}.json`)) as Record<
+        string,
+        { orientation?: string }
+      >;
+      for (const id of ids) {
+        const orientation = messages[id]?.orientation;
+        if (orientation !== undefined) texts.push(orientation);
+      }
+    }
+    return texts.reduce((longest, text) => (text.length > longest.length ? text : longest));
+  }
+
+  /** The danger banner says `words`, sized as the banner sizes a long instruction. */
+  async function sayInBanner(page: Page, words: string) {
+    await page
+      .getByRole('alert')
+      .getByRole('heading')
+      .evaluate((heading, text) => {
+        heading.textContent = text;
+        heading.classList.toggle('danger-banner__title--long', text.length > 40);
+      }, words);
+    await expect(page.getByRole('alert')).toContainText(words);
+  }
+
+  for (const { name, contact, locked } of [
+    { name: 'no contact, open', contact: false, locked: false },
+    { name: 'one contact, open', contact: true, locked: false },
+    { name: 'locked, a contact saved', contact: true, locked: true },
+  ]) {
+    test(`with the longest danger instruction of the pack, ${name}`, async ({ page }) => {
+      await onboard(page, 'woman');
+      if (contact) {
+        await page.goto('/#/contacts/new');
+        await saveContact(page, 'Sage-femme', 'Fatou', '00 00 00 00');
+        await expect(page.getByText('Contact enregistré : Fatou (Sage-femme).')).toBeVisible();
+      }
+      if (locked) {
+        // A reload locks: the danger signs and who to call open without the code.
+        await page.reload();
+        await expect(
+          page.getByRole('heading', { level: 1, name: 'Entrez votre code' }),
+        ).toBeVisible();
+      }
+      await page.goto('/#/danger');
+      await page.getByText('Saignement par le vagin', { exact: true }).click();
+      await page.getByRole('button', { name: "C'est grave maintenant" }).click();
+      await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+      const first = page.locator('main a[href^="tel:"]').first();
+      await (contact && !locked
+        ? expect(first).toHaveAccessibleName('Appeler Fatou (Sage-femme), 00 00 00 00')
+        : expect(first).toHaveText('Appeler le SAMU (1515)'));
+
+      const longest = await longestDangerInstruction(page);
+      expect(longest.length).toBeGreaterThan(40);
+      await sayInBanner(page, longest);
+      await expectFirstCallInView(page);
+    });
+  }
 
   /** Home, her profile, a remedy, a fever now, the result, then "Voir qui appeler". */
   async function fromAFeverResultToCall(page: Page) {

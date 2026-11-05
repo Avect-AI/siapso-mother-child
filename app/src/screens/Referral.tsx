@@ -127,21 +127,22 @@ function emergencyLinks(
  * Who to call: the referral circuit, from the danger signs screen ("C'est
  * grave maintenant", with or without signs ticked, or straight from its
  * link) and from a result's danger banner. Opens at once, even before the
- * settings are read. With a danger, the danger banner says what to do: "Allez
- * au poste de santé maintenant." from the danger signs screen (she said it is
- * serious now), the result's own instruction from a result. Without a danger,
- * the orientation with its condition, as on the danger signs screen. Then
- * always the circuit, call links first so that the first one stays in the
- * first screen: each contact with its role, name and number shown as text,
- * and a large "Appeler" link that opens the phone's dialler (after a contact
- * saved from here, "Contact enregistré : ..." once); then, under "Circuit de
- * référence", the emergency numbers as call links ("Appeler le SAMU (1515)";
- * built in, or the deployment file's), so that a danger always leads to a
- * number to call, even with no contact; shown at once, the built-in ones until
- * the deployment file is read; then where to go, the built-in line and under
- * it the deployment's circuit text. The first link is the screen's primary
- * action: the first contact, else the first emergency number. Then the signs
- * ticked, to say when calling. Last, the contacts of the phone: "Aucun contact
+ * settings are read. The calls come first, right under the title, so that the
+ * first one ends in the first screen of a small phone whatever the instruction
+ * below says: each contact with its role, name and number shown as text, and
+ * a large "Appeler" link that opens the phone's dialler (after a contact saved
+ * from here, "Contact enregistré : ..." once); then the emergency numbers as
+ * call links ("Appeler le SAMU (1515)"; built in, or the deployment file's),
+ * so that a danger always leads to a number to call, even with no contact;
+ * shown at once, the built-in ones until the deployment file is read. The
+ * first link is the screen's primary action: the first contact, else the
+ * first emergency number. Then what to do: with a danger, the danger banner,
+ * "Allez au poste de santé maintenant." from the danger signs screen (she said
+ * it is serious now), the result's own instruction from a result; without a
+ * danger, the orientation with its condition, as on the danger signs screen.
+ * Then the signs ticked, to say when calling; then, under "Circuit de
+ * référence", where to go: the built-in line and under it the deployment's
+ * circuit text. Last, the contacts of the phone: "Aucun contact
  * enregistré sur ce téléphone." when there is none, and, once the code is
  * given, in either mode, a quiet way to add one (saving it comes back here)
  * or to change them: the boxed buttons of the screen are the calls. The app
@@ -223,14 +224,8 @@ export function Referral() {
   return (
     <main className="screen referral">
       <h1 tabIndex={-1}>{t('call.title')}</h1>
-      {instruction === undefined ? null : instruction === null ? (
-        <div className="danger__orientation">
-          <p>{t('danger.condition')}</p>
-          <p className="orientation">{t('danger.orientation')}</p>
-        </div>
-      ) : (
-        <DangerBanner levelLabel={t('level.danger')} title={instruction} headingLevel={2} />
-      )}
+      {/* The calls first, whatever the instruction says and however long it
+          is: the first one always ends in the first screen of a small phone. */}
       {circuit === null ? (
         <p className="referral__loading" role="status">
           {t('call.loading')}
@@ -254,28 +249,30 @@ export function Referral() {
       )}
 
       {/* Always, and at once (built in until the deployment file is read): the
-          emergency numbers, then where to go, so a danger never ends on no one
-          to call. The call links come first: they stay in the first screen. */}
-      <section className="referral__national" aria-labelledby={nationalId}>
-        <h2 id={nationalId}>{t('call.circuit')}</h2>
-        <ul className="referral__emergency" aria-label={t('call.emergencyLabel')}>
-          {emergencyLinks(circuit?.emergencyNumbers, lang, t).map((number, index) => (
-            <li key={number.key}>
-              <DialLink
-                href={telHref(number.phone)}
-                label={number.label}
-                primary={circuit !== null && contacts.length === 0 && index === 0}
-              />
-            </li>
-          ))}
-        </ul>
-        <p>{t('call.emergencyCircuit')}</p>
-        {circuit?.nationalCircuit === undefined ? null : (
-          <p className="referral__deployed">{circuit.nationalCircuit[lang]}</p>
-        )}
-      </section>
+          emergency numbers, so a danger never ends on no one to call. */}
+      <ul className="referral__emergency" aria-label={t('call.emergencyLabel')}>
+        {emergencyLinks(circuit?.emergencyNumbers, lang, t).map((number, index) => (
+          <li key={number.key}>
+            <DialLink
+              href={telHref(number.phone)}
+              label={number.label}
+              primary={circuit !== null && contacts.length === 0 && index === 0}
+            />
+          </li>
+        ))}
+      </ul>
 
-      {/* The signs to say when calling, under the numbers. */}
+      {/* Then what to do: the danger banner (the calls are its actions), or the orientation. */}
+      {instruction === undefined ? null : instruction === null ? (
+        <div className="danger__orientation">
+          <p>{t('danger.condition')}</p>
+          <p className="orientation">{t('danger.orientation')}</p>
+        </div>
+      ) : (
+        <DangerBanner levelLabel={t('level.danger')} title={instruction} headingLevel={2} />
+      )}
+
+      {/* The signs to say when calling. */}
       {labels.length === 0 ? null : (
         <div className="referral__signs">
           <p>{t('call.signsLabel')}</p>
@@ -286,6 +283,15 @@ export function Referral() {
           </ul>
         </div>
       )}
+
+      {/* Where to go: the built-in line, always, and under it the deployment's circuit. */}
+      <section className="referral__national" aria-labelledby={nationalId}>
+        <h2 id={nationalId}>{t('call.circuit')}</h2>
+        <p>{t('call.emergencyCircuit')}</p>
+        {circuit?.nationalCircuit === undefined ? null : (
+          <p className="referral__deployed">{circuit.nationalCircuit[lang]}</p>
+        )}
+      </section>
 
       {/* The contacts of the phone, quiet: the boxed buttons of this screen are the calls. */}
       {circuit === null ? null : behindCode ? (
