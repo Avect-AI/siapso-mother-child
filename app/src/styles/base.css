@@ -1382,10 +1382,11 @@ a {
  * keypad, a wrong code said included.
  */
 @media (max-height: 45rem) {
+  /* Offline, "Hors ligne" in the band takes a few pixels: the steps give them back. */
   .code-setup,
   .unlock {
     gap: var(--space-4);
-    padding-top: var(--space-3);
+    padding-top: var(--space-2);
   }
 
   .code-setup h1,
@@ -1394,7 +1395,7 @@ a {
   }
 
   .code-form {
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .code-input {
