@@ -11,6 +11,7 @@ Files that SIAPSO Mother-Child includes but does not author. Their licences are 
 - Licence: Apache License 2.0 (`LICENSES/Apache-2.0.txt`). The upstream `LICENSE` ends with: "Copyright 2025 Paul Bakaus. Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License." The `SKILL.md` front matter also says `license: Apache 2.0`.
 - Changes: none known to the files; they are kept as installed. If you modify them, Apache-2.0 section 4(b) asks for a prominent notice of the change.
 - Inside the plugin, per the upstream `NOTICE.md`: `reference/ios.md` and `reference/android.md` are distilled from `ehmo/platform-design-skills` (MIT, copyright 2026 ehmo), and `scripts/modern-screenshot.umd.js` is the `modern-screenshot` library (MIT, copyright 2021-present wxm, https://github.com/qq15725/modern-screenshot).
+- `scripts/data/font-index.json` is a fingerprint index of the Google Fonts catalogue (family names, categories and measurements of renders of each family), built by the plugin's authors with their `scripts/build-font-index.mjs` from the public Google Fonts metadata. It is published in the upstream Apache-2.0 repository with no separate licence statement, and is kept here as part of the plugin (audit decision, `docs/audit/2026-11-audit.md`).
 
 ## Atkinson Hyperlegible Next (font)
 

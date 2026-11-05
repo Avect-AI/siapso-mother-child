@@ -38,6 +38,13 @@ jobs:
         run: |
           shellcheck tools/github/merge-pr.sh tools/github/merge-pr.test.sh
           sh tools/github/merge-pr.test.sh
+      # Fixture repositories only: the audit of the real history is run by
+      # hand before publication and at release (docs/audit/2026-11-audit.md).
+      # The test downloads the pinned gitleaks release and checks its SHA-256.
+      - name: Pre-publication audit script (shellcheck and fixture test)
+        run: |
+          shellcheck tools/release/audit.sh tools/release/audit.test.sh
+          sh tools/release/audit.test.sh
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck

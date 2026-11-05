@@ -38,6 +38,8 @@ path = [
   "speech/MODEL_CARD.md",
   "speech/LICENSES.md",
   ".impeccable/design.json",
+  # Design briefs of the impeccable process, written for this project.
+  "app/.impeccable/**",
 ]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 AVECT AI SARL"
@@ -102,4 +104,17 @@ SPDX-License-Identifier = "Apache-2.0 AND MIT"
 path = ".claude/skills/impeccable/scripts/modern-screenshot.umd.js"
 precedence = "override"
 SPDX-FileCopyrightText = "2021-present wxm (modern-screenshot)"
+SPDX-License-Identifier = "MIT"
+
+# JSON Schemas: interfaces read by the tooling, MIT like the code.
+[[annotations]]
+path = [
+  "knowledge/schema/*.schema.json",
+  "registry/schema/*.schema.json",
+  "eval/schema/*.schema.json",
+  "eval/speech/manifest.schema.json",
+  "open-data/schema/*.schema.json",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 AVECT AI SARL"
 SPDX-License-Identifier = "MIT"

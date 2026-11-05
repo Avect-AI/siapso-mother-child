@@ -65,6 +65,10 @@ speech/convert/.venv/
 playwright-report/
 test-results/
 
+# Pre-publication audit cache: the checksum-verified gitleaks release, the
+# reuse tool and the mirror clone (tools/release/audit.sh), never committed
+.cache/
+
 # Local agent workflow notes
 .superpowers/
 # Local agent worktrees

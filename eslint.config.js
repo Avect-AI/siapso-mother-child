@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/coverage',
       '.claude/**',
       '.superpowers/**',
+      // Pre-publication audit cache (git-ignored, tools/release/audit.sh).
+      '.cache/**',
       'app/public/pack/**',
       // Voice pack conversion: Python venv and converted files (git-ignored).
       'app/public/voice/**',

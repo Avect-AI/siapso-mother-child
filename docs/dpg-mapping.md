@@ -40,7 +40,7 @@ Requirement: an approved open licence (OSI-approved for software, Creative Commo
 
 Evidence:
 
-- `LICENSE` (MIT, AVECT AI SARL) for code; CC BY 4.0 for content (`knowledge/`, `registry/`, `eval/`, `open-data/`, `docs/`).
+- `LICENSE` (MIT, AVECT AI SARL) for code and the JSON Schemas; CC BY 4.0 for content (`knowledge/`, `registry/`, `eval/`, `open-data/`, `docs/`).
 - `REUSE.toml` declares the licence of every file (REUSE specification 3.3); `LICENSES/` holds the SPDX texts (MIT, CC-BY-4.0, OFL-1.1, Apache-2.0); `reuse lint` runs in CI.
 - Third-party files are identified: the self-hosted font Atkinson Hyperlegible Next (OFL-1.1), the impeccable design plugin (Apache-2.0, with two MIT parts), one CC BY 4.0 audio fixture. See `THIRD_PARTY_NOTICES.md`.
 - `NOTICE` is generated from `knowledge/sources.yaml` and lists the sources of the knowledge pack with their licences. Sources with restrictive licences (for example WHO documents under CC BY-NC-SA 3.0 IGO) are used for facts only, no text is copied.

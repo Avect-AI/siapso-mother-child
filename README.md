@@ -65,7 +65,7 @@ Security issues: see [SECURITY.md](SECURITY.md). Release notes: [CHANGELOG.md](C
 
 | Part                                                                  | Licence                               |
 | --------------------------------------------------------------------- | ------------------------------------- |
-| Code, tooling, configuration                                          | [MIT](LICENSE)                        |
+| Code, tooling, configuration, JSON Schemas (`*.schema.json`)          | [MIT](LICENSE)                        |
 | Content: rules, registries, evaluation sets, open data, documentation | [CC BY 4.0](LICENSES/CC-BY-4.0.txt)   |
 | Self-hosted font Atkinson Hyperlegible Next                           | [OFL 1.1](LICENSES/OFL-1.1.txt)       |
 | impeccable design plugin (development tool, third party)              | [Apache 2.0](LICENSES/Apache-2.0.txt) |

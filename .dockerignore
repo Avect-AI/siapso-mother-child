@@ -1,5 +1,6 @@
 # Keeps the build context to what the server image needs.
 .git
+.cache
 **/node_modules
 .claude
 .superpowers
