@@ -254,3 +254,31 @@ describe('how a candidate matched, at an equal score', () => {
     expect(first?.match).toBe('near');
   });
 });
+
+describe('how a product matched, through its two entries', () => {
+  // A brand product is indexed twice under one id: its names (priority 3) and
+  // its INN names (priority 1). "amoxiceline" is the INN within one edit
+  // (near) and a close word of the brand's name at the same score: the
+  // product says near, and keeps its rank.
+  it('says the clearer kind of match of either entry', () => {
+    const shared = { id: 'amoxicilline-almus', family: 'brand:amoxisilin almus' };
+    const index = buildIndex([
+      entry({
+        ...shared,
+        priority: 3,
+        names: [
+          { text: 'AMOXICILLINE ALMUS 1 g, comprimé', lang: 'fr' },
+          { text: 'AMOXICILLINE ALMUS', lang: 'brand' },
+        ],
+      }),
+      entry({
+        ...shared,
+        priority: 1,
+        names: [{ text: 'amoxicilline', lang: 'inn', substance: 'amoxicillin' }],
+      }),
+    ]);
+    const [first] = search(index, 'amoxiceline');
+    expect(first?.match).toBe('near');
+    expect(first?.matchedLang).toBe('fr');
+  });
+});

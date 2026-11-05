@@ -33,7 +33,7 @@ export interface SentenceProduct {
   text: string;
   /** The strength said with it, in mg. */
   strengthMg?: number;
-  /** The name read in place of a word spelt as a Wolof speaker writes it ("dolipran" for "doliparan"). */
+  /** The spelling read in place of a word spelt as a Wolof speaker writes it ("ibiprofen" for "ibiporofen"). */
   readAs?: string;
 }
 

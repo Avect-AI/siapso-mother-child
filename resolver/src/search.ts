@@ -540,11 +540,18 @@ export function search(
       missing,
     };
     const known = bestById.get(name.entry.id);
-    const order = known === undefined ? -1 : compare(match, known);
-    // At an equal rank, the clearer way one of its names matched is the one
-    // said ("efaralgan": EFFERALGAN within one edit, not a close word).
-    if (order < 0 || (order === 0 && known !== undefined && clearer(match.kind, known.kind))) {
-      bestById.set(name.entry.id, match);
+    // At an equal score, the clearer way one of the product's names matched is
+    // the one said ("efaralgan": EFFERALGAN within one edit, not a close word;
+    // "amoxiceline": the INN within one edit, though the brand's names rank
+    // the product), and the product keeps its rank.
+    if (known === undefined || compare(match, known) < 0) {
+      const clearest =
+        known !== undefined && known.score === score && clearer(known.kind, kind)
+          ? known.kind
+          : kind;
+      bestById.set(name.entry.id, { ...match, kind: clearest });
+    } else if (known.score === score && clearer(kind, known.kind)) {
+      bestById.set(name.entry.id, { ...known, kind });
     }
   }
 
