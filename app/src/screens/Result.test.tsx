@@ -641,7 +641,7 @@ describe('Result: the term it was worked out on', () => {
 
     const card = await screen.findByRole('article');
     expect(
-      screen.getByText(/la date du téléphone est avant un jour où l'application a déjà servi/),
+      screen.getByText(/^La date du téléphone semble fausse\s: elle est avant un jour où l'application a déjà servi/),
     ).toBeVisible();
     expect(
       within(card).getByText(/^Terme inconnu\s: ce résultat tient compte de toute la grossesse/),
@@ -664,7 +664,7 @@ describe('Result: the term it was worked out on', () => {
     const card = await screen.findByRole('article');
     expect(
       screen.getByText(
-        /la date du téléphone est avant un jour où l'application a déjà servi\. Le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
+        /Regardez la date du téléphone\. En attendant, le terme est inconnu et le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
       ),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
@@ -678,7 +678,25 @@ describe('Result: the term it was worked out on', () => {
 
     await screen.findByRole('article');
     expect(
-      screen.getByText(/\. Votre bébé est peut-être né\s: ce résultat tient compte/),
+      screen.getByText(/le terme est inconnu et votre bébé est peut-être né\s: ce résultat tient compte/),
+    ).toBeVisible();
+  });
+
+  it('says to go to the health post today past 42 weeks, with who to call, on the term used', async () => {
+    await saveProfile(profileOf({ term: { kind: 'post-term', givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL] });
+
+    await screen.findByRole('article');
+    expect(
+      screen.getByText(
+        /^Allez au poste de santé aujourd'hui\s: une grossesse de plus de 42 semaines doit être vue\.$/,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getAllByRole('link', { name: 'Voir qui appeler' })[0],
+    ).toHaveAttribute('href', '#/danger/call');
+    expect(
+      screen.getByText(/^Terme utilisé pour ce résultat\s: plus de 42 semaines$/),
     ).toBeVisible();
   });
 
@@ -722,7 +740,7 @@ describe('Result: the term it was worked out on', () => {
 
     const card = await screen.findByRole('article');
     expect(
-      screen.getByText(/la date du téléphone est avant un jour où l'application/),
+      screen.getByText(/^La date du téléphone semble fausse/),
     ).toBeVisible();
     expect(within(card).getByText(/^Terme inconnu\s: ce résultat tient compte/)).toBeVisible();
   });

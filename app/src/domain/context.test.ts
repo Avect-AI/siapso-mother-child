@@ -100,8 +100,9 @@ describe('contextFromProfile: pregnancy', () => {
   });
 
   it('reads a possibly past term as the term held at 42 weeks, and breastfeeding as possible', () => {
+    // 41 weeks given a week ago: 42+0 to 42+6 today (given today, she was seen pregnant).
     const at42 = contextFromProfile(
-      profile({ pregnant: true, term: { kind: 'weeks', weeks: 42, givenOn: TODAY } }),
+      profile({ pregnant: true, term: { kind: 'weeks', weeks: 41, givenOn: '2026-10-28' } }),
       NO_CHECK,
       TODAY,
     );

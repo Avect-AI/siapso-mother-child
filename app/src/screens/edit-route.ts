@@ -11,9 +11,9 @@ export const CONTACT_EDIT_PATH = '/contacts/edit';
 /** The questions of a passer-by looked up without saving (accompanied mode only). */
 export const QUICK_PATH = '/quick';
 
-/** The state to open the edit screen of `id` with. */
-export function editEntry(id: string): Record<string, unknown> {
-  return inSession({ editId: id });
+/** The state to open the edit screen of `id` with (and what else the screen is asked, in memory too). */
+export function editEntry(id: string, more: Record<string, unknown> = {}): Record<string, unknown> {
+  return inSession({ ...more, editId: id });
 }
 
 /** The id the current entry's edit screen was opened with; null when none is known (a reload). */

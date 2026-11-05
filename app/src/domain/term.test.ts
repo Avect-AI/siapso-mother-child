@@ -5,6 +5,7 @@ import { addDays } from './dates.js';
 import {
   babyMayBeBorn,
   latestDay,
+  pastTermToday,
   profileTermStatus,
   readTerm,
   termDisplay,
@@ -114,9 +115,9 @@ describe('termDisplay: weeks', () => {
   });
 
   it('is possibly past term once its upper end is past 42+0, with the range held at 42', () => {
-    // 42 weeks today: 42+0 to 42+6.
+    // 42 weeks given today: she was seen pregnant today, so nothing to confirm yet.
     expect(readTerm({ kind: 'weeks', weeks: 42, givenOn: TODAY }, TODAY)).toEqual({
-      status: 'possibly-past',
+      status: 'ok',
       term: {
         weeksMin: 42,
         weeksMax: 42,
@@ -124,6 +125,8 @@ describe('termDisplay: weeks', () => {
         label: { key: 'profile.term.exact', vars: { weeks: 42 } },
       },
     });
+    // 42 weeks given 0 days ago is 42+0 to 42+6; 41 weeks given 6 days ago, 41+6 to 42+5.
+    expect(statusAfter({ kind: 'weeks', weeks: 41 }, 6)).toBe('possibly-past');
     // 41 weeks (41+0 to 41+6) given a day ago reaches 42+0; two days ago, 42+1.
     expect(statusAfter({ kind: 'weeks', weeks: 41 }, 1)).toBe('ok');
     expect(statusAfter({ kind: 'weeks', weeks: 41 }, 2)).toBe('possibly-past');
@@ -215,10 +218,21 @@ describe('termDisplay: months', () => {
       'possibly-past',
       'possibly-past',
     ]);
-    // The range is held at 42 weeks while possibly past.
+    // The range is held at 42 weeks for the rules while possibly past; its words
+    // say the real range, which explains why the baby may be born.
     expect(
       readTerm({ kind: 'months', months: 9, givenOn: addDays(TODAY, -8) }, TODAY),
-    ).toMatchObject({ term: { weeksMin: 37, weeksMax: 42 } });
+    ).toMatchObject({
+      term: {
+        weeksMin: 37,
+        weeksMax: 42,
+        label: { key: 'profile.term.estimated', vars: { min: 37, max: 43 } },
+      },
+    });
+    // Month 7 a hundred days ago: between 41 and 51 weeks, never "41 to 42".
+    expect(words({ kind: 'months', months: 7, givenOn: addDays(TODAY, -100) })).toBe(
+      'Entre 41 et 51 semaines (estimé)',
+    );
   });
 
   it('is outdated once its lower end is past 42+0', () => {
@@ -231,6 +245,42 @@ describe('termDisplay: months', () => {
     expect(readTerm({ kind: 'months', months: 5, givenOn: '2026-12-01' }, TODAY)).toEqual({
       status: 'clock',
     });
+  });
+});
+
+describe('termDisplay: past 42 weeks, still pregnant', () => {
+  it('reads as 42 weeks and over, estimated, never as unknown', () => {
+    const term: TermInput = { kind: 'post-term', givenOn: TODAY };
+    expect(readTerm(term, TODAY)).toEqual({
+      status: 'ok',
+      term: {
+        weeksMin: 42,
+        weeksMax: 42,
+        precision: 'estimated',
+        postTerm: true,
+        label: { key: 'profile.term.postTerm', vars: {} },
+      },
+    });
+    expect(words(term)).toBe('Plus de 42 semaines');
+  });
+
+  it('may be born from the next day, and is asked again after a week', () => {
+    const at = (days: number) => statusAfter({ kind: 'post-term' }, days);
+    expect([at(0), at(1), at(7), at(8)]).toEqual(['ok', 'possibly-past', 'possibly-past', 'outdated']);
+    expect(readTerm({ kind: 'post-term', givenOn: addDays(TODAY, 1) }, TODAY).status).toBe('clock');
+  });
+
+  it('is what a last period or weeks past 42 become while still pregnant, up to 45 weeks', () => {
+    expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -43 * 7) }, TODAY)).toBe('post-term');
+    expect(
+      pastTermToday({ kind: 'weeks', weeks: 40, givenOn: addDays(TODAY, -3 * 7) }, TODAY),
+    ).toBe('post-term');
+    // Within 42 weeks: the term as given.
+    expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -42 * 7) }, TODAY)).toBe('no');
+    // 45 weeks or more: no pregnancy lasts so long, the date is looked at again.
+    expect(pastTermToday({ kind: 'lmp', date: addDays(TODAY, -45 * 7) }, TODAY)).toBe(
+      'too-long',
+    );
   });
 });
 

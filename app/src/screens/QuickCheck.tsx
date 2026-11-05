@@ -2,7 +2,13 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { todayIso } from '../domain/dates.js';
-import { afterBirth, emptyForm, formFromProfile, reenterTerm } from '../domain/profile-form.js';
+import {
+  afterBirth,
+  emptyForm,
+  formFromProfile,
+  postTermForm,
+  reenterTerm,
+} from '../domain/profile-form.js';
 import type { Profile } from '../domain/types.js';
 import { useT } from '../i18n/index.js';
 import { useCheck } from '../state/check-state.js';
@@ -14,12 +20,13 @@ import { ProfileQuestions } from './ProfileEdit.js';
 export { QUICK_PATH };
 
 /**
- * What the outdated-term step asks for a passer-by: the baby is born, or the
- * term again (behind marks on the entry, the answer in memory: entry-state.ts).
+ * What the outdated-term step asks for a passer-by: the baby is born, the term
+ * again, or past 42 weeks and still pregnant (behind marks on the entry, the
+ * answer in memory: entry-state.ts).
  */
-function updateAsked(): 'born' | 'term' | null {
+function updateAsked(): 'born' | 'term' | 'post-term' | null {
   const { update } = sessionState();
-  return update === 'born' || update === 'term' ? update : null;
+  return update === 'born' || update === 'term' || update === 'post-term' ? update : null;
 }
 
 /**
@@ -57,11 +64,13 @@ export function QuickCheck() {
   const [initial] = useState(() => {
     if (update === null) return emptyForm(t('quick.title'), today);
     const form = formFromProfile(update.base, today, 'accompanied');
-    return update.asked === 'born' ? afterBirth(form) : reenterTerm(form);
+    if (update.asked === 'born') return afterBirth(form);
+    return update.asked === 'post-term' ? postTermForm(form) : reenterTerm(form);
   });
 
   const lead = () => {
-    if (update === null) return null;
+    // Past 42 weeks: the advice in her questions says why.
+    if (update === null || update.asked === 'post-term') return null;
     return (
       <p className="profile__why">
         {t(update.asked === 'born' ? 'quick.leadBorn' : 'profile.leadTerm')}

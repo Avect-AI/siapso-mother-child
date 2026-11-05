@@ -45,6 +45,12 @@ function stored(patch: Partial<Profile> = {}): Profile {
 /** The button that shows the situations of a saved profile (a no-break space before the colon). */
 const HIDDEN_SITUATIONS = 'Situations masquées\u00a0: touchez pour les afficher';
 
+/** Past 42 weeks and still pregnant: in woman mode, and about her in accompanied mode. */
+const POST_TERM_HERS =
+  "Allez au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.";
+const POST_TERM_HER =
+  "Elle doit aller au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.";
+
 function group(name: string | RegExp) {
   return screen.getByRole('group', { name });
 }
@@ -340,7 +346,8 @@ describe('ProfileEdit: validation', () => {
     expect(date).toHaveAccessibleDescription(/^Cette date est après aujourd'hui\s: choisissez/);
 
     fireEvent.change(date, { target: { value: '2025-11-01' } });
-    expect(date).toHaveAccessibleDescription(/remonte à plus de 42 semaines/);
+    expect(date).toHaveAccessibleDescription(/remonte à 45 semaines ou plus/);
+    expect(date).not.toHaveAccessibleDescription(/Je ne sais pas/);
   });
 });
 
@@ -480,7 +487,7 @@ describe('ProfileEdit: the day the weeks were known', () => {
     });
   });
 
-  it('says when weeks known on that day are now past 42', async () => {
+  it('reads weeks known on that day and now past 42 as more than 42 weeks, and past 45 as a date to look at', async () => {
     const user = userEvent.setup();
     await openForm(woman);
     await user.click(option(/^Enceinte/, 'Oui'));
@@ -488,11 +495,16 @@ describe('ProfileEdit: the day the weeks were known', () => {
     const weeks = screen.getByRole('textbox', { name: 'Nombre de semaines' });
     await user.type(weeks, '30');
     await user.click(option(/^Ce terme date de quand/, 'Un autre jour'));
-    fireEvent.change(screen.getByLabelText('Jour où ce nombre de semaines a été noté'), {
-      target: { value: '2026-08-01' },
-    });
+    const day = screen.getByLabelText('Jour où ce nombre de semaines a été noté');
+    // 43 weeks today: past term, still pregnant.
+    fireEvent.change(day, { target: { value: '2026-08-01' } });
+    expect(screen.getByText(POST_TERM_HERS)).toBeVisible();
+    expect(weeks).not.toHaveAccessibleDescription(/dépasse/);
 
-    expect(weeks).toHaveAccessibleDescription(/dépasse 42 semaines/);
+    // 47 weeks today: no pregnancy lasts so long.
+    fireEvent.change(day, { target: { value: '2026-07-01' } });
+    expect(weeks).toHaveAccessibleDescription(/dépasserait 45 semaines/);
+    expect(weeks).not.toHaveAccessibleDescription(/Je ne sais pas/);
   });
 
   it('asks the day again when a new number is typed on an edited term, never keeping the old day', async () => {
@@ -654,6 +666,199 @@ describe('ProfileEdit: an outdated term', () => {
     expect(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ })).toHaveValue('');
     expect(screen.queryByText(/^Entre/)).toBeNull();
   });
+
+  it('"still pregnant" past 42 weeks: says to go today, and saves the term as more than 42 weeks', async () => {
+    await saveProfile(outdated);
+    const user = userEvent.setup();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/profile/p1',
+      entryState: inSession({ update: 'post-term', next: '/check' }),
+    });
+    await screen.findByRole('button', { name: 'Enregistrer' });
+
+    expect(screen.getByText(POST_TERM_HER)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Voir qui appeler' })).toHaveAttribute(
+      'href',
+      '#/danger/call',
+    );
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
+    // Never "Je ne sais pas" for a term she knows.
+    expect(document.body.textContent).not.toMatch(/choisissez Je ne sais pas/);
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    expect((await listProfiles())[0]?.term).toEqual({ kind: 'post-term', givenOn: '2026-11-04' });
+  });
+
+  it('"Mettre à jour" asks first whether the baby is born, as the check does', async () => {
+    // After the knowledge pack's date (5 November), so the phone's date is not behind it.
+    vi.setSystemTime(new Date(2026, 10, 6, 10, 0));
+    // Month 9 three weeks ago: between 39 and 45 weeks, the baby may be born.
+    await saveProfile(
+      stored({
+        id: 'p1',
+        pseudonym: 'Bineta',
+        term: { kind: 'months', months: 9, givenOn: '2026-10-16' },
+      }),
+    );
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/' });
+    const row = await screen.findByRole('button', { name: /^Bineta / });
+    // The real range, which says why the baby may be born.
+    expect(row).toHaveTextContent('Entre 39 et 45 semaines (estimé)');
+    expect(row).toHaveTextContent(/À confirmer/);
+
+    await user.click(screen.getByRole('link', { name: 'Mettre à jour le profil de Bineta' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^Le terme noté a peut-être passé 42 semaines/ }),
+    ).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Non, toujours enceinte' }));
+    expect(await screen.findByText("Donnez le terme d'aujourd'hui.")).toBeVisible();
+    await user.click(option('Terme de la grossesse', 'En semaines'));
+    await user.type(screen.getByRole('textbox', { name: 'Nombre de semaines' }), '41');
+    await user.click(option(/^Ce terme date de quand/, "Aujourd'hui"));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    const saved = await screen.findByRole('button', { name: /^Bineta / });
+    expect(saved).toHaveTextContent('Environ 41 semaines');
+    expect(saved).not.toHaveTextContent(/À confirmer/);
+  });
+});
+
+describe('ProfileEdit: pseudonyms that mislead or mix up (live test round 2)', () => {
+  it('refuses a safety word or a dose as a pseudonym, which would head her result', async () => {
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/new');
+    const pseudonym = screen.getByRole('textbox', { name: 'Surnom' });
+    await user.clear(pseudonym);
+    await user.type(pseudonym, 'Sans danger');
+
+    expect(pseudonym).toHaveAccessibleDescription(/Ce surnom ressemble à une dose ou à un avis/);
+  });
+
+  it('warns about a pseudonym one letter from another or like a full name, saves it, and says it once', async () => {
+    await saveProfile(stored({ id: 'a', pseudonym: 'Awa' }));
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/new');
+    const pseudonym = screen.getByRole('textbox', { name: 'Surnom' });
+    await user.clear(pseudonym);
+    await user.type(pseudonym, 'Awa Diop');
+    expect(screen.getByText(/^Ce surnom ressemble à un prénom et un nom/)).toBeVisible();
+    await user.clear(pseudonym);
+    await user.type(pseudonym, 'Awa.');
+    expect(screen.getByText(/^Un surnom proche est déjà sur ce téléphone\s: Awa\./)).toBeVisible();
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'Je ne sais pas'));
+    await user.click(option(/^Allaite/, 'Non'));
+    await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // One period, never "Awa..".
+    expect(await screen.findByText(/^Profil enregistré\s: Awa\.$/)).toBeVisible();
+    expect((await listProfiles()).map((p) => p.pseudonym)).toEqual(['Awa', 'Awa.']);
+  });
+});
+
+describe('ProfileEdit: past 42 weeks and past 9 months (live test round 2)', () => {
+  it('reads a last period past 42 weeks as more than 42 weeks, says to go today, never "Je ne sais pas"', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'Date des dernières règles'));
+    // 43 weeks before 4 November 2026.
+    fireEvent.change(screen.getByLabelText('Premier jour des dernières règles'), {
+      target: { value: '2026-01-05' },
+    });
+
+    expect(screen.getByText(POST_TERM_HERS)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Voir qui appeler' })).toBeVisible();
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
+    expect(screen.getByLabelText('Premier jour des dernières règles')).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    await user.click(option(/^Allaite/, 'Non'));
+    await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(await screen.findByText(/^Profil enregistré/)).toBeVisible();
+    expect((await listProfiles())[0]?.term).toEqual({ kind: 'post-term', givenOn: '2026-11-04' });
+  });
+
+  it('asks whether she is past 9 months for 10 to 12, never giving it as weeks in one tap', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'En mois'));
+    await user.type(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ }), '10');
+
+    expect(screen.queryByRole('button', { name: /^Ce sont 10 semaines/ })).toBeNull();
+    expect(screen.getByText('Avez-vous dépassé 9 mois ?')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Oui, plus de 9 mois' }));
+
+    expect(screen.getByText(POST_TERM_HERS)).toBeVisible();
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
+  });
+
+  it('opens the weeks field empty on "Non, ce sont des semaines", and keeps the weeks hint for 13 to 42', async () => {
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/new');
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'En mois'));
+    const months = screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ });
+    await user.type(months, '11');
+    expect(screen.getByText('Elle a dépassé 9 mois ?')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Non, ce sont des semaines' }));
+
+    const weeks = screen.getByRole('textbox', { name: 'Nombre de semaines' });
+    expect(weeks).toHaveValue('');
+    expect(weeks).toHaveFocus();
+    await user.click(option('Terme de la grossesse', 'En mois'));
+    await user.type(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ }), '13');
+    expect(screen.getByRole('button', { name: 'Ce sont 13 semaines' })).toBeVisible();
+  });
+
+  it('says when typing new weeks asks again the day they date from', async () => {
+    const user = userEvent.setup();
+    await openForm(accompanied, '#/profile/new');
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'En semaines'));
+    const weeks = screen.getByRole('textbox', { name: 'Nombre de semaines' });
+    await user.type(weeks, '20');
+    await user.click(option(/^Ce terme date de quand/, "Aujourd'hui"));
+    expect(screen.queryByText(/^Le nombre de semaines a changé/)).toBeNull();
+
+    await user.clear(weeks);
+    await user.type(weeks, '21');
+
+    expect(screen.getByText(/^Le nombre de semaines a changé/)).toBeVisible();
+    expect(option(/^Ce terme date de quand/, "Aujourd'hui")).not.toBeChecked();
+    await user.click(option(/^Ce terme date de quand/, "Aujourd'hui"));
+    expect(screen.queryByText(/^Le nombre de semaines a changé/)).toBeNull();
+  });
+
+  it('says to look at the phone date when it is before the last save, and shows no term worked out from it', async () => {
+    await saveProfile(
+      stored({
+        term: { kind: 'weeks', weeks: 21, givenOn: '2026-11-01' },
+        updatedAt: '2026-11-05T08:00:00.000Z',
+      }),
+    );
+    // The phone's clock set back ten days.
+    vi.setSystemTime(new Date(2026, 9, 26, 10, 0));
+    await openForm(accompanied, '#/profile/p1');
+
+    // Said once at the top; the date field says it too, never "après aujourd'hui".
+    expect(screen.getAllByText(/^La date du téléphone semble fausse/)[0]).toBeVisible();
+    expect(screen.getByText('Terme inconnu (date du téléphone)')).toBeVisible();
+    expect(screen.queryByText(/^Environ/)).toBeNull();
+    expect(screen.queryByText(/^Cette date est après aujourd'hui/)).toBeNull();
+  });
 });
 
 describe('ProfileEdit: deleting a profile', () => {
@@ -718,8 +923,8 @@ describe('ProfileEdit: deleting a profile', () => {
     other.close();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(await screen.findByText('Binta')).toBeVisible();
     expect(screen.queryByText('Awa')).toBeNull();
-    expect(screen.getByText('Binta')).toBeVisible();
   });
 
   it('never writes back a profile deleted meanwhile: the save is refused and said', async () => {

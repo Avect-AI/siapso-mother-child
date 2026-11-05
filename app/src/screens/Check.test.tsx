@@ -310,9 +310,27 @@ describe('Check', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Modifier le profil' }),
     ).toBeVisible();
-    expect(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ })).toHaveValue('');
+    // Still pregnant past 42 weeks: to be seen today, and the term read as more than 42 weeks.
+    const advice =
+      "Elle doit aller au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.";
+    expect(screen.getByText(advice)).toBeVisible();
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
     // Her id is never in the address (edit-route.ts).
     expect(window.location.hash).toBe('#/profile/edit');
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // The check goes on, the advice with who to call above it.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    expect(await screen.findByText(advice)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Voir qui appeler' })).toHaveAttribute(
+      'href',
+      '#/danger/call',
+    );
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
   });
 
   it('asks her in her own words in woman mode, and "the baby is born" opens her profile', async () => {
@@ -345,7 +363,7 @@ describe('Check', () => {
     const user = userEvent.setup();
     const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
     expect(within(list).getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
-      /^Bineta Entre 37 et 42 semaines \(estimé\) À confirmer\s: le bébé est peut-être né$/,
+      /^Bineta Entre 37 et 43 semaines \(estimé\) À confirmer\s: le bébé est peut-être né$/,
     );
     // Her id goes in the entry's state, never in the address (edit-route.ts).
     expect(

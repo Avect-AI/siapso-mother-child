@@ -46,6 +46,7 @@ import { ResultCard } from '../ui/ResultCard.js';
 import { backToCheck, flowState } from './check-flow.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
 import { Typed } from './Typed.js';
+import { PostTermAdvice } from './PostTermAdvice.js';
 import { CALL_PATH } from './Referral.js';
 
 type Loaded =
@@ -96,6 +97,7 @@ function ProfileLines({
     const baby = babyLine(profile, today);
     lines.push(t(baby.key, baby.vars));
   }
+  const postTerm = read?.term.postTerm === true;
   if (lines.length === 0 && term.status !== 'clock') return null;
   return (
     <div className="result__profile">
@@ -105,6 +107,8 @@ function ProfileLines({
           {t(mode === 'accompanied' ? 'result.termClockAccompanied' : 'result.termClockWoman')}
         </Notice>
       ) : null}
+      {/* Past 42 weeks and still pregnant: to be seen today, whatever the products. */}
+      {postTerm ? <PostTermAdvice mode={mode} /> : null}
       {lines.map((line) => (
         <p key={line} className="meta">
           {line}

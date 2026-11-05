@@ -250,7 +250,7 @@ describe('Regarder sans enregistrer', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
   });
 
-  it('asks the term again, keeping her list, when her term is past 42 weeks', async () => {
+  it('says to go today when she is still pregnant past 42 weeks, keeping her list', async () => {
     const { user, probe } = await openQuick();
     // Weeks given long ago (a phone clock set forward meanwhile): past 42 weeks.
     act(() => {
@@ -279,16 +279,19 @@ describe('Regarder sans enregistrer', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Regarder sans enregistrer' }),
     ).toBeVisible();
-    expect(screen.getByText("Donnez le terme d'aujourd'hui.")).toBeVisible();
-    await user.type(screen.getByRole('textbox', { name: 'Nombre de semaines' }), '30');
-    await user.click(option(/^Ce terme date de quand/, "Aujourd'hui"));
+    // Past 42 weeks: to be seen today, the term read as more than 42 weeks.
+    const advice =
+      "Elle doit aller au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.";
+    expect(screen.getByText(advice)).toBeVisible();
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Regarder ses produits' }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
     ).toBeVisible();
+    expect(screen.getByText(advice)).toBeVisible();
     expect(probe.current().items).toEqual([ADVIL]);
-    expect(probe.current().quick?.term).toMatchObject({ kind: 'weeks', weeks: 30 });
+    expect(probe.current().quick?.term).toMatchObject({ kind: 'post-term' });
     expect(await listProfiles()).toHaveLength(1);
   });
 

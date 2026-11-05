@@ -2,10 +2,10 @@
 // The profile screen's answers as typed, their validation, and the profile
 // they make. Pure: today and now are parameters, read from the phone's clock
 // by the screen.
-import { rangeFromMonths, type ConditionId } from '@siapso/engine';
+import { findForbiddenWording, rangeFromMonths, type ConditionId } from '@siapso/engine';
 import type { MessageKey } from '../i18n/translate.js';
 import { daysBetween, isIsoDate, weeksSince, wholeWeeksBetween } from './dates.js';
-import { localDateOf, MAX_GIVEN_WEEKS, monthRange, readTerm } from './term.js';
+import { localDateOf, MAX_GIVEN_WEEKS, monthRange, pastTermToday, readTerm } from './term.js';
 import type { Mode, Profile, TermInput } from './types.js';
 
 export type BabyAgeKind = 'birthDate' | 'weeks' | 'months' | 'unknown';
@@ -15,11 +15,13 @@ export type PregnantAnswer = 'yes' | 'no' | 'unknown';
 
 /**
  * A stored term given back exactly as stored while it is not answered again:
- * a month (its field shows the month reached today), or "Je ne sais pas"
- * (with the day it was said).
+ * a month (its field shows the month reached today), "Je ne sais pas" (with
+ * the day it was said), or past 42 weeks and still pregnant (with its day).
  */
 export type KeptTerm =
-  { kind: 'months'; months: number; givenOn: string } | { kind: 'unknown'; givenOn: string };
+  | { kind: 'months'; months: number; givenOn: string }
+  | { kind: 'unknown'; givenOn: string }
+  | { kind: 'post-term'; givenOn: string };
 
 /** The day weeks were known: today, or another day (an ultrasound, a booklet). */
 export type WeeksDay = 'today' | 'other';
@@ -242,14 +244,18 @@ function weeksGivenOn(form: ProfileForm, todayIso: string): string | undefined {
 export function termFromForm(form: ProfileForm, todayIso: string): TermInput | undefined {
   const kept = keptTermFor(form);
   if (kept) return { ...kept };
+  // Still pregnant past 42 weeks (a last period, or weeks given long ago): read
+  // as 42 weeks and over from today, never as an unknown term.
+  const pastTerm = (term: Extract<TermInput, { kind: 'lmp' | 'weeks' }>): TermInput =>
+    pastTermToday(term, todayIso) === 'post-term' ? { kind: 'post-term', givenOn: todayIso } : term;
   switch (form.termKind) {
     case 'lmp':
-      return isIsoDate(form.lmpDate) ? { kind: 'lmp', date: form.lmpDate } : undefined;
+      return isIsoDate(form.lmpDate) ? pastTerm({ kind: 'lmp', date: form.lmpDate }) : undefined;
     case 'weeks': {
       const weeks = wholeNumber(form.weeks);
       const givenOn = weeksGivenOn(form, todayIso);
       if (weeks === undefined || givenOn === undefined) return undefined;
-      return { kind: 'weeks', weeks, givenOn };
+      return pastTerm({ kind: 'weeks', weeks, givenOn });
     }
     case 'months': {
       const months = wholeNumber(form.months);
@@ -257,6 +263,8 @@ export function termFromForm(form: ProfileForm, todayIso: string): TermInput | u
     }
     case 'unknown':
       return { kind: 'unknown', givenOn: todayIso };
+    case 'post-term':
+      return { kind: 'post-term', givenOn: todayIso };
     case null:
       return undefined;
   }
@@ -298,15 +306,46 @@ export function monthsNearTerm(form: ProfileForm): boolean {
   return months === 8 || months === LAST_MONTH;
 }
 
-/** The number typed as months when it looks like weeks (10 to 42); undefined otherwise. */
+/**
+ * The last month a woman past term may count (lunar months, or overdue): 10
+ * to 12 typed as months is never read as weeks, it is asked about.
+ */
+const LAST_PAST_TERM_MONTH = 12;
+
+/** The number typed as months when it looks like weeks (13 to 42); undefined otherwise. */
 function monthsAsWeeksValue(form: ProfileForm): number | undefined {
   if (form.termKind !== 'months') return undefined;
-  return inRange(form.months, LAST_MONTH + 1, MAX_GIVEN_WEEKS);
+  return inRange(form.months, LAST_PAST_TERM_MONTH + 1, MAX_GIVEN_WEEKS);
 }
 
-/** Whether the number typed as months looks like weeks: a whole number from 10 to 42. */
+/** Whether the number typed as months looks like weeks: a whole number from 13 to 42. */
 export function monthsLookLikeWeeks(form: ProfileForm): boolean {
   return monthsAsWeeksValue(form) !== undefined;
+}
+
+/**
+ * Whether 10 to 12 is typed as months: past 9 months (she counts lunar months,
+ * or she is overdue), or weeks typed in the wrong field. Never converted in one
+ * tap: the screen asks "Elle a dépassé 9 mois ?".
+ */
+export function monthsPastNine(form: ProfileForm): boolean {
+  if (form.termKind !== 'months' || keptTermFor(form) !== null) return false;
+  return inRange(form.months, LAST_MONTH + 1, LAST_PAST_TERM_MONTH) !== undefined;
+}
+
+/**
+ * The answer to "Elle a dépassé 9 mois ?": yes reads the term as past 42
+ * weeks, from today; no opens the weeks field empty, to be typed by hand (its
+ * day asked when `asksDay`).
+ */
+export function answerPastNine(form: ProfileForm, past: boolean, asksDay: boolean): ProfileForm {
+  if (past) return postTermForm(form);
+  return {
+    ...form,
+    ...noTermValues(),
+    termKind: 'weeks',
+    weeksDay: asksDay ? null : 'today',
+  };
 }
 
 /** The term given in weeks instead, with the number typed as months, known today. */
@@ -325,31 +364,40 @@ export function monthsAsWeeks(form: ProfileForm): ProfileForm {
   };
 }
 
+/**
+ * What is wrong with a date typed: not a date, after today (the phone's date,
+ * which seems wrong when a day the app has seen, `seen`, is later still), or
+ * too old for the question.
+ */
 function dateError(
   date: string,
   todayIso: string,
   tooOld: (date: string) => boolean,
   tooOldKey: MessageKey,
+  seen?: string,
 ): MessageKey | undefined {
   if (!isIsoDate(date)) return 'profile.error.date';
-  if (daysBetween(date, todayIso) < 0) return 'profile.error.dateFuture';
+  if (daysBetween(date, todayIso) < 0) {
+    const clockBehind = seen !== undefined && isIsoDate(seen) && daysBetween(seen, todayIso) < 0;
+    return clockBehind ? 'profile.error.phoneDate' : 'profile.error.dateFuture';
+  }
   return tooOld(date) ? tooOldKey : undefined;
 }
 
-function termErrors(form: ProfileForm, todayIso: string): FormErrors {
+function termErrors(form: ProfileForm, todayIso: string, seen?: string): FormErrors {
   switch (form.termKind) {
     case null:
       return { termKind: 'profile.error.choose' };
     case 'lmp': {
+      // Past 42 weeks is a pregnancy past term (accepted); 45 weeks or more, a date to look at.
       const tooOld = (date: string) =>
-        readTerm({ kind: 'lmp', date }, todayIso).status === 'outdated';
-      const error = dateError(form.lmpDate, todayIso, tooOld, 'profile.error.lmpTooOld');
+        pastTermToday({ kind: 'lmp', date }, todayIso) === 'too-long';
+      const error = dateError(form.lmpDate, todayIso, tooOld, 'profile.error.lmpTooOld', seen);
       return error ? { lmpDate: error } : {};
     }
     case 'weeks': {
-      if (inRange(form.weeks, 0, MAX_GIVEN_WEEKS) === undefined) {
-        return { weeks: 'profile.error.weeks' };
-      }
+      const weeks = inRange(form.weeks, 0, MAX_GIVEN_WEEKS);
+      if (weeks === undefined) return { weeks: 'profile.error.weeks' };
       if (form.weeksDay === null) return { weeksDay: 'profile.error.choose' };
       if (form.weeksDay === 'other') {
         const dateProblem = dateError(
@@ -357,14 +405,24 @@ function termErrors(form: ProfileForm, todayIso: string): FormErrors {
           todayIso,
           () => false,
           'profile.error.date',
+          seen,
         );
         if (dateProblem) return { weeksGivenOn: dateProblem };
       }
-      const term = termFromForm(form, todayIso);
-      // Weeks known long ago, now past 42: the term must be given again today.
-      return term && readTerm(term, todayIso).status === 'outdated'
+      const givenOn = weeksGivenOn(form, todayIso);
+      // Weeks known so long ago that they would be 45 weeks or more today.
+      return givenOn !== undefined &&
+        pastTermToday({ kind: 'weeks', weeks, givenOn }, todayIso) === 'too-long'
         ? { weeks: 'profile.error.weeksMovedOn' }
         : {};
+    }
+    case 'post-term': {
+      const kept = keptTermFor(form);
+      if (kept === null) return {};
+      // Said more than a week ago: the term of today is asked again.
+      const status = readTerm(kept, todayIso).status;
+      if (status === 'clock') return { termKind: 'profile.error.phoneDate' };
+      return status === 'outdated' ? { termKind: 'profile.error.postTermOutdated' } : {};
     }
     case 'months': {
       const kept = keptTermFor(form);
@@ -376,6 +434,7 @@ function termErrors(form: ProfileForm, todayIso: string): FormErrors {
         if (status === 'clock') return { months: 'profile.error.clockBehind' };
         return status === 'outdated' ? { months: 'profile.error.monthsOutdated' } : {};
       }
+      if (monthsPastNine(form)) return { months: 'profile.error.monthsPastNine' };
       if (monthsLookLikeWeeks(form)) return { months: 'profile.error.monthsLooksLikeWeeks' };
       return inRange(form.months, 1, LAST_MONTH) === undefined
         ? { months: 'profile.error.months' }
@@ -419,10 +478,70 @@ function babyErrors(form: ProfileForm, todayIso: string): FormErrors {
   return errors;
 }
 
+/**
+ * A dose in a pseudonym: a number with a unit ("500 mg", "2 comprimés", "3
+ * fois"), or an amount per day. A pseudonym heads a result ("Résultat pour
+ * ..."): it must never read as a dose.
+ */
+const DOSE_IN_NAME =
+  /\p{Nd}+(?:[.,]\p{Nd}+)?\s*(?:mg|g|µg|mcg|ml|cl|ui|comprim[eé]s?|g[eé]lules?|gouttes?|cuill[eè]res?|cuiller[eé]es?|sachets?|fois|tablets?|capsules?|drops?|times)(?![\p{L}\p{N}])|\b(?:par|per)\s+(?:jour|day)\b/iu;
+
+/** Whether a pseudonym says a forbidden word ("Sans danger", "safe") or a dose, in either language. */
+function misleads(pseudonym: string): boolean {
+  if (DOSE_IN_NAME.test(pseudonym)) return true;
+  return (['fr', 'en'] as const).some((lang) => findForbiddenWording(pseudonym, lang).length > 0);
+}
+
+/** A pseudonym's letters and digits only, compared without case or accents ("Aw a." is "awa"). */
+function compactKey(pseudonym: string): string {
+  return pseudonymKey(pseudonym).replace(/[^\p{L}\p{N}]/gu, '');
+}
+
+/** Whether two texts are one edit apart at most (a letter added, taken off or changed). */
+function oneEditApart(a: string, b: string): boolean {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+
+/** Two words or more that start with a capital, as a first name and a family name do. */
+const FULL_NAME = /\p{Lu}\p{Ll}+(?:[\s-]+\p{Lu}\p{Ll}+)+/u;
+
+/**
+ * What to say of a pseudonym that can be saved but may mislead: one that is
+ * one letter from another on the phone (punctuation and spaces aside), so
+ * the list could mix them up; one that looks like a first and family name,
+ * when it should never be the real name. Null when nothing is to be said. A
+ * numbered series ("Femme 1", "Femme 2") is not a mix-up.
+ */
+export function pseudonymWarning(
+  pseudonym: string,
+  taken: readonly string[],
+): { key: MessageKey; vars: Record<string, string> } | null {
+  const key = compactKey(pseudonym);
+  if (key !== '') {
+    const numbered = /\p{N}/u.test(key);
+    const near = taken.find((other) => {
+      const otherKey = compactKey(other);
+      if (otherKey === '' || otherKey === key && pseudonymKey(other) === pseudonymKey(pseudonym)) {
+        return false;
+      }
+      // "Femme 1" and "Femme 2": the numbers tell them apart.
+      if (numbered && /\p{N}/u.test(otherKey)) return false;
+      return oneEditApart(key, otherKey);
+    });
+    if (near !== undefined) return { key: 'profile.warning.near', vars: { name: near.trim() } };
+  }
+  return FULL_NAME.test(pseudonym.trim()) ? { key: 'profile.warning.realName', vars: {} } : null;
+}
+
 function pseudonymError(pseudonym: string, taken: readonly string[]): MessageKey | undefined {
   const trimmed = pseudonym.trim();
   if (trimmed === '') return 'profile.error.pseudonym';
   if ((trimmed.match(/\d/g) ?? []).length >= PHONE_DIGITS) return 'profile.error.pseudonymNumber';
+  if (misleads(trimmed)) return 'profile.error.pseudonymWording';
   // Counted as the input's maxlength counted it before (UTF-16 code units).
   if (trimmed.length > PSEUDONYM_MAX) return 'profile.error.pseudonymLong';
   const key = pseudonymKey(trimmed);
@@ -434,18 +553,21 @@ function pseudonymError(pseudonym: string, taken: readonly string[]): MessageKey
  * Each field's error, in the order of the screen; empty when the profile can
  * be saved. `taken` are the pseudonyms of the other profiles of the phone: a
  * pseudonym is never used twice, so a list never shows two women alike.
+ * `seen` is the latest day the app has seen for this profile (its last save):
+ * a date after today is then the phone's date set back, and said so.
  */
 export function validateForm(
   form: ProfileForm,
   todayIso: string,
   mode: Mode,
   taken: readonly string[] = [],
+  seen?: string,
 ): FormErrors {
   const errors: FormErrors = {};
   const pseudonym = pseudonymError(form.pseudonym, taken);
   if (pseudonym) errors.pseudonym = pseudonym;
   if (form.pregnant === null) errors.pregnant = 'profile.error.yesNo';
-  else if (form.pregnant === 'yes') Object.assign(errors, termErrors(form, todayIso));
+  else if (form.pregnant === 'yes') Object.assign(errors, termErrors(form, todayIso, seen));
   if (form.breastfeeding === null) errors.breastfeeding = 'profile.error.yesNo';
   else if (form.breastfeeding) Object.assign(errors, babyErrors(form, todayIso));
   // Neither: the engine would get no pregnancy and no breastfeeding at all, so
@@ -619,6 +741,13 @@ function termFields(
         ? { termKind: 'unknown' }
         : { termKind: 'unknown', keptTerm: { kind: 'unknown', givenOn } };
     }
+    case 'post-term': {
+      // Kept with its day, so a save never makes it said today.
+      const givenOn = term.givenOn ?? saved;
+      return givenOn === undefined || !isIsoDate(givenOn)
+        ? { termKind: null }
+        : { termKind: 'post-term', keptTerm: { kind: 'post-term', givenOn } };
+    }
   }
 }
 
@@ -699,8 +828,9 @@ export function afterBirth(form: ProfileForm): ProfileForm {
 }
 
 /**
- * "Non, toujours enceinte" on an outdated profile: the term is given again,
- * the way it was given before (its value cleared).
+ * "Non, toujours enceinte" when the baby may be born: the term is given
+ * again, the way it was given before (its value cleared); a term unknown or
+ * past 42 weeks is chosen anew.
  */
 export function reenterTerm(form: ProfileForm): ProfileForm {
   return {
@@ -708,6 +838,21 @@ export function reenterTerm(form: ProfileForm): ProfileForm {
     ...noTermValues(),
     pregnant: 'yes',
     keptUnsureOn: null,
-    termKind: form.termKind === 'unknown' ? null : form.termKind,
+    termKind: form.termKind === 'unknown' || form.termKind === 'post-term' ? null : form.termKind,
+  };
+}
+
+/**
+ * "Non, toujours enceinte" on a term past 42 weeks: still pregnant past term,
+ * read as 42 weeks and over from today (the screen says to go to the health
+ * post today); the term can still be given another way.
+ */
+export function postTermForm(form: ProfileForm): ProfileForm {
+  return {
+    ...form,
+    ...noTermValues(),
+    pregnant: 'yes',
+    keptUnsureOn: null,
+    termKind: 'post-term',
   };
 }

@@ -96,7 +96,7 @@ export const en: Dictionary = {
     currentLead: 'First type the current code.',
     currentLabel: 'Current code',
     newTitle: 'Choose the new code',
-    newLead: '4 to 6 digits. Keep it to yourself: it will replace the current code.',
+    newLead: '4 to 6 digits. Keep it to yourself: it takes the place of the current code.',
     newLabel: 'New code',
     confirmTitle: 'Type the new code a second time',
     same: 'The new code is the same as the current one: choose another one.',
@@ -180,8 +180,22 @@ export const en: Dictionary = {
     leadWoman: 'Update your profile before looking up a product.',
     leadAccompanied: 'Update her profile before looking up a product.',
     leadPasserBy: 'Go over her answers again before looking up a product.',
+    titleMaybeWoman: 'Your noted term may have passed 42 weeks. Is your baby born?',
+    titleMaybeAccompanied: 'The noted term may have passed 42 weeks. Is the baby born?',
+    leadMaybeWoman: 'Say it before updating your profile.',
+    leadMaybeAccompanied: 'Say it before updating her profile.',
     born: 'Yes, the baby is born',
     notBorn: 'No, still pregnant',
+  },
+  postTerm: {
+    adviceWoman: 'Go to the health post today: a pregnancy of more than 42 weeks must be seen.',
+    adviceAccompanied:
+      'She must go to the health post today: a pregnancy of more than 42 weeks must be seen.',
+    call: 'See who to call',
+    pastNineWoman: 'Are you past 9 months?',
+    pastNineAccompanied: 'Is she past 9 months?',
+    pastNineYes: 'Yes, more than 9 months',
+    pastNineNo: 'No, these are weeks',
   },
   profile: {
     titleMine: 'My profile',
@@ -229,9 +243,13 @@ export const en: Dictionary = {
       exact: 'About {weeks} weeks',
       estimated: 'Between {min} and {max} weeks (estimated)',
       unknown: 'Term unknown',
+      postTerm: 'More than 42 weeks',
       since: '{term} today ({weeks} weeks on {date})',
     },
     termCorrect: 'Correct the number of weeks',
+    weeksDayReset: 'The number of weeks changed: say again what day this term dates from.',
+    clockBehind:
+      "The phone's date seems wrong: it is before the day this profile was saved. Look at the phone's date.",
     babyAgeShown: 'Age worked out',
     breastfeeding: 'Breastfeeding?',
     babyAge: "Baby's age",
@@ -280,24 +298,35 @@ export const en: Dictionary = {
       'The app is for pregnancy and breastfeeding. If she is no longer pregnant and does not breastfeed, it no longer covers her: you can delete her profile.',
     loadFailed: 'The profiles could not be read on this phone. Close the app, then open it again.',
     notFound: 'This profile is not on this phone. Go back to the home screen.',
+    warning: {
+      near: 'A close nickname is already on this phone: {name}. Choose a clearly different one, so they are not mixed up.',
+      realName: 'This nickname looks like a first name and a family name: a nickname, never the real name.',
+    },
     error: {
       pseudonym: 'Write a nickname.',
       pseudonymNumber: 'No phone number: write a nickname.',
       pseudonymLong: 'Write a nickname of 40 characters at most.',
       pseudonymTaken: 'This nickname is already on this phone: write another one.',
+      pseudonymWording:
+        'This nickname looks like a dose or a view on a product: write another nickname.',
       yesNo: 'Answer yes or no.',
       choose: 'Choose an answer.',
       date: 'Write a date.',
       dateFuture: 'This date is after today: choose today or an earlier date.',
       lmpTooOld:
-        "This date is more than 42 weeks ago: the due date has passed. If the baby is born, answer No to Pregnant. Otherwise, choose I don't know.",
+        'This date is 45 weeks ago or more: no pregnancy lasts so long. Look at the date. If the baby is born, answer No to Pregnant.',
       clockBehind:
         "This term was noted after the phone's date. Look at the phone's date, or write the current month.",
       monthsLooksLikeWeeks: 'This number looks like weeks: a month of pregnancy goes from 1 to 9.',
+      monthsPastNine: 'A month of pregnancy goes from 1 to 9: answer the question below.',
+      phoneDate:
+        "The phone's date seems wrong: this term was noted after it. Look at the phone's date.",
       birthTooOld:
         'This date is more than 2 years ago. For a child over 2, choose In weeks and write 104.',
       weeksMovedOn:
-        "The term has moved on since it was noted and is past 42 weeks: write today's term, or choose I don't know.",
+        "The term has moved on since it was noted and would be past 45 weeks today: write today's term.",
+      postTermOutdated:
+        "This term past its due date was noted more than a week ago: give today's term.",
       monthsOutdated: 'This month was given a long time ago: write the current month.',
       babyAgeMovedOn:
         "The age noted has moved on and is past 2 years: write today's age. For a child over 2, choose In weeks and write 104.",
@@ -486,9 +515,9 @@ export const en: Dictionary = {
     termUsed: 'Term used for this result: {term}',
     lookahead: 'This result also covers the next {weeks} weeks.',
     termClockWoman:
-      "Term unknown: the phone's date is before a day the app was already used. Your baby may be born: this result covers the whole pregnancy and breastfeeding. Look at the phone's date.",
+      "The phone's date seems wrong: it is before a day the app was already used. Look at the phone's date. Meanwhile, the term is unknown and your baby may be born: this result covers the whole pregnancy and breastfeeding.",
     termClockAccompanied:
-      "Term unknown: the phone's date is before a day the app was already used. The baby may be born: this result covers the whole pregnancy and breastfeeding. Look at the phone's date.",
+      "The phone's date seems wrong: it is before a day the app was already used. Look at the phone's date. Meanwhile, the term is unknown and the baby may be born: this result covers the whole pregnancy and breastfeeding.",
     mayBeBornWoman:
       'We do not know whether your baby is born: this result takes into account pregnancy and breastfeeding.',
     mayBeBornAccompanied:

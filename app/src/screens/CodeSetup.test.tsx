@@ -70,7 +70,7 @@ describe('Code setup', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ce code est facile à deviner' }),
     ).toHaveFocus();
-    expect(screen.getByText(/N'utilisez pas une année de naissance\./)).toBeVisible();
+    expect(screen.getByText(/N'utilisez pas une date ou une année de naissance\./)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Choisir un autre code' })).toHaveClass(
       'button--primary',
     );

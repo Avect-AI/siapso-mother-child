@@ -208,7 +208,10 @@ export function Profiles() {
                   })}
                   onClick={(event) => {
                     event.preventDefault();
-                    navigate(PROFILE_EDIT_PATH, { state: editEntry(profile.id) });
+                    // To update: "Le bébé est-il né ?" first, as the check asks it.
+                    navigate(PROFILE_EDIT_PATH, {
+                      state: editEntry(profile.id, update ? { update: 'ask' } : {}),
+                    });
                   }}
                 >
                   {t(update ? 'profiles.update' : 'profiles.edit')}

@@ -20,7 +20,10 @@ export type TermInput =
   | { kind: 'weeks'; weeks: number; givenOn?: string }
   | { kind: 'months'; months: number; givenOn?: string }
   // Dated too: "Je ne sais pas" said long ago no longer tells where she stands.
-  | { kind: 'unknown'; givenOn?: string };
+  | { kind: 'unknown'; givenOn?: string }
+  // Past 42 weeks and still pregnant on `givenOn` (domain/term.ts): read as 42
+  // weeks and over, with the advice to be seen at the health post today.
+  | { kind: 'post-term'; givenOn?: string };
 
 export interface Profile {
   /** Random id from crypto.randomUUID(). */

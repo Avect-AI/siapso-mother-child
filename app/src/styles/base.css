@@ -2218,6 +2218,13 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   width: 100%;
 }
 
+/* Past 42 weeks and still pregnant: the advice, then who to call. */
+.post-term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
 /* "Aucun" tapped while signs are ticked: the question, then its two answers. */
 .signs__confirm,
 .inline-question {

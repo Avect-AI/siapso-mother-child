@@ -6,6 +6,7 @@ import { deleteProfile, listProfiles, ProfileGoneError, saveProfile } from '../d
 import { addDays, todayIso } from '../domain/dates.js';
 import {
   afterBirth,
+  answerPastNine,
   babyAgeFromForm,
   conditionsShown,
   emptyForm,
@@ -14,8 +15,11 @@ import {
   monthsAsWeeks,
   monthsLookLikeWeeks,
   monthsNearTerm,
+  monthsPastNine,
+  postTermForm,
   profileFromForm,
   pseudonymKey,
+  pseudonymWarning,
   reenterTerm,
   termFromForm,
   typedWeeks,
@@ -29,7 +33,14 @@ import {
   type ProfileForm,
   type WeeksDay,
 } from '../domain/profile-form.js';
-import { MAX_TERM_WEEKS, termDisplay, weeksLabel, type TermDisplay } from '../domain/term.js';
+import {
+  localDateOf,
+  MAX_TERM_WEEKS,
+  profileTermStatus,
+  termDisplay,
+  weeksLabel,
+  type TermDisplay,
+} from '../domain/term.js';
 import type { Mode, Profile, TermInput } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
@@ -42,6 +53,8 @@ import { Button } from '../ui/Button.js';
 import { CheckboxGroup, RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
+import { BirthQuestion, stillPregnantUpdate, type ProfileUpdate } from './OutdatedTerm.js';
+import { PostTermAdvice } from './PostTermAdvice.js';
 
 /** Which profile the screen opens: hers (woman mode), a new one, or one by its id. */
 export type ProfileTarget = { kind: 'mine' } | { kind: 'new' } | { kind: 'edit'; id: string };
@@ -77,10 +90,13 @@ function typedErrors(form: ProfileForm, all: FormErrors): FormErrors {
   return errors;
 }
 
-/** The oldest last period accepted: 42 weeks and 0 days, past it the term is outdated. */
-const LMP_MAX_DAYS = MAX_TERM_WEEKS * 7;
-/** The oldest day weeks can be dated: as for a last period. */
-const WEEKS_GIVEN_MAX_DAYS = LMP_MAX_DAYS;
+/**
+ * The oldest last period offered: 44 weeks and 6 days (past 42 weeks she is
+ * past term; from 45 weeks the date is looked at again, domain/term.ts).
+ */
+const LMP_MAX_DAYS = 45 * 7 - 1;
+/** The oldest day weeks can be dated: 42 weeks and 0 days. */
+const WEEKS_GIVEN_MAX_DAYS = MAX_TERM_WEEKS * 7;
 /** The oldest birth date accepted: 104 weeks and 6 days. */
 const BIRTH_MAX_DAYS = 104 * 7 + 6;
 
@@ -131,9 +147,15 @@ interface EntryAsk {
    * and leaves `next: '/check'`. Null: home, which says it was saved.
    */
   next: string | null;
-  /** An outdated term: the baby is born, or she is still pregnant (the term again). */
-  update: 'born' | 'term' | null;
+  /**
+   * The question "Le bébé est-il né ?" answered, or to ask first ('ask', from
+   * "Mettre à jour"): the baby is born, or she is still pregnant (the term
+   * again, or past 42 weeks).
+   */
+  update: ProfileUpdate | null;
 }
+
+const UPDATES: readonly ProfileUpdate[] = ['born', 'term', 'post-term', 'ask'];
 
 function entryAsk(): EntryAsk {
   // The outdated-term step leaves both in memory, behind marks (entry-state.ts);
@@ -143,20 +165,25 @@ function entryAsk(): EntryAsk {
   const plainNext =
     typeof state === 'object' && state !== null && 'next' in state && state.next === '/check';
   const next = kept['next'] === '/check' || plainNext ? '/check' : null;
-  const update = kept['update'] === 'born' || kept['update'] === 'term' ? kept['update'] : null;
+  const asked = kept['update'];
+  const update = UPDATES.includes(asked as ProfileUpdate) ? (asked as ProfileUpdate) : null;
   return { next, update };
 }
 
-/** Why the screen opened from the outdated-term step, in words. */
-function updateLead(update: 'born' | 'term', mode: Mode): MessageKey {
+/** Why the screen opened from the question "Le bébé est-il né ?", in words (past 42 weeks: the advice says it). */
+function updateLead(update: ProfileUpdate, mode: Mode): MessageKey | null {
   if (update === 'term') return 'profile.leadTerm';
-  return mode === 'accompanied' ? 'profile.leadBornAccompanied' : 'profile.leadBornWoman';
+  if (update === 'born') {
+    return mode === 'accompanied' ? 'profile.leadBornAccompanied' : 'profile.leadBornWoman';
+  }
+  return null;
 }
 
-/** The answers a screen opened to update an outdated term starts from. */
-function updatedForm(form: ProfileForm, update: EntryAsk['update']): ProfileForm {
+/** The answers a screen opened to update a term starts from. */
+function updatedForm(form: ProfileForm, update: ProfileUpdate | null): ProfileForm {
   if (update === 'born') return afterBirth(form);
   if (update === 'term') return reenterTerm(form);
+  if (update === 'post-term') return postTermForm(form);
   return form;
 }
 
@@ -246,7 +273,13 @@ export function ProfileQuestions({
   // A new weeks number asks again the day it was known: always in accompanied
   // mode, and on her own profile once saved (a new one keeps today).
   const asksDay = mode === 'accompanied' || base !== undefined;
+  // The phone's date before the day this profile was last saved: its clock was
+  // set back, and no term is worked out from it.
+  const seen = base === undefined ? undefined : localDateOf(base.updatedAt);
+  const clockBehind = seen !== undefined && seen > today;
   const { value: form, setValue: setForm, restored } = useDraft(draftKey, initial);
+  // A new number of weeks asked the day again: said until it is answered.
+  const [dayReset, setDayReset] = useState(false);
   // Each failed save attempt; from the first one, every error follows the answers live.
   const [attempts, setAttempts] = useState(0);
   // Why the last save did not go through: the phone refused it, or the profile was deleted meanwhile.
@@ -257,7 +290,9 @@ export function ProfileQuestions({
   const focusAfterRender = useRef<string | null>(null);
   const weeksId = useId();
 
-  const allErrors = validateForm(form, today, mode, taken);
+  const allErrors = validateForm(form, today, mode, taken, seen);
+  // What may mislead in the pseudonym typed: said, never refused.
+  const pseudonymNote = form.pseudonym.trim() === '' ? null : pseudonymWarning(form.pseudonym, taken);
   const errors = attempts > 0 ? allErrors : typedErrors(form, allErrors);
   // Neither pregnant nor breastfeeding on a saved profile (the baby is born, not
   // breastfed): said plainly with the way to delete it, never as a refusal.
@@ -328,6 +363,7 @@ export function ProfileQuestions({
   };
 
   const typeWeeks = (weeks: string) => {
+    if (asksDay && form.weeksDay !== null) setDayReset(true);
     setForm((current) => typedWeeks(current, weeks, asksDay));
   };
   // Another answer to "Enceinte ?" lets the day of a stored "Je ne sais pas" go.
@@ -350,6 +386,8 @@ export function ProfileQuestions({
   const words = (label: TermDisplay['label']) => t(label.key, label.vars);
   let termWords: string | undefined;
   if (form.pregnant === 'unknown') termWords = t('profileStatus.maybePregnant');
+  // Never a term worked out from a date the app knows is wrong.
+  else if (form.pregnant === 'yes' && clockBehind) termWords = t('profileStatus.clock');
   else if (term) {
     // Weeks known another day: the term today, then the weeks on that day.
     const since = weeksReadback(form, today);
@@ -423,17 +461,25 @@ export function ProfileQuestions({
         </div>
       ) : null}
       {quick ? null : (
-        <TextField
-          label={t('profile.pseudonym')}
-          hint={t('profile.pseudonymHint')}
-          error={error('pseudonym')}
-          value={form.pseudonym}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => {
-            update({ pseudonym: event.target.value });
-          }}
-        />
+        <div className="profile__pseudonym">
+          <TextField
+            label={t('profile.pseudonym')}
+            hint={t('profile.pseudonymHint')}
+            error={error('pseudonym')}
+            value={form.pseudonym}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => {
+              update({ pseudonym: event.target.value });
+            }}
+          />
+          {/* Never a refusal: a pseudonym close to another, or like a full name, is said. */}
+          <p className="meta" role="status">
+            {pseudonymNote === null || error('pseudonym') !== undefined
+              ? ''
+              : t(pseudonymNote.key, pseudonymNote.vars)}
+          </p>
+        </div>
       )}
 
       <section className="profile__group">
@@ -450,6 +496,7 @@ export function ProfileQuestions({
           value={form.pregnant}
           onChange={answerPregnant}
         />
+        {form.pregnant === 'yes' && clockBehind ? <Notice>{t('profile.clockBehind')}</Notice> : null}
         {form.pregnant === 'yes' ? (
           <>
             <RadioGroup<TermInput['kind']>
@@ -462,7 +509,9 @@ export function ProfileQuestions({
                 { value: 'months', label: t('profile.termMonths') },
                 { value: 'unknown', label: t('profile.termUnknown') },
               ]}
-              value={form.termKind}
+              // Past 42 weeks is never one of the choices: it comes from an
+              // answer (a date, months past 9, "toujours enceinte"), said below.
+              value={form.termKind === 'post-term' ? null : form.termKind}
               onChange={chooseTermKind}
             />
             {form.termKind === 'lmp' ? (
@@ -502,9 +551,14 @@ export function ProfileQuestions({
                   ]}
                   value={form.weeksDay}
                   onChange={(weeksDay) => {
+                    setDayReset(false);
                     update({ weeksDay });
                   }}
                 />
+                {/* A new number cleared the day: said, so a typo fixed is not a silent loss. */}
+                <p className="meta" role="status">
+                  {dayReset && form.weeksDay === null ? t('profile.weeksDayReset') : ''}
+                </p>
                 {form.weeksDay === 'other' ? (
                   <TextField
                     type="date"
@@ -533,6 +587,35 @@ export function ProfileQuestions({
                 }}
               />
             ) : null}
+            {/* 10 to 12 months: asked, never read as weeks in one tap. */}
+            {monthsPastNine(form) ? (
+              <div className="inline-question" role="group" aria-labelledby={`${weeksId}-nine`}>
+                <p id={`${weeksId}-nine`}>
+                  {t(mode === 'accompanied' ? 'postTerm.pastNineAccompanied' : 'postTerm.pastNineWoman')}
+                </p>
+                <div className="inline-question__actions">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setForm((current) => answerPastNine(current, true, asksDay));
+                    }}
+                  >
+                    {t('postTerm.pastNineYes')}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      focusAfterRender.current = weeksId;
+                      setForm((current) => answerPastNine(current, false, asksDay));
+                    }}
+                  >
+                    {t('postTerm.pastNineNo')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {/* Past 42 weeks and still pregnant: to be seen today, the check goes on. */}
+            {term?.postTerm === true && !clockBehind ? <PostTermAdvice mode={mode} /> : null}
             {asWeeks === null ? null : (
               <Button
                 variant="secondary"
@@ -576,7 +659,7 @@ export function ProfileQuestions({
           </>
         ) : null}
         <Readback label={t('profile.termShown')} value={termWords} />
-        {form.pregnant === 'yes' && form.termKind === 'lmp' && term ? (
+        {form.pregnant === 'yes' && form.termKind === 'lmp' && term && term.postTerm !== true ? (
           <Button
             variant="quiet"
             className="profile__correct"
@@ -855,12 +938,19 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const mode: Mode = settings.mode ?? 'woman';
   const [, navigate] = useLocation();
   const [ask] = useState(entryAsk);
+  // "Mettre à jour": the answer to "Le bébé est-il né ?", asked first.
+  const [answered, setAnswered] = useState<ProfileUpdate | null>(null);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const [confirming, setConfirming] = useState(false);
   const body = useRef<HTMLDivElement>(null);
   const wasConfirming = useRef(false);
   const kind = target.kind;
   const id = target.kind === 'edit' ? target.id : null;
+
+  // The question answered: the form takes its place, its heading the focus.
+  useEffect(() => {
+    if (answered !== null) body.current?.querySelector<HTMLElement>('h1')?.focus();
+  }, [answered]);
 
   // Back from the last step with the profile kept: the focus returns to the way there.
   useEffect(() => {
@@ -882,7 +972,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
       const edited = base ?? (kind === 'mine' ? ownProfile(profiles) : undefined);
       const taken = profiles.filter((p) => p.id !== edited?.id).map((p) => p.pseudonym);
       if (edited) {
-        const form = updatedForm(formFromProfile(edited, today, mode), ask.update);
+        const form = formFromProfile(edited, today, mode);
         return { status: 'ready', today, base: edited, form, taken };
       }
       // A new profile: its default pseudonym is worded at render, in the language of the moment.
@@ -909,7 +999,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
     };
     // Not on the language: a language change rewords the screen, it never reads
     // storage again nor resets answers being typed.
-  }, [kind, id, mode, storageTimeoutMs, ask.update]);
+  }, [kind, id, mode, storageTimeoutMs]);
 
   const pseudonymOf = (number: number) => t('profile.pseudonymNumbered', { number });
   const defaultPseudonym = (number: number, taken: readonly string[]) =>
@@ -921,6 +1011,17 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const base = ready?.base;
   // Deleted in another tab: this form leaves, its answers with it.
   useLeaveWhenDeleted(base?.id);
+  // "Mettre à jour" on a profile whose baby may be born, or whose term is
+  // past 42 weeks: the question first, as the check asks it; its answer sets
+  // what the form opens with.
+  const baseStatus =
+    ready?.base === undefined ? null : profileTermStatus(ready.base, ready.today).status;
+  const asking =
+    ask.update === 'ask' &&
+    answered === null &&
+    (baseStatus === 'outdated' || baseStatus === 'possibly-past');
+  const update: ProfileUpdate | null = ask.update === 'ask' ? answered : ask.update;
+  const lead = update === null ? null : updateLead(update, mode);
 
   return (
     <main className="screen profile">
@@ -948,18 +1049,27 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
           }}
         />
       ) : null}
-      <div ref={body} className="profile__body" hidden={confirming}>
+      {asking && base ? (
+        <BirthQuestion
+          mode={mode}
+          profile={base}
+          maybe={baseStatus === 'possibly-past'}
+          onAnswer={(born) => {
+            if (born) setAnswered('born');
+            else setAnswered(baseStatus === 'outdated' ? stillPregnantUpdate(base) : 'term');
+          }}
+        />
+      ) : null}
+      <div ref={body} className="profile__body" hidden={confirming || asking}>
         <div className="profile__intro">
           <h1 tabIndex={-1}>{t(TITLES[kind])}</h1>
-          {/* Opened from the outdated-term step: why, before the questions. */}
-          {ask.update === null ? null : (
-            <p className="profile__why">{t(updateLead(ask.update, mode))}</p>
-          )}
+          {/* Opened from the question "Le bébé est-il né ?": why, before the questions. */}
+          {lead === null ? null : <p className="profile__why">{t(lead)}</p>}
           <p>{t('profile.lead')}</p>
         </div>
         {loaded.status === 'missing' ? <Notice>{t('profile.notFound')}</Notice> : null}
         {loaded.status === 'failed' ? <Notice>{t('profile.loadFailed')}</Notice> : null}
-        {ready ? (
+        {ready && !asking ? (
           <ProfileQuestions
             mode={mode}
             today={ready.today}
@@ -975,7 +1085,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
                     // Her own new profile takes today as the day of weeks typed.
                     kind === 'mine' ? 'today' : null,
                   )
-                : ready.form
+                : updatedForm(ready.form, update)
             }
             onDelete={
               ready.base === undefined
