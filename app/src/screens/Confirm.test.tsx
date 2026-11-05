@@ -342,6 +342,48 @@ describe('Confirm: the strength on the box', () => {
       .filter((radio) => (radio as HTMLInputElement).checked);
     expect(checked.map((radio) => radio.getAttribute('value'))).toEqual(['neo-codion-syrup']);
   });
+
+  it('asks the form when the answers are forms, not strengths (Néo-Codion)', async () => {
+    const { user } = await confirmFirst('Ajouter un médicament', 'Neo-Codion');
+
+    expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
+    const question = screen.getByRole('group', {
+      name: `Quelle forme est écrite sur la boîte${NBSP}?`,
+    });
+    expect(question).toHaveAccessibleDescription(
+      `Sur la boîte${NBSP}: comprimé, sirop, gélule ou autre.`,
+    );
+    expect(within(question).getByRole('radio', { name: 'comprimé enrobé' })).toBeVisible();
+    expect(within(question).getByRole('radio', { name: 'sirop' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(
+      within(question).getByText('Choisissez une forme, ou « Je ne sais pas ».'),
+    ).toBeVisible();
+  });
+
+  it('never shows the database capitals in an answer', async () => {
+    await confirmFirst('Ajouter un médicament', 'doliprane');
+
+    const question = screen.getByRole('group', { name: STRENGTH });
+    expect(
+      within(question).getByRole('radio', { name: `adultes 1000${NBSP}mg, suppositoire` }),
+    ).toBeVisible();
+    expect(
+      within(question).getByRole('radio', { name: `2,4${NBSP}%, suspension buvable` }),
+    ).toBeVisible();
+    expect(within(question).queryByRole('radio', { name: /POUR CENT|ADULTES/ })).toBeNull();
+  });
+
+  it('preselects a strength typed in words', async () => {
+    await confirmFirst('Ajouter un médicament', 'doliprane mille');
+
+    const checked = screen
+      .getAllByRole('radio')
+      .filter((radio) => (radio as HTMLInputElement).checked);
+    expect(checked.map((radio) => radio.getAttribute('value'))).toEqual([
+      expect.stringMatching(/^doliprane-1000-mg-/),
+    ]);
+  });
 });
 
 describe('Confirm: a long list of strengths (live test round 2)', () => {
@@ -444,6 +486,21 @@ describe('Confirm: the name she typed', () => {
     await confirmFirst('Ajouter un médicament', 'doliprane 1000');
 
     expect(product()).not.toHaveTextContent('Vous avez écrit');
+  });
+
+  it('keeps the name on the box the candidate was found by', async () => {
+    await confirmFirst('Ajouter un médicament', 'birufen');
+
+    expect(product()).toHaveTextContent('Ibuprofène (générique)');
+    expect(product()).toHaveTextContent('Vous avez écrit : « birufen »');
+    expect(product()).toHaveTextContent('Nom sur la boîte : Brufen');
+  });
+
+  it('says the name on the box once when it is the name typed', async () => {
+    await confirmFirst('Ajouter un médicament', 'cytotec');
+
+    expect(product()).toHaveTextContent('Vous avez écrit : « cytotec »');
+    expect(product()).not.toHaveTextContent('Nom sur la boîte');
   });
 
   it('says when the product lacks a substance the name typed names', async () => {

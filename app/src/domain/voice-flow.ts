@@ -149,3 +149,49 @@ export function failureOf(error: unknown, phase: 'record' | 'transcribe'): Voice
 export function failureMessage(failure: VoiceFailure): MessageKey {
   return `voice.error.${failure}`;
 }
+
+/**
+ * Why an installation of the voice failed, as the voice screen says it:
+ * - `unavailable`: nothing came (no Internet, or this server does not give
+ *   the voice: a 404, the app page instead of the pack);
+ * - `damaged`: what came does not match what the pack says (not a pack, a
+ *   file of another size), and nothing of the voice is kept;
+ * - `damagedKept`: a file came of another size and was dropped, while the
+ *   files before it are kept, which "Reprendre l'installation" goes on from;
+ * - `interrupted`: the download stopped with part of the voice kept, which
+ *   "Reprendre l'installation" goes on from;
+ * - `storage`: not enough space.
+ */
+export type InstallFailure = 'unavailable' | 'damaged' | 'damagedKept' | 'interrupted' | 'storage';
+
+export const INSTALL_FAILURES: readonly InstallFailure[] = [
+  'unavailable',
+  'damaged',
+  'damagedKept',
+  'interrupted',
+  'storage',
+];
+
+/**
+ * What an installation failure means, from its reason and the bytes of the
+ * pack kept on the phone: a download that failed with nothing kept is a voice
+ * that did not come at all, never one to resume.
+ */
+export function installFailureOf(failure: VoiceFailure, storedBytes: number): InstallFailure {
+  switch (failure) {
+    case 'storage':
+      return 'storage';
+    case 'invalid':
+      // Only the damaged file is dropped: what came before it stays, to resume.
+      return storedBytes > 0 ? 'damagedKept' : 'damaged';
+    case 'download':
+      return storedBytes > 0 ? 'interrupted' : 'unavailable';
+    default:
+      return 'unavailable';
+  }
+}
+
+/** The plain message of an installation failure: what happened and where to go from there. */
+export function installFailureMessage(failure: InstallFailure): MessageKey {
+  return `voicePack.error.${failure}`;
+}

@@ -275,6 +275,25 @@ export function writtenNameOf(
 }
 
 /**
+ * The name on the box a product was found by (`matched`, "Brufen" for
+ * "Ibuprofène (générique)"), so the confirm screen still says what she holds;
+ * undefined when `matched` is not a brand of the product, or when the name
+ * shown already says it.
+ */
+export function boxNameOf(
+  pack: Pack,
+  ref: { kind: 'product' | 'plant'; id: string },
+  matched: string,
+  lang: Lang,
+): string | undefined {
+  if (ref.kind !== 'product') return undefined;
+  const key = normalize(matched);
+  const brand = productOf(pack, ref.id)?.brands.find((name) => normalize(name) === key);
+  if (brand === undefined || key === '') return undefined;
+  return normalize(displayOf(pack, ref, lang).name).includes(key) ? undefined : brand;
+}
+
+/**
  * The substances a query names that the product lacks, in the language
  * ("efferalgan codéine" for a paracetamol-only EFFERALGAN: Codéine), for the
  * confirm screen to say so. Empty when it lacks none, or is not in the pack.
@@ -402,6 +421,11 @@ export interface BrowseEntry {
   detail: string | undefined;
   /** The local names, by language, in the order the pack gives them. */
   local: { lang: LocalName['lang']; names: string[] }[];
+  /**
+   * For a name on the box of a generic listed on its own ("Cytotec"), the
+   * name of the generic it opens ("Misoprostol (générique)").
+   */
+  brandOf?: string;
 }
 
 /** Local names grouped by language, in the order the pack gives them. */
@@ -416,11 +440,32 @@ function localGroups(names: readonly LocalName[]): BrowseEntry['local'] {
 }
 
 /**
+ * The names on the box of a family that its name does not already say: the
+ * brands people use for a generic ("Cytotec" for "Misoprostol (générique)"),
+ * each once, in the order the pack gives them. Never a brand family's own
+ * brand (DOLIPRANE).
+ */
+function boxNamesOf(products: readonly Product[], name: string): string[] {
+  const shown = normalize(name);
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const brand of products.flatMap((product) => product.brands)) {
+    const key = normalize(brand);
+    if (key === '' || shown.startsWith(key) || seen.has(key)) continue;
+    seen.add(key);
+    names.push(brand);
+  }
+  return names;
+}
+
+/**
  * Every remedy, or every medicine family once, by its name in the language,
  * in alphabetical order: the list to choose from when a name said or typed
  * finds nothing. A family is named as the search names it when no strength
  * is typed, and opens on its plain product, so the confirm screen asks the
- * strength: none is chosen for her.
+ * strength: none is chosen for her. A name on the box of a generic (Cytotec,
+ * Brufen, Nivaquine) is an entry of its own, in its letter, that opens the
+ * generic (`brandOf`): a woman holding the box finds it by what she reads.
  */
 export function browseEntriesOf(pack: Pack, kind: 'product' | 'plant', lang: Lang): BrowseEntry[] {
   const collator = new Intl.Collator(lang, { sensitivity: 'base' });
@@ -444,15 +489,22 @@ export function browseEntriesOf(pack: Pack, kind: 'product' | 'plant', lang: Lan
         products.length > 1
           ? familyDisplayOf(pack, plain, lang)
           : displayOf(pack, { kind: 'product', id: plain.id }, lang);
-      return [
-        {
-          kind: 'product' as const,
-          id: plain.id,
-          name: shown.name,
-          detail: shown.detail,
-          local: localGroups(products.flatMap((product) => product.localNames)),
-        },
-      ];
+      const family: BrowseEntry = {
+        kind: 'product',
+        id: plain.id,
+        name: shown.name,
+        detail: shown.detail,
+        local: localGroups(products.flatMap((product) => product.localNames)),
+      };
+      const boxNames = boxNamesOf(products, shown.name).map((brand): BrowseEntry => ({
+        kind: 'product',
+        id: plain.id,
+        name: brand,
+        detail: shown.detail,
+        local: [],
+        brandOf: shown.name,
+      }));
+      return [family, ...boxNames];
     });
   }
   return entries.sort((a, b) => collator.compare(a.name, b.name) || compareText(a.id, b.id));
@@ -506,6 +558,24 @@ export function entriesNamedWith(
       plainText(name)
         .split(' ')
         .some((word) => words.has(wordKey(word))),
+    ),
+  );
+}
+
+/**
+ * The entries whose name, the generic a box name opens, or a local name holds
+ * `text`, as written (case and accents aside) or as the resolver reads names
+ * as they sound, in their order; every entry for a text with nothing to look
+ * for. As written, the start of a name she is typing holds ("c", "cy" of
+ * Cytotec, which reads "sitotek"); as it sounds, a phonetic spelling ("sito").
+ */
+export function filterBrowseEntries(entries: readonly BrowseEntry[], text: string): BrowseEntry[] {
+  const plain = plainText(text);
+  const wanted = normalize(text);
+  if (wanted === '') return [...entries];
+  return entries.filter((entry) =>
+    [entry.name, entry.brandOf ?? '', ...entry.local.flatMap((local) => local.names)].some(
+      (name) => plainText(name).includes(plain) || normalize(name).includes(wanted),
     ),
   );
 }
@@ -662,10 +732,39 @@ export function strengthOptionLabel(
     ? undefined
     : productOf(pack, candidate.id)?.brands[0];
   if (brand === undefined || !name.toLowerCase().startsWith(brand.toLowerCase())) {
-    return unitsHeld(name);
+    return unitsHeld(readable(name));
   }
   const after = name.charAt(brand.length);
-  if (after !== ' ' && after !== ',') return unitsHeld(name);
+  if (after !== ' ' && after !== ',') return unitsHeld(readable(name));
   const rest = name.slice(brand.length).replace(/^[\s,]+/, '');
-  return unitsHeld(rest === '' ? name : rest);
+  return unitsHeld(rest === '' ? name : readable(rest));
+}
+
+/** A word of capitals (hyphens joining them), as the database writes words. */
+const CAPITALS = /(?<![\p{L}\d])\p{Lu}+(?:-\p{Lu}+)*(?![\p{L}\d])/gu;
+
+/**
+ * What follows the brand in an answer, as a woman reads it: "POUR CENT" as
+ * "%", and a word the database writes in capitals in small letters ("ADULTES
+ * 1000 mg, suppositoire" reads "adultes 1000 mg, suppositoire"). Capitals of
+ * one or two letters are signs, not words ("LP", "UI"): they are kept.
+ */
+function readable(text: string): string {
+  return text
+    .replace(/(\d)\s*pour\s+cent(?![\p{L}\d])/giu, '$1 %')
+    .replace(CAPITALS, (word) =>
+      word.replace(/-/g, '').length >= 3 ? word.toLocaleLowerCase('fr') : word,
+    );
+}
+
+/**
+ * What the strength question asks, from its answers (without "I do not
+ * know"): the strength when each answer has a number ("500 mg, comprimé"),
+ * the form when none has ("comprimé enrobé", "sirop": Néo-Codion), both when
+ * some have one and some do not.
+ */
+export function strengthQuestionOf(labels: readonly string[]): 'strength' | 'form' | 'both' {
+  const withNumber = labels.filter((label) => /\d/.test(label)).length;
+  if (withNumber === labels.length) return 'strength';
+  return withNumber === 0 ? 'form' : 'both';
 }

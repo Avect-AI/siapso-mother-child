@@ -145,9 +145,9 @@ describe('voicePackInfo', () => {
     expect(await voicePackInfo(BASE)).toEqual(pack);
   });
 
-  it('says the manifest is invalid when the server answers with something else than JSON and nothing is installed', async () => {
+  it('says the pack is unavailable when the server answers with something else than JSON (the app page) and nothing is installed', async () => {
     vi.stubGlobal('fetch', fakeFetch({ [`${BASE}voice-pack.json`]: '<!doctype html>' }).fetch);
-    await expect(voicePackInfo(BASE)).rejects.toMatchObject({ reason: 'invalid' });
+    await expect(voicePackInfo(BASE)).rejects.toMatchObject({ reason: 'unavailable' });
   });
 
   it('says the pack is unavailable when it is neither online nor installed', async () => {
@@ -277,7 +277,7 @@ describe('installVoicePack', () => {
     expect((await storage.open(VOICE_CACHE)).urls()).toEqual([]);
   });
 
-  it('refuses a file whose size does not match the manifest, and does not keep it', async () => {
+  it('refuses a file whose size does not match the manifest as damaged, and does not keep it', async () => {
     const pack = await info();
     vi.stubGlobal(
       'fetch',
@@ -285,10 +285,21 @@ describe('installVoicePack', () => {
         .fetch,
     );
     await expect(installVoicePack(pack, () => undefined)).rejects.toMatchObject({
-      reason: 'download',
+      reason: 'invalid',
     });
     const cache = await storage.open(VOICE_CACHE);
     expect(cache.urls()).not.toContain(`${BASE}onnx/encoder_model_quantized.onnx`);
+  });
+
+  it('reports a file the server does not have (404) as unavailable', async () => {
+    const pack = await info();
+    vi.stubGlobal(
+      'fetch',
+      fakeFetch(served({ [`${BASE}config.json`]: { body: bytes(10), status: 404 } })).fetch,
+    );
+    await expect(installVoicePack(pack, () => undefined)).rejects.toMatchObject({
+      reason: 'unavailable',
+    });
   });
 
   it('reports an HTTP error as a download error', async () => {

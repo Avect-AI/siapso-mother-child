@@ -82,6 +82,11 @@ export interface FindingView {
    */
   written?: string[];
   /**
+   * Of the texts above (`typed` and `written`), those the voice heard: the
+   * screen labels them "Vous avez dit", never "Vous avez écrit".
+   */
+  said?: string[];
+  /**
    * Read before the risk in both modes: the fact of a danger sign that has a
    * message of its own ("La fièvre pendant la grossesse peut être le
    * paludisme."), without which the risk would not follow from the sign.
@@ -266,6 +271,8 @@ export interface ResultExtras {
   possible?: ReadonlyMap<number, PossibleMatch>;
   /** The name typed for an item shown under another name, if any. */
   writtenOf?: (item: CheckedItem) => string | undefined;
+  /** Whether the voice heard the name of an item (its written text, or its unrecognised text). */
+  saidOf?: (item: CheckedItem) => boolean;
 }
 
 interface Scope extends ResultExtras {
@@ -286,10 +293,11 @@ function messageOf(scope: Scope, id: string): Message {
   return message;
 }
 
-/** A name of a card, and whether it is text she typed. */
+/** A name of a card, whether it is text she typed, and whether the voice heard it. */
 interface Named {
   name: string;
   typed: boolean;
+  said?: boolean;
 }
 
 /**
@@ -307,10 +315,15 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
   const names = finding.items.flatMap((index): Named[] => {
     const item = items[index];
     // A possible match is named as she typed it: the card says what it looks like.
-    const typed = scope.possible?.get(index)?.typed;
-    if (typed !== undefined) return [{ name: typed, typed: true }];
+    const possible = scope.possible?.get(index);
+    if (possible !== undefined) {
+      const from = items[possible.forItem];
+      return [{ name: possible.typed, typed: true, said: saidItem(scope, from) }];
+    }
     if (item === undefined) return [];
-    if (item.ref.kind === 'unrecognised') return [{ name: item.ref.text, typed: true }];
+    if (item.ref.kind === 'unrecognised') {
+      return [{ name: item.ref.text, typed: true, said: saidItem(scope, item) }];
+    }
     const shown = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
     return [{ name: keepUnits(shown), typed: false }];
   });
@@ -350,15 +363,20 @@ function resemblesOf(scope: Scope, finding: Finding): string | undefined {
   return scope.t(listed ? 'result.resemblesListed' : 'result.resembles', { name });
 }
 
-/** The text typed ("cytotec") for each product of a card shown under another name. */
-function writtenOf(scope: Scope, finding: Finding): string[] {
+/** Whether the voice heard the name of an item. */
+function saidItem(scope: Scope, item: CheckedItem | undefined): boolean {
+  return item !== undefined && scope.saidOf?.(item) === true;
+}
+
+/** The text typed ("cytotec") for each product of a card shown under another name, and whether it was heard. */
+function writtenOf(scope: Scope, finding: Finding): { text: string; said: boolean }[] {
   const texts = finding.items.flatMap((index) => {
     const item = scope.items[index];
     if (item === undefined || scope.possible?.has(index) === true) return [];
     const text = scope.writtenOf?.(item);
-    return text === undefined ? [] : [text];
+    return text === undefined ? [] : [{ text, said: saidItem(scope, item) }];
   });
-  return distinct(texts);
+  return texts.filter((entry, at) => texts.findIndex((other) => other.text === entry.text) === at);
 }
 
 /** Names joined as the language says a list ("A et B", "A, B et C"). */
@@ -594,6 +612,7 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   };
   const typed = names.filter((n) => n.typed).map((n) => n.name);
   if (typed.length > 0) view.typed = typed;
+  const heard = names.filter((n) => n.typed && n.said === true).map((n) => n.name);
   if (finding.level !== 'danger' && NOW[scope.lang].test(orientation)) view.callNow = true;
   if (signFact) view.lead = message.fact;
   const possible = possibleOf(scope, finding);
@@ -601,7 +620,12 @@ function findingView(scope: Scope, group: readonly Finding[]): CardView {
   const resembles = resemblesOf(scope, finding);
   if (resembles !== undefined) view.resembles = resembles;
   const written = writtenOf(scope, finding);
-  if (written.length > 0) view.written = written;
+  if (written.length > 0) view.written = written.map((entry) => entry.text);
+  const voiced = distinct([
+    ...heard,
+    ...written.filter((entry) => entry.said).map((entry) => entry.text),
+  ]);
+  if (voiced.length > 0) view.said = voiced;
   if (finding.term === 'estimated' || finding.term === 'unknown') {
     view.termNote = t(`result.term.${finding.term}`);
   }

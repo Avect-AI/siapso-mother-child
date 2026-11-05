@@ -387,6 +387,15 @@ export const en: Dictionary = {
     dontKnow: "I don't know",
     showAllStrengths: 'See every strength ({count})',
     chooseStrength: 'Choose a strength, or "I don\'t know".',
+    // The answers are forms only (a coated tablet, a syrup): the question asks the form.
+    form: 'Which form is written on the box?',
+    formHint: 'On the box: tablet, syrup, capsule or other.',
+    chooseForm: 'Choose a form, or "I don\'t know".',
+    // Some answers have a strength, some a form only.
+    strengthOrForm: 'What is written on the box?',
+    strengthOrFormHint:
+      'The strength (the number followed by mg or g) or the form (tablet, syrup, capsule).',
+    chooseStrengthOrForm: 'Choose an answer, or "I don\'t know".',
     units: 'How many units a day?',
     unitsHint:
       'For example, the number of tablets, sachets or suppositories taken in one day. Leave it blank if you do not know.',
@@ -463,6 +472,8 @@ export const en: Dictionary = {
       'Show these products to the midwife, the nurse or the pharmacist before the next dose.',
     dangerAction: 'See who to call',
     typedLabel: 'You wrote:',
+    // The same, for a name the voice heard: she said it, she did not write it.
+    saidLabel: 'You said:',
     quoted: '“{text}”',
     possibleProduct: 'This name looks like {name}. If it is this product:',
     possiblePlant: 'This name looks like {name}. If it is this remedy:',
@@ -697,25 +708,41 @@ export const en: Dictionary = {
     cancel: 'Cancel',
     cancelled: 'Recording cancelled.',
     heard: 'I heard: {text}',
-    heardNothing: 'I did not hear a name.',
+    heardNothing: 'I did not hear a name. Try again, or type the name.',
     noneHint: 'Type the name, or choose it from the list.',
     type: 'Type the name',
     chooseProduct: 'Choose from the list of medicines',
     choosePlant: 'Choose from the list of remedies',
     listProduct: 'All medicines',
     listPlant: 'All remedies',
+    // A name on the box of a generic, listed on its own ("Cytotec").
+    brandOf: 'Name on the box of {name}',
+    filter: 'Filter the list',
+    filterHint: 'A few letters of the name are enough.',
+    filterNone: 'No name in the list contains "{text}".',
+    letters: 'Go to a letter',
+    letter: 'Letter {letter}',
     denied: 'The microphone is blocked for this app.',
-    deniedHow:
-      'To allow it in Chrome: tap the three dots at the top, then Settings, Site settings, Microphone, and allow this site, then tap the microphone again. Until then, type the name.',
+    // How to allow it again: in the browser, or in the app added to the home screen.
+    deniedSteps: 'To allow the microphone',
+    deniedBrowser1: 'In Chrome, tap the three dots at the top, then Settings.',
+    deniedBrowser2: 'Tap Site settings, then Microphone.',
+    deniedBrowser3: 'Allow this site, then come back here and tap the microphone again.',
+    deniedApp1: "Open the phone's settings, then Apps.",
+    deniedApp2: 'Tap {app}, then Permissions, then Microphone.',
+    deniedApp3: 'Choose Allow, then come back here and tap the microphone again.',
+    deniedWait: 'Until then, type the name.',
     install: 'Install the voice',
+    // The voice screen, where the voice can be removed and installed again.
+    reinstall: 'Remove or install the voice again',
     error: {
       unavailable: 'The voice is not complete on this phone. Install it again, or type the name.',
-      invalid: 'The voice files received are not right. Try again later, or tell the health post.',
+      invalid:
+        'The voice files on this phone are damaged. Remove the voice, then install it again. Until then, type the name.',
       storage:
         'There is not enough space on this phone for the voice. Free some space, then try again.',
-      download:
-        'The download was cut. Reconnect to the Internet, wifi if you can, then tap Resume: it goes on from where it was.',
-      load: 'The voice could not start on this phone. Close the other apps, then try again. You can also type the name.',
+      download: 'The voice could not be downloaded for now. Until then, type the name.',
+      load: 'The voice could not start on this phone. Close the other apps, then try again. If it happens again, remove the voice, then install it again. You can also type the name.',
       transcribe: 'I could not understand this recording. Try again, or type the name.',
       'no-microphone': 'No microphone was found on this phone. Type the name.',
       unsupported:
@@ -733,8 +760,11 @@ export const en: Dictionary = {
       'The voice could not load on this page, perhaps after an update. Close the app, then open it again.',
     unsupported:
       'This browser cannot use the voice. Open the app in Chrome. You can always type the names.',
-    language: 'Language of the voice',
-    languageHint: 'The app understands names said in this language.',
+    // Asked, never chosen for her: the other voice is a second download.
+    language: 'In which language will you say the names?',
+    languageHint:
+      'One voice at a time. To change the language later, this voice must be removed and the other one downloaded.',
+    chooseLanguage: 'Choose a language.',
     option: '{language}, {size}',
     languageName: {
       wo: 'Wolof',
@@ -751,8 +781,12 @@ export const en: Dictionary = {
     megabytes: '{count} MB',
     advice:
       'Install it once, on wifi, at the health post for example: {size} to download. After that, the voice works without the Internet.',
-    offline: 'Installing the voice needs the Internet.',
+    // Before a language is chosen: the size follows the choice.
+    adviceNoSize:
+      'Install it once, on wifi, at the health post for example. After that, the voice works without the Internet.',
+    offline: 'Connect to the Internet to install the voice.',
     install: 'Install the voice {languageIn}',
+    installPlain: 'Install the voice',
     partial: '{stored} of {size} are already on this phone.',
     resume: 'Resume the installation',
     removePartial: 'Remove the files already downloaded',
@@ -764,7 +798,8 @@ export const en: Dictionary = {
     cancelled: 'Installation cancelled. The files already downloaded are kept to resume it later.',
     installed: 'The voice {languageIn} is installed ({size}).',
     ready: 'Tap the microphone beside the search field to say a name.',
-    oneAtATime: 'To change the language, remove this voice first.',
+    oneAtATime:
+      'To change the language, remove this voice first: the other voice will then have to be downloaded.',
     remove: 'Remove the voice {languageIn}',
     removeConfirm: 'Remove the voice? Putting it back means downloading {size} again.',
     removeYes: 'Yes, remove the voice',
@@ -772,6 +807,19 @@ export const en: Dictionary = {
     removed: 'The voice is removed from this phone.',
     removeFailed: 'The voice could not be removed. Try again.',
     back: 'Back to the search',
+    // Why an installation failed (domain/voice-flow.ts installFailureOf).
+    error: {
+      unavailable:
+        'The voice cannot be downloaded right now: the Internet does not answer, or this server does not offer this voice. Until then, type the name. You can try again later, on the health post wifi for example.',
+      damaged:
+        'The voice files received are damaged: they were not kept. Try again later. Until then, type the name.',
+      damagedKept:
+        'A voice file received was damaged: it was not kept. What is already downloaded is kept: try again later with "Resume the installation". Until then, type the name.',
+      interrupted:
+        'The download was cut. What is already downloaded is kept. Reconnect to the Internet, wifi if you can, then tap "Resume the installation".',
+      storage:
+        'There is not enough space on this phone for the voice. Free some space, then try again.',
+    },
   },
   licences: {
     title: 'Third-party licences',

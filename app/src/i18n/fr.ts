@@ -463,6 +463,15 @@ export const fr = {
     // A long list shows the strength typed first: the others on demand.
     showAllStrengths: 'Voir tous les dosages ({count})',
     chooseStrength: 'Choisissez un dosage, ou « Je ne sais pas ».',
+    // The answers are forms only (a coated tablet, a syrup): the question asks the form.
+    form: 'Quelle forme est écrite sur la boîte ?',
+    formHint: 'Sur la boîte : comprimé, sirop, gélule ou autre.',
+    chooseForm: 'Choisissez une forme, ou « Je ne sais pas ».',
+    // Some answers have a strength, some a form only.
+    strengthOrForm: "Qu'est-ce qui est écrit sur la boîte ?",
+    strengthOrFormHint:
+      'Le dosage (le nombre suivi de mg ou de g) ou la forme (comprimé, sirop, gélule).',
+    chooseStrengthOrForm: 'Choisissez une réponse, ou « Je ne sais pas ».',
     units: "Combien d'unités par jour ?",
     unitsHint:
       'Par exemple, le nombre de comprimés, de sachets ou de suppositoires pris en un jour. Laissez vide si vous ne savez pas.',
@@ -574,6 +583,8 @@ export const fr = {
     dangerAction: 'Voir qui appeler',
     // Text she typed, quoted under its label, never said as the app's own words.
     typedLabel: 'Vous avez écrit :',
+    // The same, for a name the voice heard: she said it, she did not write it.
+    saidLabel: 'Vous avez dit :',
     quoted: '« {text} »',
     // A name typed as not recognised that looks like a product or remedy of the base.
     possibleProduct: "Ce nom ressemble à {name}. Si c'est ce produit :",
@@ -864,27 +875,42 @@ export const fr = {
     cancel: 'Annuler',
     cancelled: 'Enregistrement annulé.',
     heard: "J'ai entendu : {text}",
-    heardNothing: "Je n'ai pas entendu de nom.",
+    heardNothing: "Je n'ai pas entendu de nom. Réessayez, ou écrivez le nom.",
     noneHint: 'Écrivez le nom, ou choisissez-le dans la liste.',
     type: 'Écrire le nom',
     chooseProduct: 'Choisir dans la liste des médicaments',
     choosePlant: 'Choisir dans la liste des remèdes',
     listProduct: 'Tous les médicaments',
     listPlant: 'Tous les remèdes',
+    // A name on the box of a generic, listed on its own ("Cytotec").
+    brandOf: 'Nom sur la boîte de {name}',
+    filter: 'Filtrer la liste',
+    filterHint: 'Quelques lettres du nom suffisent.',
+    filterNone: 'Aucun nom de la liste ne contient « {text} ».',
+    letters: 'Aller à une lettre',
+    letter: 'Lettre {letter}',
     denied: 'Le micro est bloqué pour cette application.',
-    deniedHow:
-      'Pour le permettre dans Chrome : touchez les trois points en haut, puis Paramètres, Paramètres des sites, Micro, et permettez ce site, puis touchez à nouveau le micro. En attendant, écrivez le nom.',
+    // How to allow it again: in the browser, or in the app added to the home screen.
+    deniedSteps: 'Pour autoriser le micro',
+    deniedBrowser1: 'Dans Chrome, touchez les trois points en haut, puis Paramètres.',
+    deniedBrowser2: 'Touchez Paramètres des sites, puis Micro.',
+    deniedBrowser3: 'Autorisez ce site, puis revenez ici et touchez à nouveau le micro.',
+    deniedApp1: 'Ouvrez les réglages du téléphone, puis Applications.',
+    deniedApp2: 'Touchez {app}, puis Autorisations, puis Micro.',
+    deniedApp3: 'Choisissez Autoriser, puis revenez ici et touchez à nouveau le micro.',
+    deniedWait: 'En attendant, écrivez le nom.',
     install: 'Installer la voix',
+    // The voice screen, where the voice can be removed and installed again.
+    reinstall: 'Retirer ou réinstaller la voix',
     error: {
       unavailable:
         "La voix n'est pas complète sur ce téléphone. Installez-la à nouveau, ou écrivez le nom.",
       invalid:
-        'Les fichiers de la voix reçus ne sont pas bons. Réessayez plus tard, ou dites-le au poste de santé.',
+        'Les fichiers de la voix sur ce téléphone sont abîmés. Retirez la voix, puis installez-la à nouveau. En attendant, écrivez le nom.',
       storage:
         "Il n'y a pas assez de place sur ce téléphone pour la voix. Libérez de la place, puis réessayez.",
-      download:
-        "Le téléchargement s'est interrompu. Reconnectez Internet, de préférence le wifi, puis touchez Reprendre : il continue là où il en était.",
-      load: "La voix n'a pas pu démarrer sur ce téléphone. Fermez les autres applications, puis réessayez. Vous pouvez aussi écrire le nom.",
+      download: "La voix n'a pas pu être téléchargée pour le moment. En attendant, écrivez le nom.",
+      load: "La voix n'a pas pu démarrer sur ce téléphone. Fermez les autres applications, puis réessayez. Si cela recommence, retirez la voix, puis installez-la à nouveau. Vous pouvez aussi écrire le nom.",
       transcribe: "Je n'ai pas pu comprendre cet enregistrement. Réessayez, ou écrivez le nom.",
       'no-microphone': "Aucun micro n'a été trouvé sur ce téléphone. Écrivez le nom.",
       unsupported:
@@ -905,8 +931,11 @@ export const fr = {
       "La voix n'a pas pu se charger sur cette page, peut-être après une mise à jour. Fermez l'application, puis rouvrez-la.",
     unsupported:
       "Ce navigateur ne peut pas utiliser la voix. Ouvrez l'application dans Chrome. Vous pouvez toujours écrire les noms.",
-    language: 'Langue de la voix',
-    languageHint: "L'application comprend les noms dits dans cette langue.",
+    // Asked, never chosen for her: the other voice is a second download.
+    language: 'Dans quelle langue allez-vous dire les noms ?',
+    languageHint:
+      "Une seule voix à la fois. Pour changer de langue plus tard, il faudra retirer cette voix et télécharger l'autre.",
+    chooseLanguage: 'Choisissez une langue.',
     option: '{language}, {size}',
     languageName: {
       wo: 'Wolof',
@@ -923,8 +952,12 @@ export const fr = {
     megabytes: '{count} Mo',
     advice:
       'À installer une seule fois, en wifi, au poste de santé par exemple : {size} à télécharger. Ensuite, la voix marche sans Internet.',
-    offline: 'Il faut Internet pour installer la voix.',
+    // Before a language is chosen: the size follows the choice.
+    adviceNoSize:
+      'À installer une seule fois, en wifi, au poste de santé par exemple. Ensuite, la voix marche sans Internet.',
+    offline: 'Connectez-vous à Internet pour installer la voix.',
     install: 'Installer la voix {languageIn}',
+    installPlain: 'Installer la voix',
     partial: '{stored} sur {size} sont déjà sur ce téléphone.',
     resume: "Reprendre l'installation",
     removePartial: 'Retirer les fichiers déjà téléchargés',
@@ -937,7 +970,8 @@ export const fr = {
       'Installation annulée. Les fichiers déjà téléchargés sont gardés pour la reprendre plus tard.',
     installed: 'La voix {languageIn} est installée ({size}).',
     ready: 'Touchez le micro à côté du champ de recherche pour dire un nom.',
-    oneAtATime: "Pour changer de langue, retirez d'abord cette voix.",
+    oneAtATime:
+      "Pour changer de langue, retirez d'abord cette voix : il faudra ensuite télécharger l'autre voix.",
     remove: 'Retirer la voix {languageIn}',
     removeConfirm: 'Retirer la voix ? Pour la remettre, il faudra télécharger à nouveau {size}.',
     removeYes: 'Oui, retirer la voix',
@@ -945,6 +979,19 @@ export const fr = {
     removed: 'La voix est retirée de ce téléphone.',
     removeFailed: "La voix n'a pas pu être retirée. Essayez encore.",
     back: 'Revenir à la recherche',
+    // Why an installation failed (domain/voice-flow.ts installFailureOf).
+    error: {
+      unavailable:
+        'La voix ne peut pas être téléchargée pour le moment : Internet ne répond pas, ou ce serveur ne propose pas cette voix. En attendant, écrivez le nom. Vous pourrez réessayer plus tard, avec le wifi du poste de santé par exemple.',
+      damaged:
+        "Les fichiers de la voix reçus sont abîmés : ils n'ont pas été gardés. Réessayez plus tard. En attendant, écrivez le nom.",
+      damagedKept:
+        "Un fichier de la voix reçu était abîmé : il n'a pas été gardé. Ce qui est déjà téléchargé est gardé : réessayez plus tard avec « Reprendre l'installation ». En attendant, écrivez le nom.",
+      interrupted:
+        "Le téléchargement s'est interrompu. Ce qui est déjà téléchargé est gardé. Reconnectez Internet, de préférence le wifi, puis touchez « Reprendre l'installation ».",
+      storage:
+        "Il n'y a pas assez de place sur ce téléphone pour la voix. Libérez de la place, puis réessayez.",
+    },
   },
   // The third-party software and models of the voice, with their licence
   // texts (reached from About). The texts stay in English, as written.

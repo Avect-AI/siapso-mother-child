@@ -280,6 +280,142 @@ for (const viewport of [
   });
 }
 
+test.describe('on a desktop (1280 x 800)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('the band is one row, the danger shortcut in one place in every state, never the quick exit', async ({
+    page,
+    context,
+  }) => {
+    await expectShortcutInOnePlace(page, context);
+    await page.getByLabel('Code', { exact: true }).fill(CODE);
+    await page.getByRole('button', { name: 'Ouvrir' }).click();
+    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await bandRows(page)).toBe(1);
+    await context.setOffline(true);
+    await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
+    expect(await bandRows(page)).toBe(1);
+    // The quick exit sits before the shortcut, which ends the row.
+    const band = page.getByRole('banner');
+    const exit = await band.getByRole('button', { name: 'Quitter' }).boundingBox();
+    const danger = await band.getByRole('link', { name: 'Signes de danger' }).boundingBox();
+    expect(exit).not.toBeNull();
+    expect(danger).not.toBeNull();
+    if (exit !== null && danger !== null) {
+      expect(exit.x + exit.width).toBeLessThanOrEqual(danger.x);
+    }
+    // The reading and focus order stay those of the phone: the name, then the danger signs.
+    await page.getByRole('link', { name: 'Carnet' }).focus();
+    await page.keyboard.press('Tab');
+    await expect(band.getByRole('link', { name: 'Signes de danger' })).toBeFocused();
+    await expectNoSeriousViolation(page);
+    await context.setOffline(false);
+  });
+
+  test('at 200 percent text the danger shortcut still keeps one place in every state', async ({
+    page,
+    context,
+  }) => {
+    await expectShortcutInOnePlace(page, context, largeText);
+  });
+});
+
+/**
+ * The narrowest band that is one row (37.5rem of content, so 632 px of
+ * window): the open band with its offline badge and "Quitter", in French
+ * (the longest words), fits on its row; one pixel narrower keeps two rows.
+ * The breakpoint sits under the 38rem (608 px) of content that every wider
+ * window has, so no window is on its edge.
+ */
+test.describe('at the one-row breakpoint', () => {
+  test.use({ viewport: { width: 632, height: 800 } });
+
+  test('the band is one row, nothing overflows, and the shortcut keeps one place', async ({
+    page,
+    context,
+  }) => {
+    await expectShortcutInOnePlace(page, context);
+    await page.getByLabel('Code', { exact: true }).fill(CODE);
+    await page.getByRole('button', { name: 'Ouvrir' }).click();
+    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await context.setOffline(true);
+    await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
+    expect(await bandRows(page)).toBe(1);
+    const fit = await page.evaluate(() => {
+      const inner = document.querySelector('.header__inner');
+      const danger = document.querySelector('.header__danger');
+      const name = document.querySelector('.header__name');
+      if (inner === null || danger === null || name === null) return null;
+      const box = inner.getBoundingClientRect();
+      return {
+        overflow: inner.scrollWidth - inner.clientWidth,
+        dangerEnd: danger.getBoundingClientRect().right - box.right,
+        nameStart: name.getBoundingClientRect().left - box.left,
+        dangerLines: Math.round(
+          danger.getBoundingClientRect().height /
+            Number.parseFloat(getComputedStyle(danger).lineHeight || '24'),
+        ),
+      };
+    });
+    expect(fit).not.toBeNull();
+    expect(fit?.overflow).toBeLessThanOrEqual(0);
+    expect(fit?.dangerEnd).toBeLessThanOrEqual(0.5);
+    expect(fit?.nameStart).toBeGreaterThanOrEqual(-0.5);
+    await context.setOffline(false);
+  });
+
+  test('one pixel narrower, the band keeps its two rows', async ({ page }) => {
+    await page.setViewportSize({ width: 631, height: 800 });
+    await onboard(page, 'woman');
+    const band = page.getByRole('banner');
+    const exit = await band.getByRole('button', { name: 'Quitter' }).boundingBox();
+    const danger = await band.getByRole('link', { name: 'Signes de danger' }).boundingBox();
+    // "Quitter" on the second row, under the shortcut.
+    expect(exit?.y ?? 0).toBeGreaterThanOrEqual((danger?.y ?? 0) + (danger?.height ?? 0));
+  });
+});
+
+test.describe('on a 360 px phone, a long name in the search field', () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test('keeps the clear mark apart from the end of the name', async ({ page }) => {
+    await onboard(page, 'woman');
+    await pregnantAt(page, 20);
+    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+    const field = page.getByRole('searchbox');
+    await field.fill('Advil 400 mg comprimé pelliculé, boîte de vingt');
+    await field.blur();
+    // The browser's clear mark is out of reach of the page's scripts: its room
+    // is read from the style sheet that gives it, and the name is cut with an
+    // ellipsis rather than under it.
+    const room = await page.evaluate(() => {
+      for (const sheet of document.styleSheets) {
+        for (const rule of sheet.cssRules) {
+          if (
+            rule instanceof CSSStyleRule &&
+            rule.selectorText.includes('.search__field') &&
+            rule.selectorText.includes('::-webkit-search-cancel-button')
+          ) {
+            return rule.style.marginInlineStart;
+          }
+        }
+      }
+      return '';
+    });
+    const pixels = await field.evaluate((input, value) => {
+      if (value === '') return 0;
+      const probe = document.createElement('div');
+      probe.style.width = value;
+      input.parentElement?.append(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
+      return width;
+    }, room);
+    expect(pixels).toBeGreaterThanOrEqual(8);
+    expect(await field.evaluate((input) => getComputedStyle(input).textOverflow)).toBe('ellipsis');
+  });
+});
+
 test.describe('on a small phone (320 x 640) with text at 200 percent', () => {
   test.use({ viewport: { width: 320, height: 640 } });
 

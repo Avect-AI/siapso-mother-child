@@ -9,7 +9,7 @@ import type { MessageKey, Vars } from '../i18n/translate.js';
  * with its language only on a screen in the other language ("Autre nom :
  * argile"). Its placeholders are `name` and `lang`.
  */
-export function localNameKey(local: LocalName, lang: Lang): MessageKey {
+export function localNameKey(local: Pick<LocalName, 'lang'>, lang: Lang): MessageKey {
   if (local.lang === 'wo') return 'search.localName';
   return local.lang === lang ? 'search.otherName' : 'search.otherNameLang';
 }

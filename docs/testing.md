@@ -15,6 +15,8 @@ Run from the repository root (Node 24, pnpm 12):
 
 The first time, install the browser: `pnpm --filter @siapso/app exec playwright install chromium`. On a machine with little free memory, run fewer browsers at once: `pnpm e2e --workers=2`.
 
+In CI, the End-to-end job runs in the official Playwright image (`mcr.microsoft.com/playwright`, the version `app/package.json` pins, pinned by digest), which holds Chromium and its system libraries, so no apt mirror is on the way and the 20-minute limit measures the tests. `tools/ci/check-playwright-image.mjs` fails the unit tests and the job when the image is not the pinned version or not pinned by digest, and, once the workspace is installed in the image (`--browsers`), when the Chromium builds named by Playwright's `browsers.json` are not the ones the image holds in `/ms-playwright` (a tag moved without its digest pulls the old image): a Playwright update changes the tag and its digest in `.github/workflows/ci.yml` too (the digest of a tag: `docker buildx imagetools inspect mcr.microsoft.com/playwright:v<version>-noble`).
+
 The offline test loads the app once, waits until Home says "Prêt sans Internet" (the service worker controls the page: its first install claims it), switches the browser context offline and reloads. That is close to a phone in airplane mode, but not the same: test on a real phone before a release. The tabs test opens two pages in one browser context, as two tabs of one phone: "Quitter" in one locks the other, and the forgotten-code erase in one sends the other to the welcome.
 
 ## Airplane mode on a real phone

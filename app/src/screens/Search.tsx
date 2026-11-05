@@ -173,6 +173,13 @@ export function Search({ kind }: { kind: EntryKind }) {
   // the entry, so Back from a confirm screen finds it so too).
   const [fromVoice, setFromVoice] = useState(entry.heard === true);
 
+  // The voice screen, the text in the field kept on this entry for the way
+  // back (the letters typed just before the tap included).
+  const toVoiceScreen = () => {
+    keepOnEntry({ query: text, heard: fromVoice });
+    navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
+  };
+
   const voice = useVoiceInput({
     maxLength: SEARCH_MAX_LENGTH,
     // What was heard goes in the field and is searched at once, as if typed.
@@ -185,9 +192,7 @@ export function Search({ kind }: { kind: EntryKind }) {
     },
     countCandidates: (heard) =>
       index === null ? 0 : search(index, heard, { kinds: [kind] }).length,
-    onNeedPack: () => {
-      navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
-    },
+    onNeedPack: toVoiceScreen,
   });
 
   useEffect(() => {
@@ -244,6 +249,8 @@ export function Search({ kind }: { kind: EntryKind }) {
         query: foundBy,
         matched: candidate.matched,
         stepsToCheck: oneMoreStep(entry.stepsToCheck),
+        // The name was said, not written: "Vous avez dit".
+        heard: fromVoice ? true : undefined,
       }),
     });
   };
@@ -265,7 +272,12 @@ export function Search({ kind }: { kind: EntryKind }) {
     setLeaving(true);
     check.add(
       { ref: { kind: 'unrecognised', text: typed } },
-      { list: kind, ...(declined ? { declined: true } : {}) },
+      {
+        list: kind,
+        ...(declined ? { declined: true } : {}),
+        // Kept as the voice heard it: "Vous avez dit".
+        ...(fromVoice ? { said: true } : {}),
+      },
     );
     backToCheck(navigate, entry.stepsToCheck);
   };
@@ -341,10 +353,12 @@ export function Search({ kind }: { kind: EntryKind }) {
   // "Not found" adds the text as it is: quiet while a candidate or the other
   // list is on offer, a plain secondary choice when nothing matches anywhere.
   const notFoundQuiet = candidates.length > 0 || inOtherList || withWord.length > 0;
-  // What the voice heard is never added as typed: she types it first (typing
-  // ends the voice state), or chooses a candidate or the whole list.
+  // A name the voice heard is added as it was heard only when no candidate
+  // matches it (through "Ce nom ressemble à", as a typed name): with
+  // candidates on offer she chooses one, or types the name first.
   const heardByVoice =
     fromVoice || voice.state.step === 'heard' || voice.state.step === 'heard-none';
+  const notFoundOffered = typed !== '' && !(heardByVoice && candidates.length > 0);
   // The question names what the lookalikes are: medicines, remedies, or both.
   const lookalikeKinds = new Set((lookalikes ?? []).map((candidate) => candidate.kind));
   const lookalikeLists =
@@ -418,9 +432,7 @@ export function Search({ kind }: { kind: EntryKind }) {
             onBrowse: () => {
               setBrowsing(true);
             },
-            onInstall: () => {
-              navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
-            },
+            onInstall: toVoiceScreen,
           }}
         />
       ) : null}
@@ -490,7 +502,11 @@ export function Search({ kind }: { kind: EntryKind }) {
             )}
           >
             {withWord.map((entry) => (
-              <BrowseEntryButton key={entry.id} entry={entry} onChoose={chooseEntry} />
+              <BrowseEntryButton
+                key={`${entry.id}:${entry.name}`}
+                entry={entry}
+                onChoose={chooseEntry}
+              />
             ))}
           </ul>
         )}
@@ -499,7 +515,7 @@ export function Search({ kind }: { kind: EntryKind }) {
             {t(kind === 'product' ? 'search.searchPlants' : 'search.searchProducts')}
           </Button>
         ) : null}
-        {typed === '' || heardByVoice ? null : (
+        {!notFoundOffered ? null : (
           <div className="search__not-found">
             <Button
               variant={notFoundQuiet ? 'quiet' : 'secondary'}

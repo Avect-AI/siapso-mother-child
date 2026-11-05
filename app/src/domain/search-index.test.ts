@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 import type { Pack, Rule } from '@siapso/engine';
-import { plainText, search } from '@siapso/resolver';
+import { normalize, plainText, search } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
   browseEntriesOf,
+  boxNameOf,
   browseGroupsOf,
   candidateDisplayOf,
   candidateOf,
   displayOf,
   entriesNamedWith,
+  filterBrowseEntries,
   localNameOf,
   missingBrandSubstancesOf,
   missingSubstancesOf,
@@ -18,6 +20,7 @@ import {
   searchIndexOf,
   strengthChoiceOf,
   strengthOptionLabel,
+  strengthQuestionOf,
   substancesWithMaxDose,
   unitsHeld,
   writtenNameOf,
@@ -171,8 +174,29 @@ describe('strengthOptionLabel', () => {
       '1000 mg, comprimé',
     );
     expect(strengthOptionLabel(pack, candidate, 'doliprane-2-4-pour-cent-66477582', 'fr')).toBe(
-      '2,4 POUR CENT, suspension buvable',
+      '2,4 %, suspension buvable',
     );
+  });
+
+  it('writes the database capitals as a woman reads them', () => {
+    const candidate = first('doliprane', 'product');
+    expect(strengthOptionLabel(pack, candidate, 'doliprane-adultes-1000-mg-67488731', 'fr')).toBe(
+      'adultes 1000 mg, suppositoire',
+    );
+  });
+});
+
+describe('strengthQuestionOf', () => {
+  it('asks the strength when every answer has a number', () => {
+    expect(strengthQuestionOf(['500 mg, comprimé', '1000 mg, comprimé'])).toBe('strength');
+  });
+
+  it('asks the form when no answer has a number (Néo-Codion: a coated tablet or a syrup)', () => {
+    expect(strengthQuestionOf(['comprimé enrobé', 'sirop'])).toBe('form');
+  });
+
+  it('asks both when some answers have a number and some do not', () => {
+    expect(strengthQuestionOf(['500 mg, comprimé', 'sirop'])).toBe('both');
   });
 });
 
@@ -434,6 +458,32 @@ describe('strengthChoiceOf', () => {
     expect(strengthChoiceOf(pack, candidate, 'doliprane 1000')?.preselected).toBe('candidate');
   });
 
+  it('never preselects a count or a volume as a strength (DOLIPRANE has a 100 mg box)', () => {
+    for (const query of [
+      'doliprane boîte de 100',
+      'doliprane boîte de cent',
+      'doliprane 100 comprimés',
+      'doliprane cent comprimés',
+      'doliprane 100 ml',
+      'doliprane deux fois cent',
+    ]) {
+      const candidate = first(query, 'product');
+      expect(strengthChoiceOf(pack, candidate, query)?.preselected, query).toBeNull();
+    }
+  });
+
+  it('preselects a strength said or typed in words, as if typed in digits', () => {
+    for (const query of ['Doliprane mille', 'doliprane un gramme']) {
+      const candidate = first(query, 'product');
+      expect(candidate.id).toBe(first('doliprane 1000', 'product').id);
+      expect(strengthChoiceOf(pack, candidate, query)?.preselected).toBe('candidate');
+    }
+    const advil = 'Advil quatre cents milligrammes, boîte de vingt';
+    const candidate = first(advil, 'product');
+    expect(candidate.id).toBe(first('advil 400', 'product').id);
+    expect(strengthChoiceOf(pack, candidate, advil)?.preselected).toBe('candidate');
+  });
+
   it('asks for a brand with no generic of its substance (COVERSYL), with nothing preselected', () => {
     const candidate = first('coversyl', 'product');
     expect(pack.products.some((p) => p.id === 'perindopril-generic')).toBe(false);
@@ -494,6 +544,20 @@ describe('writtenNameOf', () => {
   });
 });
 
+describe('boxNameOf', () => {
+  it('gives the name on the box a product was found by, when the name shown does not say it', () => {
+    const ibuprofen = { kind: 'product', id: 'ibuprofen-generic' } as const;
+    expect(boxNameOf(pack, ibuprofen, 'Brufen', 'fr')).toBe('Brufen');
+    // Not a brand of the product: a local name, the name itself, another product's brand.
+    expect(boxNameOf(pack, ibuprofen, 'Ibuprofène', 'fr')).toBeUndefined();
+    expect(boxNameOf(pack, ibuprofen, 'Cytotec', 'fr')).toBeUndefined();
+    expect(boxNameOf(pack, { kind: 'plant', id: 'moringa' }, 'nebeday', 'fr')).toBeUndefined();
+    // A brand product shows its brand already.
+    const doliprane = { kind: 'product', id: 'doliprane-1000-mg-60234100' } as const;
+    expect(boxNameOf(pack, doliprane, 'DOLIPRANE', 'fr')).toBeUndefined();
+  });
+});
+
 describe('missingSubstancesOf', () => {
   it('names the substances the query names that the product lacks', () => {
     expect(
@@ -542,7 +606,8 @@ describe('browseEntriesOf', () => {
   });
 
   it('lists the medicines one per family, by the family name, never one strength chosen for her', () => {
-    const entries = browseEntriesOf(pack, 'product', 'fr');
+    const all = browseEntriesOf(pack, 'product', 'fr');
+    const entries = all.filter((entry) => entry.brandOf === undefined);
     const families = new Set(entries.map((entry) => productFamilyOf(pack, entry.id)));
     expect(families.size).toBe(entries.length);
     expect(entries.length).toBeGreaterThan(10);
@@ -559,6 +624,47 @@ describe('browseEntriesOf', () => {
   it('keeps the local names, by language: a Wolof name that was said is found again', () => {
     const moringa = browseEntriesOf(pack, 'plant', 'fr').find((entry) => entry.id === 'moringa');
     expect(moringa?.local).toEqual([{ lang: 'wo', names: ['nebeday', 'nebedaay'] }]);
+  });
+
+  it('lists the name on the box of a generic as an entry of its own, pointing to the generic', () => {
+    const entries = browseEntriesOf(pack, 'product', 'fr');
+    const cytotec = entries.find((entry) => entry.name === 'Cytotec');
+    expect(cytotec).toMatchObject({
+      kind: 'product',
+      id: 'misoprostol-generic',
+      brandOf: 'Misoprostol (générique)',
+    });
+    // In alphabetical order with the others: under C.
+    const groups = browseGroupsOf(entries);
+    expect(groups.find((group) => group.letter === 'C')?.entries).toContain(cytotec);
+    for (const brand of ['Brufen', 'Nivaquine', 'Coartem', 'Fansidar']) {
+      expect(entries.some((entry) => entry.name === brand && entry.brandOf !== undefined)).toBe(
+        true,
+      );
+    }
+    // A brand that is the family's own name is not listed twice.
+    expect(entries.filter((entry) => entry.name === 'DOLIPRANE')).toHaveLength(1);
+    expect(
+      entries.filter((entry) => normalize(entry.name).startsWith(normalize('Néo-Codion'))),
+    ).toHaveLength(1);
+  });
+});
+
+describe('filterBrowseEntries', () => {
+  it('keeps the entries whose name, box name or local name holds the text, accents aside', () => {
+    const entries = browseEntriesOf(pack, 'product', 'fr');
+    expect(filterBrowseEntries(entries, 'cyto').map((entry) => entry.name)).toEqual(['Cytotec']);
+    // As written while she types it ("c", "cy"), or as it sounds ("sito").
+    for (const text of ['c', 'cy', 'cyt', 'sito']) {
+      expect(
+        filterBrowseEntries(entries, text).map((entry) => entry.name),
+        text,
+      ).toContain('Cytotec');
+    }
+    expect(filterBrowseEntries(entries, '  ').length).toBe(entries.length);
+    const plants = browseEntriesOf(pack, 'plant', 'fr');
+    expect(filterBrowseEntries(plants, 'NEBEDAY').map((entry) => entry.id)).toEqual(['moringa']);
+    expect(filterBrowseEntries(plants, 'zzqxw')).toEqual([]);
   });
 });
 

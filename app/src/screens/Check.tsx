@@ -47,6 +47,7 @@ function Item({
   shown,
   list,
   written,
+  said,
   onRemove,
 }: {
   item: CheckedItem;
@@ -55,6 +56,8 @@ function Item({
   list: 'product' | 'plant' | undefined;
   /** The name she typed, when the item is shown under another name. */
   written: string | undefined;
+  /** The voice heard that name: "Vous avez dit". */
+  said: boolean;
   onRemove: () => void;
 }) {
   const t = useT();
@@ -82,7 +85,7 @@ function Item({
         {/* Last in the product block, as on the confirm screen. */}
         {written === undefined ? null : (
           <p className="meta">
-            <Typed text={written} label="shown" />
+            <Typed text={written} label="shown" said={said} />
           </p>
         )}
         {units === undefined ? null : (
@@ -312,6 +315,7 @@ export function Check() {
                 shown={shown}
                 list={check.listOf(item)}
                 written={check.writtenOf(item)}
+                said={check.saidOf(item)}
                 onRemove={() => {
                   focusRow.current = index;
                   setChange({ kind: 'removed', item, index });

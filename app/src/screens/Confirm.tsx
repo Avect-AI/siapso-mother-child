@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, Pack } from '@siapso/engine';
-import type { EntryKind } from '@siapso/resolver';
+import { normalize, type EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
 import { joinNames } from '../domain/result-view.js';
 import {
+  boxNameOf,
   candidateDisplayOf,
   candidateOf,
   displayOf,
@@ -15,6 +16,7 @@ import {
   productFamilyOf,
   strengthChoiceOf,
   strengthOptionLabel,
+  strengthQuestionOf,
   writtenNameOf,
   type ConfirmCandidate,
 } from '../domain/search-index.js';
@@ -124,6 +126,24 @@ const ANNOUNCE_DELAY_MS = 700;
 
 /** The radio value of "it is another box", in the same-box question. */
 const OTHER_BOX = ':other-box';
+
+/** The words of the strength question, by what its answers are (strengthQuestionOf). */
+const QUESTION: Record<
+  'strength' | 'form' | 'both',
+  { legend: MessageKey; hint: MessageKey; error: MessageKey }
+> = {
+  strength: {
+    legend: 'confirm.strength',
+    hint: 'confirm.strengthHint',
+    error: 'confirm.chooseStrength',
+  },
+  form: { legend: 'confirm.form', hint: 'confirm.formHint', error: 'confirm.chooseForm' },
+  both: {
+    legend: 'confirm.strengthOrForm',
+    hint: 'confirm.strengthOrFormHint',
+    error: 'confirm.chooseStrengthOrForm',
+  },
+};
 
 /**
  * More strengths than this is a long list (DOLIPRANE has 15): the strength
@@ -282,6 +302,15 @@ function ConfirmForm({
     entry.matched === undefined ? undefined : localNameOf(pack, candidate, entry.matched);
   // The name she typed, when the product is shown under another one (a local name says it already).
   const written = local === undefined ? writtenNameOf(pack, candidate, query, lang) : undefined;
+  // The voice heard it: "Vous avez dit", never "Vous avez écrit".
+  const said = entry.heard === true;
+  // The name on the box it was found by ("Brufen"), unless what she typed says it already.
+  const foundBox =
+    entry.matched === undefined ? undefined : boxNameOf(pack, candidate, entry.matched, lang);
+  const boxName =
+    foundBox !== undefined && (written === undefined || normalize(written) !== normalize(foundBox))
+      ? foundBox
+      : undefined;
   // A substance the name typed names that the product "yes" is about lacks ("efferalgan codéine").
   const missing =
     candidate.kind === 'product'
@@ -305,7 +334,16 @@ function ConfirmForm({
     (startsFrom?.unitsPerDay === undefined ? '' : String(startsFrom.unitsPerDay));
   const units = parseUnits(unitsText);
   const unitsError = askUnits && !units.ok ? t('confirm.unitsError') : undefined;
-  const strengthError = attempts > 0 && chosen === null ? t('confirm.chooseStrength') : undefined;
+  // The question says what its answers are: strengths, forms (Néo-Codion), or both.
+  const asks =
+    QUESTION[
+      choice === null
+        ? 'strength'
+        : strengthQuestionOf(
+            choice.options.map((id) => strengthOptionLabel(pack, candidate, id, lang)),
+          )
+    ];
+  const strengthError = attempts > 0 && chosen === null ? t(asks.error) : undefined;
   const sameBoxError = attempts > 0 && waitsForSameBox ? t('confirm.sameBoxError') : undefined;
 
   // What "yes" does, said where it is decided.
@@ -362,6 +400,7 @@ function ConfirmForm({
       ...(family === undefined ? {} : { family }),
       ...(anotherBox ? { anotherBox: true } : {}),
       ...(written === undefined ? {} : { written }),
+      ...(written !== undefined && said ? { said: true } : {}),
     });
     leaving.current = true;
     backToCheck(navigate, entry.stepsToCheck);
@@ -494,8 +533,11 @@ function ConfirmForm({
         )}
         {written === undefined ? null : (
           <p className="meta">
-            <Typed text={written} label="shown" />
+            <Typed text={written} label="shown" said={said} />
           </p>
+        )}
+        {boxName === undefined ? null : (
+          <p className="meta">{t('search.boxName', { name: boxName })}</p>
         )}
       </div>
 
@@ -516,8 +558,8 @@ function ConfirmForm({
       {choice === null ? null : (
         <RadioGroup
           question
-          legend={t('confirm.strength')}
-          hint={t('confirm.strengthHint')}
+          legend={t(asks.legend)}
+          hint={t(asks.hint)}
           error={strengthError}
           options={options}
           value={selected}
