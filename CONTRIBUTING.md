@@ -59,4 +59,4 @@ A rule is published only with its source (listed in `knowledge/sources.yaml`), i
 
 ## Licences
 
-By contributing, you agree that your code is released under the [MIT licence](LICENSE) and your content (rules, registries, documentation) under CC BY 4.0, as described in the README.
+By contributing, you agree that your code is released under the [MIT licence](LICENSE) and your content (rules, registries, documentation) under CC BY 4.0, as described in the README. Files you add need an identifiable licence: put an SPDX header in the file, or rely on the folder rule in [REUSE.toml](REUSE.toml). Check with `reuse lint` (version pinned in `tools/reuse/requirements.txt`; CI runs it). Clinical review rules are in [GOVERNANCE.md](GOVERNANCE.md).

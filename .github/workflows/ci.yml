@@ -29,6 +29,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: REUSE lint (every file has a licence)
+        run: |
+          python3 -m venv "$RUNNER_TEMP/reuse-venv"
+          "$RUNNER_TEMP/reuse-venv/bin/pip" install --require-virtualenv -r tools/reuse/requirements.txt
+          "$RUNNER_TEMP/reuse-venv/bin/reuse" lint
       - name: Merge gate script (shellcheck and fake gh test)
         run: |
           shellcheck tools/github/merge-pr.sh tools/github/merge-pr.test.sh

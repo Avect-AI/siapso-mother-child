@@ -1,0 +1,104 @@
+version = 1
+SPDX-PackageName = "siapso-mother-child"
+SPDX-PackageSupplier = "AVECT AI SARL"
+SPDX-PackageDownloadLocation = "https://github.com/Avect-AI/siapso-mother-child"
+
+# Licence declarations by path (REUSE specification 3.3).
+#
+# Rules of this file:
+# - Annotations are applied in order and the last matching one wins.
+# - precedence = "closest": a file that carries its own SPDX header keeps it,
+#   this file only fills the gaps (binary files, data, files without a header).
+# - Third-party files are declared with "override" so no other rule can change
+#   their licence.
+# - Licence texts are in LICENSES/ (SPDX list, exact texts).
+
+# Default: code, tooling and configuration.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 AVECT AI SARL"
+SPDX-License-Identifier = "MIT"
+
+# Content: rules, registries, evaluation sets, open data, documentation.
+# "override": several of these files quote the text "SPDX-License-Identifier"
+# in prose, which the REUSE tool would otherwise read as a (broken) header.
+[[annotations]]
+path = [
+  "knowledge/**",
+  "registry/**",
+  "eval/**",
+  "open-data/**",
+  "docs/**",
+  "DESIGN.md",
+  "PRODUCT.md",
+  "MEDICAL_DISCLAIMER.md",
+  "GOVERNANCE.md",
+  "TRADEMARKS.md",
+  "speech/MODEL_CARD.md",
+  "speech/LICENSES.md",
+  ".impeccable/design.json",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 AVECT AI SARL"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Code that quotes the text "SPDX-License-Identifier" in strings or comments
+# (checks and their tests): declared here so the tool does not parse the quote.
+[[annotations]]
+path = [
+  "speech/convert/lock.py",
+  "speech/eval/report.ts",
+  "tools/knowledge/src/load.ts",
+  "tools/knowledge/test/*.test.ts",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 AVECT AI SARL"
+SPDX-License-Identifier = "MIT"
+
+# Self-hosted font Atkinson Hyperlegible Next and its licence text.
+[[annotations]]
+path = "app/public/fonts/**"
+precedence = "override"
+SPDX-FileCopyrightText = "2020-2024 The Atkinson Hyperlegible Next Project Authors (https://github.com/googlefonts/atkinson-hyperlegible-next)"
+SPDX-License-Identifier = "OFL-1.1"
+
+# Bench fixture: one FLEURS utterance (Google), CC BY 4.0, trimmed. See
+# speech/bench/fixtures/README.md.
+[[annotations]]
+path = "speech/bench/fixtures/*.wav"
+precedence = "override"
+SPDX-FileCopyrightText = "Google LLC and the FLEURS authors (Conneau et al., 2022)"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# Third party: the impeccable design plugin by Paul Bakaus, Apache-2.0
+# (https://github.com/pbakaus/impeccable, LICENSE: "Copyright 2025 Paul Bakaus").
+[[annotations]]
+path = [
+  ".claude/skills/impeccable/**",
+  ".claude/agents/impeccable-*.md",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "2025 Paul Bakaus"
+SPDX-License-Identifier = "Apache-2.0"
+
+# Third party inside the impeccable plugin: platform references distilled from
+# ehmo/platform-design-skills (MIT), per the upstream NOTICE.md.
+[[annotations]]
+path = [
+  ".claude/skills/impeccable/reference/ios.md",
+  ".claude/skills/impeccable/reference/android.md",
+]
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "2025 Paul Bakaus",
+  "2026 ehmo (platform-design-skills)",
+]
+SPDX-License-Identifier = "Apache-2.0 AND MIT"
+
+# Third party inside the impeccable plugin: bundled modern-screenshot library.
+[[annotations]]
+path = ".claude/skills/impeccable/scripts/modern-screenshot.umd.js"
+precedence = "override"
+SPDX-FileCopyrightText = "2021-present wxm (modern-screenshot)"
+SPDX-License-Identifier = "MIT"

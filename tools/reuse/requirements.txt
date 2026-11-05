@@ -1,0 +1,2 @@
+# REUSE compliance checker, run in CI (reuse lint). Version 6.2.0 was published on 2025-10-27.
+reuse[charset-normalizer]==6.2.0
