@@ -69,3 +69,20 @@ export async function unlock(page: Page, code: string = CODE, lang: Lang = 'fr')
   await page.getByLabel('Code', { exact: true }).fill(code);
   await page.getByRole('button', { name: words.open }).click();
 }
+
+/**
+ * Waits until the service worker is active and controls the page. A first
+ * install does not claim the page that registered it, so reload until the
+ * worker serves the navigation (normally once).
+ */
+export async function waitForServiceWorkerControl(page: Page) {
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await expect(async () => {
+    if (!(await page.evaluate(() => navigator.serviceWorker.controller !== null))) {
+      await page.reload();
+    }
+    expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  }).toPass({ timeout: 15_000 });
+}

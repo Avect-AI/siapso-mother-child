@@ -47,6 +47,15 @@ describe('flowState', () => {
     expect(flowState()).toEqual({ stepsToCheck: 1, query: 'new' });
   });
 
+  it('keeps that the text was heard by the voice, only when it was', () => {
+    window.history.replaceState(inSession({ query: 'nebeday', heard: true }), '');
+    expect(flowState()).toEqual({ query: 'nebeday', heard: true });
+    keepOnEntry({ heard: false });
+    expect(flowState()).toEqual({ query: 'nebeday' });
+    window.history.replaceState(inSession({ query: 'x', heard: 'yes' }), '');
+    expect(flowState()).toEqual({ query: 'x' });
+  });
+
   it('never puts the product in the address', () => {
     expect(confirmPath('product')).toBe('/confirm/product');
   });

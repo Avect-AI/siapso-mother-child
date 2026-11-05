@@ -1664,9 +1664,64 @@ a {
 
 .settings__more .button,
 .status__about,
-.about__status {
+.about__status,
+.about__licences {
   width: 100%;
   text-decoration: none;
+}
+
+/*
+ * Licences: one component a row under hairlines (name, licence, copyright,
+ * origin), then the texts, folded, in a plain block that wraps at the width
+ * of the phone.
+ */
+.about__section .licences__list {
+  gap: 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.licences__list li {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--color-rule);
+}
+
+.licences__list li:last-child {
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.licences__name {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: anywhere;
+}
+
+/* An address may break anywhere: it has no spaces, and the column is narrow. */
+.licences__source {
+  overflow-wrap: anywhere;
+}
+
+/* The disclosure marker stays: it says the text unfolds here. */
+.licences__text summary {
+  min-height: var(--touch-target);
+  padding-block: var(--space-3);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-strong);
+  line-height: var(--line-height-tight);
+  cursor: pointer;
+}
+
+.licences__text pre {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-family: var(--font-family);
+  font-size: var(--font-size-small);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .status__done,
@@ -2429,6 +2484,238 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 }
 
 /*
+ * Voice input (SCRUM-31): the microphone beside the field, a large square
+ * button the height of the field; the field keeps the rest of the row.
+ */
+.search__entry--voice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+/* In the row, the field is as tall as the microphone. */
+.search__entry--voice .text-field__input {
+  min-height: var(--touch-target-large);
+}
+
+.mic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-target-large);
+  height: var(--touch-target-large);
+  padding: 0;
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-press) var(--ease-out),
+    transform var(--duration-press) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .mic:hover:not([aria-disabled='true'], .mic--recording) {
+    background: var(--color-primary-tint);
+  }
+}
+
+.mic:active:not([aria-disabled='true']) {
+  transform: translateY(1px);
+}
+
+/* Opening or thinking: it waits, dashed, as a disabled button does. */
+.mic[aria-disabled='true'] {
+  border-style: dashed;
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: progress;
+}
+
+/*
+ * Recording: filled, the square that finishes it, and a ring around it that
+ * pulses (DESIGN.md, Motion: the one exception, so a recording is seen at a
+ * glance). Under reduced motion the ring stays, still.
+ */
+.mic--recording {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.mic--recording::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * (var(--contour-width) + var(--border-width) + 2px));
+  border: var(--contour-width) solid var(--color-primary);
+  border-radius: calc(var(--radius-md) + 4px);
+  pointer-events: none;
+  animation: mic-pulse var(--duration-pulse) var(--ease-out) infinite;
+}
+
+@keyframes mic-pulse {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
+/* Where the voice is: one live line, then what goes with it. */
+.voice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.voice__status {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+/* Idle: out of the layout, still in the accessibility tree, so its first words are read. */
+.voice--idle .voice__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* The seconds recorded, for the eye: tabular, at title size. */
+.voice__seconds {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+}
+
+.voice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.voice__actions > .button {
+  flex: 1 1 12rem;
+}
+
+.voice__cancel {
+  justify-self: start;
+}
+
+/* The whole list of a kind, after a name said found nothing. */
+.search__browse {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.search__browse h2 {
+  font-size: var(--font-size-title);
+}
+
+/* A letter of the whole list: a heading at label size over its names. */
+.search__letter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.search__letter h3 {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-rule);
+  font-size: var(--font-size-body);
+}
+
+/* No candidate: what is wrong, in bold, before what to do. */
+.voice__none {
+  font-weight: var(--font-weight-strong);
+}
+
+/*
+ * The voice screen: what it does, the language with its size, then the one
+ * action of the moment (install, the back to the search once installed).
+ */
+.voice-pack__choose,
+.voice-pack__installing,
+.voice-pack__installed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.voice-pack__installing h2 {
+  font-size: var(--font-size-title);
+}
+
+.voice-pack__privacy,
+.voice-pack__done {
+  font-weight: var(--font-weight-strong);
+}
+
+.voice-pack__said:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* The download: a plain bar on the control contour, filled in ultramarine. */
+.voice-pack__progress {
+  width: 100%;
+  height: 1.25rem;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  appearance: none;
+}
+
+.voice-pack__progress::-webkit-progress-bar {
+  background: var(--color-surface);
+}
+
+.voice-pack__progress::-webkit-progress-value {
+  background: var(--color-primary);
+}
+
+.voice-pack__progress::-moz-progress-bar {
+  background: var(--color-primary);
+}
+
+.voice-pack__amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-pack__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.voice-pack__actions > .button {
+  flex: 1 1 12rem;
+}
+
+.voice-pack__confirm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.voice-pack__install,
+.voice-pack__back {
+  width: 100%;
+}
+
+/*
  * Confirm: what "yes" adds, a statement between two hairlines (its name at
  * title size, then substances and strengths), never a box that looks like an
  * answer to tap; then the strength question and the units, then what "yes"
@@ -2700,8 +2987,13 @@ html:has(.sticky-action:not(.sticky-action--off)) {
     border-color: CanvasText;
   }
 
-  .button {
+  .button,
+  .mic {
     border-color: ButtonText;
+  }
+
+  .mic--recording::after {
+    border-color: Highlight;
   }
 
   .header,
@@ -2719,5 +3011,18 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   .button:active:not(:disabled),
   .keypad__key:active:not([aria-disabled='true']) {
     transform: none;
+  }
+
+  .mic {
+    transition: none;
+  }
+
+  .mic:active:not([aria-disabled='true']) {
+    transform: none;
+  }
+
+  /* The recording ring stays, still: the recording is still seen. */
+  .mic--recording::after {
+    animation: none;
   }
 }

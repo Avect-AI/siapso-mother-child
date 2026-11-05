@@ -26,6 +26,11 @@ export interface FlowState {
   matched?: string;
   /** On the confirm entry, the id of the product or remedy chosen. */
   id?: string;
+  /**
+   * On the search entry, the text in the field is what the voice heard, not
+   * yet edited: it is never added as typed, even after Back.
+   */
+  heard?: boolean;
 }
 
 /**
@@ -35,7 +40,7 @@ export interface FlowState {
  * none.
  */
 export function flowState(): FlowState {
-  const { stepsToCheck, query, matched, id } = sessionState();
+  const { stepsToCheck, query, matched, id, heard } = sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
@@ -43,6 +48,7 @@ export function flowState(): FlowState {
   if (typeof query === 'string') flow.query = query;
   if (typeof matched === 'string') flow.matched = matched;
   if (typeof id === 'string' && id !== '') flow.id = id;
+  if (heard === true) flow.heard = true;
   return flow;
 }
 

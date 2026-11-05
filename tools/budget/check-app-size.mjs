@@ -3,7 +3,10 @@
 // downloads to run the app (HTML, JavaScript, CSS, fonts, icons, web app
 // manifest, service worker) stays at or under 1.5 MB uncompressed. The
 // knowledge pack (pack/) and the voice files (voice/) have budgets of their
-// own and are left out. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
+// own and are left out, and so is the speech worker (assets/worker-*.js:
+// Transformers.js and the JavaScript of ONNX Runtime), which the service
+// worker caches only once a voice is installed; it is said apart, with the
+// voice. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
 //   node tools/budget/check-app-size.mjs [dist directory, default app/dist]
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -14,11 +17,18 @@ export const LIMIT_BYTES = 1_572_864;
 /** Top-level folders of the build that the app budget does not count. */
 export const EXCLUDED = new Set(['pack', 'voice']);
 
+/** The speech worker chunk: downloaded with the voice (app/src/pwa/sw-setup.ts). */
+export const VOICE_WORKER = /^assets\/worker-[\w-]+\.js$/;
+
 const DEFAULT_DIST = fileURLToPath(new URL('../../app/dist/', import.meta.url));
 
-/** Every counted file under `dir` (forward-slash paths), largest first, and their total. */
+/**
+ * Every counted file under `dir` (forward-slash paths), largest first, and
+ * their total; the speech worker apart (`voice`).
+ */
 export async function measure(dir) {
   const files = [];
+  const voiceFiles = [];
   async function walk(relative) {
     for (const entry of await readdir(path.join(dir, relative), { withFileTypes: true })) {
       const child = relative === '' ? entry.name : `${relative}/${entry.name}`;
@@ -26,13 +36,17 @@ export async function measure(dir) {
         if (relative === '' && EXCLUDED.has(entry.name)) continue;
         await walk(child);
       } else if (entry.isFile()) {
-        files.push({ path: child, bytes: (await stat(path.join(dir, child))).size });
+        const counted = { path: child, bytes: (await stat(path.join(dir, child))).size };
+        (VOICE_WORKER.test(child) ? voiceFiles : files).push(counted);
       }
     }
   }
   await walk('');
-  files.sort((a, b) => b.bytes - a.bytes || (a.path < b.path ? -1 : 1));
-  return { total: files.reduce((sum, f) => sum + f.bytes, 0), files };
+  const order = (a, b) => b.bytes - a.bytes || (a.path < b.path ? -1 : 1);
+  files.sort(order);
+  voiceFiles.sort(order);
+  const sum = (list) => list.reduce((total, f) => total + f.bytes, 0);
+  return { total: sum(files), files, voice: { total: sum(voiceFiles), files: voiceFiles } };
 }
 
 function kilobytes(bytes) {
@@ -51,7 +65,7 @@ export async function checkAppSize(dir, log = console.log) {
     }
     throw error;
   }
-  const { total, files } = result;
+  const { total, files, voice } = result;
   if (files.length === 0) {
     log(`No app file in ${dir} (pack/ and voice/ are not counted): the build looks broken.`);
     return 1;
@@ -60,6 +74,11 @@ export async function checkAppSize(dir, log = console.log) {
   if (files.length > 8) log(`  ... and ${String(files.length - 8)} smaller files`);
   const summary = `App size: ${String(total)} bytes (${kilobytes(total)}) in ${String(files.length)} files, budget ${String(LIMIT_BYTES)} bytes (1.5 MB), pack/ and voice/ excluded.`;
   log(summary);
+  if (voice.files.length > 0) {
+    log(
+      `Voice: ${String(voice.total)} bytes (${kilobytes(voice.total)}) of speech worker (${voice.files.map((f) => f.path).join(', ')}), cached only once a voice is installed, not counted in the app budget.`,
+    );
+  }
   if (total > LIMIT_BYTES) {
     const over = total - LIMIT_BYTES;
     log(

@@ -73,7 +73,8 @@
   --contour-width: 3px;
   --frame-width: 6px;
 
-  /* Motion: one short press response */
+  /* Motion: one short press response, and the ring of a recording (DESIGN.md, Motion) */
   --duration-press: 120ms;
+  --duration-pulse: 1.4s;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }

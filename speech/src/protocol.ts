@@ -23,6 +23,8 @@ export type WorkerRequest =
 export type WorkerErrorCode = 'unavailable' | 'load' | 'transcribe' | 'storage';
 
 export type WorkerResponse =
+  /** Sent once at start: the address of the worker script, for the page to keep it offline. */
+  | { type: 'hello'; id: 0; url: string }
   | { type: 'progress'; id: number; progress: number }
   | { type: 'loaded'; id: number; device: 'webgpu' | 'wasm' }
   | { type: 'result'; id: number; text: string; ms: number }

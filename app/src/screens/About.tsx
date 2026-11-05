@@ -15,9 +15,9 @@ function isWebAddress(url: string): boolean {
  * About: what the app is for (the intended use shared with the README and the
  * medical disclaimer), the fixed sentence, the licences, the sources the pack
  * declares (in the language of the screen, with the language of their
- * documents when it is another), the third-party software, and where the code
- * is. No profile data, so it opens locked or not. There is no contact line:
- * none exists yet.
+ * documents when it is another), the third-party software (with its licence
+ * texts on the licences screen), and where the code is. No profile data, so it
+ * opens locked or not. There is no contact line: none exists yet.
  */
 export function About() {
   const t = useT();
@@ -94,6 +94,9 @@ export function About() {
         <ul>
           <li>{t('about.thirdTransformers')}</li>
         </ul>
+        <a className="button button--secondary about__licences" href="#/licences">
+          {t('about.licencesLink')}
+        </a>
       </section>
       <section className="about__section" aria-labelledby="about-code">
         <h2 id="about-code">{t('about.repositoryTitle')}</h2>

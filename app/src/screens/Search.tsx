@@ -8,15 +8,17 @@ import {
 } from '@siapso/resolver';
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { candidateDisplayOf, localNameOf } from '../domain/search-index.js';
+import { candidateDisplayOf, localNameOf, type BrowseEntry } from '../domain/search-index.js';
 import { useLang, useT, useTNodes } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
+import { inSession } from '../state/entry-state.js';
 import { useSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { Chevron } from '../ui/Chevron.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
+import { useVoiceInput } from '../voice/use-voice-input.js';
 import { localNameKey } from './local-name.js';
 import {
   backToCheck,
@@ -27,6 +29,8 @@ import {
   oneMoreStep,
   searchPath,
 } from './check-flow.js';
+import { BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
+import { VOICE_PATH } from './VoicePack.js';
 
 /** The pause after the last key before the candidates follow what is typed. */
 export const SEARCH_DEBOUNCE_MS = 150;
@@ -130,6 +134,13 @@ function CandidateButton({
  * searched (medicines or remedies); a name found only in the other list
  * offers to look there. Near its limit of 80 characters, the field says how
  * long the name is.
+ *
+ * Beside the field, where the browser can record, a microphone: the name
+ * said goes in the field as if typed ("J'ai entendu : ..."), so its
+ * candidates are confirmed the same way; when none matches, the screen offers
+ * to type the name or to choose it from the whole list. Without an installed
+ * voice, the microphone opens the voice screen. The keyboard path is whole
+ * without it.
  */
 export function Search({ kind }: { kind: EntryKind }) {
   const t = useT();
@@ -141,6 +152,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   const lookalikeId = useId();
   const noneHintId = useId();
   const lookalikeHeading = useRef<HTMLHeadingElement>(null);
+  const field = useRef<HTMLInputElement>(null);
   const check = useCheck();
   const [, navigate] = useLocation();
   // Read once: the state of this history entry (the way back, the text typed before).
@@ -150,6 +162,28 @@ export function Search({ kind }: { kind: EntryKind }) {
   const [leaving, setLeaving] = useState(false);
   // The products and remedies the text looks like, asked about before it is added as typed.
   const [lookalikes, setLookalikes] = useState<Candidate[] | null>(null);
+  // The whole list of the kind, after a name said found nothing.
+  const [browsing, setBrowsing] = useState(false);
+  // The text in the field is what the voice heard, not edited since (kept on
+  // the entry, so Back from a confirm screen finds it so too).
+  const [fromVoice, setFromVoice] = useState(entry.heard === true);
+
+  const voice = useVoiceInput({
+    maxLength: SEARCH_MAX_LENGTH,
+    // What was heard goes in the field and is searched at once, as if typed.
+    onHeard: (heard) => {
+      setText(heard);
+      setQuery(heard);
+      setFromVoice(true);
+      setLookalikes(null);
+      setBrowsing(false);
+    },
+    countCandidates: (heard) =>
+      index === null ? 0 : search(index, heard, { kinds: [kind] }).length,
+    onNeedPack: () => {
+      navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
+    },
+  });
 
   useEffect(() => {
     if (lookalikes !== null) lookalikeHeading.current?.focus();
@@ -166,8 +200,8 @@ export function Search({ kind }: { kind: EntryKind }) {
 
   // The text is kept on this entry, so coming back from the confirm screen finds it.
   useEffect(() => {
-    keepOnEntry({ query });
-  }, [query]);
+    keepOnEntry({ query, heard: fromVoice });
+  }, [query, fromVoice]);
 
   const typed = text.trim();
   const candidates = useMemo(
@@ -191,7 +225,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   const choose = (candidate: Candidate, foundBy: string) => {
     if (leaving) return;
     setLeaving(true);
-    keepOnEntry({ query: text });
+    keepOnEntry({ query: text, heard: fromVoice });
     // The product goes in the entry's state, never in the address.
     navigate(confirmPath(candidate.kind), {
       state: flowEntry({
@@ -233,6 +267,29 @@ export function Search({ kind }: { kind: EntryKind }) {
     else addAsTyped();
   };
 
+  // A remedy or a medicine family from the whole list: its confirm screen, as a candidate.
+  const chooseEntry = (chosen: BrowseEntry) => {
+    if (leaving) return;
+    setLeaving(true);
+    keepOnEntry({ query: text, heard: fromVoice });
+    navigate(confirmPath(chosen.kind), {
+      state: flowEntry({
+        id: chosen.id,
+        query: '',
+        matched: chosen.name,
+        stepsToCheck: oneMoreStep(entry.stepsToCheck),
+      }),
+    });
+  };
+
+  // The field takes the focus, its text selected to be typed over; what the
+  // voice said stays until she types.
+  const backToKeyboard = () => {
+    setBrowsing(false);
+    field.current?.focus();
+    field.current?.select();
+  };
+
   const lookInOtherList = () => {
     navigate(searchPath(OTHER[kind]), {
       replace: true,
@@ -256,15 +313,23 @@ export function Search({ kind }: { kind: EntryKind }) {
           : t('search.foundMany', { count: candidates.length, name });
       status = t('search.found');
     } else {
-      status = t(kind === 'product' ? 'search.noneFound' : 'search.noneFoundPlant');
+      // A name said that matches nothing: the voice panel says it, once.
+      if (voice.state.step !== 'heard-none') {
+        status = t(kind === 'product' ? 'search.noneFound' : 'search.noneFoundPlant');
+      }
       if (inOtherList) {
-        status += ` ${t(kind === 'product' ? 'search.otherKindPlant' : 'search.otherKindProduct')}`;
+        const other = t(kind === 'product' ? 'search.otherKindPlant' : 'search.otherKindProduct');
+        status = status === '' ? other : `${status} ${other}`;
       }
     }
   }
   // "Not found" adds the text as it is: quiet while a candidate or the other
   // list is on offer, a plain secondary choice when nothing matches anywhere.
   const notFoundQuiet = candidates.length > 0 || inOtherList;
+  // What the voice heard is never added as typed: she types it first (typing
+  // ends the voice state), or chooses a candidate or the whole list.
+  const heardByVoice =
+    fromVoice || voice.state.step === 'heard' || voice.state.step === 'heard-none';
   // The question names what the lookalikes are: medicines, remedies, or both.
   const lookalikeKinds = new Set((lookalikes ?? []).map((candidate) => candidate.kind));
   const lookalikeLists =
@@ -277,26 +342,43 @@ export function Search({ kind }: { kind: EntryKind }) {
       <h1 tabIndex={-1}>{t(kind === 'product' ? 'search.titleProduct' : 'search.titlePlant')}</h1>
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
       <form role="search" className="search__form" noValidate onSubmit={submit}>
-        <TextField
-          type="search"
-          className="search__field"
-          label={t(kind === 'product' ? 'search.fieldProduct' : 'search.fieldPlant')}
-          hint={t(kind === 'product' ? 'search.hintProduct' : 'search.hintPlant')}
-          value={text}
-          maxLength={SEARCH_MAX_LENGTH}
-          autoComplete="off"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          enterKeyHint="search"
-          // The screen exists to type a name: the field takes the focus when it opens (App.tsx).
-          data-autofocus=""
-          aria-describedby={limitShown ? limitId : undefined}
-          onChange={(event) => {
-            setText(event.target.value);
-            setLookalikes(null);
-          }}
-        />
+        <div className={voice.supported ? 'search__entry search__entry--voice' : 'search__entry'}>
+          <TextField
+            ref={field}
+            type="search"
+            className="search__field"
+            label={t(kind === 'product' ? 'search.fieldProduct' : 'search.fieldPlant')}
+            hint={t(kind === 'product' ? 'search.hintProduct' : 'search.hintPlant')}
+            value={text}
+            maxLength={SEARCH_MAX_LENGTH}
+            autoComplete="off"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
+            // The screen exists to type a name: the field takes the focus when it opens (App.tsx).
+            data-autofocus=""
+            aria-describedby={limitShown ? limitId : undefined}
+            onChange={(event) => {
+              setText(event.target.value);
+              setFromVoice(false);
+              setLookalikes(null);
+              setBrowsing(false);
+              // Typing takes over: a recording or a transcription is given up.
+              voice.reset();
+            }}
+          />
+          {voice.supported ? (
+            <MicButton
+              state={voice.state}
+              onPress={() => {
+                setLookalikes(null);
+                setBrowsing(false);
+                voice.press();
+              }}
+            />
+          ) : null}
+        </div>
         {limitShown ? (
           <p id={limitId} className="search__limit">
             {limitReached
@@ -309,6 +391,26 @@ export function Search({ kind }: { kind: EntryKind }) {
           {limitReached ? t('search.limitReached', { max: SEARCH_MAX_LENGTH }) : ''}
         </p>
       </form>
+
+      {voice.supported ? (
+        <VoicePanel
+          state={voice.state}
+          kind={kind}
+          language={voice.language}
+          actions={{
+            onCancel: voice.cancel,
+            onType: backToKeyboard,
+            onBrowse: () => {
+              setBrowsing(true);
+            },
+            onInstall: () => {
+              navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
+            },
+          }}
+        />
+      ) : null}
+
+      {browsing ? <BrowseList kind={kind} onChoose={chooseEntry} /> : null}
 
       {lookalikes === null ? null : (
         <section className="search__lookalikes" aria-labelledby={lookalikeId}>
@@ -345,7 +447,7 @@ export function Search({ kind }: { kind: EntryKind }) {
         </section>
       )}
 
-      <div className="search__results" hidden={lookalikes !== null}>
+      <div className="search__results" hidden={lookalikes !== null || browsing}>
         <p className="search__status" role="status">
           {heard === '' ? null : <span className="sr-only">{`${heard} `}</span>}
           {status}
@@ -369,7 +471,7 @@ export function Search({ kind }: { kind: EntryKind }) {
             {t(kind === 'product' ? 'search.searchPlants' : 'search.searchProducts')}
           </Button>
         ) : null}
-        {typed === '' ? null : (
+        {typed === '' || heardByVoice ? null : (
           <div className="search__not-found">
             <Button
               variant={notFoundQuiet ? 'quiet' : 'secondary'}

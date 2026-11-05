@@ -26,6 +26,13 @@ Files that SIAPSO Mother-Child includes but does not author. Their licences are 
 - Source: FLEURS (Conneau et al., 2022), Hugging Face `google/fleurs`.
 - Licence: Creative Commons Attribution 4.0 International (`LICENSES/CC-BY-4.0.txt`). The file was trimmed (silence removed); the README lists the changes.
 
+## Voice software bundled in the app
+
+- Files: the app's speech worker (`assets/worker-*.js` in a build, downloaded only once a voice is installed) bundles Transformers.js 4.3.1 (Apache License 2.0, Copyright Hugging Face), `@huggingface/tokenizers` 0.2.0 (Apache License 2.0), `@huggingface/jinja` 0.5.10 (MIT, Copyright (c) 2023 Hugging Face) and the JavaScript of ONNX Runtime Web (MIT, Copyright (c) Microsoft Corporation); the voice packs carry the WebAssembly and loader files of the same ONNX Runtime Web build (`runtime/<version>/`).
+- ONNX Runtime versions: Transformers.js 4.3.1 pins development (nightly) builds, `onnxruntime-web` `1.31.0-dev.20260914-8d85527a0` and `onnxruntime-common` `1.31.0-dev.20260911-2a43ec07e`, not releases; the evaluation tooling (`speech/eval`, Node) uses `onnxruntime-node` and `onnxruntime-common` 1.30.0. `speech/test/ort-version.test.ts` ties the pack's runtime files to the bundled version.
+- The app shows them, with the Whisper models, the data of the Wolof model and the full Apache 2.0 and MIT texts, on its licences screen (`#/licences`, from About; `app/src/domain/third-party.ts`). Each voice pack also ships the texts (`licenses/`, `NOTICE.md`).
+- The service worker bundles parts of Workbox 7.4.1 (MIT, Copyright Google LLC).
+
 ## Speech model and its training data (not in the repository)
 
 The speech model files are converted at build time from public models and are not committed. Their licence chain, including the open question on the share-alike licence of WAXAL Wolof (CC BY-SA 4.0) and the missing data licence of ALFFA Wolof, is in `speech/LICENSES.md` and `speech/MODEL_CARD.md`. This is not legal advice, and it is not settled.

@@ -2,7 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_REQUEST_TIMEOUT_MS, createSpeechClient } from '../src/client.js';
 import type { WorkerRequest, WorkerResponse } from '../src/protocol.js';
-import { VOICE_CACHE, VoicePackError, type VoicePackInfo } from '../src/voice-pack.js';
+import {
+  ORT_WEB_VERSION,
+  VOICE_CACHE,
+  VoicePackError,
+  type VoicePackInfo,
+} from '../src/voice-pack.js';
 import { FakeCacheStorage } from './fakes.js';
 
 const INFO: VoicePackInfo = {
@@ -16,6 +21,7 @@ const INFO: VoicePackInfo = {
   licence: 'MIT',
   languages: ['wo', 'fr'],
   prompts: { wo: [50258], fr: [50258, 50265, 50359, 50363] },
+  runtime: ORT_WEB_VERSION,
 };
 
 class FakeWorker {
@@ -71,6 +77,13 @@ function worker(): FakeWorker {
   return instance;
 }
 
+/** The worker spawned last (a new one after a timeout or a cancel). */
+function latest(): FakeWorker {
+  const instance = FakeWorker.instances.at(-1);
+  if (instance === undefined) throw new Error('no worker');
+  return instance;
+}
+
 /** Lets the client run until its next postMessage. */
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -116,6 +129,36 @@ describe('createSpeechClient', () => {
     expect(FakeWorker.instances).toHaveLength(1);
     expect(String(worker().url)).toMatch(/worker\.(ts|js)$/);
     expect(worker().options).toEqual({ type: 'module', name: 'siapso-speech' });
+  });
+
+  it('tells the address of the worker script it runs, as the worker says it', async () => {
+    const client = createSpeechClient(INFO);
+    const url = client.scriptUrl();
+    worker().reply({ type: 'hello', id: 0, url: 'https://app.test/assets/worker-Ab1.js' });
+    expect(await url).toBe('https://app.test/assets/worker-Ab1.js');
+    // Asked again: the same, at once.
+    expect(await client.scriptUrl()).toBe('https://app.test/assets/worker-Ab1.js');
+  });
+
+  it('asks the new worker for its address after a restart', async () => {
+    const client = createSpeechClient(INFO);
+    worker().reply({ type: 'hello', id: 0, url: 'https://app.test/assets/worker-old.js' });
+    const transcription = client.transcribe(new Float32Array(1)).catch(() => undefined);
+    await tick();
+    worker().reply({ type: 'loaded', id: worker().last().id, device: 'wasm' });
+    await tick();
+    client.cancel();
+    await transcription;
+    const url = client.scriptUrl();
+    latest().reply({ type: 'hello', id: 0, url: 'https://app.test/assets/worker-new.js' });
+    expect(await url).toBe('https://app.test/assets/worker-new.js');
+  });
+
+  it('gives no address when the worker script cannot start', async () => {
+    const client = createSpeechClient(INFO);
+    const url = client.scriptUrl();
+    worker().crash('could not load');
+    await expect(url).rejects.toThrow(/stopped/);
   });
 
   it('loads the pack in the worker and reports progress', async () => {
@@ -260,13 +303,21 @@ describe('createSpeechClient', () => {
     await retry;
   });
 
-  it('rejects everything pending when the worker crashes, and later calls too', async () => {
+  it('rejects what is pending when the worker crashes, and starts a new worker for the next call', async () => {
     const client = createSpeechClient(INFO);
     const loading = client.load();
     await tick();
     worker().crash('out of memory');
     await expect(loading).rejects.toMatchObject({ reason: 'load', message: /out of memory/ });
-    await expect(client.transcribe(new Float32Array(1))).rejects.toThrow(/stopped/);
+    expect(worker().terminated).toBe(true);
+
+    const transcription = client.transcribe(new Float32Array(1));
+    await tick();
+    expect(latest()).not.toBe(worker());
+    latest().reply({ type: 'loaded', id: latest().last().id, device: 'wasm' });
+    await tick();
+    latest().reply({ type: 'result', id: latest().last().id, text: 'nebeday', ms: 1 });
+    expect((await transcription).text).toBe('nebeday');
   });
 
   it('gives the transcribe reason when the worker crashes during a transcription', async () => {
@@ -296,7 +347,9 @@ describe('createSpeechClient', () => {
   });
 
   it(`times out a request after ${String(DEFAULT_REQUEST_TIMEOUT_MS)} ms by default`, async () => {
-    expect(DEFAULT_REQUEST_TIMEOUT_MS).toBe(60_000);
+    // About 1.5 times the 123 s measured for one utterance on one thread with
+    // the CPU slowed 6 times, the stand-in for an entry-level phone (docs/voice.md).
+    expect(DEFAULT_REQUEST_TIMEOUT_MS).toBe(180_000);
     vi.useFakeTimers();
     const client = createSpeechClient(INFO);
     const loading = client.load();
@@ -317,8 +370,96 @@ describe('createSpeechClient', () => {
     expect(await settled).toMatchObject({ reason: 'transcribe', message: /did not answer/ });
     const b = client.transcribe(new Float32Array(2));
     await vi.advanceTimersByTimeAsync(0);
-    worker().reply({ type: 'result', id: worker().last().id, text: 'b', ms: 2 });
+    // A new worker: it loads the model first, then transcribes.
+    expect(latest().last().type).toBe('load');
+    latest().reply({ type: 'loaded', id: latest().last().id, device: 'wasm' });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(latest().last().type).toBe('transcribe');
+    latest().reply({ type: 'result', id: latest().last().id, text: 'b', ms: 2 });
     expect((await b).text).toBe('b');
+  });
+
+  it('terminates a worker that does not answer in time and starts a new one', async () => {
+    const client = createSpeechClient(INFO, { timeoutMs: 1000 });
+    await loaded(client);
+    vi.useFakeTimers();
+    const stuck = client.transcribe(new Float32Array(1)).catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(1000);
+    await stuck;
+    // The stuck worker still holds the model and burns the battery: it is stopped.
+    expect(worker().terminated).toBe(true);
+    expect(FakeWorker.instances).toHaveLength(2);
+    expect(latest().terminated).toBe(false);
+    expect(latest().options).toEqual({ type: 'module', name: 'siapso-speech' });
+    // A late answer of the old worker changes nothing.
+    worker().reply({ type: 'result', id: 2, text: 'late', ms: 1 });
+    expect(client.device).toBeUndefined();
+  });
+
+  it('loads again in a new worker after a load timed out', async () => {
+    const client = createSpeechClient(INFO, { timeoutMs: 1000 });
+    vi.useFakeTimers();
+    const load = client.load().catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await load).toMatchObject({ reason: 'load', message: /did not answer/ });
+    const retry = client.load();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(latest()).not.toBe(worker());
+    latest().reply({ type: 'loaded', id: latest().last().id, device: 'wasm' });
+    await retry;
+    expect(client.device).toBe('wasm');
+  });
+
+  it('cancels what is pending: the worker is stopped and the next transcription gets a new one', async () => {
+    const client = createSpeechClient(INFO);
+    await loaded(client);
+    const transcription = client.transcribe(new Float32Array(1));
+    await tick();
+    client.cancel();
+    await expect(transcription).rejects.toMatchObject({ reason: 'transcribe', message: /cancel/ });
+    expect(worker().terminated).toBe(true);
+
+    const next = client.transcribe(new Float32Array(2));
+    await tick();
+    expect(latest()).not.toBe(worker());
+    latest().reply({ type: 'loaded', id: latest().last().id, device: 'wasm' });
+    await tick();
+    latest().reply({ type: 'result', id: latest().last().id, text: 'nebeday', ms: 5 });
+    expect((await next).text).toBe('nebeday');
+  });
+
+  it('never cancels the shared model load: only the transcriptions waiting for it', async () => {
+    const client = createSpeechClient(INFO);
+    const loading = client.load();
+    const transcription = client.transcribe(new Float32Array(1));
+    const settled = transcription.catch((error: unknown) => error);
+    await tick();
+    client.cancel();
+    // The load goes on in the same worker.
+    expect(worker().terminated).toBe(false);
+    worker().reply({ type: 'loaded', id: worker().last().id, device: 'wasm' });
+    await loading;
+    expect(await settled).toMatchObject({ reason: 'transcribe', message: /cancel/ });
+    // The transcription queued before the cancel was never sent.
+    await tick();
+    expect(worker().transcribes()).toHaveLength(0);
+
+    // The next one runs on the model already loaded.
+    const next = client.transcribe(new Float32Array(2));
+    await tick();
+    expect(worker().transcribes()).toHaveLength(1);
+    worker().reply({ type: 'result', id: worker().last().id, text: 'moringa', ms: 1 });
+    expect((await next).text).toBe('moringa');
+    expect(FakeWorker.instances).toHaveLength(1);
+  });
+
+  it('keeps the worker and its model when there is nothing to cancel', async () => {
+    const client = createSpeechClient(INFO);
+    await loaded(client);
+    client.cancel();
+    expect(worker().terminated).toBe(false);
+    expect(FakeWorker.instances).toHaveLength(1);
+    expect(client.device).toBe('wasm');
   });
 
   it('terminates the worker on dispose and rejects what is pending', async () => {

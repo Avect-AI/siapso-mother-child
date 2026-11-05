@@ -17,6 +17,7 @@ function startedStore() {
     },
     register: () => Promise.resolve({}),
     messageSkipWaiting: vi.fn(),
+    messageSW: () => Promise.resolve({ ok: true }),
   };
   const store = createServiceWorkerStore({
     container: { controller: {}, addEventListener: () => undefined },

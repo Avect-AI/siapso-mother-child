@@ -36,6 +36,21 @@ describe('measure', () => {
     expect(total).toBe(2400);
     expect(files.map((f) => f.path)).toEqual(['assets/index.js', 'fonts/a.woff2', 'index.html']);
   });
+
+  it('counts the speech worker with the voice, not the app: it is cached only once a voice is installed', async () => {
+    await file('index.html', 100);
+    await file('assets/index-abc.js', 2000);
+    await file('assets/worker-Bx9_a-1.js', 500_000);
+
+    const { total, files, voice } = await measure(dist);
+
+    expect(total).toBe(2100);
+    expect(files.map((f) => f.path)).toEqual(['assets/index-abc.js', 'index.html']);
+    expect(voice).toEqual({
+      total: 500_000,
+      files: [{ path: 'assets/worker-Bx9_a-1.js', bytes: 500_000 }],
+    });
+  });
 });
 
 describe('checkAppSize', () => {
@@ -56,6 +71,14 @@ describe('checkAppSize', () => {
     const lines = [];
     expect(await checkAppSize(path.join(dist, 'missing'), (line) => lines.push(line))).toBe(1);
     expect(lines.join('\n')).toMatch(/pnpm build/);
+  });
+
+  it('says the size of the speech worker apart', async () => {
+    await file('assets/index.js', 1000);
+    await file('assets/worker-x.js', 400_000);
+    const lines = [];
+    expect(await checkAppSize(dist, (line) => lines.push(line))).toBe(0);
+    expect(lines.join('\n')).toMatch(/Voice: 400000 bytes .* speech worker/);
   });
 
   it('fails when the build holds no app file at all', async () => {

@@ -19,8 +19,10 @@ import {
 import type { WorkerRequest, WorkerResponse } from './protocol.js';
 import {
   applyRuntimeSettings,
+  checkRuntimeInstalled,
   failureCode,
   runtimeSettings,
+  threadCount,
   type TransformersEnv,
 } from './runtime-config.js';
 
@@ -36,6 +38,8 @@ const scope = self as unknown as {
 };
 
 let transcriber: AutomaticSpeechRecognitionPipeline | undefined;
+/** The pack the transcriber was loaded from, and the device it runs on. */
+let loadedPack: { baseUrl: string; device: 'webgpu' | 'wasm' } | undefined;
 // Requests run one at a time, in the order they arrive.
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -54,12 +58,36 @@ async function hasWebGpu(): Promise<boolean> {
 }
 
 async function load(request: Extract<WorkerRequest, { type: 'load' }>): Promise<void> {
-  const settings = runtimeSettings(request.baseUrl, await hasWebGpu());
+  // Idempotent: the model of this pack is already loaded, it is not loaded twice.
+  if (transcriber !== undefined && loadedPack?.baseUrl === request.baseUrl) {
+    post({ type: 'loaded', id: request.id, device: loadedPack.device });
+    return;
+  }
+  if (transcriber !== undefined) {
+    // Another pack: the model in memory goes first.
+    const previous = transcriber;
+    transcriber = undefined;
+    loadedPack = undefined;
+    await previous.dispose();
+  }
+  // Threads only in a cross-origin isolated page (shared memory): one otherwise.
+  const isolated = (self as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
+  const settings = runtimeSettings(
+    request.baseUrl,
+    await hasWebGpu(),
+    threadCount(
+      isolated,
+      navigator.hardwareConcurrency,
+      (navigator as { deviceMemory?: number }).deviceMemory,
+    ),
+  );
   applyRuntimeSettings(
     env as unknown as TransformersEnv,
     settings,
     request.files.map((file) => file.path),
   );
+  // ONNX Runtime would fetch a missing runtime file from its URL: refuse first.
+  await checkRuntimeInstalled(settings);
 
   // Progress over the model files (the ONNX Runtime binaries load apart).
   const sizes = new Map(
@@ -92,6 +120,7 @@ async function load(request: Extract<WorkerRequest, { type: 'load' }>): Promise<
     device = 'wasm';
     transcriber = await create(device);
   }
+  loadedPack = { baseUrl: request.baseUrl, device };
   post({ type: 'loaded', id: request.id, device });
 }
 
@@ -136,3 +165,11 @@ scope.addEventListener('message', (event) => {
 
 // A message that cannot be read has no id to answer: the page times the request out.
 scope.addEventListener('messageerror', () => undefined);
+
+// The address of this script, as the page loaded it: the page asks the service
+// worker to keep exactly this file once a voice is installed.
+post({
+  type: 'hello',
+  id: 0,
+  url: (self as unknown as { location: { href: string } }).location.href,
+});

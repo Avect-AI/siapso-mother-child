@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { defaultClientConditions, defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { appName } from './src/app-name.js';
 // The engine's wording check, by path: the config loader keeps the workspace
@@ -240,12 +240,18 @@ function htmlValues(values: Record<string, string>): Plugin {
   };
 }
 
-/** Service worker precache (tested in src/pwa/workbox.test.ts). */
+/**
+ * Service worker precache (tested in src/pwa/workbox.test.ts). The worker
+ * itself is src/sw.ts: navigations, the cross-origin isolation headers, the
+ * first install and updates are in src/pwa/sw-setup.ts.
+ */
 export const workbox = {
   // The app shell, its fonts and icons, and the knowledge pack: the
   // manifest, its signature (manifest.sig, when the pack is signed) and its
-  // fragments. pack.json repeats every fragment in one file and the app
-  // never reads it, so it is not downloaded twice.
+  // fragments. The speech worker's script is listed too, so the service
+  // worker knows its name, but src/pwa/sw-setup.ts keeps it out of the
+  // precache: it is downloaded only once a voice is installed. pack.json repeats every fragment in one
+  // file and the app never reads it, so it is not downloaded twice.
   // config/: the deployment's referral file when the build has one (who to
   // call works offline), and its small example.
   globPatterns: [
@@ -260,16 +266,6 @@ export const workbox = {
   // Pack fragments grow with the content; a file over the limit would
   // silently be left out of the precache.
   maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
-  navigateFallback: 'index.html',
-  // A voice pack file, or a deployment file such as config/referral.json, is
-  // never answered with the app page: a missing file stays missing.
-  navigateFallbackDenylist: [/\/voice\//, /\/config\//],
-  cleanupOutdatedCaches: true,
-  // The first install takes control of the page that registered it, so the
-  // page can say at once that the phone is ready without the Internet
-  // (src/pwa/service-worker.ts). An update still waits for the user: no
-  // skipWaiting, the update prompt sends it.
-  clientsClaim: true,
 };
 
 /** Lines framed loudly, so a build log cannot hide them. */
@@ -354,12 +350,23 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
     // A demo build never lands where a release goes (the preview of a demo
     // build, `vite preview --mode demo`, serves this folder too).
     build: { outDir: acceptsUnsigned ? DEMO_OUT_DIR : 'dist' },
+    // The speech worker (@siapso/speech): an ES module worker, and ONNX
+    // Runtime Web without its own WebAssembly file, which the worker loads
+    // from the installed voice pack (docs/voice.md); otherwise the build
+    // would copy a 25 MB file into the app.
+    resolve: { conditions: ['onnxruntime-web-use-extern-wasm', ...defaultClientConditions] },
+    worker: { format: 'es' as const },
     plugins: [
       react(),
       htmlValues({ APP_NAME: name, THEME_COLOR: themeColour }),
       buildInfoPlugin(buildInfo(mode, acceptsUnsigned, pack), acceptsUnsigned),
       referralFileCheck(),
       VitePWA({
+        // Our own worker (src/sw.ts), for the cross-origin isolation headers;
+        // vite-plugin-pwa builds it and fills in the precache list.
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         // A waiting version takes over only when the user accepts the update prompt.
         registerType: 'prompt',
         // main.tsx registers the worker with workbox-window, before the first
@@ -386,7 +393,8 @@ export default defineConfig(async ({ command, mode, isPreview }) => {
             },
           ],
         },
-        workbox,
+        // One classic script: workbox-window registers the worker as one.
+        injectManifest: { ...workbox, rollupFormat: 'iife' },
       }),
     ],
   };

@@ -23,13 +23,23 @@ export const DEFAULT_VOICE_PACK_URL = VOICE_PACKS.wo;
 export const MANIFEST_FILE = 'voice-pack.json';
 
 /**
+ * The ONNX Runtime Web build whose JavaScript the speech worker bundles (the
+ * one Transformers.js 4.3.1 pins, a dev build). Its WebAssembly files in the
+ * pack must be the same build: test/ort-version.test.ts checks the installed
+ * package, and install-local copies the files from it under this version.
+ */
+export const ORT_WEB_VERSION = '1.31.0-dev.20260914-8d85527a0';
+
+/**
  * ONNX Runtime Web files of the pack: the asyncify build (WebAssembly and
  * WebGPU), which runs on one thread unless the page is cross-origin
- * isolated, and then uses several.
+ * isolated, and then uses several. Under runtime/<version>/: an app that
+ * moves to another ONNX Runtime finds them missing, so the pack reads as to
+ * install again, and the installation downloads only these files.
  */
 export const RUNTIME_FILES = {
-  mjs: 'runtime/ort-wasm-simd-threaded.asyncify.mjs',
-  wasm: 'runtime/ort-wasm-simd-threaded.asyncify.wasm',
+  mjs: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.mjs`,
+  wasm: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.wasm`,
 } as const;
 
 /** Free space kept on top of the pack size before an installation starts. */
@@ -55,6 +65,8 @@ export interface VoicePackInfo {
    * model uses <|startoftranscript|><|xx|><|transcribe|><|notimestamps|>.
    */
   prompts: Record<string, number[]>;
+  /** The ONNX Runtime Web version the pack's runtime files are (ORT_WEB_VERSION). */
+  runtime: string;
 }
 
 /**
@@ -112,7 +124,7 @@ function parseManifest(value: unknown, baseUrl: string): VoicePackInfo {
   const invalid = (detail: string) =>
     new VoicePackError('invalid', `Invalid ${MANIFEST_FILE}: ${detail}`);
   if (!isRecord(value)) throw invalid('not an object');
-  const { id, licence, files, totalBytes, languages, prompts } = value;
+  const { id, licence, files, totalBytes, languages, prompts, runtime } = value;
   if (typeof id !== 'string' || id === '') throw invalid('no id');
   if (typeof licence !== 'string' || licence === '') throw invalid('no licence');
   if (!Array.isArray(files) || files.length === 0) throw invalid('no files');
@@ -129,6 +141,13 @@ function parseManifest(value: unknown, baseUrl: string): VoicePackInfo {
   const sum = parsed.reduce((total, file) => total + file.bytes, 0);
   if (totalBytes !== sum)
     throw invalid(`totalBytes is ${String(totalBytes)}, the files add up to ${String(sum)}`);
+  // The runtime files must be the build the worker bundles: another one is to install again.
+  const version = isRecord(runtime) ? runtime['onnxruntime-web'] : undefined;
+  if (version !== ORT_WEB_VERSION) {
+    throw invalid(
+      `the pack holds ONNX Runtime ${typeof version === 'string' ? version : 'of no version'}, this app needs ${ORT_WEB_VERSION} (run pnpm voice:install-local)`,
+    );
+  }
   const paths = new Set(parsed.map((file) => file.path));
   if (!paths.has(RUNTIME_FILES.mjs) || !paths.has(RUNTIME_FILES.wasm)) {
     throw invalid('the ONNX Runtime files are missing (run pnpm voice:install-local)');
@@ -150,7 +169,16 @@ function parseManifest(value: unknown, baseUrl: string): VoicePackInfo {
     langs.push(lang);
     table[lang] = [...(prompt as number[])];
   }
-  return { id, baseUrl, files: parsed, totalBytes: sum, licence, languages: langs, prompts: table };
+  return {
+    id,
+    baseUrl,
+    files: parsed,
+    totalBytes: sum,
+    licence,
+    languages: langs,
+    prompts: table,
+    runtime: ORT_WEB_VERSION,
+  };
 }
 
 async function openCache(): Promise<Cache | undefined> {
@@ -205,6 +233,65 @@ async function readJson(
     return { json: (await response.json()) as unknown, status: 'ok' };
   } catch {
     return { status: 'not-json' };
+  }
+}
+
+/**
+ * The pack installed in the folder `baseUrl`, read from the voice cache only,
+ * never from the network: the copy of the manifest an installation stored
+ * last, when every file it lists is there too. Null otherwise (nothing
+ * installed, an installation cut short, a file evicted), so a screen can say
+ * whether the voice is ready without any request.
+ */
+export async function installedVoicePackInfo(baseUrl: string): Promise<VoicePackInfo | null> {
+  const base = resolveBase(baseUrl);
+  const cache = await openCache();
+  if (cache === undefined) return null;
+  const stored = await readJson(
+    async () => (await cache.match(new URL(MANIFEST_FILE, base).href)) ?? notFound(),
+  );
+  if (stored.json === undefined) return null;
+  let info: VoicePackInfo;
+  try {
+    info = parseManifest(stored.json, base);
+  } catch {
+    return null;
+  }
+  return (await isVoicePackInstalled(info)) ? info : null;
+}
+
+/** The voice cache entries stored in the pack folder `baseUrl` (files and manifest); none without the Cache API. */
+async function storedInFolder(baseUrl: string): Promise<{ cache: Cache; requests: Request[] }[]> {
+  const base = resolveBase(baseUrl);
+  const cache = await openCache();
+  if (cache === undefined) return [];
+  const requests = (await cache.keys()).filter((request) => request.url.startsWith(base));
+  return [{ cache, requests }];
+}
+
+/**
+ * The bytes of the pack folder `baseUrl` already in the voice cache, from the
+ * sizes stored with each file, without the manifest and without the
+ * network: an installation cut short shows how much it kept for later.
+ */
+export async function storedVoicePackBytes(baseUrl: string): Promise<number> {
+  let total = 0;
+  for (const { cache, requests } of await storedInFolder(baseUrl)) {
+    for (const request of requests) {
+      const length = Number((await cache.match(request))?.headers.get('content-length') ?? 0);
+      if (Number.isSafeInteger(length) && length > 0) total += length;
+    }
+  }
+  return total;
+}
+
+/**
+ * Deletes everything the voice cache holds in the pack folder `baseUrl`,
+ * with or without a manifest: the files an installation cut short kept, too.
+ */
+export async function removeVoicePackFiles(baseUrl: string): Promise<void> {
+  for (const { cache, requests } of await storedInFolder(baseUrl)) {
+    for (const request of requests) await cache.delete(request);
   }
 }
 
@@ -324,6 +411,17 @@ export async function installVoicePack(
     loaded += file.bytes;
   }
 
+  // Files of the folder the pack no longer lists (the runtime of an older
+  // ONNX Runtime, for example) are dropped.
+  const listed = new Set([
+    ...info.files.map((file) => voicePackUrl(info, file.path)),
+    voicePackUrl(info, MANIFEST_FILE),
+  ]);
+  for (const request of await cache.keys()) {
+    if (request.url.startsWith(info.baseUrl) && !listed.has(request.url))
+      await cache.delete(request);
+  }
+
   // The manifest last: voicePackInfo reads it offline.
   await cache.put(
     voicePackUrl(info, MANIFEST_FILE),
@@ -336,7 +434,15 @@ export async function installVoicePack(
 
 function manifestOf(info: VoicePackInfo) {
   const { id, licence, languages, prompts, files, totalBytes } = info;
-  return { id, licence, languages, prompts, files, totalBytes };
+  return {
+    id,
+    licence,
+    languages,
+    prompts,
+    files,
+    totalBytes,
+    runtime: { 'onnxruntime-web': info.runtime },
+  };
 }
 
 /** Deletes every file of the pack and its manifest from the cache. */

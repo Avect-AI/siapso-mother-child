@@ -6,34 +6,31 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { referralFileWarning, workbox } from '../../vite.config.js';
+import { splitPrecache } from './sw-setup.js';
 
+// What the worker does with the precache (navigations, isolation headers,
+// first install, updates) is tested in sw-setup.test.ts.
 describe('service worker precache', () => {
   it('never precaches the voice pack: it is an optional download kept in the Cache API', () => {
     expect(workbox.globIgnores).toContain('voice/**');
     for (const pattern of workbox.globPatterns) expect(pattern.startsWith('voice')).toBe(false);
   });
 
-  it('never answers a /voice/ request with the app page', () => {
-    const denied = (path: string) =>
-      workbox.navigateFallbackDenylist.some((rule) => rule.test(path));
-    expect(denied('/voice/whisper-small-wolof-q8/voice-pack.json')).toBe(true);
-    // Also under a deployment base path.
-    expect(denied('/siapso/voice/whisper-small-wolof-q8/onnx/encoder_model_quantized.onnx')).toBe(
-      true,
-    );
-    expect(denied('/')).toBe(false);
-    expect(denied('/index.html')).toBe(false);
-  });
-
   it('keeps the app shell and the knowledge pack in the precache', () => {
     expect(workbox.globPatterns).toContain('pack/*.{json,sig}');
-    expect(workbox.navigateFallback).toBe('index.html');
+    expect(workbox.globPatterns[0]).toMatch(/\{html,js,/);
   });
 
-  it('takes control of the page at its first install, so the page can say it is ready offline', () => {
-    expect(workbox.clientsClaim).toBe(true);
-    // An update still waits for the user (registerType 'prompt'): no skipWaiting.
-    expect('skipWaiting' in workbox).toBe(false);
+  it('lists the speech worker script, which the service worker keeps apart until a voice is installed', () => {
+    // Listed with its revision, so the worker knows its name; never precached with the app.
+    const { app, voiceWorker } = splitPrecache([
+      'index.html',
+      'assets/index-Ab1.js',
+      'assets/worker-Cd2_e.js',
+      'assets/src-Ef3.js',
+    ]);
+    expect(voiceWorker).toEqual(['assets/worker-Cd2_e.js']);
+    expect(app).toEqual(['index.html', 'assets/index-Ab1.js', 'assets/src-Ef3.js']);
   });
 
   it('keeps the signature of a signed pack offline: manifest.sig is precached when present', () => {
@@ -47,14 +44,6 @@ describe('service worker precache', () => {
   it('keeps the referral file of a deployment offline: who to call works in airplane mode', () => {
     expect(workbox.globPatterns).toContain('config/*.json');
     expect(workbox.globIgnores.some((pattern) => pattern.startsWith('config'))).toBe(false);
-  });
-
-  it('never answers a /config/ request with the app page: a missing file stays missing', () => {
-    const denied = (path: string) =>
-      workbox.navigateFallbackDenylist.some((rule) => rule.test(path));
-    expect(denied('/config/referral.json')).toBe(true);
-    expect(denied('/siapso/config/referral.json')).toBe(true);
-    expect(denied('/#/danger/call')).toBe(false);
   });
 });
 

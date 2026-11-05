@@ -2,13 +2,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_VOICE_PACK_URL,
+  ORT_WEB_VERSION,
   RUNTIME_FILES,
   VOICE_CACHE,
   VOICE_PACKS,
   VoicePackError,
   installVoicePack,
+  installedVoicePackInfo,
   isVoicePackInstalled,
   removeVoicePack,
+  removeVoicePackFiles,
+  storedVoicePackBytes,
   voicePackInfo,
   type VoicePackInfo,
 } from '../src/voice-pack.js';
@@ -36,6 +40,7 @@ function manifest(overrides: Record<string, unknown> = {}) {
     languages: ['wo', 'fr'],
     prompts: { wo: [50258], fr: [50258, 50265, 50359, 50363] },
     source: { repo: 'M9and2M/whisper-small-wolof', revision: 'abc' },
+    runtime: { 'onnxruntime-web': ORT_WEB_VERSION, licence: 'MIT' },
     files,
     totalBytes: files.reduce((sum, f) => sum + f.bytes, 0),
     ...overrides,
@@ -83,6 +88,25 @@ describe('voicePackInfo', () => {
     });
     expect(pack.files.map((f) => f.path)).toEqual(Object.keys(FILES));
     expect(pack.files[0]).toEqual({ path: 'config.json', bytes: 300 });
+    expect(pack.runtime).toBe(ORT_WEB_VERSION);
+  });
+
+  it('keeps the ONNX Runtime files in a folder named after their version', () => {
+    expect(RUNTIME_FILES).toEqual({
+      mjs: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.mjs`,
+      wasm: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.wasm`,
+    });
+  });
+
+  it.each([
+    ['no runtime', undefined],
+    ['another ONNX Runtime', { 'onnxruntime-web': '1.22.0', licence: 'MIT' }],
+  ])('refuses a pack built for %s: it must be installed again', async (_, runtime) => {
+    vi.stubGlobal('fetch', fakeFetch(served({}, manifest({ runtime }))).fetch);
+    await expect(voicePackInfo(BASE)).rejects.toMatchObject({
+      reason: 'invalid',
+      message: /ONNX Runtime/,
+    });
   });
 
   it('resolves the default base URL against the page, whatever the route', async () => {
@@ -184,7 +208,7 @@ describe('installVoicePack', () => {
     await installVoicePack(pack, (loaded, total) => progress.push([loaded, total]));
 
     const cache = await storage.open(VOICE_CACHE);
-    expect(cache.keys()).toEqual(
+    expect(cache.urls()).toEqual(
       [...Object.keys(FILES).map((path) => BASE + path), `${BASE}voice-pack.json`].sort(),
     );
     const stored = await cache.match(`${BASE}onnx/encoder_model_quantized.onnx`);
@@ -217,7 +241,7 @@ describe('installVoicePack', () => {
 
     const cache = await storage.open(VOICE_CACHE);
     // config.json and the encoder (5300 bytes) were complete; the decoder was cut off.
-    expect(cache.keys()).toEqual([
+    expect(cache.urls()).toEqual([
       `${BASE}config.json`,
       `${BASE}onnx/encoder_model_quantized.onnx`,
     ]);
@@ -250,7 +274,7 @@ describe('installVoicePack', () => {
     await expect(installVoicePack(pack, () => undefined, controller.signal)).rejects.toMatchObject({
       name: 'AbortError',
     });
-    expect((await storage.open(VOICE_CACHE)).keys()).toEqual([]);
+    expect((await storage.open(VOICE_CACHE)).urls()).toEqual([]);
   });
 
   it('refuses a file whose size does not match the manifest, and does not keep it', async () => {
@@ -264,7 +288,7 @@ describe('installVoicePack', () => {
       reason: 'download',
     });
     const cache = await storage.open(VOICE_CACHE);
-    expect(cache.keys()).not.toContain(`${BASE}onnx/encoder_model_quantized.onnx`);
+    expect(cache.urls()).not.toContain(`${BASE}onnx/encoder_model_quantized.onnx`);
   });
 
   it('reports an HTTP error as a download error', async () => {
@@ -319,6 +343,33 @@ describe('installVoicePack', () => {
   });
 });
 
+describe('installVoicePack and an older runtime', () => {
+  it('downloads only the files at a new path, and drops what the pack no longer lists', async () => {
+    const pack = await info();
+    const cache = await storage.open(VOICE_CACHE);
+    // An earlier install: the model files, and the runtime of an older version.
+    for (const [path, body] of Object.entries(FILES)) {
+      if (path.startsWith('runtime/')) continue;
+      await cache.put(
+        BASE + path,
+        new Response(body.slice(0), { headers: { 'content-length': String(body.length) } }),
+      );
+    }
+    await cache.put(
+      `${BASE}runtime/1.22.0/ort-wasm-simd-threaded.asyncify.wasm`,
+      new Response('old'),
+    );
+    const { fetch, requests } = fakeFetch(served());
+    vi.stubGlobal('fetch', fetch);
+    await installVoicePack(pack, () => undefined);
+    expect(requests).toEqual([BASE + RUNTIME_FILES.mjs, BASE + RUNTIME_FILES.wasm]);
+    expect(cache.urls()).not.toContain(
+      `${BASE}runtime/1.22.0/ort-wasm-simd-threaded.asyncify.wasm`,
+    );
+    expect(await installedVoicePackInfo(BASE)).toEqual(pack);
+  });
+});
+
 describe('removeVoicePack', () => {
   it('deletes every file of the pack and its manifest', async () => {
     const pack = await info();
@@ -326,7 +377,141 @@ describe('removeVoicePack', () => {
     const cache = await storage.open(VOICE_CACHE);
     await cache.put('https://app.test/other', new Response('keep'));
     await removeVoicePack(pack);
-    expect(cache.keys()).toEqual(['https://app.test/other']);
+    expect(cache.urls()).toEqual(['https://app.test/other']);
     expect(await isVoicePackInstalled(pack)).toBe(false);
+  });
+});
+
+/** A fetch that fails the test if called: these functions never use the network. */
+function noNetwork() {
+  const network = vi.fn(() => Promise.reject(new Error('the network must not be used')));
+  vi.stubGlobal('fetch', network);
+  return network;
+}
+
+/** Installs the pack, then stops at the decoder: config.json and the encoder (5300 bytes) are kept. */
+async function cutShort(): Promise<VoicePackInfo> {
+  const pack = await info();
+  const controller = new AbortController();
+  await installVoicePack(
+    pack,
+    (loaded) => {
+      if (loaded > 6000) controller.abort();
+    },
+    controller.signal,
+  ).catch(() => undefined);
+  return pack;
+}
+
+describe('installedVoicePackInfo', () => {
+  it('reads the copy of the manifest an installation stored, without the network', async () => {
+    const pack = await info();
+    await installVoicePack(pack, () => undefined);
+    const network = noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toEqual(pack);
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('resolves a pack folder relative to the page, as VOICE_PACKS gives it', async () => {
+    const pack = await info();
+    await installVoicePack(pack, () => undefined);
+    noNetwork();
+    expect(VOICE_PACKS.wo).toBe('voice/whisper-small-wolof-q8/');
+    expect((await installedVoicePackInfo(VOICE_PACKS.wo))?.baseUrl).toBe(BASE);
+  });
+
+  it('is null when nothing is installed, without the network', async () => {
+    const network = noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('is null when a file is missing, even with the manifest stored', async () => {
+    const pack = await info();
+    await installVoicePack(pack, () => undefined);
+    await (await storage.open(VOICE_CACHE)).delete(`${BASE}config.json`);
+    noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+  });
+
+  it('keeps the ONNX Runtime version in the stored copy', async () => {
+    const pack = await info();
+    await installVoicePack(pack, () => undefined);
+    const stored = await (await storage.open(VOICE_CACHE)).match(`${BASE}voice-pack.json`);
+    expect(((await stored?.json()) as { runtime?: unknown }).runtime).toEqual({
+      'onnxruntime-web': ORT_WEB_VERSION,
+    });
+  });
+
+  it('reads a pack installed for another ONNX Runtime as not installed, its files kept to resume', async () => {
+    const pack = await info();
+    await installVoicePack(pack, () => undefined);
+    const cache = await storage.open(VOICE_CACHE);
+    // The copy an older app stored: the same files, another runtime version.
+    await cache.put(
+      `${BASE}voice-pack.json`,
+      new Response(JSON.stringify({ ...manifest(), runtime: { 'onnxruntime-web': '1.22.0' } })),
+    );
+    noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+    expect(await storedVoicePackBytes(BASE)).toBe(17000);
+  });
+
+  it('is null for an installation cut short (no manifest stored yet)', async () => {
+    await cutShort();
+    noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+  });
+
+  it('is null when the stored manifest cannot be read, or with no Cache API', async () => {
+    const cache = await storage.open(VOICE_CACHE);
+    await cache.put(`${BASE}voice-pack.json`, new Response('<html>'));
+    noNetwork();
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+    vi.stubGlobal('caches', undefined);
+    expect(await installedVoicePackInfo(BASE)).toBeNull();
+  });
+});
+
+describe('storedVoicePackBytes', () => {
+  it('adds up the files already stored in the pack folder, with no manifest and no network', async () => {
+    await cutShort();
+    const cache = await storage.open(VOICE_CACHE);
+    await cache.put(
+      'https://app.test/voice/whisper-base-fr-q8/config.json',
+      new Response('x', { headers: { 'content-length': '999' } }),
+    );
+    const network = noNetwork();
+    expect(await storedVoicePackBytes(BASE)).toBe(5300);
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('is 0 when nothing is stored, or with no Cache API', async () => {
+    noNetwork();
+    expect(await storedVoicePackBytes(BASE)).toBe(0);
+    vi.stubGlobal('caches', undefined);
+    expect(await storedVoicePackBytes(BASE)).toBe(0);
+  });
+});
+
+describe('removeVoicePackFiles', () => {
+  it('deletes every file stored in the pack folder, even without a manifest', async () => {
+    await cutShort();
+    const cache = await storage.open(VOICE_CACHE);
+    await cache.put('https://app.test/other', new Response('keep'));
+    await cache.put('https://app.test/voice/whisper-base-fr-q8/config.json', new Response('keep'));
+    const network = noNetwork();
+    await removeVoicePackFiles(BASE);
+    expect(cache.urls()).toEqual([
+      'https://app.test/other',
+      'https://app.test/voice/whisper-base-fr-q8/config.json',
+    ]);
+    expect(await storedVoicePackBytes(BASE)).toBe(0);
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('does nothing with no Cache API', async () => {
+    vi.stubGlobal('caches', undefined);
+    await expect(removeVoicePackFiles(BASE)).resolves.toBeUndefined();
   });
 });

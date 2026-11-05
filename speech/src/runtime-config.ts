@@ -26,6 +26,41 @@ export interface RuntimeSettings {
   wasmPaths: { mjs: string; wasm: string };
   device: 'webgpu' | 'wasm';
   dtype: 'q8';
+  /** ONNX Runtime WebAssembly threads (threadCount). */
+  threads: number;
+}
+
+/**
+ * A file of the pack is not in the voice cache: the pack must be installed
+ * again (never downloaded behind the user).
+ */
+export class MissingPackFileError extends Error {
+  constructor(file: string) {
+    super(`The voice pack file ${file} is not installed.`);
+    this.name = 'MissingPackFileError';
+  }
+}
+
+/**
+ * How many threads ONNX Runtime may use. Threads need shared memory, which
+ * the browser gives only to a cross-origin isolated page (the app's service
+ * worker sends the COOP and COEP headers): one thread otherwise. Isolated,
+ * half the cores and at most four, as ONNX Runtime Web chooses by default
+ * (measured: 6.7 s instead of 13 s per 3.3 s utterance on a laptop,
+ * docs/voice.md). On a phone with 2 GB of memory or less
+ * (`navigator.deviceMemory`), at most two: each thread is a worker with its
+ * own copy of the runtime's JavaScript and stack, next to a model of several
+ * hundred megabytes, and two keep most of the speed-up (to measure on a
+ * 2 GB phone, docs/voice.md).
+ */
+export function threadCount(
+  isolated: boolean,
+  cores: number | undefined,
+  deviceMemory?: number,
+): number {
+  if (!isolated || cores === undefined || !Number.isFinite(cores) || cores < 1) return 1;
+  const most = deviceMemory !== undefined && deviceMemory <= 2 ? 2 : 4;
+  return Math.max(1, Math.min(most, Math.ceil(cores / 2)));
 }
 
 type Fetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -41,7 +76,7 @@ export interface TransformersEnv {
   useCustomCache: boolean;
   cacheKey: string;
   fetch: Fetch;
-  backends: { onnx: { wasm?: { wasmPaths?: unknown } } };
+  backends: { onnx: { wasm?: { wasmPaths?: unknown; numThreads?: number } } };
 }
 
 function packFolder(baseUrl: string): URL {
@@ -55,7 +90,7 @@ function packFolder(baseUrl: string): URL {
   return url;
 }
 
-export function runtimeSettings(baseUrl: string, webgpu: boolean): RuntimeSettings {
+export function runtimeSettings(baseUrl: string, webgpu: boolean, threads = 1): RuntimeSettings {
   const folder = packFolder(baseUrl);
   const segments = folder.pathname.split('/').filter((part) => part !== '');
   const modelId = segments.at(-1) ?? '';
@@ -77,7 +112,30 @@ export function runtimeSettings(baseUrl: string, webgpu: boolean): RuntimeSettin
     },
     device: webgpu ? 'webgpu' : 'wasm',
     dtype: 'q8',
+    threads,
   };
+}
+
+/**
+ * Checks that the ONNX Runtime files of the pack are in the voice cache.
+ * Transformers.js reads them from the cache when it can, but when one is
+ * missing it leaves ONNX Runtime to import and fetch it from its URL, over
+ * the network: the worker calls this before creating the pipeline, so a
+ * missing file is an error (`unavailable`), never a download.
+ */
+export async function checkRuntimeInstalled(settings: RuntimeSettings): Promise<void> {
+  const storage = (globalThis as { caches?: CacheStorage }).caches;
+  let cache: Cache | undefined;
+  try {
+    cache = await storage?.open(settings.env.cacheKey);
+  } catch {
+    cache = undefined;
+  }
+  for (const url of [settings.wasmPaths.mjs, settings.wasmPaths.wasm]) {
+    if (cache === undefined || (await cache.match(url)) === undefined) {
+      throw new MissingPackFileError(url);
+    }
+  }
 }
 
 function urlOf(input: RequestInfo | URL): string {
@@ -133,6 +191,7 @@ export function guardedFetch(baseUrl: string, paths: readonly string[], fetchImp
 export function failureCode(kind: 'load' | 'transcribe', error: unknown): WorkerErrorCode {
   const name = error instanceof Error || error instanceof DOMException ? error.name : '';
   const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof MissingPackFileError) return 'unavailable';
   if (name === 'QuotaExceededError') return 'storage';
   if (
     kind === 'load' &&
@@ -158,4 +217,5 @@ export function applyRuntimeSettings(
   const wasm = env.backends.onnx.wasm;
   if (wasm === undefined) throw new Error('ONNX Runtime Web is not loaded');
   wasm.wasmPaths = { ...settings.wasmPaths };
+  wasm.numThreads = settings.threads;
 }

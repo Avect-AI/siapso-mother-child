@@ -17,8 +17,11 @@ export {
   VOICE_PACKS,
   VoicePackError,
   installVoicePack,
+  installedVoicePackInfo,
   isVoicePackInstalled,
   removeVoicePack,
+  removeVoicePackFiles,
+  storedVoicePackBytes,
   voicePackInfo,
   voicePackUrl,
   type VoicePackErrorReason,
@@ -26,8 +29,10 @@ export {
   type VoicePackInfo,
 } from './voice-pack.js';
 export {
+  DEFAULT_REQUEST_TIMEOUT_MS,
   createSpeechClient,
   type SpeechClient,
+  type SpeechClientOptions,
   type TranscribeOptions,
   type Transcription,
 } from './client.js';

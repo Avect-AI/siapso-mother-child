@@ -13,6 +13,7 @@ function fakeWorkbox(registered: Promise<unknown> = Promise.resolve({})) {
     },
     register: vi.fn<(options: { immediate: boolean }) => Promise<unknown>>(() => registered),
     messageSkipWaiting: vi.fn(),
+    messageSW: vi.fn<(data: object) => Promise<unknown>>(() => Promise.resolve({ ok: true })),
     emit(type: string, event: { isUpdate?: boolean; isExternal?: boolean } = {}) {
       for (const listener of listeners.get(type) ?? []) listener(event);
     },
@@ -152,5 +153,84 @@ describe('the service worker', () => {
     store.start();
     store.start();
     expect(workbox.register).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** A worker in control that answers on the port it is given, or never. */
+function answeringController(answer: unknown = { ok: true }) {
+  return {
+    postMessage: vi.fn((_message: unknown, ports: MessagePort[]) => {
+      if (answer !== undefined) ports[0]?.postMessage(answer);
+    }),
+  };
+}
+
+const SCRIPT = 'https://app.test/assets/worker-Ab1.js';
+
+describe('the speech worker script', () => {
+  it('is kept by the worker in control, the very script the page runs, and by the next version', async () => {
+    const container = fakeContainer(answeringController());
+    const { store, workbox } = storeWith({ container });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(true);
+    expect(
+      (container.controller as ReturnType<typeof answeringController>).postMessage,
+    ).toHaveBeenCalledWith({ type: 'CACHE_VOICE_WORKER', url: SCRIPT }, [expect.any(MessagePort)]);
+    // The waiting or installing worker, if any, keeps its own build's script.
+    expect(workbox.messageSW).toHaveBeenCalledWith({ type: 'CACHE_VOICE_WORKER' });
+  });
+
+  it('does not wait for a waiting worker that never answers (a failed update)', async () => {
+    const container = fakeContainer(answeringController());
+    const silent = fakeWorkbox();
+    silent.messageSW.mockReturnValue(new Promise(() => undefined));
+    const { store } = storeWith({ container, workbox: silent });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(true);
+  });
+
+  it('asks the registered worker when none is in control yet (the first visit)', async () => {
+    const { store, workbox } = storeWith({ container: fakeContainer(null) });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(true);
+    expect(workbox.messageSW).toHaveBeenCalledWith({ type: 'CACHE_VOICE_WORKER', url: SCRIPT });
+  });
+
+  it('says when the worker in control could not keep it', async () => {
+    const { store } = storeWith({ container: fakeContainer(answeringController({ ok: false })) });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(false);
+  });
+
+  it('is dropped by the worker when the voice is removed', async () => {
+    const { store, workbox } = storeWith();
+    store.start();
+    expect(await store.dropVoiceWorker()).toBe(true);
+    expect(workbox.messageSW).toHaveBeenCalledWith({ type: 'DROP_VOICE_WORKER' });
+  });
+
+  it('says when the worker could not, or did not answer in time', async () => {
+    const failing = fakeWorkbox();
+    failing.messageSW.mockResolvedValueOnce({ ok: false });
+    const { store } = storeWith({ workbox: failing, container: fakeContainer(null) });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(false);
+
+    vi.useFakeTimers();
+    try {
+      failing.messageSW.mockReturnValueOnce(new Promise(() => undefined));
+      const silent = store.cacheVoiceWorker(SCRIPT);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(await silent).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('is not asked for without a service worker', async () => {
+    const { store } = storeWith({ container: undefined });
+    store.start();
+    expect(await store.cacheVoiceWorker(SCRIPT)).toBe(false);
+    expect(await store.dropVoiceWorker()).toBe(false);
   });
 });

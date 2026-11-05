@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 import type { Pack, Rule } from '@siapso/engine';
-import { search } from '@siapso/resolver';
+import { normalize, search } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
+  browseEntriesOf,
+  browseGroupsOf,
   candidateDisplayOf,
   candidateOf,
   displayOf,
@@ -498,5 +500,67 @@ describe('missingSubstancesOf', () => {
     expect(missingSubstancesOf(pack, 'efferalgan-codeine', 'efferalgan codeine', 'en')).toEqual([]);
     expect(missingSubstancesOf(pack, 'efferalgan-500-mg-67326925', 'efferalgan', 'fr')).toEqual([]);
     expect(missingSubstancesOf(pack, 'gone', 'codeine', 'fr')).toEqual([]);
+  });
+});
+
+describe('browseEntriesOf', () => {
+  it('lists every remedy once, by its name in the language, in alphabetical order', () => {
+    const entries = browseEntriesOf(pack, 'plant', 'fr');
+    expect(entries.map((entry) => entry.id).sort()).toEqual(pack.plants.map((p) => p.id).sort());
+    const moringa = entries.find((entry) => entry.id === 'moringa');
+    expect(moringa).toMatchObject({ kind: 'plant', name: 'Moringa', detail: 'Moringa oleifera' });
+    const names = entries.map((entry) => entry.name);
+    expect(names).toEqual(
+      [...names].sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })),
+    );
+    expect(browseEntriesOf(pack, 'plant', 'en').find((e) => e.id === 'moringa')?.name).toBe(
+      pack.plants.find((p) => p.id === 'moringa')?.names.en,
+    );
+  });
+
+  it('lists the medicines one per family, by the family name, never one strength chosen for her', () => {
+    const entries = browseEntriesOf(pack, 'product', 'fr');
+    const families = new Set(entries.map((entry) => productFamilyOf(pack, entry.id)));
+    expect(families.size).toBe(entries.length);
+    expect(entries.length).toBeGreaterThan(10);
+    const doliprane = entries.filter((entry) => entry.name === 'DOLIPRANE');
+    expect(doliprane).toHaveLength(1);
+    // Its confirm screen asks the strength (no strength chosen from a list).
+    const candidate = candidateOf(pack, { kind: 'product', id: doliprane[0]?.id ?? '' });
+    expect(candidate && strengthChoiceOf(pack, candidate, '')?.preselected).toBeNull();
+    // A generic family stands for itself by its plain product when it has one.
+    const paracetamol = entries.find((entry) => entry.name === 'Paracétamol (générique)');
+    expect(paracetamol?.id).toBe('paracetamol-generic');
+  });
+
+  it('keeps the local names, by language: a Wolof name that was said is found again', () => {
+    const moringa = browseEntriesOf(pack, 'plant', 'fr').find((entry) => entry.id === 'moringa');
+    expect(moringa?.local).toEqual([{ lang: 'wo', names: ['nebeday', 'nebedaay'] }]);
+  });
+});
+
+describe('browseGroupsOf', () => {
+  it('groups the list by first letter, accents aside, in order', () => {
+    const groups = browseGroupsOf(browseEntriesOf(pack, 'plant', 'fr'));
+    const letters = groups.map((group) => group.letter);
+    expect(letters).toEqual([...new Set(letters)]);
+    expect(letters).toEqual([...letters].sort());
+    for (const group of groups) {
+      for (const entry of group.entries) {
+        expect(normalize(entry.name).charAt(0).toUpperCase()).toBe(group.letter);
+      }
+    }
+    expect(groups.flatMap((group) => group.entries)).toHaveLength(pack.plants.length);
+  });
+
+  it('puts a name that starts with a digit or a sign under #', () => {
+    const groups = browseGroupsOf([
+      { kind: 'product', id: 'a', name: '5-FU', detail: undefined, local: [] },
+      { kind: 'product', id: 'b', name: 'Ébène', detail: undefined, local: [] },
+    ]);
+    expect(groups.map((group) => [group.letter, group.entries.map((e) => e.id)])).toEqual([
+      ['#', ['a']],
+      ['E', ['b']],
+    ]);
   });
 });

@@ -21,6 +21,7 @@ function store(controller: unknown = null) {
       addEventListener: () => undefined,
       register: () => Promise.resolve({}),
       messageSkipWaiting: () => undefined,
+      messageSW: () => Promise.resolve({ ok: true }),
     }),
     onError: () => undefined,
   });
@@ -50,6 +51,7 @@ const failing = createServiceWorkerStore({
     addEventListener: () => undefined,
     register: () => Promise.reject(new Error('a precache file could not be fetched')),
     messageSkipWaiting: () => undefined,
+    messageSW: () => Promise.resolve({ ok: true }),
   }),
   onError: () => undefined,
 });

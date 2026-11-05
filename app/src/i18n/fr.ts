@@ -734,6 +734,7 @@ export const fr = {
   nav: {
     status: 'Base de connaissances',
     about: 'À propos',
+    voice: "Parler au lieu d'écrire",
   },
   // The knowledge base: its version, its age, where it came from. Nothing
   // here is about a profile, so it opens before the code.
@@ -799,9 +800,133 @@ export const fr = {
     newWindow: "(s'ouvre dans une autre fenêtre)",
     thirdPartyTitle: 'Logiciels tiers',
     thirdTransformers:
-      'Transformers.js (licence Apache-2.0) : utilisé seulement si le pack vocal est installé.',
+      'Transformers.js (licence Apache-2.0), ONNX Runtime Web et les modèles Whisper (MIT) : seulement pour la voix, une fois installée.',
+    licencesLink: 'Lire les licences des logiciels tiers',
     repositoryTitle: 'Code source',
     repositoryPrivate: 'Le dépôt est privé pendant le développement.',
+  },
+  // Voice input in the search (SCRUM-31): the model only writes what it
+  // heard; the candidates are confirmed as typed ones. The recording "se
+  // termine": no word here reads as an instruction about a treatment.
+  voice: {
+    // The microphone button beside the search field.
+    mic: 'Dire le nom',
+    micFinish: "Terminer l'enregistrement",
+    opening: "Le micro s'ouvre. Si le téléphone le demande, touchez Autoriser.",
+    // Short, said by a screen reader before she speaks: the rest is not read out.
+    listening: "J'écoute {languageIn}.",
+    listeningPlain: "J'écoute.",
+    listeningHow: 'Dites le nom, puis touchez le carré pour terminer.',
+    seconds: '{count} s sur {max}',
+    autoEnd: "L'enregistrement se termine seul après {max} secondes.",
+    thinking: 'Je réfléchis...',
+    thinkingHint: 'Cela peut prendre une minute sur ce téléphone.',
+    cancel: 'Annuler',
+    cancelled: 'Enregistrement annulé.',
+    heard: "J'ai entendu : {text}",
+    heardNothing: "Je n'ai pas entendu de nom.",
+    noneHint: 'Écrivez le nom, ou choisissez-le dans la liste.',
+    type: 'Écrire le nom',
+    chooseProduct: 'Choisir dans la liste des médicaments',
+    choosePlant: 'Choisir dans la liste des remèdes',
+    listProduct: 'Tous les médicaments',
+    listPlant: 'Tous les remèdes',
+    denied: 'Le micro est bloqué pour cette application.',
+    deniedHow:
+      'Pour le permettre dans Chrome : touchez les trois points en haut, puis Paramètres, Paramètres des sites, Micro, et permettez ce site, puis touchez à nouveau le micro. En attendant, écrivez le nom.',
+    install: 'Installer la voix',
+    error: {
+      unavailable:
+        "La voix n'est pas complète sur ce téléphone. Installez-la à nouveau, ou écrivez le nom.",
+      invalid:
+        'Les fichiers de la voix reçus ne sont pas bons. Réessayez plus tard, ou dites-le au poste de santé.',
+      storage:
+        "Il n'y a pas assez de place sur ce téléphone pour la voix. Libérez de la place, puis réessayez.",
+      download:
+        "Le téléchargement s'est interrompu. Reconnectez Internet, de préférence le wifi, puis touchez Reprendre : il continue là où il en était.",
+      load: "La voix n'a pas pu démarrer sur ce téléphone. Fermez les autres applications, puis réessayez. Vous pouvez aussi écrire le nom.",
+      transcribe: "Je n'ai pas pu comprendre cet enregistrement. Réessayez, ou écrivez le nom.",
+      'no-microphone': "Aucun micro n'a été trouvé sur ce téléphone. Écrivez le nom.",
+      unsupported:
+        "Ce navigateur ne peut pas enregistrer la voix. Ouvrez l'application dans Chrome, ou écrivez le nom.",
+      record:
+        "Le micro n'a pas pu enregistrer. Une autre application l'utilise peut-être. Réessayez, ou écrivez le nom.",
+    },
+  },
+  // The voice pack: chosen, installed and removed on this screen only; never
+  // downloaded without the install button.
+  voicePack: {
+    title: "Parler au lieu d'écrire",
+    lead: "Dites le nom d'un médicament ou d'un remède : l'application l'écrit pour vous, et vous choisissez dans la liste proposée.",
+    privacy: "Votre voix reste sur ce téléphone : elle n'en sort jamais et n'est pas gardée.",
+    checking: 'Recherche de la voix sur ce téléphone.',
+    // The speech package of this page is gone (an update accepted in another tab).
+    packageFailed:
+      "La voix n'a pas pu se charger sur cette page, peut-être après une mise à jour. Fermez l'application, puis rouvrez-la.",
+    unsupported:
+      "Ce navigateur ne peut pas utiliser la voix. Ouvrez l'application dans Chrome. Vous pouvez toujours écrire les noms.",
+    language: 'Langue de la voix',
+    languageHint: "L'application comprend les noms dits dans cette langue.",
+    option: '{language}, {size}',
+    languageName: {
+      wo: 'Wolof',
+      fr: 'Français',
+    },
+    languageIn: {
+      wo: 'en wolof',
+      fr: 'en français',
+    },
+    model: {
+      wo: 'Modèle Whisper small adapté au wolof (M9and2M), licence MIT.',
+      fr: "Modèle Whisper base d'OpenAI, licence MIT.",
+    },
+    megabytes: '{count} Mo',
+    advice:
+      'À installer une seule fois, en wifi, au poste de santé par exemple : {size} à télécharger. Ensuite, la voix marche sans Internet.',
+    offline: 'Il faut Internet pour installer la voix.',
+    install: 'Installer la voix {languageIn}',
+    partial: '{stored} sur {size} sont déjà sur ce téléphone.',
+    resume: "Reprendre l'installation",
+    removePartial: 'Retirer les fichiers déjà téléchargés',
+    installing: 'Installation de la voix {languageIn}',
+    progressLabel: "Avancement de l'installation",
+    progress: '{loaded} sur {size} ({percent} %)',
+    keepOpen: "Gardez l'application ouverte et Internet allumé jusqu'à la fin.",
+    cancel: "Annuler l'installation",
+    cancelled:
+      'Installation annulée. Les fichiers déjà téléchargés sont gardés pour la reprendre plus tard.',
+    installed: 'La voix {languageIn} est installée ({size}).',
+    ready: 'Touchez le micro à côté du champ de recherche pour dire un nom.',
+    oneAtATime: "Pour changer de langue, retirez d'abord cette voix.",
+    remove: 'Retirer la voix {languageIn}',
+    removeConfirm: 'Retirer la voix ? Pour la remettre, il faudra télécharger à nouveau {size}.',
+    removeYes: 'Oui, retirer la voix',
+    removeNo: 'Garder la voix',
+    removed: 'La voix est retirée de ce téléphone.',
+    removeFailed: "La voix n'a pas pu être retirée. Essayez encore.",
+    back: 'Revenir à la recherche',
+  },
+  // The third-party software and models of the voice, with their licence
+  // texts (reached from About). The texts stay in English, as written.
+  licences: {
+    title: 'Licences des logiciels tiers',
+    lead: 'Les logiciels et les modèles qui servent à la voix, avec leur licence. Ils ne servent que si la voix est installée.',
+    softwareTitle: 'Logiciels',
+    modelsTitle: 'Modèles de la voix',
+    dataTitle: 'Données qui ont servi à adapter le modèle au wolof',
+    dataLead:
+      "Relevées le 5 novembre 2026 sur la page de chaque source. Ce n'est pas un avis juridique.",
+    licence: 'Licence : {licence}',
+    source: 'Origine : {source}',
+    note: {
+      declared: 'Licence déclarée sur la fiche du modèle.',
+      'share-alike':
+        "Licence à partage à l'identique : son effet sur le modèle n'est pas encore tranché.",
+      none: 'Aucune licence trouvée pour ces enregistrements.',
+    },
+    textsTitle: 'Textes des licences',
+    textsLead: "Les textes restent en anglais, leur langue d'origine.",
+    back: 'Revenir à la page À propos',
   },
   update: {
     ready: 'Une nouvelle version est prête.',

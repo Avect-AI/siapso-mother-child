@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { EntryKind } from '@siapso/resolver';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useRef, type ReactNode } from 'react';
 import { Redirect, Router, useLocation } from 'wouter';
 import { useHashLocation } from 'wouter/use-hash-location';
 import { APP_NAME } from './config.js';
@@ -26,11 +26,18 @@ import { Settings } from './screens/Settings.js';
 import { SignsNow } from './screens/SignsNow.js';
 import { Status } from './screens/Status.js';
 import { Unlock } from './screens/Unlock.js';
+import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
 import { intoThisEpoch } from './state/entry-state.js';
 import { useSession, type SessionStatus } from './state/session.js';
 import { Header } from './ui/Header.js';
+
+/** The licences screen, with the full licence texts: its own chunk, out of the first load. */
+const Licences = lazy(() =>
+  import('./screens/Licences.js').then((module) => ({ default: module.Licences })),
+);
+const LICENCES_PATH = '/licences';
 
 /**
  * The screens of a check: the list, the search in one list, the confirmation
@@ -54,6 +61,8 @@ type Screen =
   | 'settings'
   | 'status'
   | 'about'
+  | 'licences'
+  | 'voice'
   | 'home'
   | 'profiles'
   | 'danger'
@@ -160,9 +169,12 @@ function screenFor(
     return 'welcome';
   }
   if (location === '/settings') return 'settings';
+  // The voice pack holds no profile data either: installed or removed, locked or not.
+  if (location === VOICE_PATH) return 'voice';
   // The knowledge base and the licences hold no profile data: open locked or not.
   if (location === '/status') return 'status';
   if (location === '/about') return 'about';
+  if (location === LICENCES_PATH) return 'licences';
   if (session.status === 'loading') return 'loading';
   // Onboarded before codes existed: the code is made first.
   if (session.status === 'new') return 'code';
@@ -358,6 +370,12 @@ function Screens() {
       {screen === 'settings' ? <Settings key={session.epoch} /> : null}
       {screen === 'status' ? <Status /> : null}
       {screen === 'about' ? <About /> : null}
+      {screen === 'licences' ? (
+        <Suspense fallback={null}>
+          <Licences />
+        </Suspense>
+      ) : null}
+      {screen === 'voice' ? <VoicePack /> : null}
       {screen === 'home' ? <Home /> : null}
       {screen === 'profiles' ? <Profiles /> : null}
       {/* A new epoch (a lock, two minutes idle while locked) starts them again:

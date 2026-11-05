@@ -51,6 +51,8 @@ interface WorkboxLike {
   ) => void;
   register: (options: { immediate: boolean }) => Promise<unknown>;
   messageSkipWaiting: () => void;
+  /** Sends `data` to the worker and resolves with its answer. */
+  messageSW: (data: object) => Promise<unknown>;
 }
 
 export interface ServiceWorkerStore {
@@ -60,7 +62,21 @@ export interface ServiceWorkerStore {
   subscribe: (listener: () => void) => () => void;
   /** The user asked for the new version: the waiting worker takes over. */
   acceptUpdate: () => void;
+  /**
+   * Once a voice is installed (pwa/sw-setup.ts): asks the worker in control
+   * of this page to keep `url`, the speech worker script this page runs (a
+   * worker waiting with an update, or one whose update failed, would keep
+   * another file, or none), and the registered worker, waiting or installing,
+   * to keep its own build's script, so the next version has it too. True when
+   * the worker in control (or, with none yet, the registered one) kept it.
+   */
+  cacheVoiceWorker: (url: string) => Promise<boolean>;
+  /** Asks the worker to drop the speech worker's script, once the voice is removed. */
+  dropVoiceWorker: () => Promise<boolean>;
 }
+
+/** How long the worker has to answer a message about the speech worker's script. */
+const MESSAGE_TIMEOUT_MS = 30_000;
 
 export function createServiceWorkerStore({
   container,
@@ -159,7 +175,79 @@ export function createServiceWorkerStore({
     acceptUpdate() {
       workbox?.messageSkipWaiting();
     },
+    cacheVoiceWorker(url) {
+      if (workbox === null) return Promise.resolve(false);
+      const message = { type: 'CACHE_VOICE_WORKER' };
+      const controller = container?.controller;
+      if (!canMessage(controller)) return ask({ ...message, url });
+      // The next version keeps its own script; nobody waits for it (it may never answer).
+      void ask(message);
+      return askController(controller, { ...message, url });
+    },
+    dropVoiceWorker() {
+      const controller = container?.controller;
+      if (workbox !== null && canMessage(controller)) {
+        return askController(controller, { type: 'DROP_VOICE_WORKER' });
+      }
+      return ask({ type: 'DROP_VOICE_WORKER' });
+    },
   };
+
+  /** Sends a message to the registered worker (waiting, installing or active): true when it did it. */
+  function ask(message: object): Promise<boolean> {
+    if (workbox === null) return Promise.resolve(false);
+    return inTime(workbox.messageSW(message).then(isDone, () => false));
+  }
+
+  /** Sends a message to the worker in control of this page, on a channel of its own. */
+  function askController(controller: MessageTarget, message: object): Promise<boolean> {
+    const channel = new MessageChannel();
+    const answered = new Promise<boolean>((resolve) => {
+      channel.port1.onmessage = (event: MessageEvent<unknown>) => {
+        resolve(isDone(event.data));
+      };
+    });
+    try {
+      controller.postMessage(message, [channel.port2]);
+    } catch {
+      return Promise.resolve(false);
+    }
+    return inTime(answered).finally(() => {
+      channel.port1.close();
+    });
+  }
+}
+
+/** A worker that can be sent a message with a port. */
+interface MessageTarget {
+  postMessage: (message: unknown, transfer: MessagePort[]) => void;
+}
+
+function canMessage(worker: unknown): worker is MessageTarget {
+  return (
+    typeof worker === 'object' &&
+    worker !== null &&
+    'postMessage' in worker &&
+    typeof worker.postMessage === 'function'
+  );
+}
+
+/** The worker's answer says it did it. */
+function isDone(answer: unknown): boolean {
+  return typeof answer === 'object' && answer !== null && 'ok' in answer && answer.ok === true;
+}
+
+/** `answer`, or false after MESSAGE_TIMEOUT_MS. */
+function inTime(answer: Promise<boolean>): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => {
+      resolve(false);
+    }, MESSAGE_TIMEOUT_MS);
+  });
+  return Promise.race([answer, late]).finally(() => {
+    clearTimeout(timer);
+  });
 }
 
 /**

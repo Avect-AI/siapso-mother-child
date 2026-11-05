@@ -352,6 +352,91 @@ function familyDisplayOf(pack: Pack, product: Product, lang: Lang): ItemDisplay 
   return { name: unitsHeld(plain?.names[lang] ?? substances), detail: substances };
 }
 
+export interface BrowseEntry {
+  kind: 'product' | 'plant';
+  /** The product the confirm screen opens on (a family's plain product), or the plant. */
+  id: string;
+  name: string;
+  detail: string | undefined;
+  /** The local names, by language, in the order the pack gives them. */
+  local: { lang: LocalName['lang']; names: string[] }[];
+}
+
+/** Local names grouped by language, in the order the pack gives them. */
+function localGroups(names: readonly LocalName[]): BrowseEntry['local'] {
+  const groups: BrowseEntry['local'] = [];
+  for (const { text, lang } of names) {
+    const group = groups.find((candidate) => candidate.lang === lang);
+    if (group === undefined) groups.push({ lang, names: [text] });
+    else if (!group.names.includes(text)) group.names.push(text);
+  }
+  return groups;
+}
+
+/**
+ * Every remedy, or every medicine family once, by its name in the language,
+ * in alphabetical order: the list to choose from when a name said or typed
+ * finds nothing. A family is named as the search names it when no strength
+ * is typed, and opens on its plain product, so the confirm screen asks the
+ * strength: none is chosen for her.
+ */
+export function browseEntriesOf(pack: Pack, kind: 'product' | 'plant', lang: Lang): BrowseEntry[] {
+  const collator = new Intl.Collator(lang, { sensitivity: 'base' });
+  let entries: BrowseEntry[];
+  if (kind === 'plant') {
+    entries = pack.plants.map((plant) => ({
+      kind: 'plant',
+      id: plant.id,
+      name: plant.names[lang],
+      detail: plant.latinName,
+      local: localGroups(plant.localNames),
+    }));
+  } else {
+    entries = [...indexedOf(pack).members.values()].flatMap((ids) => {
+      const products = ids
+        .map((id) => productOf(pack, id))
+        .filter((product): product is Product => product !== undefined);
+      const plain = products.find(hasNoStrength) ?? products[0];
+      if (plain === undefined) return [];
+      const shown =
+        products.length > 1
+          ? familyDisplayOf(pack, plain, lang)
+          : displayOf(pack, { kind: 'product', id: plain.id }, lang);
+      return [
+        {
+          kind: 'product' as const,
+          id: plain.id,
+          name: shown.name,
+          detail: shown.detail,
+          local: localGroups(products.flatMap((product) => product.localNames)),
+        },
+      ];
+    });
+  }
+  return entries.sort((a, b) => collator.compare(a.name, b.name) || compareText(a.id, b.id));
+}
+
+/**
+ * The list cut by first letter (accents aside; a digit or a sign under "#"),
+ * so a long list can be gone through by its letters, and by heading with a
+ * screen reader. Keeps the order it is given.
+ */
+export function browseGroupsOf(
+  entries: readonly BrowseEntry[],
+): { letter: string; entries: BrowseEntry[] }[] {
+  const groups: { letter: string; entries: BrowseEntry[] }[] = [];
+  for (const entry of entries) {
+    const first = normalize(entry.name).charAt(0).toUpperCase();
+    const letter = /^[A-Z]$/.test(first) ? first : '#';
+    const group = groups.find((candidate) => candidate.letter === letter);
+    if (group === undefined) groups.push({ letter, entries: [entry] });
+    else group.entries.push(entry);
+  }
+  return groups.sort((a, b) =>
+    a.letter === '#' ? -1 : b.letter === '#' ? 1 : compareText(a.letter, b.letter),
+  );
+}
+
 export interface StrengthChoice {
   /**
    * The products to choose from, strength ascending then id. In a family of

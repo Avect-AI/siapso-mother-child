@@ -1,23 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock } from './support.js';
-
-/**
- * Waits until the service worker is active and controls the page. A first
- * install does not claim the page that registered it, so reload until the
- * worker serves the navigation (normally once).
- */
-async function waitForServiceWorkerControl(page: Page) {
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-  });
-  await expect(async () => {
-    if (!(await page.evaluate(() => navigator.serviceWorker.controller !== null))) {
-      await page.reload();
-    }
-    expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
-  }).toPass({ timeout: 15_000 });
-}
+import { onboard, unlock, waitForServiceWorkerControl } from './support.js';
 
 /** Number of packs kept in the app's IndexedDB ('current', and 'previous' after an update). */
 function storedPacks(page: Page): Promise<number> {

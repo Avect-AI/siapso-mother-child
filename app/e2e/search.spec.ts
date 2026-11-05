@@ -55,7 +55,13 @@ async function addByKeyboard(page: Page, list: string, query: string, expected: 
   await page.keyboard.type(query);
   const first = page.locator('.candidate').first();
   await expect(first).toContainText(expected);
+  // Field, then the microphone beside it (where the browser can record), then the candidates.
   await page.keyboard.press('Tab');
+  const mic = page.getByRole('button', { name: 'Dire le nom' });
+  if ((await mic.count()) > 0) {
+    await expect(mic).toBeFocused();
+    await page.keyboard.press('Tab');
+  }
   await expect(first).toBeFocused();
   await page.keyboard.press('Enter');
 

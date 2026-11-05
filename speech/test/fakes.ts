@@ -30,7 +30,13 @@ export class FakeCache {
     return Promise.resolve(this.entries.delete(keyOf(request)));
   }
 
-  keys(): string[] {
+  /** The requests stored, as the Cache API gives them. */
+  keys(): Promise<Request[]> {
+    return Promise.resolve([...this.entries.keys()].map((url) => new Request(url)));
+  }
+
+  /** The URLs stored, sorted (for assertions). */
+  urls(): string[] {
     return [...this.entries.keys()].sort();
   }
 }

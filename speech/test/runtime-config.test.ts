@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  MissingPackFileError,
   applyRuntimeSettings,
   cacheOnlyFetch,
+  checkRuntimeInstalled,
   failureCode,
   guardedFetch,
   runtimeSettings,
+  threadCount,
 } from '../src/runtime-config.js';
-import { VOICE_CACHE } from '../src/voice-pack.js';
+import { ORT_WEB_VERSION, RUNTIME_FILES, VOICE_CACHE } from '../src/voice-pack.js';
 import { FakeCacheStorage } from './fakes.js';
 
 let storage: FakeCacheStorage;
@@ -28,8 +31,8 @@ const BASE = 'https://app.test/voice/whisper-small-wolof-q8/';
 const FILES = [
   'config.json',
   'onnx/encoder_model_quantized.onnx',
-  'runtime/ort-wasm-simd-threaded.asyncify.mjs',
-  'runtime/ort-wasm-simd-threaded.asyncify.wasm',
+  RUNTIME_FILES.mjs,
+  RUNTIME_FILES.wasm,
 ];
 
 describe('runtimeSettings', () => {
@@ -53,8 +56,8 @@ describe('runtimeSettings', () => {
 
   it('takes the ONNX Runtime binaries from the pack, never from a CDN', () => {
     expect(runtimeSettings(BASE, false).wasmPaths).toEqual({
-      mjs: `${BASE}runtime/ort-wasm-simd-threaded.asyncify.mjs`,
-      wasm: `${BASE}runtime/ort-wasm-simd-threaded.asyncify.wasm`,
+      mjs: `${BASE}runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.mjs`,
+      wasm: `${BASE}runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.asyncify.wasm`,
     });
   });
 
@@ -69,6 +72,67 @@ describe('runtimeSettings', () => {
     'file:///voice/x/',
   ])('refuses the base URL %s', (base) => {
     expect(() => runtimeSettings(base, false)).toThrow();
+  });
+
+  it('runs ONNX Runtime on one thread unless told otherwise', () => {
+    expect(runtimeSettings(BASE, false).threads).toBe(1);
+    expect(runtimeSettings(BASE, false, 4).threads).toBe(4);
+  });
+});
+
+describe('threadCount', () => {
+  it('uses one thread when the page is not cross-origin isolated (no shared memory)', () => {
+    expect(threadCount(false, 12)).toBe(1);
+    expect(threadCount(false, undefined)).toBe(1);
+  });
+
+  it('uses at most two threads on a phone with 2 GB of memory or less', () => {
+    expect(threadCount(true, 8, 2)).toBe(2);
+    expect(threadCount(true, 8, 1)).toBe(2);
+    expect(threadCount(true, 8, 0.5)).toBe(2);
+    expect(threadCount(true, 2, 1)).toBe(1);
+    expect(threadCount(false, 8, 1)).toBe(1);
+    // More memory, or a browser that does not say: as before.
+    expect(threadCount(true, 8, 4)).toBe(4);
+    expect(threadCount(true, 8, undefined)).toBe(4);
+  });
+
+  it('uses half the cores, at most four, when the page is cross-origin isolated', () => {
+    expect(threadCount(true, 12)).toBe(4);
+    expect(threadCount(true, 4)).toBe(2);
+    expect(threadCount(true, 3)).toBe(2);
+    expect(threadCount(true, 1)).toBe(1);
+    // A browser that does not say how many cores it has.
+    expect(threadCount(true, undefined)).toBe(1);
+    expect(threadCount(true, 0)).toBe(1);
+  });
+});
+
+describe('checkRuntimeInstalled', () => {
+  it('passes when both ONNX Runtime files of the pack are in the voice cache', async () => {
+    const settings = runtimeSettings(BASE, false);
+    const cache = await storage.open(VOICE_CACHE);
+    await cache.put(settings.wasmPaths.mjs, new Response('export default 1'));
+    await cache.put(settings.wasmPaths.wasm, new Response(new Uint8Array(8)));
+    await expect(checkRuntimeInstalled(settings)).resolves.toBeUndefined();
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('refuses before ONNX Runtime could fetch a missing file from the network', async () => {
+    const settings = runtimeSettings(BASE, false);
+    const cache = await storage.open(VOICE_CACHE);
+    await cache.put(settings.wasmPaths.mjs, new Response('export default 1'));
+    const check = checkRuntimeInstalled(settings);
+    await expect(check).rejects.toBeInstanceOf(MissingPackFileError);
+    await expect(check).rejects.toThrow(/ort-wasm-simd-threaded\.asyncify\.wasm/);
+    expect(network).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the browser has no Cache API', async () => {
+    vi.stubGlobal('caches', undefined);
+    await expect(checkRuntimeInstalled(runtimeSettings(BASE, false))).rejects.toBeInstanceOf(
+      MissingPackFileError,
+    );
   });
 });
 
@@ -146,6 +210,12 @@ describe('failureCode', () => {
     ).toBe('unavailable');
   });
 
+  it('says unavailable when a file of the pack is missing, whatever the request', () => {
+    const missing = new MissingPackFileError('runtime/x.wasm');
+    expect(failureCode('load', missing)).toBe('unavailable');
+    expect(failureCode('transcribe', missing)).toBe('unavailable');
+  });
+
   it('says storage when the storage is full', () => {
     expect(failureCode('load', new DOMException('quota', 'QuotaExceededError'))).toBe('storage');
     expect(failureCode('transcribe', new DOMException('quota', 'QuotaExceededError'))).toBe(
@@ -186,6 +256,12 @@ describe('applyRuntimeSettings', () => {
     expect(env.cacheKey).toBe(VOICE_CACHE);
     expect(env.backends.onnx.wasm.wasmPaths).toEqual(settings.wasmPaths);
     await expect(env.fetch('https://huggingface.co/x')).rejects.toThrow(/outside the voice pack/);
+  });
+
+  it('sets the number of ONNX Runtime threads', () => {
+    const env = transformersEnv();
+    applyRuntimeSettings(env, runtimeSettings(BASE, false, 3), FILES);
+    expect((env.backends.onnx.wasm as { numThreads?: number }).numThreads).toBe(3);
   });
 
   it('gives Transformers.js a fetch that reads the installed pack and never downloads', async () => {

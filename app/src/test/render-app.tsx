@@ -8,6 +8,8 @@ import { closeAppDb, getStoredVerifier, storeSettings, storeVerifier } from '../
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
 import type { Settings } from '../domain/types.js';
 import { AppProvider } from '../state/app-state.js';
+import { VoiceProvider } from '../voice/voice-context.js';
+import type { VoiceService } from '../voice/voice-service.js';
 import { verifierOf } from './verifier.js';
 
 /** The code of the phone in tests. */
@@ -85,6 +87,7 @@ export async function renderApp({
   locked = false,
   open,
   entryState,
+  voice,
   children,
 }: {
   /** The state of the history entry of `hash`, as a screen leaves it. */
@@ -102,6 +105,8 @@ export async function renderApp({
   locked?: boolean;
   /** Starts open whatever the settings (a storage that never answers, say). */
   open?: boolean;
+  /** The voice service (test/voice.ts); by default the page's, which jsdom cannot use. */
+  voice?: VoiceService;
   children?: ReactNode;
 } = {}) {
   if (settings) await seedSettings(settings);
@@ -118,7 +123,13 @@ export async function renderApp({
       session={{ startUnlocked: open ?? (!locked && settings?.onboarded === true) }}
       {...(storageTimeoutMs === undefined ? {} : { storageTimeoutMs })}
     >
-      <App>{children}</App>
+      {voice === undefined ? (
+        <App>{children}</App>
+      ) : (
+        <VoiceProvider service={voice}>
+          <App>{children}</App>
+        </VoiceProvider>
+      )}
     </AppProvider>,
   );
 }

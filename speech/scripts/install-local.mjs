@@ -4,7 +4,9 @@
 // Copies each converted voice pack (speech/convert/out/<id>/, written by
 // pnpm voice:convert) to app/public/voice/<id>/ for local preview and phone
 // tests, adds the ONNX Runtime Web files that the app's Transformers.js
-// version loads (runtime/) and the licence texts of everything the voice
+// version loads (runtime/<version>/, the version ORT_WEB_VERSION of
+// speech/src/voice-pack.ts names; another installed version stops the
+// script) and the licence texts of everything the voice
 // pack and the speech worker ship (licenses/, NOTICE.md), and records them
 // in the pack's voice-pack.json. A deployment serves the same folder.
 // Nothing here is committed: app/public/voice/ is git-ignored.
@@ -19,8 +21,16 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const source = path.join(root, 'speech', 'convert', 'out');
 const target = path.join(root, 'app', 'public', 'voice');
 
-/** Must match RUNTIME_FILES in speech/src/voice-pack.ts. */
+/** The file names of RUNTIME_FILES in speech/src/voice-pack.ts, under runtime/<version>/. */
 const RUNTIME = ['ort-wasm-simd-threaded.asyncify.mjs', 'ort-wasm-simd-threaded.asyncify.wasm'];
+
+/** ORT_WEB_VERSION of speech/src/voice-pack.ts: the runtime the app's worker expects. */
+async function expectedOrtVersion() {
+  const code = await readFile(path.join(root, 'speech', 'src', 'voice-pack.ts'), 'utf8');
+  const found = /export const ORT_WEB_VERSION = '([^']+)'/.exec(code)?.[1];
+  if (found === undefined) throw new Error('ORT_WEB_VERSION not found in speech/src/voice-pack.ts');
+  return found;
+}
 
 function mitLicence(holder) {
   return `MIT License
@@ -134,9 +144,12 @@ async function install(id, deps) {
       file.path !== 'NOTICE.md',
   );
   const added = [];
+  // Under the version: a pack built for another ONNX Runtime reads as to install again.
+  await mkdir(path.join(to, 'runtime', deps.ort.version), { recursive: true });
   for (const name of RUNTIME) {
-    await copyFile(path.join(deps.ort.dir, 'dist', name), path.join(to, 'runtime', name));
-    added.push(`runtime/${name}`);
+    const relative = `runtime/${deps.ort.version}/${name}`;
+    await copyFile(path.join(deps.ort.dir, 'dist', name), path.join(to, relative));
+    added.push(relative);
   }
   added.push(...(await writeLicences(to, manifest, deps)));
   for (const relative of added) {
@@ -177,5 +190,13 @@ if (ids.length === 0) {
   process.exitCode = 1;
 } else {
   const deps = await dependencies();
-  for (const id of ids) await install(id, deps);
+  const expected = await expectedOrtVersion();
+  if (deps.ort.version !== expected) {
+    console.error(
+      `onnxruntime-web ${deps.ort.version} is installed, the speech worker expects ${expected} (ORT_WEB_VERSION in speech/src/voice-pack.ts).`,
+    );
+    process.exitCode = 1;
+  } else {
+    for (const id of ids) await install(id, deps);
+  }
 }

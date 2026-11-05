@@ -25,8 +25,9 @@ type Group = 'lang' | 'mode';
  * said ("Réglage enregistré."), and the focus goes back to the answer chosen;
  * changing the mode never deletes a profile, a check or a contact (woman mode
  * opens the first profile made, the others stay on the phone). It links to the
- * knowledge base status and to the about screen, which need no code. The one
- * primary action goes back to the start.
+ * knowledge base status, the about screen and the voice screen (install the
+ * voice at the health post), which need no code. The one primary action goes
+ * back to the start.
  */
 export function Settings() {
   const t = useT();
@@ -139,6 +140,9 @@ export function Settings() {
         </a>
         <a className="button button--secondary" href="#/about">
           {t('nav.about')}
+        </a>
+        <a className="button button--secondary" href="#/voice">
+          {t('nav.voice')}
         </a>
       </div>
       <Button
