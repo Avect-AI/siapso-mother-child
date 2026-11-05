@@ -139,6 +139,37 @@ describe('Danger signs now, before the result', () => {
     ).toBeVisible();
   });
 
+  it('asks before "Aucun de ces signes" takes off the signs ticked, and keeps them on no', async () => {
+    const { user, probe } = await openSigns();
+    const fever = await screen.findByRole('checkbox', { name: label('fever') });
+    await user.click(fever);
+    const none = screen.getByRole('checkbox', { name: 'Aucun de ces signes' });
+
+    await user.click(none);
+
+    // Nothing taken off yet: the question says which signs would go.
+    expect(screen.getByText(/^Retirer les signes cochés/)).toHaveTextContent(
+      `Retirer les signes cochés (${label('fever')}) ?`,
+    );
+    expect(fever).toBeChecked();
+    expect(none).not.toBeChecked();
+    expect(probe.current().signs).toEqual(['fever']);
+    // The safer answer takes the focus: Enter by habit keeps the sign.
+    const keep = screen.getByRole('button', { name: 'Non, garder ces signes' });
+    expect(keep).toHaveFocus();
+    await user.click(keep);
+    expect(screen.queryByRole('button', { name: 'Non, garder ces signes' })).toBeNull();
+    expect(fever).toBeChecked();
+    expect(none).toHaveFocus();
+
+    await user.click(none);
+    await user.click(screen.getByRole('button', { name: 'Oui, aucun de ces signes' }));
+
+    expect(screen.getByRole('checkbox', { name: label('fever') })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Aucun de ces signes' })).toBeChecked();
+    expect(probe.current().signs).toEqual([]);
+  });
+
   it('never ticks an earlier answer: each check asks again, with nothing ticked', async () => {
     const { user } = await openSigns();
     await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
@@ -213,6 +244,8 @@ describe('Danger signs now, before the result', () => {
 
     await user.click(fever);
     await user.click(none);
+    // A sign ticked is taken off only once she says so.
+    await user.click(screen.getByRole('button', { name: 'Oui, aucun de ces signes' }));
     expect(none).toBeChecked();
     expect(fever).not.toBeChecked();
     await user.click(fever);

@@ -203,6 +203,17 @@ function screenFor(
   return settings.mode === 'accompanied' ? 'profiles' : 'home';
 }
 
+/** The screens that open without the code and say what the app is for: "Quitter" hides them. */
+const OPEN_WITHOUT_CODE: readonly Screen[] = [
+  'danger',
+  'call',
+  'settings',
+  'about',
+  'status',
+  'licences',
+  'voice',
+];
+
 /** The route in the address now (the hash), as wouter reads it. */
 function addressNow(): string {
   return '/' + window.location.hash.replace(/^#?\/?/, '');
@@ -359,12 +370,14 @@ function Screens() {
   // After a quick exit, Back lands on entries of screens with profile data:
   // each is replaced by the neutral one as it is reached.
   if (screen === 'neutral' && location !== '/') return <Redirect to="/" replace />;
-  // The quick exit, once the code is given; before it too on the danger signs
-  // and who to call, where signs may be ticked without the code.
+  // The quick exit, once the code is given; before it too on every screen that
+  // opens without the code and says what the app is for (the danger signs and
+  // who to call, where signs may be ticked, the settings, the about screen,
+  // the knowledge base, the licences, the voice). Not on the code screen,
+  // which says nothing of it.
   const exitShown =
     settings.onboarded &&
-    (session.unlocked ||
-      (session.status === 'locked' && (screen === 'danger' || screen === 'call')));
+    (session.unlocked || (session.status === 'locked' && OPEN_WITHOUT_CODE.includes(screen)));
   return (
     <>
       {/* On every screen: the danger signs are one tap away even during the

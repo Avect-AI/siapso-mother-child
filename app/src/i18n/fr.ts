@@ -753,6 +753,10 @@ export const fr = {
     titleAccompanied: 'A-t-elle un de ces signes maintenant ?',
     hint: 'Cochez Aucun de ces signes, ou chaque signe présent maintenant.',
     none: 'Aucun de ces signes',
+    // "Aucun" tapped while signs are ticked: they are taken off only on yes.
+    noneConfirm: 'Retirer les signes cochés ({signs}) ?',
+    noneYes: 'Oui, aucun de ces signes',
+    noneKeep: 'Non, garder ces signes',
     showAll: 'Voir tous les signes',
     error: 'Répondez : Aucun de ces signes, ou les signes présents maintenant.',
     loading: 'La liste se prépare.',

@@ -2218,6 +2218,30 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   width: 100%;
 }
 
+/* "Aucun" tapped while signs are ticked: the question, then its two answers. */
+.signs__confirm,
+.inline-question {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.signs__confirm p,
+.inline-question p {
+  font-weight: var(--font-weight-strong);
+}
+
+.signs__confirm-actions,
+.inline-question__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
 /* Read by a screen reader, not shown: a live region that only speaks. */
 .sr-only {
   position: absolute;

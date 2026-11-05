@@ -56,6 +56,9 @@ export function SignsNow() {
   // The groups shown when "Voir tous les signes" was pressed: the focus goes to the first new one.
   const revealedFrom = useRef<readonly string[] | null>(null);
   const [attempts, setAttempts] = useState(0);
+  // "Aucun de ces signes" tapped while signs are ticked: asked before they go.
+  const [confirmNone, setConfirmNone] = useState(false);
+  const keepRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // A ref, not state: two taps in the same task both see it at once.
   const submitted = useRef(false);
@@ -114,6 +117,11 @@ export function SignsNow() {
     first?.querySelector<HTMLInputElement>('input')?.focus();
   }, [all]);
 
+  // The question takes the focus on its safer answer, keeping the signs.
+  useEffect(() => {
+    if (confirmNone) keepRef.current?.focus();
+  }, [confirmNone]);
+
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
 
   // A day the app has already seen, as on the check: the knowledge pack's date, her last result.
@@ -138,6 +146,15 @@ export function SignsNow() {
 
   const title = t(mode === 'accompanied' ? 'signs.titleAccompanied' : 'signs.titleWoman');
   const error = attempts > 0 && answer === null ? t('signs.error') : undefined;
+  const ticked = listed
+    .filter((sign) => chosen.includes(sign.id))
+    .map((sign) => sign.label[lang])
+    .join(', ');
+  /** Back to the "Aucun" box, whatever the answer: the question is gone. */
+  const closeConfirm = () => {
+    setConfirmNone(false);
+    formRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus();
+  };
 
   return (
     <main className="screen signs">
@@ -166,6 +183,26 @@ export function SignsNow() {
         <h1 id={titleId} tabIndex={-1}>
           {title}
         </h1>
+        {/* A sign ticked is never taken off without a word: "Aucun" asks first. */}
+        {confirmNone && chosen.length > 0 ? (
+          <div className="signs__confirm" role="group" aria-labelledby={`${titleId}-confirm`}>
+            <p id={`${titleId}-confirm`}>{t('signs.noneConfirm', { signs: ticked })}</p>
+            <div className="signs__confirm-actions">
+              <Button ref={keepRef} variant="secondary" onClick={closeConfirm}>
+                {t('signs.noneKeep')}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAnswer('none');
+                  closeConfirm();
+                }}
+              >
+                {t('signs.noneYes')}
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {ready ? (
           <SectionedCheckboxGroup
             labelledBy={titleId}
@@ -176,6 +213,11 @@ export function SignsNow() {
               label: t('signs.none'),
               checked: answer === 'none',
               onChange: (checked) => {
+                if (checked && chosen.length > 0) {
+                  setConfirmNone(true);
+                  return;
+                }
+                setConfirmNone(false);
                 setAnswer(checked ? 'none' : null);
               },
             }}
