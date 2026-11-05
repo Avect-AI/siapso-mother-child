@@ -11,13 +11,16 @@ export const WINDOWS: readonly { id: WindowId; from: number; to: number }[] = Ob
 
 /**
  * Days past the upper end of the term that a finding looks ahead to: a course
- * of treatment goes on over the coming days, so a window the woman reaches
- * within this time is looked up as well. A whole number of weeks, so a term
- * in whole weeks stays in whole weeks. A conservative engineering default, to
- * be confirmed by the clinical committee (open question 1 in section 13 of
+ * of treatment goes on over the coming days, and the next visit may be about
+ * four weeks away, so a window the woman reaches within this time is looked up
+ * as well (a finding reached only this way says where its window starts:
+ * Finding.windowStart). A whole number of weeks, so a term in whole weeks stays
+ * in whole weeks. A conservative engineering default (14 days until the live
+ * test round 2, SCRUM-52), to be confirmed by the clinical committee (open
+ * question 1 in section 13 of
  * docs/superpowers/specs/2026-11-03-implementation-design.md).
  */
-export const TERM_LOOKAHEAD_DAYS = 14;
+export const TERM_LOOKAHEAD_DAYS = 28;
 
 /**
  * Every window intersecting the closed range [weeksMin, weeksMax], in window

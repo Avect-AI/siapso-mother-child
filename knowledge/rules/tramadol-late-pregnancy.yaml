@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 2 (SCRUM-52): tramadol at 37 weeks gave "nothing applies".
+# The French label links a prolonged use during pregnancy to a withdrawal
+# syndrome in the newborn and an intake before or during labour to changes in
+# the newborn's breathing; the US label says the same and advises against it
+# during or just before labour. Late pregnancy is read as the window from 30
+# weeks (no window starts at 37 weeks; with the term look-ahead it applies from
+# 26 weeks). The French label also says not to use tramadol in pregnant women
+# at all (insufficient human data, animal effects at very high doses): the
+# committee decides whether a rule should cover the earlier windows.
+id: tramadol-late-pregnancy
+kind: pregnancy
+when:
+  subject: { substance: tramadol }
+  pregnancy-windows: [30-plus]
+level: before-next-dose
+evidence: C
+message: tramadol-late-pregnancy
+sources:
+  - source: bdpm
+    locator: 'CONTRAMAL 50 mg, gélule, RCP 4.6 (ANSM, 30/10/2025), CIS 68655884'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Une utilisation prolongée pendant la grossesse peut entraîner un syndrome de sevrage chez le nouveau-né.'
+  - source: bdpm
+    locator: 'CONTRAMAL 50 mg, gélule, RCP 4.6 (ANSM, 30/10/2025), CIS 68655884'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'Le tramadol peut provoquer chez les nouveau-nés des modifications de la fréquence respiratoire, qui sont généralement sans conséquences cliniques préjudiciables.'
+  - source: bdpm
+    locator: 'CONTRAMAL 50 mg, gélule, RCP 4.6 (ANSM, 30/10/2025), CIS 68655884'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=68655884&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'CONTRAMAL 50 mg, gélule ne doit donc pas être utilisé chez les femmes enceintes.'
+  - source: openfda
+    locator: 'Tramadol hydrochloride extended-release tablets drug label, Sun Pharmaceutical Industries, set_id 004de5a4-80f8-4040-a6ea-be5e99352a36, effective 20251120'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=004de5a4-80f8-4040-a6ea-be5e99352a36'
+    accessed: 2026-11-05
+    quote: 'Opioids cross the placenta and may produce respiratory depression and psycho-physiologic effects in neonates.'
+  - source: openfda
+    locator: 'Tramadol hydrochloride extended-release tablets drug label, Sun Pharmaceutical Industries, set_id 004de5a4-80f8-4040-a6ea-be5e99352a36, effective 20251120'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=004de5a4-80f8-4040-a6ea-be5e99352a36'
+    accessed: 2026-11-05
+    quote: 'Tramadol hydrochloride extended-release tablets are not recommended for use in pregnant women during or immediately prior to labor'
+review:
+  status: draft
+  reviewers: []

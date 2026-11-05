@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-43-codeine-breastfeeding-baby-very-sleepy
+title: 'Breastfeeding a baby of 12 weeks, Codoliprane, the baby very sleepy now: the codeine card is a danger of its own'
+context:
+  breastfeeding: { baby-age-weeks: 12, premature: false }
+  items:
+    - { product: codoliprane-500-mg-30-mg-60904643 }
+  signs: [baby-very-sleepy]
+expect:
+  level: danger
+  findings:
+    - {
+        check: C2,
+        rule: codeine-breastfeeding-baby-signs,
+        message: codeine-breastfeeding-baby-signs,
+        level: danger,
+        evidence: C,
+        items: [0],
+      }
+    - { check: C11, message: danger-sign, level: danger, items: [], sign: baby-very-sleepy }
+    - {
+        check: C2,
+        rule: codeine-breastfeeding,
+        message: codeine-breastfeeding,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
+  reminders: []
+  notes: []

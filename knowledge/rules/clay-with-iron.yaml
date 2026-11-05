@@ -15,7 +15,7 @@ message: clay-with-iron
 sources:
   - source: literature
     locator: 'Seim GL, Ahn CI, Bodis MS, et al. Bioavailability of iron in geophagic earths and clay minerals, and their effect on dietary iron absorption using an in vitro digestion/Caco-2 cell model. Food Funct. 2013. doi:10.1039/c3fo30380b. PMID 23787405'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=23787405&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/23787405/'
     accessed: 2026-11-03
     quote: 'some geophagic earth and clay mineral samples inhibit Fe absorption from foods'
   - source: ansm-thesaurus

@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Live test round 2 (SCRUM-52): with kidney failure ticked, ibuprofen gave
+# "before the next dose" while Aspegic 500 mg gave "nothing applies". Aspirin
+# is outside the nsaid class (low-dose aspirin has other rules), so this rule
+# reads aspirin above 100 mg per unit, the threshold of the aspirin pregnancy
+# rules, as nsaid-renal-failure reads the NSAIDs: the French label
+# contraindicates it in severe kidney failure and warns that a regular use of
+# painkillers can damage the kidneys. Same level and evidence as
+# nsaid-renal-failure (same mechanism), for the committee to confirm. A
+# product of unknown strength is read.
+id: aspirin-renal-failure
+kind: condition
+when:
+  subject: { substance: aspirin }
+  strength-above-mg: 100
+  requires:
+    - condition: renal-failure
+level: before-next-dose
+evidence: A
+message: aspirin-renal-failure
+sources:
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.3 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: 'insuffisance rénale sévère'
+  - source: bdpm
+    locator: 'ASPEGIC 500 mg, poudre pour solution buvable en sachet-dose, RCP 4.4 (ANSM, 22/07/2026), CIS 61162942'
+    url: 'https://base-donnees-publique.medicaments.gouv.fr/affichageDoc.php?specid=61162942&typedoc=R'
+    accessed: 2026-11-05
+    quote: "L'utilisation régulière d'antalgiques, en particulier l'association d'antalgiques, peut conduire à des lésions rénales persistantes avec un risque d'insuffisance rénale."
+review:
+  status: draft
+  reviewers: []

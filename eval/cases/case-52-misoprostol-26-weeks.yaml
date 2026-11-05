@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-52-misoprostol-26-weeks
+title: '26 weeks, misoprostol, no scar: the late-pregnancy rule from 30 weeks is reached within the look-ahead, held at before the next dose'
+context:
+  pregnancy: { weeks: 26 }
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-late-pregnancy,
+        message: misoprostol-late-pregnancy,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+        window-start: 30,
+      }
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

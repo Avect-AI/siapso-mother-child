@@ -13,12 +13,12 @@ message: clobetasol-pregnancy
 sources:
   - source: literature
     locator: 'Mahé A, Perret JL, Ly F, et al. The cosmetic use of skin-lightening products during pregnancy in Dakar, Senegal: a common and potentially hazardous practice. Trans R Soc Trop Med Hyg. 2007. doi:10.1016/j.trstmh.2006.06.007. PMID 17023012'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17023012&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/17023012/'
     accessed: 2026-11-03
     quote: 'had a statistically significant lower plasma cortisol level and a smaller placenta, and presented a higher rate of low-birth-weight infants'
   - source: literature
     locator: 'Chi CC, Wang SH, Wojnarowska F, et al. Safety of topical corticosteroids in pregnancy. Cochrane Database Syst Rev. 2015. doi:10.1002/14651858.CD007346.pub3. PMID 26497573'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=26497573&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/26497573/'
     accessed: 2026-11-03
     quote: 'a probable association between low birth weight and maternal use of potent to very potent topical corticosteroids'
   - source: bdpm
@@ -38,7 +38,7 @@ sources:
     quote: "l'utilisation de propionate de clobétasol à 0,05% peut être envisagée pendant la grossesse si nécessaire."
   - source: openfda
     locator: 'Clobetasol propionate ointment USP 0.05% drug label, Bryant Ranch Prepack, set_id 032f1f4e-1f1c-409a-8fac-6449ee543caa, effective 20260807'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.generic_name%3A%22clobetasol+propionate%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=032f1f4e-1f1c-409a-8fac-6449ee543caa'
     accessed: 2026-11-03
     quote: 'Clobetasol propionate ointment should be used during pregnancy only if the potential benefit justifies the potential risk to the fetus.'
 review:

@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-51-misoprostol-uterine-scar-8-weeks
+title: '8 weeks, previous caesarean, misoprostol: the scar rule from 12 weeks is reached within the look-ahead, held at before the next dose (a window still ahead is never a danger)'
+context:
+  pregnancy: { weeks: 8 }
+  conditions: [uterine-scar]
+  items:
+    - { product: misoprostol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy,
+        message: misoprostol-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C1,
+        rule: misoprostol-pregnancy-uterine-scar,
+        message: misoprostol-pregnancy-uterine-scar,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+        window-start: 12,
+      }
+  reminders: []
+  notes: []

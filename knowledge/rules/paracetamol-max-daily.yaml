@@ -6,7 +6,14 @@
 # advice, and keep 3 g as the maximum for adults under 50 kg, chronic
 # malnutrition or dehydration. The clinical committee must confirm this
 # threshold. The message never states a dose. The table quotes join the
-# cells of one row in document order.
+# cells of one row in document order. With the box of unknown strength the
+# engine reads the strengths of the product's family by the same route: the
+# lowest adult one as certain (registry/substances.yaml,
+# adult-min-strength-mg), the highest as possible (max-dose-may-exceed, before
+# the next dose). A product of the family with no strength in mg (a
+# suspension) chosen with "Je ne sais pas" is read with the family's tablet
+# strengths, so a unit of a liquid may count as a tablet: this can only
+# over-alert (knowledge/README.md, R-2).
 id: paracetamol-max-daily
 kind: max-dose
 when:
@@ -43,7 +50,7 @@ sources:
     quote: 'ne doit pas excéder 60 mg/kg/jour (sans dépasser 3 g/jour) dans les situations suivantes : Adultes pesant moins de 50 kg, malnutrition chronique, déshydratation'
   - source: openfda
     locator: 'TYLENOL Extra Strength (acetaminophen) drug label, Kenvue Brands LLC, set_id 015a6179-bacb-452d-b594-4de628ddc11d, effective 20241107'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Tylenol+Extra+Strength%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=015a6179-bacb-452d-b594-4de628ddc11d'
     accessed: 2026-11-03
     quote: 'Liver warning This product contains acetaminophen. Severe liver damage may occur'
 review:

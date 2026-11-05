@@ -130,15 +130,21 @@ describe('buildResultView: woman mode', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it('shows the dose note in both modes: the woman is the one entering units', () => {
+  it('shows the dose note in both modes, once: the woman is the one entering units', () => {
+    // A product whose family gives no strength: the daily total cannot be worked out.
     const items: CheckedItem[] = [
       {
-        ref: { kind: 'product', id: 'paracetamol-generic' },
+        ref: { kind: 'product', id: 'efferalgan-codeine' },
         unitsPerDay: 3,
         strengthUnknown: true,
       },
     ];
     const context = contextOf({ pregnancy: weeks(16), items });
+    // Two daily maximums of paracetamol give it: said once.
+    expect(evaluate(pack, context).notes.map((n) => n.ruleId)).toEqual([
+      'paracetamol-max-daily',
+      'paracetamol-overdose',
+    ]);
     const dose = pack.messages.fr['max-dose-not-computable'];
     for (const mode of ['woman', 'accompanied'] as const) {
       const view = viewOf(context, mode);
@@ -146,7 +152,7 @@ describe('buildResultView: woman mode', () => {
         {
           key: 'dose:paracetamol-max-daily',
           text: `${dose?.fact ?? ''} ${dose?.risk ?? ''}`,
-          orientation: dose?.orientation,
+          orientation: mode === 'woman' ? dose?.orientation : dose?.orientationAccompanied,
         },
       ]);
     }
@@ -244,12 +250,14 @@ describe('buildResultView: orientation', () => {
     );
     expect(plant.risks[0]?.text).toMatch(/^On ne sait pas si le kinkéliba peut faire du mal/);
     expect(plant.orientation).toBe(
-      'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
+      'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.',
     );
     const english = onlyFinding(
       viewOf(contextOf({ pregnancy: weeks(14), items: [KINKELIBA] }), 'woman', 'en'),
     );
-    expect(english.orientation).toBe('Show it to the midwife or the pharmacist at the next visit.');
+    expect(english.orientation).toBe(
+      'Show this product to the midwife or the pharmacist at the next visit.',
+    );
     // A message that says neither: the whole default of spec section 10.
     const quiet = { fact: 'Ce remède est utilisé.', risk: 'Ce remède est peu étudié.' };
     const quietEn = { fact: 'This remedy is used.', risk: 'This remedy is little studied.' };
@@ -271,7 +279,7 @@ describe('buildResultView: orientation', () => {
     );
     // Said positively: never "sans risque", even inside a negation.
     expect(onlyFinding(full).orientation).toBe(
-      "Nous n'avons pas d'information fiable. On ne sait pas si ce produit peut faire du mal. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
+      "Nous n'avons pas d'information fiable. On ne sait pas si ce produit peut faire du mal. Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.",
     );
     const fullEn = buildResultView(
       evaluate(plain, context),
@@ -282,7 +290,7 @@ describe('buildResultView: orientation', () => {
       tOf('en'),
     );
     expect(onlyFinding(fullEn).orientation).toBe(
-      'We have no reliable information. We do not know whether this product can cause harm. Show it to the midwife or the pharmacist at the next visit.',
+      'We have no reliable information. We do not know whether this product can cause harm. Show this product to the midwife or the pharmacist at the next visit.',
     );
   });
 
@@ -309,7 +317,8 @@ describe('buildResultView: orientation', () => {
       'Show this product to the midwife or the nurse before she takes any more.',
     );
     // A grey card without an orientation of its own says what the grey messages of
-    // the pack say, so two grey cards of one result never name different people.
+    // the pack say in accompanied mode (her next visit, the nurse rather than the
+    // pharmacist), so two grey cards of one result never name different people.
     const quiet = { fact: 'Ce remède est utilisé.', risk: 'Ce remède est peu étudié.' };
     const plain: Pack = {
       ...pack,
@@ -325,10 +334,10 @@ describe('buildResultView: orientation', () => {
       tOf('fr'),
     );
     expect(onlyFinding(grey).orientation).toBe(
-      "Nous n'avons pas d'information fiable. On ne sait pas si ce produit peut faire du mal. Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.",
+      "Nous n'avons pas d'information fiable. On ne sait pas si ce produit peut faire du mal. Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite.",
     );
     expect(onlyFinding(grey).orientation).toMatch(
-      new RegExp(`${pack.messages.fr['not-recognised']?.orientation ?? 'missing'}$`),
+      new RegExp(`${pack.messages.fr['not-recognised']?.orientationAccompanied ?? 'missing'}$`),
     );
   });
 
@@ -446,21 +455,24 @@ describe('buildResultView: nothing found', () => {
       const finding = onlyFinding(viewOf(context, mode));
       expect(finding.level).toBe('unknown');
       // The version is said at the top and at the end of the result, not in her sentence.
+      // One grey wording for a product the app recognised (live test round 2).
       expect(finding.risks, mode).toEqual([
         {
-          text: "Rien n'a été trouvé sur ce produit dans notre base. Notre base ne dit pas si ce produit peut faire du mal.",
+          text: 'Notre base ne contient rien sur ce produit pour cette situation. Notre base ne dit pas si ce produit peut faire du mal dans cette situation.',
         },
       ]);
-      // Who to show it to, and when.
+      // Who to show it to, and when: never "cet écran", gone for a passer-by.
       expect(finding.orientation).toBe(
-        'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.',
+        mode === 'woman'
+          ? 'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.'
+          : "Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite.",
       );
       expect(finding).not.toHaveProperty('fact');
     }
     const english = onlyFinding(viewOf(context, 'woman', 'en'));
     expect(english.risks).toEqual([
       {
-        text: 'Nothing was found on this product in our knowledge base. Our knowledge base does not say whether this product can cause harm.',
+        text: 'Our knowledge base holds nothing on this product for this situation. Our knowledge base does not say whether this product can cause harm in this situation.',
       },
     ]);
   });
@@ -477,7 +489,9 @@ describe('buildResultView: nothing found', () => {
         },
       ]);
       expect(finding.orientation).toBe(
-        'Montrez cet écran à la sage-femme ou au pharmacien à la prochaine visite.',
+        mode === 'woman'
+          ? 'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.'
+          : "Montrez ce produit à la sage-femme ou à l'infirmier à sa prochaine visite.",
       );
       expect(finding).not.toHaveProperty('fact');
     }
@@ -531,9 +545,14 @@ describe('buildResultView: situations the base does not read', () => {
       ).toEqual(['condition:sickle-cell', 'condition:tuberculosis-treatment']);
       expect(view.situations[0], mode).toEqual({
         key: 'condition:sickle-cell',
-        text: 'Drépanocytose : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Ajoutez à la liste chaque médicament pris pour ce traitement ou cette maladie : il sera regardé comme les autres.',
-        orientation: 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
+        text: "Drépanocytose : notre base ne tient pas encore compte de cette situation, et ce résultat non plus. Un médicament pris pour ce traitement ou cette maladie n'est regardé que s'il est dans la liste.",
+        orientation:
+          mode === 'woman'
+            ? 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.'
+            : 'Parlez-en à la sage-femme ou au médecin à sa prochaine visite.',
       });
+      // Shown in clear: HIV is never among them.
+      expect(view.situationsConcealed, mode).toBe(false);
     }
     const english = buildResultView(
       evaluate(pack, context),
@@ -545,7 +564,7 @@ describe('buildResultView: situations the base does not read', () => {
       context.conditions,
     );
     expect(english.situations[0]?.text).toBe(
-      'Sickle cell disease: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
+      'Sickle cell disease: our knowledge base does not take this situation into account yet, and neither does this result. A medicine taken for this treatment or this illness is looked at only if it is on the list.',
     );
   });
 
@@ -576,7 +595,7 @@ describe('buildResultView: what is shown only at an explicit tap', () => {
     const items: CheckedItem[] = [
       { ref: { kind: 'product', id: 'efavirenz-generic' } },
       {
-        ref: { kind: 'product', id: 'paracetamol-generic' },
+        ref: { kind: 'product', id: 'efferalgan-codeine' },
         unitsPerDay: 3,
         strengthUnknown: true,
       },
@@ -660,7 +679,9 @@ describe('buildResultView: misoprostol', () => {
     );
     const card = onlyFinding(view);
     expect(card.level).toBe('danger');
-    expect(card.orientation).toEqual({ inBanner: true });
+    // A product danger card says its instruction too, with who to call (live test round 2).
+    expect(card.orientation).toBe(view.headline);
+    expect(card.callNow).toBe(true);
     expect(view.headline).toBe(pack.messages.fr['misoprostol-pregnancy-uterine-scar']?.orientation);
     expect(view.headline).not.toContain(fallback.fr);
   });
@@ -1037,7 +1058,7 @@ describe('buildResultView: plain level names and calls', () => {
   const TRAMADOL: CheckedItem = { ref: { kind: 'product', id: 'tramadol-generic' } };
 
   it('names the next-contact level in plain words: the next visit', () => {
-    const context = contextOf({ items: [TRAMADOL], breastfeeding: { babyAgeWeeks: 10 } });
+    const context = contextOf({ items: [ADVIL], pregnancy: weeks(6) });
     const level = (lang: Lang) => {
       const card = onlyFinding(viewOf(context, 'woman', lang));
       return [card.level, card.levelLabel, viewOf(context, 'woman', lang).levelLabel];
@@ -1058,7 +1079,7 @@ describe('buildResultView: plain level names and calls', () => {
     // Tramadol while breastfeeding: tell the midwife, and if the baby is very sleepy, go now.
     const context = contextOf({ items: [TRAMADOL], breastfeeding: { babyAgeWeeks: 2 } });
     const card = onlyFinding(viewOf(context, 'woman'));
-    expect(card.level).toBe('next-contact');
+    expect(card.level).toBe('before-next-dose');
     expect(card.orientation).toMatch(/maintenant/);
     expect(card.callNow).toBe(true);
     expect(onlyFinding(viewOf(context, 'accompanied', 'en')).callNow).toBe(true);
@@ -1081,7 +1102,7 @@ describe('buildResultView: plain level names and calls', () => {
       [
         'accompanied',
         'en',
-        'Tell the midwife at the next visit. After a caesarean section or other surgery on the womb, go to the health post now.',
+        'Tell the midwife at her next visit. After a caesarean section or other surgery on the womb, go to the health post now.',
       ],
     ] as const) {
       const card = onlyFinding(viewOf(context, mode, lang));
@@ -1104,18 +1125,29 @@ describe('buildResultView: plain level names and calls', () => {
     expect(late).toHaveLength(2);
   });
 
-  it('leaves who to call to the danger banner when there is one: one way, with the signs said', () => {
+  it('leaves who to call to the danger banner when there is one, but on a product danger card', () => {
     // The banner's action carries the danger and the signs to who to call; a
-    // second link under a card would open it without them.
-    const context = contextOf({
-      items: [TRAMADOL],
-      breastfeeding: { babyAgeWeeks: 2 },
-      signs: ['baby-not-feeding'],
-    });
+    // second link under a card below the danger level would open it without them.
+    const castor: CheckedItem = { ref: { kind: 'plant', id: 'castor-oil' } };
+    const context = contextOf({ pregnancy: weeks(34), items: [castor], signs: ['fever'] });
     const view = viewOf(context, 'woman');
     expect(view.danger).toBe(true);
     expect(view.findings.some((f) => f.level === 'next-contact')).toBe(true);
     for (const finding of view.findings) expect(finding).not.toHaveProperty('callNow');
+    // A danger from a product says its instruction and who to call on its card too.
+    const baby = viewOf(
+      contextOf({
+        items: [TRAMADOL],
+        breastfeeding: { babyAgeWeeks: 2 },
+        signs: ['baby-not-feeding'],
+      }),
+      'woman',
+    );
+    const tramadol = baby.findings.find((f) => f.level === 'danger' && f.key.startsWith('C2|'));
+    expect(tramadol?.callNow).toBe(true);
+    expect(tramadol?.orientation).toBe(
+      pack.messages.fr['tramadol-breastfeeding-baby-signs']?.orientation,
+    );
   });
 });
 

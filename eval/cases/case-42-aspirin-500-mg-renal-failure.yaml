@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-42-aspirin-500-mg-renal-failure
+title: 'Not pregnant, breastfeeding a baby of 12 weeks, kidney failure, Aspegic 500 mg: analgesic-dose aspirin with kidney failure, as the NSAIDs'
+context:
+  breastfeeding: { baby-age-weeks: 12, premature: false }
+  conditions: [renal-failure]
+  items:
+    - { product: aspegic-500-mg-61162942 }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C8,
+        rule: aspirin-renal-failure,
+        message: aspirin-renal-failure,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: []
+  notes: []

@@ -10,12 +10,12 @@ message: carbamazepine-contraception
 sources:
   - source: openfda
     locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, drug interactions'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8d409411-aa9f-4f3a-a52c-fbcb0c3ec053'
     accessed: 2026-11-04
     quote: 'Concomitant use of Tegretol with hormonal contraceptive products (e.g., oral, and levonorgestrel subdermal implant contraceptives) may render the contraceptives less effective'
   - source: openfda
     locator: 'Tegretol / Tegretol XR (carbamazepine) drug label, Novartis Pharmaceuticals Corporation, set_id 8d409411-aa9f-4f3a-a52c-fbcb0c3ec053, effective 20260820, drug interactions'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name.exact:%22Tegretol%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=8d409411-aa9f-4f3a-a52c-fbcb0c3ec053'
     accessed: 2026-11-04
     quote: 'Breakthrough bleeding and unintended pregnancies have been reported.'
 review:

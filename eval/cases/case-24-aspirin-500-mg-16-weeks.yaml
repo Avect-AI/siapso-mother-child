@@ -1,13 +1,22 @@
 # SPDX-License-Identifier: CC-BY-4.0
 id: case-24-aspirin-500-mg-16-weeks
-title: '16 weeks, Aspegic 500 mg: analgesic-dose aspirin before 20 weeks, as the other NSAIDs'
+title: '16 weeks, Aspegic 500 mg: analgesic-dose aspirin before 20 weeks, as the other NSAIDs, and the rule from 20 weeks is reached within the 28-day look-ahead'
 context:
   pregnancy: { weeks: 16 }
   items:
     - { product: aspegic-500-mg-61162942 }
 expect:
-  level: next-contact
+  level: before-next-dose
   findings:
+    - {
+        check: C1,
+        rule: aspirin-analgesic-dose-pregnancy,
+        message: aspirin-analgesic-dose-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+        window-start: 20,
+      }
     - {
         check: C1,
         rule: aspirin-analgesic-dose-pregnancy-before-20-weeks,

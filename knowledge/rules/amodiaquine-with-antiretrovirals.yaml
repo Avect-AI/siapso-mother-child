@@ -19,18 +19,18 @@ sources:
   - source: literature
     # A letter, with no abstract.
     locator: 'German P, Greenhouse B, Coates C, et al. Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz. Clin Infect Dis. 2007. doi:10.1086/511882. PMID 17304470'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=17304470&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/17304470/'
     accessed: 2026-11-03
     quote: 'Hepatotoxicity due to a drug interaction between amodiaquine plus artesunate and efavirenz.'
   - source: literature
     locator: 'Gasasira AF, Kamya MR, Achan J, et al. High risk of neutropenia in HIV-infected children following treatment with artesunate plus amodiaquine for uncomplicated malaria in Uganda. Clin Infect Dis. 2008. doi:10.1086/529192. PMID 18444813'
-    url: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=18444813&retmode=xml'
+    url: 'https://pubmed.ncbi.nlm.nih.gov/18444813/'
     accessed: 2026-11-03
     quote: 'Artesunate plus amodiaquine was highly efficacious for malaria treatment in HIV-infected children but was associated with a high risk of neutropenia, especially in the context of concurrent antiretroviral use.'
   - source: who
     # A fact-only source (knowledge/sources.yaml): it supports the fact, its text is never copied.
     locator: 'WHO guidelines for malaria, 13 August 2025: artesunate-amodiaquine in people living with HIV'
-    url: 'https://iris.who.int/server/api/core/bitstreams/26a6af2d-060c-4449-8207-1f25e63c6cc3/content'
+    url: 'https://iris.who.int/handle/10665/382254'
     accessed: 2026-11-03
 review:
   status: draft

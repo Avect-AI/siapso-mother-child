@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Lang, Message, Pack, Plant, Product, Rule, Source } from '@siapso/engine';
+import { productFamily } from '@siapso/resolver';
 import { citedSources } from './provenance.js';
 import type { AuthoredPlant, AuthoredProduct, Content, Entry } from './types.js';
 
@@ -30,8 +31,11 @@ function camelKeys(value: unknown): unknown {
 
 // Product `source` (BDPM code or demo marker) and plant `parts` are authoring
 // metadata: the schemas validate them, but the runtime pack does not carry them.
+// The family is the resolver's (the products the confirm screen offers as the
+// strengths of one product), so the engine reads the same strengths when the
+// box is not known.
 function product({ data }: Entry<AuthoredProduct>): Product {
-  return {
+  const built: Product = {
     id: data.id,
     names: data.names,
     brands: data.brands,
@@ -45,6 +49,7 @@ function product({ data }: Entry<AuthoredProduct>): Product {
     route: data.route,
     demo: data.demo,
   };
+  return { ...built, family: productFamily(built) };
 }
 
 function plant({ data }: Entry<AuthoredPlant>): Plant {
@@ -102,7 +107,10 @@ export function assemble(content: Content): Pack {
     version: meta.version,
     date: meta.date,
     clinicallyValidated: meta['clinically-validated'],
-    substances: sorted(content.substances),
+    substances: sorted(content.substances).map((s) => {
+      const { 'adult-min-strength-mg': adultMin, ...rest } = s;
+      return adultMin === undefined ? rest : { ...rest, adultMinStrengthMg: adultMin };
+    }),
     classes: sorted(content.classes),
     products: [...content.products].sort((a, b) => byId(a.data, b.data)).map(product),
     plants: [...content.plants].sort((a, b) => byId(a.data, b.data)).map(plant),

@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-36-paracetamol-strength-unknown-12-units
+title: '24 weeks, paracetamol generic, strength not known, 12 a day: even the lowest strength of the family gives twice the daily maximum, a danger'
+context:
+  pregnancy: { weeks: 24 }
+  items:
+    - { product: paracetamol-generic, units-per-day: 12, strength-unknown: true }
+expect:
+  level: danger
+  findings:
+    - {
+        check: C7,
+        rule: paracetamol-overdose,
+        message: paracetamol-overdose,
+        level: danger,
+        evidence: A,
+        items: [0],
+      }
+    - {
+        check: C7,
+        rule: paracetamol-max-daily,
+        message: paracetamol-max-daily,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

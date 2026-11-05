@@ -202,6 +202,12 @@ export function buildOpenApi(): Record<string, unknown> {
             message: { type: 'string', description: 'A message id of the pack.' },
             sign: { type: 'string' },
             term: { enum: ['exact', 'estimated', 'unknown'] },
+            windowStart: {
+              type: 'integer',
+              minimum: 0,
+              description:
+                'Set when the finding is reached only through the term look-ahead: the week of amenorrhoea its window starts.',
+            },
             capped: { type: 'boolean' },
             sources: { type: 'array', items: { $ref: '#/components/schemas/SourceRef' } },
           },

@@ -91,6 +91,8 @@ export interface AuthoredSource {
   accessed?: string;
   /** The attribution line for NOTICE. */
   notice: string;
+  /** The hosts its citation links must open, when it says (DailyMed for openFDA labels). */
+  'link-hosts'?: string[];
   /** The language its documents are written in. */
   documents: Lang;
   /** Its name, licence and version in French (the fields above are English). */
@@ -120,12 +122,15 @@ export interface AuthoredRule {
     'pregnancy-windows'?: WindowId[];
     breastfeeding?: { 'baby-age-weeks-max'?: number; premature?: boolean };
     'max-mg-per-day'?: number;
+    'from-mg-per-day'?: number;
     'strength-above-mg'?: number;
   };
   level: Level;
   evidence: Evidence;
   'danger-rationale'?: string;
   message: string;
+  /** Max-dose only: the message of an excess that depends on the box. */
+  'possible-message'?: string;
   sources: SourceRef[];
   review: { status: 'draft' | 'validated'; reviewers: Reviewer[]; 'reviewed-on'?: string };
 }
@@ -135,6 +140,8 @@ export interface AuthoredText {
   risk: string;
   'risk-detail'?: string;
   orientation?: string;
+  /** Said in accompanied mode instead of the orientation: to the person helping, about her. */
+  'orientation-accompanied'?: string;
 }
 
 export interface AuthoredMessage {
@@ -155,6 +162,8 @@ export interface AuthoredSubstance {
   id: string;
   names: Localized;
   classes: string[];
+  /** The lowest strength in mg of an adult form (children's forms are below). */
+  'adult-min-strength-mg'?: number;
 }
 
 export interface AuthoredClass {

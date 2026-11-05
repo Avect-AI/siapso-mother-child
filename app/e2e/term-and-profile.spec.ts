@@ -268,9 +268,18 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await expect(
     page.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
   ).toBeVisible();
+  // Two cards: codeine late in pregnancy (the term is unknown, every window) and
+  // while breastfeeding (live test round 2, SCRUM-52).
+  const cards = page.getByRole('article');
+  await expect(cards).toHaveCount(2);
+  const late = cards.filter({ hasText: 'syndrome de manque' });
+  await expect(late).toHaveCount(1);
   // The breastfeeding rule on codeine applies, as for a baby of unknown age (under "Pourquoi ?").
-  await page.getByText('Pourquoi ?').click();
-  await expect(page.getByText('Règle : codeine-breastfeeding')).toBeVisible();
+  const breastfeeding = cards.filter({ hasText: 'passe dans le lait' });
+  await breastfeeding.getByText('Pourquoi ?').click();
+  await expect(breastfeeding.getByText('Règle : codeine-breastfeeding')).toBeVisible();
+  await late.getByText('Pourquoi ?').click();
+  await expect(late.getByText('Règle : codeine-late-pregnancy')).toBeVisible();
   await expectNoSeriousViolation(page);
 });
 

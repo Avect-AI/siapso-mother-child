@@ -50,6 +50,8 @@ const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
 /** The button in place of a note on contraception (a no-break space before the colon). */
 const HIDDEN_NOTE = "Information masquée : touchez pour l'afficher";
+/** The button in place of the reminders: it says what it holds (a no-break space before the colon). */
+const HIDDEN_REMINDERS = 'Rappels : touchez pour les afficher';
 const ADVIL: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
 const CODEINE: CheckedItem = { ref: { kind: 'product', id: 'codeine-generic' } };
 /** A strength keeps its unit on its line in a product name ("400 mg"). */
@@ -207,7 +209,7 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     // Its risk already says that nobody knows: who and when, said once.
     expect(
       within(cards[1] as HTMLElement).getByText(
-        'Montrez-le à la sage-femme ou au pharmacien à la prochaine visite.',
+        'Montrez ce produit à la sage-femme ou au pharmacien à la prochaine visite.',
       ),
     ).toHaveClass('result-card__orientation');
     // Woman mode: no source, no evidence, no rule, no reminder.
@@ -446,7 +448,7 @@ describe('Result: woman mode', () => {
     // The reminders, hidden as one section, show at their own tap.
     await user.click(
       within(screen.getByRole('region', { name: 'Rappels' })).getByRole('button', {
-        name: HIDDEN_NOTE,
+        name: HIDDEN_REMINDERS,
       }),
     );
     // The same check in accompanied mode says every one of them.
@@ -485,12 +487,11 @@ describe('Result: a situation the base does not read', () => {
         conditions: ['sickle-cell', 'uterine-scar'],
       }),
     );
-    const { user } = await openResult({ items: [ADVIL], settings: woman });
+    await openResult({ items: [ADVIL], settings: woman });
     const [card] = await screen.findAllByRole('article');
     const situations = screen.getByRole('region', { name: 'Situations non prises en compte' });
-    // One hidden section, whatever situations it holds (one of them could say HIV).
-    expect(within(situations).queryByText(/^Drépanocytose/)).toBeNull();
-    await user.click(within(situations).getByRole('button', { name: HIDDEN_NOTE }));
+    // In clear (live test round 2): HIV, always read by the rules, is never among them.
+    expect(within(situations).queryByRole('button')).toBeNull();
     expect(
       within(situations).getByText(/^Drépanocytose\s: notre base ne tient pas encore compte/),
     ).toBeVisible();
@@ -545,7 +546,8 @@ describe('Result: nothing on screen says HIV by elimination', () => {
     const { user } = await openResult({ items: [ADVIL], settings: accompanied });
     const reminders = await screen.findByRole('region', { name: 'Rappels' });
 
-    await user.click(within(reminders).getByRole('button', { name: HIDDEN_NOTE }));
+    // The button says what it holds, never a secret (docs/privacy.md).
+    await user.click(within(reminders).getByRole('button', { name: HIDDEN_REMINDERS }));
 
     expect(within(reminders).getByText('Aucun rappel pour ce résultat.')).toBeVisible();
   });
@@ -671,7 +673,7 @@ describe('Result: one finding, the way back', () => {
 });
 
 describe('Result: the term it was worked out on', () => {
-  it('says the term used and that the coming two weeks are taken into account', async () => {
+  it('says the term used and that the coming four weeks are taken into account', async () => {
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 19, givenOn: '2026-11-04' } }));
     await openResult({ items: [ADVIL], settings: accompanied });
 
@@ -680,7 +682,7 @@ describe('Result: the term it was worked out on', () => {
     expect(
       screen.getByText(/^Terme utilisé pour ce résultat\s: environ 19 semaines$/),
     ).toBeVisible();
-    expect(screen.getByText(/2 semaines à venir/)).toBeVisible();
+    expect(screen.getByText(/4 semaines à venir/)).toBeVisible();
     // 20 weeks are reached within the look-ahead: the rule from 20 weeks gives the level.
     expect(
       screen.getByRole('article', { name: /^À montrer avant la prochaine prise\./ }),
@@ -742,14 +744,17 @@ describe('Result: the term it was worked out on', () => {
     );
     await openResult({ items: [CODEINE], settings: accompanied });
 
-    const card = await screen.findByRole('article');
+    // Codeine late in pregnancy has a card of its own (live test round 2): the breastfeeding one is the other.
+    const cards = await screen.findAllByRole('article');
     expect(
       screen.getByText(
         /Regardez la date du téléphone\. En attendant, le terme est inconnu et le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
       ),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
-    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeInTheDocument();
+    expect(
+      cards.filter((card) => within(card).queryByText('Règle : codeine-breastfeeding') !== null),
+    ).toHaveLength(1);
     expect(screen.queryByText(/^Allaite, bébé de/)).toBeNull();
   });
 
@@ -797,19 +802,21 @@ describe('Result: the term it was worked out on', () => {
     await saveProfile(profileOf({ term: { kind: 'months', months: 9, givenOn: '2026-10-27' } }));
     await openResult({ items: [CODEINE], settings: accompanied });
 
-    const card = await screen.findByRole('article');
+    const cards = await screen.findAllByRole('article');
     expect(
       screen.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
-    expect(within(card).getByText('Règle : codeine-breastfeeding')).toBeInTheDocument();
+    expect(
+      cards.filter((card) => within(card).queryByText('Règle : codeine-breastfeeding') !== null),
+    ).toHaveLength(1);
   });
 
   it('says "votre bébé" in woman mode when the baby may be born', async () => {
     await saveProfile(profileOf({ term: { kind: 'unknown', givenOn: '2026-09-20' } }));
     await openResult({ items: [CODEINE] });
 
-    await screen.findByRole('article');
+    await screen.findAllByRole('article');
     expect(screen.getByText(/^Nous ne savons pas si votre bébé est né/)).toBeVisible();
   });
 
@@ -939,7 +946,9 @@ describe('Result: what a reader in a hurry sees first', () => {
     );
     await openResult({ items: [TRAMADOL] });
 
-    const card = await screen.findByRole('article', { name: /^À dire à la prochaine visite\./ });
+    const card = await screen.findByRole('article', {
+      name: /^À montrer avant la prochaine prise\./,
+    });
     const call = within(card).getByRole('link', { name: 'Voir qui appeler' });
     expect(call).toHaveAttribute('href', '#/danger/call');
     expect(call).toHaveClass('button--quiet');

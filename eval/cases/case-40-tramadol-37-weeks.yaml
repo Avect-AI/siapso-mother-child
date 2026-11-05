@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-40-tramadol-37-weeks
+title: '37 weeks, tramadol: withdrawal and breathing of the newborn late in pregnancy'
+context:
+  pregnancy: { weeks: 37 }
+  items:
+    - { product: tramadol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: tramadol-late-pregnancy,
+        message: tramadol-late-pregnancy,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

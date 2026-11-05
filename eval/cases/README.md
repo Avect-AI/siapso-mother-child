@@ -34,10 +34,10 @@ expect:
   notes: []
 ```
 
-- `weeks` gives an exact term, `months` an estimated range, `unknown: true` the whole pregnancy with precision unknown. Leave `pregnancy` out when the woman is not pregnant. A rule that gives a finding is looked up with the term extended by the engine's 14-day look-ahead (`TERM_LOOKAHEAD_DAYS`); reminders and notes use the term as given (cases 33 and 34).
-- An item is a `product` or `plant` id of the registry, or an `unrecognised` text. `units-per-day` and `long-term` are optional.
+- `weeks` gives an exact term, `months` an estimated range, `unknown: true` the whole pregnancy with precision unknown. Leave `pregnancy` out when the woman is not pregnant. A rule that gives a finding is looked up with the term extended by the engine's 28-day look-ahead (`TERM_LOOKAHEAD_DAYS`); reminders and notes use the term as given (cases 33 and 34).
+- An item is a `product` or `plant` id of the registry, or an `unrecognised` text. `units-per-day`, `long-term` and `strength-unknown` (the strength on the box is not known) are optional.
 - `signs` lists danger sign ids; a sign gives a finding with the sign set.
-- `expect.findings` is the full ordered list the engine returns. Each finding has `check`, `message` (the message id the woman reads: the rule's message, or the built-in one of a danger sign, a name not recognised or a product without finding), `level` and `items`, plus `rule` for a finding from a rule. `evidence`, `sign` and `term` are listed when the engine sets them.
+- `expect.findings` is the full ordered list the engine returns. Each finding has `check`, `message` (the message id the woman reads: the rule's message, or the built-in one of a danger sign, a name not recognised, a product without finding or a daily maximum that depends on the box), `level` and `items`, plus `rule` for a finding from a rule. `evidence`, `sign`, `term` and `window-start` (where the window of a finding reached only through the look-ahead starts) are listed when the engine sets them.
 - `expect.reminders` and `expect.notes` are the rule ids of the reminders and notes, sorted.
 - The test also checks that every message id of the output exists in French and English and that no message text contains forbidden wording.
 
@@ -79,5 +79,24 @@ expect:
 | 32 Fluconazole at 8 weeks                     | `case-32-fluconazole-8-weeks`                                           |
 | 33 Ibuprofen at 19 weeks, look-ahead          | `case-33-ibuprofen-19-weeks`                                            |
 | 34 Castor oil at 29 weeks, look-ahead         | `case-34-castor-oil-29-weeks-uterine-scar`                              |
+| 35 Misoprostol, scar, 7 weeks                 | `case-35-misoprostol-uterine-scar-7-weeks`                              |
+| 36 Paracetamol, strength unknown, 12 a day    | `case-36-paracetamol-strength-unknown-12-units`                         |
+| 37 Efferalgan, strength unknown, 12 a day     | `case-37-efferalgan-strength-unknown-12-units`                          |
+| 38 Doliprane 1000 mg, 6 a day                 | `case-38-doliprane-1000-mg-6-units`                                     |
+| 39 Doliprane 1000 mg, 4 a day                 | `case-39-doliprane-1000-mg-4-units`                                     |
+| 40 Tramadol at 37 weeks                       | `case-40-tramadol-37-weeks`                                             |
+| 41 Codeine at 34 weeks                        | `case-41-codeine-34-weeks`                                              |
+| 42 Aspirin 500 mg, kidney failure             | `case-42-aspirin-500-mg-renal-failure`                                  |
+| 43 Codeine, breastfeeding, baby very sleepy   | `case-43-codeine-breastfeeding-baby-very-sleepy`                        |
+| 44 Ibuprofen at 17 weeks, look-ahead          | `case-44-ibuprofen-17-weeks`                                            |
+| 45 Castor oil at 27 weeks, look-ahead         | `case-45-castor-oil-27-weeks-uterine-scar`                              |
+| 46 Tramadol, breastfeeding, newborn           | `case-46-tramadol-breastfeeding-newborn`                                |
+| 47 Doliprane, strength unknown, 12 a day      | `case-47-doliprane-strength-unknown-12-units`                           |
+| 48 Doliprane, strength unknown, 8 a day       | `case-48-doliprane-strength-unknown-8-units`                            |
+| 49 Paracetamol, strength unknown, 7 a day     | `case-49-paracetamol-strength-unknown-7-units`                          |
+| 50 Paracetamol, strength unknown, 8 a day     | `case-50-paracetamol-strength-unknown-8-units`                          |
+| 51 Misoprostol, scar, 8 weeks                 | `case-51-misoprostol-uterine-scar-8-weeks`                              |
+| 52 Misoprostol, 26 weeks, no scar             | `case-52-misoprostol-26-weeks`                                          |
+| 53 Castor oil at 26 weeks, scar               | `case-53-castor-oil-26-weeks-uterine-scar`                              |
 
-Cases 16 to 29 come from the live test round 1 (SCRUM-49), not from the pharmacist's annex: they pin the test rules added then, which the clinical committee must still review. Cases 20 and 21 pin two deliberate gaps of those rules (misoprostol is red from 30 weeks without a scar and from 12 weeks with one), case 23 the start of the second trimester, case 25 the low-dose threshold before 20 weeks, and case 29 a product that only a contraception note reads ("nothing found"). The other terms are kept away from the window boundaries (12, 20 and 30 weeks). Cases 33 and 34 (SCRUM-45) pin the 14-day look-ahead of the engine: 20 and 30 weeks are reached within it.
+Cases 16 to 29 come from the live test round 1 (SCRUM-49), not from the pharmacist's annex: they pin the test rules added then, which the clinical committee must still review. Cases 20 and 35 pin two deliberate gaps of those rules (misoprostol is red from 30 weeks without a scar and from 12 weeks with one, so from 26 and 8 weeks with the look-ahead), case 23 the start of the second trimester, case 25 the low-dose threshold before 20 weeks, and case 29 a product that only a contraception note reads ("nothing found"). Cases 33 and 34 (SCRUM-45) pin the look-ahead of the engine, 28 days since the live test round 2 (SCRUM-52): 20 and 30 weeks are reached within it; cases 21, 22, 24, 44 and 45 pin what the longer look-ahead reaches, with the week its window starts. Cases 35 to 46 come from the live test round 2 (SCRUM-52): a box of unknown strength counted with the strengths of its family (36, 37), a daily amount of at least twice the maximum (38, from the threshold included) and below it (39), the opioids late in pregnancy (40, 41) and while breastfeeding (46), the baby danger sign that makes the codeine card a danger (43), and aspirin with kidney failure (42). Cases 47 to 53 come from the clinical review of that pull request: the children's strengths of a family left out of the certain amount (37, 47), a possibly toxic amount said apart from a certain daily maximum (48 to 50), and a danger still ahead held at before the next dose (21, 34, 45, 51 to 53).

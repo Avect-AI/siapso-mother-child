@@ -23,12 +23,12 @@ sources:
     quote: 'ne pas arrêter de prendre DEPAKINE sans que votre médecin ne vous l’ait demandé ; cela pourrait aggraver votre maladie.'
   - source: openfda
     locator: 'Depakote (divalproex sodium) drug label, AbbVie Inc., set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 20260331'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Depakote%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=08a65cf4-7749-4ceb-6895-8f4805e2b01f'
     accessed: 2026-11-03
     quote: 'Valproate can cause major congenital malformations, particularly neural tube defects (e.g., spina bifida).'
   - source: openfda
     locator: 'Depakote (divalproex sodium) drug label, AbbVie Inc., set_id 08a65cf4-7749-4ceb-6895-8f4805e2b01f, effective 20260331'
-    url: 'https://api.fda.gov/drug/label.json?search=openfda.brand_name%3A%22Depakote%22&limit=1'
+    url: 'https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=08a65cf4-7749-4ceb-6895-8f4805e2b01f'
     accessed: 2026-11-03
     quote: 'valproate can cause decreased IQ scores and neurodevelopmental disorders following in utero exposure.'
   - source: bdpm

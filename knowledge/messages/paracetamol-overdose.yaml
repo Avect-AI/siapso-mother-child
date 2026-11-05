@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# No dose figure: the threshold lives only in the rule (from-mg-per-day).
+id: paracetamol-overdose
+fr:
+  fact: 'La quantité de paracétamol prise chaque jour semble atteindre le double de la quantité maximale, ou plus.'
+  risk: "Une quantité aussi forte de paracétamol peut abîmer gravement le foie et mettre la vie en danger. Les signes d'une atteinte du foie n'apparaissent souvent qu'après un ou deux jours, et le traitement protège mieux le foie quand il est donné tôt."
+  risk-detail: "La notice décrit une atteinte du foie qui peut être mortelle, des signes souvent visibles seulement après 1 à 2 jours, et un transfert immédiat à l'hôpital même sans signe, avec un antidote donné le plus tôt possible. Le calcul additionne tous les produits qui contiennent du paracétamol."
+  orientation: 'Allez au poste de santé maintenant, même si tout semble aller bien, et montrez les boîtes.'
+  orientation-accompanied: 'Allez au poste de santé maintenant, même si elle se sent bien, et montrez les boîtes.'
+en:
+  fact: 'The amount of paracetamol taken each day seems to reach twice the daily maximum, or more.'
+  risk: 'So much paracetamol can seriously damage the liver and put life in danger. Signs of liver damage often appear only one or two days later, and the treatment protects the liver best when it is given early.'
+  risk-detail: 'The label describes liver damage that can be fatal, signs often seen only after 1 to 2 days, and immediate transfer to hospital even without signs, with an antidote given as early as possible. The count adds up every product that contains paracetamol.'
+  orientation: 'Go to the health post now, even if everything seems fine, and show the boxes.'
+  orientation-accompanied: 'Go to the health post now, even if she feels well, and show the boxes.'

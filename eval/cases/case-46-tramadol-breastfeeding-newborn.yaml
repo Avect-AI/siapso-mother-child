@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-46-tramadol-breastfeeding-newborn
+title: 'Breastfeeding a baby of 2 weeks, tramadol: before the next dose, as codeine'
+context:
+  breastfeeding: { baby-age-weeks: 2, premature: false }
+  items:
+    - { product: tramadol-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C2,
+        rule: tramadol-breastfeeding,
+        message: tramadol-breastfeeding,
+        level: before-next-dose,
+        evidence: C,
+        items: [0],
+      }
+  reminders: []
+  notes: []
