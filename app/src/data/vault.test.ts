@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from 'vitest';
 import { codeKeysOf, openVaultOf } from '../test/verifier.js';
-import { NoCodeError } from './code-guard.js';
+import { codeFingerprint, NoCodeError } from './code-guard.js';
 import {
   closeVault,
   historyScope,
@@ -26,7 +26,9 @@ describe('the vault of a page', () => {
 
   it('seals and opens with the key of the code, and forgets it when closed', async () => {
     await openVaultOf('2468');
-    const sealed = await sealRecord({ pseudonym: 'Awa' }, profileScope('a'));
+    const { sealed, fingerprint } = await sealRecord({ pseudonym: 'Awa' }, profileScope('a'));
+    // The record goes to its write with the code it was sealed under.
+    expect(fingerprint).toBe(codeFingerprint((await codeKeysOf('2468')).verifier));
     expect(await openRecord(sealed, profileScope('a'))).toEqual({ pseudonym: 'Awa' });
 
     closeVault();

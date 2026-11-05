@@ -90,6 +90,12 @@ describe('codes', () => {
       '2902',
       '0229',
       '0918',
+      // A whole birth date in six digits: DDMMYY, MMDDYY, YYMMDD.
+      '010190',
+      '311299',
+      '122590',
+      '900101',
+      '051203',
     ]) {
       expect(easyToGuess(code), code).toBe(true);
     }

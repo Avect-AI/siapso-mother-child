@@ -46,7 +46,6 @@ import { navigate } from 'wouter/use-hash-location';
 import { CodeExistsError, codeFingerprint, codeOpened, NoCodeError } from '../data/code-guard.js';
 import {
   claimCodeTry,
-  clearTabMarks,
   closeAppDb,
   eraseProfilesAndCode,
   getStoredLockout,
@@ -54,7 +53,7 @@ import {
   getStoredVerifier,
   readTabMarks,
   storeLockout,
-  updateTabMarks,
+  writeTabMark,
 } from '../data/db.js';
 import { forgetVisit } from '../data/history.js';
 import { sealStoredData, storeNewCode, type SealOptions } from '../data/migration.js';
@@ -108,18 +107,25 @@ export type UnlockResult =
 export type CodeMade = 'made' | 'exists' | 'unsaved' | 'cancelled';
 
 /**
- * 'changed': the new code is stored and opens every record, the old one no
- * more. 'wrong': the current code typed is not the one stored (counted as a
- * wrong code). 'locked': a wait after wrong codes is running, nothing was
- * tried. 'failed': the phone did not keep the change: the old code still opens
- * everything. 'cancelled': the session locked or no code is open here.
+ * The current code checked before a change. 'ok': it is the code stored, and
+ * its key is held for the change. 'wrong': it is not (counted as a wrong
+ * code). 'locked': a wait after wrong codes is running, nothing was tried.
+ * 'cancelled': the session locked meanwhile or no code is open here.
  */
-export type CodeChange = 'changed' | 'wrong' | 'locked' | 'failed' | 'cancelled';
+export type CodeCheck = 'ok' | 'wrong' | 'locked' | 'cancelled';
+
+/**
+ * 'changed': the new code is stored and opens every record, the old one no
+ * more. 'failed': the phone did not keep the change: the old code still opens
+ * everything. 'cancelled': no current code was checked just before (or the
+ * session locked since): nothing changed.
+ */
+export type CodeChange = 'changed' | 'failed' | 'cancelled';
 
 /**
  * A profile deleted in another tab: its id when the message said it, null
- * when only a stored mark did (a tab that missed the message); `count` tells
- * one deletion from the next.
+ * when a tab only found that something happened (it missed the message);
+ * `count` tells one deletion from the next.
  */
 export interface DeletedProfile {
   id: string | null;
@@ -166,12 +172,16 @@ export interface Session {
    */
   createCode: (code: string) => Promise<CodeMade>;
   /**
-   * Changes the code, behind the code: `current` is checked (counted as a try,
-   * as at the code screen), then every data key is wrapped again for the
-   * `next` code and its verifier stored, in one transaction (CodeChange). The
-   * other tabs lock and ask for the new code.
+   * Checks the current code before a change, as its own try (counted, as at
+   * the code screen): on 'ok' its key is held, in memory, for changeCode.
    */
-  changeCode: (current: string, next: string) => Promise<CodeChange>;
+  confirmCode: (current: string) => Promise<CodeCheck>;
+  /**
+   * Changes the code once the current one was checked (confirmCode): every
+   * data key is wrapped again for the `next` code and its verifier stored, in
+   * one transaction (CodeChange). The other tabs lock and ask for the new code.
+   */
+  changeCode: (next: string) => Promise<CodeChange>;
   /** Locks this tab and every other tab of the app. */
   lock: () => void;
   /**
@@ -292,6 +302,16 @@ export function SessionProvider({
   /** A danger result on screen: warned about before the auto-lock. */
   const attention = useRef(false);
   const verifier = useRef<CodeVerifier | null>(null);
+  /**
+   * The current code just checked before a change (confirmCode): the key it
+   * gives and the code it opened, in memory only, forgotten at every lock and
+   * once the change is tried.
+   */
+  const confirmed = useRef<{
+    fingerprint: string;
+    wrappingKey: CryptoKey;
+    closings: number;
+  } | null>(null);
   const failures = useRef<LockoutState>(NO_LOCKOUT);
   const key = useRef<CryptoKey | null>(null);
   const held = useRef<HeldScreen | null>(null);
@@ -305,6 +325,8 @@ export function SessionProvider({
   /** Counts the locks, exits, erases and other codes: an unlock under way when one comes opens nothing. */
   const closings = useRef(0);
   const tabs = useRef<TabLink | null>(null);
+  /** The page's fresh token is written once, when the tabs are first joined. */
+  const started = useRef(false);
 
   useEffect(() => {
     let live = true;
@@ -373,12 +395,16 @@ export function SessionProvider({
   /** Opens the session with the code of `opened`: this tab writes with that code only. */
   const open = useCallback((material: CryptoKey, opened: CodeVerifier) => {
     key.current = material;
-    openVault(material);
+    // The key and the code it comes from, together: a record sealed with it is
+    // written only while that code is stored (data/vault.ts).
+    openVault(material, codeFingerprint(opened));
     codeOpened(opened);
     holdNothing.current = false;
     setExited(false);
     setCodeRefused(false);
     setStatus('unlocked');
+    // A fresh token at every unlock: its change says nothing (tab-sync.ts).
+    tabs.current?.refresh();
   }, []);
 
   /** A new epoch: what a profile left on an entry and the danger signs ticked are no longer read. */
@@ -410,6 +436,7 @@ export function SessionProvider({
   const lockHere = useCallback(() => {
     closings.current += 1;
     key.current = null;
+    confirmed.current = null;
     closeVault();
     setLockSoon(false);
     renewEpoch();
@@ -620,6 +647,7 @@ export function SessionProvider({
   const forgetAll = useCallback(() => {
     closings.current += 1;
     key.current = null;
+    confirmed.current = null;
     closeVault();
     setLockSoon(false);
     verifier.current = null;
@@ -724,8 +752,6 @@ export function SessionProvider({
       verifier.current = made;
       keepLockout(NO_LOCKOUT);
       setCodeUnavailable(false);
-      // Nothing of what was done before this code is told by the marks.
-      void tabs.current?.forgetMarks();
       tabs.current?.announceCode();
       if (closings.current !== since) {
         // The code is on the phone: it is asked.
@@ -783,21 +809,33 @@ export function SessionProvider({
     [exitHere, followDeletion, lockHere, syncCode],
   );
 
+  /**
+   * Something happened in another tab that this one did not hear (it was
+   * frozen, cached, or has no channel): it cannot tell what, so it takes the
+   * safest way. The quick exit (locked, memory forgotten, the neutral screen),
+   * the stored code read again (an erase sends it to the welcome, another code
+   * is asked), and its profiles read again once the code opens them.
+   */
+  const followMissed = useCallback(() => {
+    exitHere();
+    void syncCode();
+    followDeletion(undefined);
+  }, [exitHere, followDeletion, syncCode]);
+
   const announceProfileDeleted = useCallback((id: string) => {
     tabs.current?.announce('profile-deleted', id);
   }, []);
 
   /**
-   * Changes the code (CodeChange): the current one is claimed as a try and
-   * checked, then the records' data keys are wrapped for the new key and its
-   * verifier stored, in one transaction (data/migration.ts); the old key is
-   * forgotten. When the write fails, what storage holds decides: the old
-   * verifier still stored means nothing changed.
+   * Checks the current code before a change (CodeCheck), as its own try:
+   * claimed (counted) before it is worked out, as at the code screen. On 'ok'
+   * its key is held in memory for changeCode, until a lock or the change.
    */
-  const changeCode = useCallback(
-    (current: string, next: string): Promise<CodeChange> => {
+  const confirmCode = useCallback(
+    (current: string): Promise<CodeCheck> => {
+      confirmed.current = null;
       const since = closings.current;
-      return aloneAmongTabs(async (): Promise<CodeChange> => {
+      return aloneAmongTabs(async (): Promise<CodeCheck> => {
         // Shown behind the code only (App.tsx): a code is open here.
         const stored = verifier.current;
         if (stored === null) return 'cancelled';
@@ -814,11 +852,45 @@ export function SessionProvider({
           return 'wrong';
         }
         keepLockout(NO_LOCKOUT);
+        if (closings.current !== since) return 'cancelled';
+        confirmed.current = {
+          fingerprint: codeFingerprint(stored),
+          wrappingKey: opened.wrappingKey,
+          closings: closings.current,
+        };
+        return 'ok';
+      });
+    },
+    [claim, keepLockout],
+  );
+
+  /**
+   * Changes the code (CodeChange), once the current one was checked
+   * (confirmCode): the records' data keys are wrapped for the new key and its
+   * verifier stored, in one transaction (data/migration.ts); the old key is
+   * forgotten. When the write fails, what storage holds decides: the old
+   * verifier still stored means nothing changed.
+   */
+  const changeCode = useCallback(
+    (next: string): Promise<CodeChange> => {
+      const held = confirmed.current;
+      confirmed.current = null;
+      const since = closings.current;
+      return aloneAmongTabs(async (): Promise<CodeChange> => {
+        const stored = verifier.current;
+        if (
+          held === null ||
+          stored === null ||
+          held.closings !== since ||
+          held.fingerprint !== codeFingerprint(stored)
+        ) {
+          return 'cancelled';
+        }
         const keys = await createCodeKeys(next);
         if (closings.current !== since) return 'cancelled';
         try {
           await sealData({
-            current: { fingerprint: codeFingerprint(stored), wrappingKey: opened.wrappingKey },
+            current: { fingerprint: held.fingerprint, wrappingKey: held.wrappingKey },
             next: keys,
           });
         } catch (failure) {
@@ -830,7 +902,6 @@ export function SessionProvider({
           }
         }
         verifier.current = keys.verifier;
-        void tabs.current?.forgetMarks();
         // The other tabs hold the old code: they lock and ask for the new one.
         tabs.current?.announceCode();
         if (closings.current !== since) {
@@ -841,7 +912,7 @@ export function SessionProvider({
         return 'changed';
       });
     },
-    [claim, keepLockout, open, readVerifierAgain, sealData],
+    [open, readVerifierAgain, sealData],
   );
 
   /** The stored code and wrong codes may have changed: read both again. */
@@ -853,15 +924,21 @@ export function SessionProvider({
   useEffect(() => {
     const link = joinTabs({
       onEvent: followTab,
+      onMissed: followMissed,
       onRecheck: recheck,
-      marks: { read: readTabMarks, update: updateTabMarks, clear: clearTabMarks },
+      marks: { read: readTabMarks, write: writeTabMark },
     });
     tabs.current = link;
+    // A fresh token once at the start of the page: its presence says nothing.
+    if (!started.current) {
+      started.current = true;
+      link.refresh();
+    }
     return () => {
       link.close();
       if (tabs.current === link) tabs.current = null;
     };
-  }, [followTab, recheck]);
+  }, [followTab, followMissed, recheck]);
   const touch = useCallback(() => {
     restartIdle.current();
   }, []);
@@ -977,6 +1054,7 @@ export function SessionProvider({
       epoch,
       unlock,
       createCode,
+      confirmCode,
       changeCode,
       lock,
       announceProfileDeleted,
@@ -1005,6 +1083,7 @@ export function SessionProvider({
       epoch,
       unlock,
       createCode,
+      confirmCode,
       changeCode,
       lock,
       announceProfileDeleted,

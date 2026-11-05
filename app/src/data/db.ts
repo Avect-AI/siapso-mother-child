@@ -21,8 +21,8 @@ export type PackSlot = 'current' | 'previous';
 
 type SettingsKey = 'settings' | 'code' | 'lockout' | 'tabs';
 
-/** The copy of the tabs' epoch (state/tab-sync.ts): opaque random marks, one per kind of event. */
-type TabMarks = string[];
+/** The copy of the tabs' epoch (state/tab-sync.ts): one random token, which names nothing. */
+type TabMarks = string;
 
 /**
  * A validated pack and its fingerprint: the version, date and clinical
@@ -323,17 +323,9 @@ export async function readTabMarks(): Promise<unknown> {
   return (await openAppDb()).get('settings', 'tabs');
 }
 
-/** Changes the copy of the tabs' epoch in one transaction: `change` gets what is stored. */
-export async function updateTabMarks(change: (stored: unknown) => unknown): Promise<void> {
-  const tx = (await openAppDb()).transaction('settings', 'readwrite');
-  const stored: unknown = await tx.store.get('tabs');
-  await tx.store.put(change(stored) as TabMarks, 'tabs');
-  await tx.done;
-}
-
-/** Takes the copy of the tabs' epoch off (a new code: nothing tells what was done before). */
-export async function clearTabMarks(): Promise<void> {
-  await (await openAppDb()).delete('settings', 'tabs');
+/** Writes the copy of the tabs' epoch: one random token, which names nothing. */
+export async function writeTabMark(token: string): Promise<void> {
+  await (await openAppDb()).put('settings', token, 'tabs');
 }
 
 /**

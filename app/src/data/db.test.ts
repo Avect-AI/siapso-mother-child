@@ -3,7 +3,6 @@ import type { Pack } from '@siapso/engine';
 import { describe, expect, it, vi } from 'vitest';
 import { verifierOf } from '../test/verifier.js';
 import {
-  clearTabMarks,
   closeAppDb,
   eraseProfilesAndCode,
   getStoredLockout,
@@ -17,7 +16,7 @@ import {
   storePack,
   storeSettings,
   storeVerifier,
-  updateTabMarks,
+  writeTabMark,
 } from './db.js';
 
 const pack = (version: string) => ({ version }) as unknown as Pack;
@@ -301,20 +300,14 @@ describe('code and lockout', () => {
 });
 
 describe('the copy of the tabs epoch', () => {
-  it('changes in one transaction, and goes at the erase with the code', async () => {
-    await updateTabMarks(() => ['a'.repeat(32)]);
-    await updateTabMarks((stored) => [...(stored as string[]), 'b'.repeat(32)]);
-    expect(await readTabMarks()).toEqual(['a'.repeat(32), 'b'.repeat(32)]);
+  it('is one token, replaced at each write, and goes at the erase with the code', async () => {
+    await writeTabMark('a'.repeat(32));
+    await writeTabMark('b'.repeat(32));
+    expect(await readTabMarks()).toBe('b'.repeat(32));
 
     await storeVerifier(await verifierOf('2468'));
     await eraseProfilesAndCode();
 
-    expect(await readTabMarks()).toBeUndefined();
-  });
-
-  it('is cleared on demand (a new code)', async () => {
-    await updateTabMarks(() => ['c'.repeat(32)]);
-    await clearTabMarks();
     expect(await readTabMarks()).toBeUndefined();
   });
 });

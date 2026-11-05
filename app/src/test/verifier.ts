@@ -4,6 +4,7 @@
 // made again) builds it here, with the same derivation.
 import { createCodeKeys, toBase64Url, type CodeKeys, type CodeVerifier } from '../domain/code.js';
 import { splitCodeSecret } from '../domain/crypto.js';
+import { codeFingerprint } from '../data/code-guard.js';
 import { openVault } from '../data/vault.js';
 
 /** The PBKDF2-SHA-256 output of `code`, as every verifier starts from. */
@@ -71,6 +72,16 @@ export async function verifierOf(code: string): Promise<CodeVerifier> {
  * Opens the vault of this page with the key of `code`, as an unlock does, so
  * a test can write and read profile data (the setup closes it after each test).
  */
-export async function openVaultOf(code: string): Promise<void> {
+/**
+ * Opens the vault with the key of `code` bound to no code, so a test can
+ * plant a record sealed under another code than the one stored (as a record
+ * left by an earlier code would be): the app itself never writes one.
+ */
+export async function plantWithKeyOf(code: string): Promise<void> {
   openVault((await codeKeysOf(code)).wrappingKey);
+}
+
+export async function openVaultOf(code: string): Promise<void> {
+  const keys = await codeKeysOf(code);
+  openVault(keys.wrappingKey, codeFingerprint(keys.verifier));
 }

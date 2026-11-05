@@ -108,6 +108,56 @@ test('her profile deleted in one tab leaves the other, which can never write it 
   expect(marks).not.toMatch(/erase|quick|exit|lock|profile|-/);
 });
 
+test('a frozen tab that missed a deletion takes the quick exit when it comes back, then the code opens the start', async ({
+  page,
+}) => {
+  // Fix round 1 of PR #61: the token stores no meaning, a missed event is a quick exit.
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  // A tab that hears nothing until it comes back: no channel, no storage event.
+  const frozen = await page.context().newPage();
+  await frozen.addInitScript(() => {
+    Reflect.deleteProperty(window, 'BroadcastChannel');
+    window.addEventListener(
+      'storage',
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
+  });
+  await frozen.goto('/');
+  await unlock(frozen);
+  await frozen.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(frozen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Aminata');
+
+  // The other tab (which heard only a new token from it, and took the quick exit) deletes her profile.
+  await page.bringToFront();
+  await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ouvrir' }).click();
+  await unlock(page);
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await page.getByRole('button', { name: 'Supprimer ce profil' }).click();
+  await page.getByRole('button', { name: 'Supprimer le profil' }).click();
+  await expect(page.getByText('Votre profil est supprimé.')).toBeVisible();
+  const token = await page.evaluate(() => localStorage.getItem('siapso-session-epoch'));
+  expect(token).toMatch(/^[0-9a-f]{32}$/);
+
+  // The frozen tab comes back: it cannot tell what happened, so the quick exit.
+  await frozen.bringToFront();
+  await frozen.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(frozen.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await expect(frozen.getByText('Aminata')).toHaveCount(0);
+  await expect(frozen.getByText('VIH, avec cotrimoxazole')).toHaveCount(0);
+  await frozen.getByRole('button', { name: 'Ouvrir' }).click();
+  await unlock(frozen);
+  await expect(frozen.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await frozen.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(frozen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+});
+
 test('in accompanied mode the form of a woman deleted in another tab is left, her HIV situation with it', async ({
   page,
 }) => {

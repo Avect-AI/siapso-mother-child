@@ -8,7 +8,7 @@ import { isSealed, UnsealError } from '../domain/crypto.js';
 import type { Profile } from '../domain/types.js';
 import { requireCode } from './code-guard.js';
 import { openAppDb, type SealedProfile } from './db.js';
-import { openRecord, profileScope, sealRecord, vaultKey } from './vault.js';
+import { openRecord, profileScope, sealRecord, vaultFingerprint, vaultKey } from './vault.js';
 
 function byCreation(a: Profile, b: Profile): number {
   if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
@@ -82,9 +82,10 @@ export async function saveProfile(
   { existing = false }: { existing?: boolean } = {},
 ): Promise<void> {
   // Sealed before the transaction: a transaction cannot wait for WebCrypto.
-  const sealed = await sealRecord(profile, profileScope(profile.id));
+  // Written only while the code it was sealed under is the one stored.
+  const { sealed, fingerprint } = await sealRecord(profile, profileScope(profile.id));
   const tx = (await openAppDb()).transaction(['profiles', 'settings'], 'readwrite');
-  await requireCode(tx);
+  await requireCode(tx, fingerprint);
   const profiles = tx.objectStore('profiles');
   if (existing && (await profiles.getKey(profile.id)) === undefined) {
     // Abandoned on purpose: its end is not an error to report.
@@ -104,9 +105,10 @@ export async function saveProfile(
  * here (LockedError).
  */
 export async function deleteProfile(id: string): Promise<void> {
-  vaultKey();
+  // Only with the code whose key is open here.
+  const fingerprint = vaultFingerprint();
   const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
-  await requireCode(tx);
+  await requireCode(tx, fingerprint);
   const history = tx.objectStore('history');
   const entries = await history.index('profileId').getAllKeys(id);
   await Promise.all([

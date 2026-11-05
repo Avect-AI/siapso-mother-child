@@ -24,18 +24,19 @@ type Problem = 'invalid' | 'wrong' | 'locked' | 'same' | 'mismatch' | 'failed' |
 
 /**
  * "Changer le code", behind the code (Réglages): someone may have seen it over
- * her shoulder, or guessed it. The current code first, then the new one twice,
- * with the same warning as when the first code was made for a code easy to
- * guess. Every data key is then wrapped again for the new code in one
- * transaction (session.tsx changeCode): the profiles, their history and the
- * contacts stay, the old code opens nothing any more, and the other tabs lock
- * and ask for the new one. A wrong current code is said and counted as at the
- * code screen; when the phone does not keep the change, the old code stays the
- * one. The codes typed stay in this screen's memory only.
+ * her shoulder, or guessed it. The current code first, checked at once as its
+ * own try (counted, as at the code screen: a wrong one is said before any new
+ * code is asked), then the new one twice, with the same warning as when the
+ * first code was made for a code easy to guess. Every data key is then
+ * wrapped again for the new code in one transaction (session.tsx changeCode):
+ * the profiles, their history and the contacts stay, the old code opens
+ * nothing any more, and the other tabs lock and ask for the new one. When the
+ * phone does not keep the change, the old code stays the one. The codes typed
+ * stay in this screen's memory only.
  */
 export function ChangeCode() {
   const t = useT();
-  const { changeCode, lockout } = useSession();
+  const { confirmCode, changeCode, lockout } = useSession();
   const [, navigate] = useLocation();
   const [step, setStep] = useState<Step>('current');
   const [current, setCurrent] = useState('');
@@ -77,10 +78,22 @@ export function ChangeCode() {
       return;
     }
     if (step === 'current') {
-      setCurrent(code);
+      // Checked first, as its own try: a wrong code is said before any new one is asked.
+      setBusy(true);
+      const checked = await confirmCode(code);
+      setBusy(false);
       setCode('');
-      setProblem(null);
-      setStep('choose');
+      if (checked === 'ok') {
+        setCurrent(code);
+        setProblem(null);
+        setStep('choose');
+        return;
+      }
+      // Locked meanwhile: the code screen takes this one's place.
+      if (checked === 'cancelled') return;
+      setProblem(checked);
+      setNow(Date.now());
+      field.current?.focus();
       return;
     }
     if (step === 'choose') {
@@ -105,7 +118,7 @@ export function ChangeCode() {
       return;
     }
     setBusy(true);
-    const changed = await changeCode(current, first);
+    const changed = await changeCode(first);
     setBusy(false);
     if (changed === 'changed') {
       setCurrent('');
@@ -115,9 +128,8 @@ export function ChangeCode() {
       setStep('done');
       return;
     }
-    // Locked meanwhile: the code screen takes this one's place.
-    if (changed === 'cancelled') return;
-    startAgain(changed);
+    // Not kept, or the current code to check again (a lock came between): from the start.
+    startAgain(changed === 'failed' ? 'failed' : null);
   };
 
   const remaining = TRIES - lockout.failures;

@@ -141,7 +141,8 @@ function repeatsItself(code: string): boolean {
  * (0000), digits in a row up or down (1234, 0123, 987654), a block said again
  * or each digit doubled (1212, 123123, 1122, 112233), the keypad's columns
  * (2580, 147258), a day and a month (0101, 3112, 1225: a birth date written
- * DDMM or MMDD), or a year from 1950 to 2030 (a birth year). Under the wait
+ * DDMM or MMDD), a whole date in six digits (010190, 122590, 900101: DDMMYY,
+ * MMDDYY or YYMMDD), or a year from 1950 to 2030 (a birth year). Under the wait
  * after wrong codes, a person gets about 11 tries in the first hour. The code
  * screen warns and asks a second time; it never refuses: the choice stays
  * hers.
@@ -154,8 +155,12 @@ export function easyToGuess(code: string): boolean {
   if (steps.every((step) => step === 0)) return true;
   if (steps.every((step) => step === 1) || steps.every((step) => step === -1)) return true;
   if (repeatsItself(code) || KEYPAD_CODES.has(code)) return true;
+  const [first, second, third] = [code.slice(0, 2), code.slice(2, 4), code.slice(4, 6)];
+  // A whole birth date: DDMMYY, MMDDYY or YYMMDD.
+  if (code.length === 6) {
+    return isDayMonth(first, second) || isDayMonth(second, first) || isDayMonth(third, second);
+  }
   if (code.length !== 4) return false;
-  const [first, second] = [code.slice(0, 2), code.slice(2)];
   if (isDayMonth(first, second) || isDayMonth(second, first)) return true;
   const year = Number(code);
   return year >= FIRST_YEAR && year <= LAST_YEAR;

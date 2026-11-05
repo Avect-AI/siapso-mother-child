@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getStoredLockout, getStoredVerifier } from '../data/db.js';
@@ -89,19 +89,20 @@ describe('ChangeCode', () => {
     expect(await checkCode(TEST_CODE, (await getStoredVerifier()) as CodeVerifier)).toBe(true);
   });
 
-  it('refuses a wrong current code, counts it and says how many tries are left', async () => {
+  it('checks the current code first: a wrong one is said, counted, before any new code is asked', async () => {
     await renderApp({ settings: woman, hash: '#/settings/code' });
     const user = userEvent.setup();
 
     await typeCode(user, 'Code actuel', '1357', 'Continuer');
-    await typeCode(user, 'Nouveau code', '7392', 'Continuer');
-    await typeCode(user, 'Le même code', '7392', 'Enregistrer le code');
 
     const field = await screen.findByLabelText('Code actuel');
-    expect(field).toHaveAccessibleDescription(
-      "Ce n'est pas le bon code. Encore 4 essais avant une attente.",
-    );
+    await waitFor(() => {
+      expect(field).toHaveAccessibleDescription(
+        "Ce n'est pas le bon code. Encore 4 essais avant une attente.",
+      );
+    });
     expect(field).toHaveValue('');
+    expect(screen.queryByLabelText('Nouveau code')).toBeNull();
     expect(await getStoredLockout()).toEqual({ failures: 1, lockedUntil: null });
     expect(await checkCode(TEST_CODE, (await getStoredVerifier()) as CodeVerifier)).toBe(true);
   });
