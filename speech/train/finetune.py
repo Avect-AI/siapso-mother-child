@@ -7,20 +7,33 @@ enough for tiny) and data that SIAPSO does not hold yet. Read
 speech/train/README.md first: data plan, licences, the ethics opinion that
 must precede any recording of women, consent.
 
-    python speech/train/finetune.py --base openai/whisper-base --revision <commit> \\
+    python speech/train/finetune.py --base openai/whisper-base \\
+        --revision e37978b90ca9030d5170a5c07aadb050351a65bb \\
         --data-config speech/train/data.example.json --output-dir <folder outside the repository>
 
-Environment: Linux x86_64, Python 3.11 or 3.12, a CUDA 12.8 driver, and
+Environment: Linux x86_64, Python 3.11 or 3.12, an NVIDIA driver for CUDA 13.0
+(R580 or newer), and
 
     pip install --require-hashes --only-binary=:all: -r speech/train/requirements.txt
 
 (every version pinned with hashes, published on or before 2026-10-22).
 
+Only trusted repositories are downloaded: the base model must be in
+TRUSTED_MODELS and a Hub dataset in TRUSTED_DATASETS, each at the 40-character
+commit pinned there (a branch, tag or pull request ref is refused, and so is a
+local folder named like the repository), and no model or processor is ever
+loaded with remote code (trust_remote_code stays False; datasets 5 cannot run
+dataset scripts). Local folders are listed and every file's sampling rate is
+read before any download, with --check-only too.
+
 What it does:
 
 1. reads a data config (JSON): a list of sources, each with a Hugging Face
    dataset id and revision or a local folder, a split, the text column, the
-   language and its LICENCE. A source whose licence is not in the allowlist is
+   language and its LICENCE. Audio must be 16 kHz (mono or mixed down), as the
+   recording protocol of eval/speech/README.md; it is decoded with soundfile.
+   A local folder lists its files in metadata.csv, and a file outside the
+   folder is refused. A source whose licence is not in the allowlist is
    refused (any non-commercial licence, unknown or unverified); share-alike
    sources are refused unless --allow-share-alike is given, because whether
    weights trained on them must be released share-alike is an open legal
@@ -72,6 +85,21 @@ FLEURS_REVISION = "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
 EVAL_CONFIGS = {"wo": "wo_sn", "fr": "fr_fr"}
 EVAL_COUNT = 100
 
+# The only repositories the script downloads from, each at the one commit
+# reviewed here (Whisper: head of main on 2026-11-05, both last changed on
+# 2024-02-29; base is the commit of the French pack in speech/convert/convert.py).
+# Adding a repository or moving a commit is a reviewed change of this file,
+# never a command-line option; a branch, tag or pull request ref is refused.
+TRUSTED_MODELS = {
+    "openai/whisper-tiny": "169d4a4341b33bc18d8881c4b69c2e104e1cc0af",
+    "openai/whisper-base": "e37978b90ca9030d5170a5c07aadb050351a65bb",
+}
+TRUSTED_DATASETS = {FLEURS_REPO: FLEURS_REVISION}
+COMMIT = re.compile(r"[0-9a-f]{40}")
+
+# Whisper takes 16 kHz audio; the recordings are made at that rate (eval/speech/README.md).
+SAMPLING_RATE = 16000
+
 # Licences accepted for training data. CC-BY-4.0 requires attribution (keep the
 # credits of speech/MODEL_CARD.md up to date). No non-commercial licence, ever.
 ALLOWED_LICENCES = {"CC-BY-4.0", "CC0-1.0", "MIT", "Apache-2.0", "CC-BY-3.0"}
@@ -99,7 +127,7 @@ class Source:
     lang: str  # wo or fr
     licence: str
     kind: str  # hub, open-folder (a published dataset downloaded locally) or consented-folder (SIAPSO recordings)
-    location: str  # dataset id, or a folder with an audiofolder layout
+    location: str  # dataset id, or a folder with audio files and metadata.csv (file_name, text column)
     revision: str | None
     split: str
     text_column: str
@@ -135,13 +163,40 @@ def check_licence(source: Source, allow_share_alike: bool, allow_sources: frozen
         raise SystemExit(f"Refused: source {source.name} has licence {licence!r}, not in {sorted(ALLOWED_LICENCES)}.")
 
 
+def check_trusted(name: str, repository: str, revision: str | None, pinned: str) -> None:
+    """Raises SystemExit unless revision is the pinned commit and no local path shadows the repository id."""
+    if not revision or not COMMIT.fullmatch(revision) or revision != pinned:
+        raise SystemExit(
+            f"Refused: {name} at revision {revision!r}; only the pinned commit {pinned} is trusted "
+            "(no branch, tag, pull request ref or short commit)."
+        )
+    if Path(repository).exists():
+        raise SystemExit(
+            f"Refused: a local path {repository!r} exists in {Path.cwd()} and would be loaded instead of the "
+            "trusted repository; run from another folder."
+        )
+
+
+def check_base(base: str, revision: str | None) -> None:
+    """Raises SystemExit unless the base model is a trusted repository at its pinned commit."""
+    if base not in TRUSTED_MODELS:
+        raise SystemExit(f"Refused: base model {base!r} is not a trusted repository {sorted(TRUSTED_MODELS)}.")
+    check_trusted(base, base, revision, TRUSTED_MODELS[base])
+
+
 def check_split(source: Source) -> None:
     if source.kind not in KINDS:
         raise SystemExit(f"Refused: {source.name} has kind {source.kind!r}, expected one of {KINDS}.")
     if FLEURS_REPO in source.location and EVALUATION_SPLIT.search(source.split):
         raise SystemExit(f"Refused: {source.name} uses the FLEURS split {source.split!r}; only train may be used.")
-    if source.kind == "hub" and not source.revision:
-        raise SystemExit(f"Refused: {source.name} has no dataset revision (pin a commit).")
+    if source.kind == "hub":
+        if source.location not in TRUSTED_DATASETS:
+            raise SystemExit(
+                f"Refused: {source.name} downloads {source.location!r}, not a trusted dataset "
+                f"{sorted(TRUSTED_DATASETS)}. Download a published dataset to a folder (kind open-folder) after "
+                "checking its licence."
+            )
+        check_trusted(source.name, source.location, source.revision, TRUSTED_DATASETS[source.location])
     if source.kind == "consented-folder":
         if not source.consent or not CONSENT_PATTERN.fullmatch(source.consent):
             raise SystemExit(
@@ -196,26 +251,113 @@ def word_error_rate(references: list[str], hypotheses: list[str]) -> float:
     return jiwer.wer([r for r, _ in pairs], [h for _, h in pairs])
 
 
+def list_folder(source: Source) -> list[tuple[str, str]]:
+    """(audio file, text) pairs of a local folder: metadata.csv with file_name and the text column.
+
+    A file_name that resolves outside the folder (.., an absolute path, a link)
+    is refused, as are a missing file, a missing column and a row without text.
+    The file may start with a byte order mark (spreadsheet exports).
+    """
+    import csv
+
+    location = Path(source.location).resolve()
+    metadata = location / "metadata.csv"
+    if not metadata.is_file():
+        raise SystemExit(f"Refused: {source.name} has no metadata.csv in {location}.")
+    with open(metadata, encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        missing = sorted({"file_name", source.text_column} - set(reader.fieldnames or []))
+        if missing:
+            raise SystemExit(f"Refused: {source.name}: metadata.csv has no column {', '.join(missing)}.")
+        rows = list(reader)
+    pairs = []
+    for number, row in enumerate(rows, start=1):
+        text = row[source.text_column]
+        if not row["file_name"] or text is None or not text.strip():
+            raise SystemExit(f"Refused: {source.name}: row {number} of metadata.csv has no file name or no text.")
+        path = (location / row["file_name"]).resolve()
+        if not path.is_relative_to(location):
+            raise SystemExit(f"Refused: {source.name} lists {row['file_name']!r}, outside {location}.")
+        if not path.is_file():
+            raise SystemExit(f"Refused: {source.name} lists {row['file_name']!r}, which is not a file.")
+        pairs.append((str(path), text))
+    return pairs
+
+
+def check_folders(sources: list[Source]) -> int:
+    """Lists every folder source and reads the sampling rate of each file, before any download.
+
+    Returns the number of files; raises SystemExit on an unreadable file or a rate other than 16 kHz.
+    """
+    files = 0
+    for source in sources:
+        if source.kind == "hub":
+            continue
+        pairs = list_folder(source)
+        try:
+            import soundfile
+        except ImportError:
+            raise SystemExit(
+                "Refused: reading the sampling rate of local files needs soundfile; install "
+                "speech/train/requirements.txt first."
+            ) from None
+        for path, _ in pairs:
+            try:
+                rate = soundfile.info(path).samplerate
+            except RuntimeError as error:
+                raise SystemExit(f"Refused: {source.name}: {path} cannot be read as audio ({error}).") from None
+            if rate != SAMPLING_RATE:
+                raise SystemExit(
+                    f"Refused: {source.name}: {path} is {rate} Hz, not 16 kHz; convert it first "
+                    "(ffmpeg -i in.wav -ar 16000 -ac 1 out.wav)."
+                )
+            files += 1
+    return files
+
+
+def read_audio(cell: dict):
+    """Samples of an audio cell ({"bytes", "path"}) as float32 mono, refused unless at 16 kHz.
+
+    datasets 5 encodes and decodes audio only through torchcodec, which needs
+    FFmpeg libraries installed outside the hashed lock; soundfile (pinned)
+    ships libsndfile in its wheel.
+    """
+    import io
+
+    import soundfile
+
+    samples, rate = soundfile.read(io.BytesIO(cell["bytes"]) if cell.get("bytes") else cell["path"], dtype="float32")
+    if rate != SAMPLING_RATE:
+        raise ValueError(
+            f"{cell.get('path')}: {rate} Hz. Convert the audio to 16 kHz first, as in eval/speech/README.md "
+            "(ffmpeg -i in.wav -ar 16000 -ac 1 out.wav)."
+        )
+    return samples.mean(axis=1) if samples.ndim > 1 else samples
+
+
 def load_training_data(sources: list[Source], processor, max_seconds: float):
-    from datasets import Audio, concatenate_datasets, load_dataset
+    from datasets import Audio, Dataset, concatenate_datasets, load_dataset
 
     parts = []
     for source in sources:
         if source.kind == "hub":
             data = load_dataset(source.location, name=source.config, split=source.split, revision=source.revision)
+            data = data.cast_column("audio", Audio(decode=False))
         else:
-            data = load_dataset("audiofolder", data_dir=source.location, split="train")
-        data = data.cast_column("audio", Audio(sampling_rate=16000))
+            pairs = list_folder(source)
+            data = Dataset.from_dict(
+                {"audio": [{"bytes": None, "path": p} for p, _ in pairs], source.text_column: [t for _, t in pairs]}
+            )
         prompt = PROMPTS[source.lang]
         # Prompt ids, as at run time: see speech/convert/convert.py decoder_prompt().
         tokenizer = processor.tokenizer
 
         def prepare(example, source=source, prompt=prompt, tokenizer=tokenizer):
-            audio = example["audio"]
+            audio = read_audio(example["audio"])
             example["input_features"] = processor.feature_extractor(
-                audio["array"], sampling_rate=audio["sampling_rate"]
+                audio, sampling_rate=SAMPLING_RATE
             ).input_features[0]
-            example["seconds"] = len(audio["array"]) / audio["sampling_rate"]
+            example["seconds"] = len(audio) / SAMPLING_RATE
             ids = tokenizer(example[source.text_column], add_special_tokens=False).input_ids
             start = tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
             if prompt == "sot":
@@ -276,56 +418,31 @@ def evaluate_fleurs(model, processor, lang: str, device: str, cache_dir: Path) -
     }
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--base", default="openai/whisper-base", help="openai/whisper-base or openai/whisper-tiny")
-    parser.add_argument("--revision", required=True, help="commit of the base model (pin it)")
-    parser.add_argument("--data-config", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True, help="outside the repository; weights are never committed")
-    parser.add_argument("--allow-share-alike", action="store_true", help="accept CC-BY-SA sources (see the README)")
-    parser.add_argument("--learning-rate", type=float, default=None, help="default 1e-5 (tiny: 3.75e-5)")
-    parser.add_argument("--max-steps", type=int, default=5000)
-    parser.add_argument("--warmup-steps", type=int, default=500)
-    parser.add_argument("--batch-size", type=int, default=16, help="per device")
-    parser.add_argument("--accumulation", type=int, default=4)
-    parser.add_argument("--eval-steps", type=int, default=500)
-    parser.add_argument("--validation-fraction", type=float, default=0.05)
-    parser.add_argument("--max-seconds", type=float, default=30.0)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument(
-        "--allow-source",
-        action="append",
-        default=[],
-        metavar="NAME",
-        help="use the source NAME although its licence is UNVERIFIED-CONFLICT; only after the team has "
-        "confirmed the licence in writing (README.md)",
-    )
-    parser.add_argument("--check-only", action="store_true", help="validate the data config and stop")
-    args = parser.parse_args()
+def load_pretrained(location: str, revision: str | None):
+    """Processor and model from a trusted base (checked by check_base) or from this script's own output.
 
-    sources = read_sources(args.data_config, args.allow_share_alike, frozenset(args.allow_source))
-    if args.check_only:
-        print(f"OK: {len(sources)} sources accepted")
-        return
+    Never with remote code: a repository's custom modelling, processing or
+    generation code is not run.
+    """
+    from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
-    import torch
-    from transformers import (
-        Seq2SeqTrainer,
-        Seq2SeqTrainingArguments,
-        WhisperForConditionalGeneration,
-        WhisperProcessor,
-    )
+    processor = WhisperProcessor.from_pretrained(location, revision=revision, trust_remote_code=False)
+    model = WhisperForConditionalGeneration.from_pretrained(location, revision=revision, trust_remote_code=False)
+    return processor, model
 
-    if not torch.cuda.is_available():
-        raise SystemExit("No GPU: this script is meant for a CUDA GPU.")
-    processor = WhisperProcessor.from_pretrained(args.base, revision=args.revision)
-    model = WhisperForConditionalGeneration.from_pretrained(args.base, revision=args.revision)
+
+def prepare_model(model):
+    """No forced prompt at generation (the labels carry the prompt of the pack), no cache while training."""
     model.generation_config.forced_decoder_ids = None
     model.config.use_cache = False
+    return model
 
-    data = load_training_data(sources, processor, args.max_seconds).train_test_split(
-        test_size=args.validation_fraction, seed=args.seed
-    )
+
+def build_trainer(model, processor, data, args: argparse.Namespace, bf16: bool = True):
+    """The Seq2SeqTrainer of a run (hyperparameters at the top of this file); bf16 on the GPU."""
+    import torch
+    from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
+
     pad = processor.tokenizer.pad_token_id
 
     def collate(batch):
@@ -361,7 +478,7 @@ def main() -> None:
         warmup_steps=args.warmup_steps,
         max_steps=args.max_steps,
         lr_scheduler_type="linear",
-        bf16=True,
+        bf16=bf16,
         gradient_checkpointing=True,
         eval_strategy="steps",
         eval_steps=args.eval_steps,
@@ -377,7 +494,7 @@ def main() -> None:
         report_to=[],
         remove_unused_columns=False,
     )
-    trainer = Seq2SeqTrainer(
+    return Seq2SeqTrainer(
         model=model,
         args=training,
         train_dataset=data["train"],
@@ -386,9 +503,64 @@ def main() -> None:
         compute_metrics=compute_metrics,
         processing_class=processor.feature_extractor,
     )
+
+
+def save_final(trainer, processor, folder: Path) -> None:
+    """The trained model (safetensors) and its processor, in the run's output folder."""
+    trainer.save_model(str(folder))
+    processor.save_pretrained(str(folder))
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--base", default="openai/whisper-base", help="openai/whisper-base or openai/whisper-tiny")
+    parser.add_argument("--revision", required=True, help="commit of the base model, the one pinned in TRUSTED_MODELS")
+    parser.add_argument("--data-config", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True, help="outside the repository; weights are never committed")
+    parser.add_argument("--allow-share-alike", action="store_true", help="accept CC-BY-SA sources (see the README)")
+    parser.add_argument("--learning-rate", type=float, default=None, help="default 1e-5 (tiny: 3.75e-5)")
+    parser.add_argument("--max-steps", type=int, default=5000)
+    parser.add_argument("--warmup-steps", type=int, default=500)
+    parser.add_argument("--batch-size", type=int, default=16, help="per device")
+    parser.add_argument("--accumulation", type=int, default=4)
+    parser.add_argument("--eval-steps", type=int, default=500)
+    parser.add_argument("--validation-fraction", type=float, default=0.05)
+    parser.add_argument("--max-seconds", type=float, default=30.0)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--allow-source",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="use the source NAME although its licence is UNVERIFIED-CONFLICT; only after the team has "
+        "confirmed the licence in writing (README.md)",
+    )
+    parser.add_argument("--check-only", action="store_true", help="validate the data config and stop")
+    return parser.parse_args(argv)
+
+
+def main() -> None:
+    args = parse_args()
+    check_base(args.base, args.revision)
+    sources = read_sources(args.data_config, args.allow_share_alike, frozenset(args.allow_source))
+    files = check_folders(sources)
+    if args.check_only:
+        print(f"OK: {len(sources)} sources accepted, {files} local audio files at 16 kHz")
+        return
+
+    import torch
+
+    if not torch.cuda.is_available():
+        raise SystemExit("No GPU: this script is meant for a CUDA GPU.")
+    processor, model = load_pretrained(args.base, args.revision)
+    prepare_model(model)
+
+    data = load_training_data(sources, processor, args.max_seconds).train_test_split(
+        test_size=args.validation_fraction, seed=args.seed
+    )
+    trainer = build_trainer(model, processor, data, args)
     trainer.train()
-    trainer.save_model(str(args.output_dir / "final"))
-    processor.save_pretrained(str(args.output_dir / "final"))
+    save_final(trainer, processor, args.output_dir / "final")
 
     metrics = {
         "base": args.base,
@@ -397,7 +569,7 @@ def main() -> None:
             {"name": s.name, "lang": s.lang, "licence": s.licence, "location": s.location, "revision": s.revision}
             for s in sources
         ],
-        "hyperparameters": {k: v for k, v in training.to_dict().items() if k in (
+        "hyperparameters": {k: v for k, v in trainer.args.to_dict().items() if k in (
             "learning_rate", "max_steps", "warmup_steps", "per_device_train_batch_size",
             "gradient_accumulation_steps", "lr_scheduler_type", "seed")},
         "parameters": sum(p.numel() for p in model.parameters()),

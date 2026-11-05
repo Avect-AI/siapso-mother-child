@@ -2,7 +2,7 @@
 
 # Training a lighter French and Wolof voice model
 
-Status: plan and scripts. Nothing in this folder has been run. Training needs a CUDA GPU and consented data that SIAPSO does not hold yet. What was measured is the post-training 4-bit experiment on the current models (`speech/convert/quantize_q4.py`, results in `eval/speech/results/` and `docs/voice.md`).
+Status: plan and scripts. No training has been run: only the CPU smoke test of `test_finetune.py` (a tiny random model on synthetic clips, see "Running the script"). Training needs a CUDA GPU and consented data that SIAPSO does not hold yet. What was measured is the post-training 4-bit experiment on the current models (`speech/convert/quantize_q4.py`, results in `eval/speech/results/` and `docs/voice.md`).
 
 ## Why a smaller model is needed
 
@@ -49,6 +49,8 @@ How the script enforces this (`speech/train/test_finetune.py` tests it, and `pnp
 - Kallaama is listed in `data.example.json` with the licence `UNVERIFIED-CONFLICT`, and `finetune.py` refuses it, so `--check-only` on the example fails by default. The opt-in is `--allow-source kallaama-wo` (the source's name). Use it only after the team has confirmed the licence in writing with the authors, and then replace the licence in the config by the confirmed one. The opt-in never lifts a non-commercial or unknown licence.
 - A local set of SIAPSO recordings is `kind: consented-folder` and must carry a consent register reference in the form `SIAPSO-CONSENT-YYYY-NNNN` (3 to 6 digits for the number) and the reference of the CNERS opinion in the form `CNERS-YYYY-XXXX` (2 to 12 capital letters or digits). Any other string is refused. The registers themselves stay outside the repository. A published dataset downloaded to a folder is `kind: open-folder`.
 - Any FLEURS split whose name contains `test`, `validation` or `dev` (for example `train+test`) is refused. The FLEURS evaluation audio is cached under `<output-dir>/fleurs-cache`, not in the working directory.
+- Only trusted repositories are downloaded, each at the one commit pinned in `finetune.py`: the base model `openai/whisper-tiny` (`169d4a4341b33bc18d8881c4b69c2e104e1cc0af`) or `openai/whisper-base` (`e37978b90ca9030d5170a5c07aadb050351a65bb`, the commit of the French pack) in `TRUSTED_MODELS`, and the Hub dataset `google/fleurs` at the FLEURS revision above in `TRUSTED_DATASETS`. `--revision` and the `revision` of a Hub source must be that full 40-character commit: a branch, a tag, a pull request ref (`refs/pr/N`) or a short commit is refused, and so is a local folder named like the repository (for example `openai/whisper-base` in the working directory), which would be loaded in its place. Any other repository is refused before a download; a published dataset from elsewhere is downloaded to a folder (`kind: open-folder`) after its licence is checked. Nothing is loaded with remote code: every `from_pretrained` passes `trust_remote_code=False`, and datasets 5 cannot run dataset scripts. Adding a repository or moving a commit is a reviewed change of those two tables, never a command-line option.
+- A folder source lists its files in `metadata.csv` (UTF-8, a byte order mark is accepted; `file_name` and the text column). A missing column, a row without text, a `file_name` that leads outside the folder (`..`, an absolute path, a link or junction) or to a missing file is refused. Before any download, and with `--check-only` too, every folder is listed and the sampling rate of each file is read. Audio must be at 16 kHz (several channels are mixed down), as the recording protocol of `eval/speech/README.md` asks; convert other rates first (`ffmpeg -i in.wav -ar 16000 -ac 1 out.wav`). The script decodes audio with `soundfile`, because datasets 5 decodes only through torchcodec, which needs FFmpeg libraries outside the hashed lock.
 
 Plan for the volume: the current Wolof model was fine-tuned on about 57 h (`speech/LICENSES.md`). Start with FLEURS train and the Zenodo corpus, add Kallaama only if cleared, and add the consented recordings with extra weight (repeat them, or sample them in each batch) because they match the target domain.
 
@@ -67,13 +69,15 @@ Plan for the volume: the current Wolof model was fine-tuned on about 57 h (`spee
 python3.11 -m venv .venv-train && . .venv-train/bin/activate
 pip install --require-hashes --only-binary=:all: -r speech/train/requirements.txt
 cp speech/train/data.example.json /data/siapso/data.json        # edit: folders, licences re-checked
-python speech/train/finetune.py --check-only --base openai/whisper-base --revision <commit> \
+python speech/train/finetune.py --check-only --base openai/whisper-base --revision e37978b90ca9030d5170a5c07aadb050351a65bb \
   --data-config /data/siapso/data.json --output-dir /data/siapso/run1
-python speech/train/finetune.py --base openai/whisper-base --revision <commit> \
+python speech/train/finetune.py --base openai/whisper-base --revision e37978b90ca9030d5170a5c07aadb050351a65bb \
   --data-config /data/siapso/data.json --output-dir /data/siapso/run1
 ```
 
-`requirements.txt` is the hashed lock of `requirements.in` (Linux x86_64, Python 3.11 or 3.12, CUDA 12.8 wheels; every version published on or before 2026-10-22). Regenerate it with `speech/convert/lock.py hash --dir speech/train`, check it with `lock.py check --dir speech/train`.
+`requirements.txt` is the hashed lock of `requirements.in` (Linux x86_64, Python 3.11 or 3.12, the CUDA 13 wheels of torch 2.13, which need an NVIDIA driver for CUDA 13.0, R580 or newer; every version published on or before 2026-10-22). Regenerate it with `speech/convert/lock.py hash --dir speech/train`, check it with `lock.py check --dir speech/train`. Its open security alerts and their mitigation are in `docs/dependencies.md`.
+
+With the lock installed, `python speech/train/test_finetune.py` also runs a smoke test on the CPU, without any download: a tiny randomly initialised Whisper built from a `WhisperConfig`, synthetic 16 kHz clips through the data path of the script, one training step with an evaluation, a checkpoint and a reload. Run it before the first training run on a new machine. Without the lock, the tests that need it (audio decoding, `--check-only` on real audio files, the hub data path with `datasets.load_dataset` replaced by an in-memory dataset, the training step) are skipped: `pnpm test` in CI runs this file with a plain Python, so CI checks only the standard-library gates (licences, splits, trusted repositories and commits, no remote code, folder listing).
 
 Hyperparameters (defaults in the script, documented at its top): learning rate 1e-5 (3.75e-5 for tiny), linear schedule, 500 warm-up steps, effective batch 64, 5000 steps, bf16, gradient checkpointing, labels with the decoder prompt of the pack (Wolof: start of transcript alone, French: the standard prompt), validation split 5 %, best checkpoint by word error rate, seed 42. They are the usual recipe for Whisper fine-tuning, a starting point: tune the learning rate and the number of steps on the validation split. No training time or accuracy is promised here, because none was measured.
 
