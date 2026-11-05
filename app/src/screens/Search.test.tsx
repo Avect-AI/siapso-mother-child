@@ -73,6 +73,12 @@ describe('Search', () => {
     const first = candidates()[0];
     expect(first).toHaveTextContent('Moringa oleifera');
     expect(first).toHaveTextContent('Nom local : nebeday (wolof)');
+    // Read with Wolof and Latin rules, not French ones (WCAG 3.1.2).
+    expect(within(first as HTMLElement).getByText('nebeday')).toHaveAttribute('lang', 'wo');
+    expect(within(first as HTMLElement).getByText('Moringa oleifera')).toHaveAttribute(
+      'lang',
+      'la',
+    );
     expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
       'Choisissez celui qui correspond.',
     );

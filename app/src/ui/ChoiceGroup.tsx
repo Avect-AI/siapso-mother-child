@@ -145,6 +145,18 @@ export interface CheckboxOption {
   onChange: (checked: boolean) => void;
 }
 
+/**
+ * A keyboard focus on an answer's control brings the whole answer into view,
+ * its words included, not only the small box: under a held action (the danger
+ * signs), the page keeps room for the action (base.css), so the words never
+ * end under it. A tap leaves the page where it is.
+ */
+function showWholeAnswer(control: HTMLInputElement): void {
+  const answer = control.closest('label');
+  if (answer === null || typeof answer.scrollIntoView !== 'function') return;
+  if (control.matches(':focus-visible')) answer.scrollIntoView({ block: 'nearest' });
+}
+
 /** One checkbox answer: a whole-width label, the words being the target. */
 function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
   return (
@@ -158,6 +170,9 @@ function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
         type="checkbox"
         checked={option.checked}
         {...answer}
+        onFocus={(event) => {
+          showWholeAnswer(event.currentTarget);
+        }}
         onChange={(event) => {
           option.onChange(event.target.checked);
         }}
@@ -235,7 +250,8 @@ export function SectionedCheckboxGroup({
         <div className="choice-sections">
           {none ? <div className="options">{box(none, answer, 'option--none-first')}</div> : null}
           {sections.map((section) => (
-            <fieldset key={section.id} className="choice-section">
+            // data-section: a screen that shows more sections finds the first new one.
+            <fieldset key={section.id} className="choice-section" data-section={section.id}>
               <legend className="choice-section__legend">{section.label}</legend>
               <div className="options">{section.options.map((option) => box(option, answer))}</div>
             </fieldset>

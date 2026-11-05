@@ -520,6 +520,11 @@ describe('Who to call, adding a contact', () => {
 
     // Back on who to call, the same entry: the banner, the sign, and the contact to call first.
     expect(await screen.findByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+    // Its status region is there, empty, when the screen appears, and says the
+    // contact was saved a moment later, so a screen reader reads it out.
+    const region = document.querySelector('main .referral__status');
+    expect(region).toHaveAttribute('role', 'status');
+    expect(region).toHaveTextContent('');
     expect(window.location.hash).toBe('#/danger/call');
     const call = await screen.findByRole('link', { name: 'Appeler Sage-femme, 000 000 004' });
     expect(call).toHaveAttribute('href', 'tel:000000004');
@@ -531,8 +536,10 @@ describe('Who to call, adding a contact', () => {
       '#/contacts',
     );
     // It says the contact was saved, once.
-    const status = within(screen.getByRole('main')).getByText('Contact enregistré : Sage-femme.');
-    expect(status).toHaveAttribute('role', 'status');
+    const status = await within(screen.getByRole('main')).findByText(
+      'Contact enregistré : Sage-femme.',
+    );
+    expect(status).toBe(region);
 
     // Away and back: said no more.
     act(() => {

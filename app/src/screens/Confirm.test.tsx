@@ -67,6 +67,12 @@ describe('Confirm: a remedy', () => {
     expect(product()).toHaveTextContent('Moringa oleifera');
     // toHaveTextContent reads the no-break space before the colon as a space.
     expect(product()).toHaveTextContent('Nom local : nebeday (wolof)');
+    // Read with Wolof and Latin rules, not French ones (WCAG 3.1.2).
+    expect(within(product() as HTMLElement).getByText('nebeday')).toHaveAttribute('lang', 'wo');
+    expect(within(product() as HTMLElement).getByText('Moringa oleifera')).toHaveAttribute(
+      'lang',
+      'la',
+    );
     expect(screen.queryByRole('group')).toBeNull();
     expect(screen.queryByRole('textbox', { name: UNITS })).toBeNull();
     expect(probe.current().items).toEqual([]);
@@ -188,7 +194,7 @@ describe('Confirm: the strength on the box', () => {
     const answers = within(question).getAllByRole('radio');
     expect(answers.every((answer) => !(answer as HTMLInputElement).checked)).toBe(true);
     // The brand is said once, above: each answer starts with what the box shows.
-    expect(within(question).getByRole('radio', { name: '1000 mg, comprimé' })).toBeVisible();
+    expect(within(question).getByRole('radio', { name: '1000 mg, comprimé' })).toBeVisible();
     expect(within(question).queryByRole('radio', { name: /DOLIPRANE/ })).toBeNull();
     expect(answers.at(-1)).toHaveAccessibleName('Je ne sais pas');
     expect(answers.at(-1)?.closest('label')).toHaveClass('option--none');
@@ -205,7 +211,7 @@ describe('Confirm: the strength on the box', () => {
     expect(answers[0]).toHaveFocus();
     expect(probe.current().items).toEqual([]);
 
-    await user.click(within(question).getByRole('radio', { name: '1000 mg, comprimé' }));
+    await user.click(within(question).getByRole('radio', { name: '1000 mg, comprimé' }));
     expect(product()).toHaveTextContent('Paracétamol 1000 mg');
     // Said again where "yes" is.
     expect(document.querySelector('.confirm__adding')).toHaveTextContent(
@@ -287,8 +293,8 @@ describe('Confirm: the strength on the box', () => {
     const announcer = document.querySelector('.confirm__announce');
     expect(announcer).toHaveAttribute('role', 'status');
     expect(announcer).toHaveTextContent('');
-    await user.click(screen.getByRole('radio', { name: '500 mg, comprimé' }));
-    await user.click(screen.getByRole('radio', { name: '1000 mg, comprimé' }));
+    await user.click(screen.getByRole('radio', { name: '500 mg, comprimé' }));
+    await user.click(screen.getByRole('radio', { name: '1000 mg, comprimé' }));
     await waitFor(() => {
       expect(announcer).toHaveTextContent('Vous ajoutez : DOLIPRANE 1000 mg, comprimé');
     });
@@ -314,7 +320,7 @@ describe('Confirm: the strength on the box', () => {
       'paracetamol-1000-generic',
       ':dont-know',
     ]);
-    expect(screen.getByRole('radio', { name: '500 mg, comprimé' })).toBeVisible();
+    expect(screen.getByRole('radio', { name: '500 mg, comprimé' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(screen.getByText('Choisissez un dosage, ou « Je ne sais pas ».')).toBeVisible();
     expect(probe.current().items).toEqual([]);
@@ -530,7 +536,7 @@ function ruleIdsOf(items: CheckedItem[]): (string | undefined)[] {
 
 // The first of its strength by name: the forms of a brand are sorted the same way for every brand.
 const EFFERALGAN_1000 = 'efferalgan-1000-mg-67058605';
-const SAME_BOX = `Est-ce la même boîte que EFFERALGAN 1000 mg, comprimé effervescent${NBSP}?`;
+const SAME_BOX = `Est-ce la même boîte que EFFERALGAN 1000${NBSP}mg, comprimé effervescent${NBSP}?`;
 
 describe('Confirm: "I do not know" for a family already listed with a known strength', () => {
   async function listEfferalgan1000Times4() {

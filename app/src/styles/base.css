@@ -639,14 +639,32 @@ a {
   overflow-wrap: break-word;
 }
 
-/* Large text in a narrow card: give the words the room, not the frame. */
+/*
+ * Large text in a narrow card: give the words the room, not the frame (the
+ * reserve's padding stays at 12 px, as the banner's at 16 px). A reading word
+ * still wider than the line (a long remedy word at 200 percent on a 320 px
+ * phone) breaks at a syllable with a hyphen, never cut silently; product names
+ * are never hyphenated (.result-card__title), and who to show and when keeps
+ * whole words by stepping down in size (below).
+ */
 @container (max-width: 18rem) {
   .result-card__level {
     padding-inline: 0;
   }
 
   .result-card__body {
-    padding: var(--space-3);
+    padding: min(var(--space-3), 12px);
+  }
+
+  /*
+   * The reading fields and the details; never a product name (the title, a
+   * possible match, the name typed in "Vous avez écrit : ..."), the
+   * orientation, or a meta line (sources, evidence, the term note).
+   */
+  .result-card__body > p:not(.result-card__possible, .result-card__orientation, .meta),
+  .result-card__details p:not(.meta) {
+    hyphens: auto;
+    hyphenate-limit-chars: 16 6 6;
   }
 }
 
@@ -661,10 +679,15 @@ a {
   overflow-wrap: break-word;
 }
 
+/*
+ * Title size, down to the reading size when the card is narrow for the text
+ * size (a 360 px phone at 200 percent), as the banner's instruction does, so
+ * "pharmacien" and "d'information" keep their letters together.
+ */
 .result-card__orientation {
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-rule);
-  font-size: var(--font-size-title);
+  font-size: clamp(var(--font-size-body), 11cqi, var(--font-size-title));
   font-weight: var(--font-weight-heading);
   line-height: var(--line-height-snug);
   overflow-wrap: break-word;
@@ -797,8 +820,14 @@ a {
 
 .app {
   --column: 40rem;
-  /* Lines band content up with the screen's text, which sits inside its own 16 px padding. */
-  --column-gutter: max(var(--space-4), (100% - var(--column)) / 2 + var(--space-4));
+  /*
+   * The 16 px gutter of the column, never wider: at large text the room goes
+   * to the words, not to the edges (a 360 px phone at 200 percent keeps 328 px
+   * for the words, so "d'information" stays whole in a result card).
+   */
+  --gutter: min(var(--space-4), 16px);
+  /* Lines band content up with the screen's text, which sits inside its own gutter. */
+  --column-gutter: max(var(--gutter), (100% - var(--column)) / 2 + var(--gutter));
 
   display: flex;
   flex-direction: column;
@@ -814,7 +843,7 @@ a {
   width: 100%;
   max-width: var(--column);
   margin-inline: auto;
-  padding: var(--space-5) var(--space-4) var(--space-6);
+  padding: var(--space-5) var(--gutter) var(--space-6);
 }
 
 /*
@@ -836,12 +865,12 @@ a {
 }
 
 /*
- * Header: the ultramarine shell band. The app name leads home; the danger
- * signs shortcut keeps its place at the end of the row (it drops under the
- * name only when large text leaves no room), locked or not. Once the code is
- * given (and before it on the danger signs and who to call) the quick exit
- * follows it, at the end of the band: beside it on a wide screen, at the end
- * of a row of its own on a phone. The offline badge sits under them.
+ * Header: the ultramarine shell band, in two rows. The first holds the way
+ * home and the danger signs shortcut, which ends it, and nothing else: the
+ * shortcut keeps one place at every width and in every state, never taken by
+ * the quick exit. The second, only when there is something to show, holds the
+ * offline badge and the quick exit, 12 px under the first. A size container:
+ * on a narrow phone or at large text the name shows as the mark alone.
  */
 
 .header {
@@ -852,21 +881,50 @@ a {
   color: var(--color-primary-text);
 }
 
-/* Every row of the band ends at its end: the name's margin takes the room left on the first. */
+.header__inner {
+  container-type: inline-size;
+}
+
+/* A short screen: the band tightens around its 48 px targets, the screen keeps the room. */
+@media (max-height: 45rem) {
+  .header {
+    padding-block: var(--space-1);
+  }
+}
+
+/*
+ * The first row never wraps: at large text the shortcut's words wrap inside it
+ * rather than move it under the name, so it stays first and in its place. The
+ * name's margin takes the room left.
+ */
 .header__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: min(var(--space-3), 12px);
+}
+
+/* The second row: the badge and the quick exit, at its end, only when one of them shows. */
+.header__more {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2) var(--space-3);
+  gap: min(var(--space-2), 8px) min(var(--space-3), 12px);
+}
+
+.header__more:has(.offline-badge, .quick-exit) {
+  margin-top: var(--space-3);
 }
 
 /* The mark before the name makes it read as the way home, not a title. */
 .header__name {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   margin-inline-end: auto;
+  min-width: var(--touch-target);
   min-height: var(--touch-target);
   color: inherit;
   font-size: var(--font-size-title);
@@ -876,14 +934,32 @@ a {
 }
 
 @media (hover: hover) {
-  .header__name:hover {
+  a.header__name:hover {
     text-decoration: underline;
   }
 }
 
+/*
+ * A narrow phone (a 320 px phone at normal text): the name shows as the mark
+ * alone, a 48 px target that keeps the name as its accessible name, so the
+ * danger signs shortcut keeps its place at the end of the first row.
+ */
+@container (max-width: 20rem) {
+  .header__name-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* At large text its padding stays at 8, 12 and 16 px: the room goes to its words. */
 .header__danger {
   gap: var(--space-1);
-  padding-inline: var(--space-4) var(--space-3);
+  padding: min(var(--space-2), 8px) min(var(--space-3), 12px) min(var(--space-2), 8px)
+    min(var(--space-4), 16px);
   border-color: var(--color-surface);
   text-decoration: none;
 }
@@ -895,7 +971,8 @@ a {
  */
 .quick-exit {
   gap: var(--space-2);
-  padding-inline: var(--space-3) var(--space-4);
+  padding: min(var(--space-2), 8px) min(var(--space-4), 16px) min(var(--space-2), 8px)
+    min(var(--space-3), 12px);
   border-color: var(--color-primary-text);
   background: transparent;
   color: var(--color-primary-text);
@@ -932,15 +1009,22 @@ a {
  * transparent border shows in forced colours.
  */
 
-.offline-badge-region:not(:empty) {
-  padding-block: var(--space-1);
+/* Out of the row while online (an empty live region), still in the accessibility tree. */
+.offline-badge-region:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
+/* Compact at large text: its padding stays at 4, 12 and 8 px. */
 .offline-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+  gap: min(var(--space-2), 8px);
+  padding: min(var(--space-1), 4px) min(var(--space-3), 12px) min(var(--space-1), 4px)
+    min(var(--space-2), 8px);
   border: var(--border-width) solid transparent;
   border-radius: var(--radius-sm);
   background: var(--color-primary-hover);
@@ -1186,10 +1270,57 @@ a {
   cursor: not-allowed;
 }
 
-/* The digits keep their places as on a phone; the erase key takes a row of its own. */
-@container (max-width: 18rem) {
+/*
+ * The digits keep their places as on a phone, and "Effacer" keeps its key
+ * beside 0 (on a 320 px phone too), so the one wide button is the primary
+ * action; only when its word cannot fit a key (large text) does it take a
+ * row of its own.
+ */
+@container (max-width: 16rem) {
   .keypad__erase {
     grid-column: 1 / -1;
+  }
+}
+
+/*
+ * A short screen (a 320 x 640 phone): 48 px keys and tighter steps, so the
+ * primary action ("Continuer", "Ouvrir") stays in the first screen under the
+ * keypad, a wrong code said included.
+ */
+@media (max-height: 45rem) {
+  .code-setup,
+  .unlock {
+    gap: var(--space-4);
+    padding-top: var(--space-3);
+  }
+
+  .code-setup h1,
+  .unlock h1 {
+    font-size: var(--font-size-title);
+  }
+
+  .code-form {
+    gap: var(--space-4);
+  }
+
+  .code-input {
+    gap: var(--space-3);
+  }
+
+  .code-input .text-field {
+    gap: var(--space-1);
+  }
+
+  .code-input .text-field__input {
+    padding-block: var(--space-2);
+  }
+
+  .keypad {
+    gap: 6px;
+  }
+
+  .keypad__key {
+    min-height: var(--touch-target);
   }
 }
 
@@ -1224,6 +1355,17 @@ a {
 .code-setup__intro {
   display: grid;
   gap: var(--space-2);
+}
+
+/*
+ * A short screen after a wrong or different code: the error takes the place of
+ * the lead (said already at the first typing), so the primary action stays
+ * in the first screen.
+ */
+@media (max-height: 45rem) {
+  .code-setup:has(.text-field__error) .code-setup__intro p {
+    display: none;
+  }
 }
 
 /*
@@ -1395,6 +1537,11 @@ a {
   padding-inline-start: 1.25em;
 }
 
+/* No word left alone on the last line of a list item, as in a paragraph. */
+.about__section li {
+  text-wrap: pretty;
+}
+
 .about__section .about__sources {
   padding-inline-start: 0;
   list-style: none;
@@ -1403,6 +1550,13 @@ a {
 .about__sources li {
   display: grid;
   gap: var(--space-1);
+}
+
+/* A source's link is a thumb's target, 48 px tall at least, not a word to aim at. */
+.about__sources a {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target);
 }
 
 /* The licence, then the version, each on its own line. */
@@ -1431,6 +1585,17 @@ a {
 .about__done {
   width: 100%;
   margin-top: auto;
+}
+
+/* A question of the settings, then the button that applies a new answer, whole width. */
+.settings__group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.settings__apply {
+  width: 100%;
 }
 
 /* Settings: what the last choice did, in words; out of the layout while silent. */
@@ -1600,20 +1765,25 @@ a {
  * The primary action under a long list stays in reach of the thumb: held at
  * the bottom of the screen while the list scrolls (above the update band when
  * it shows), on the ground colour under a hairline, flat as everything else.
- * The page keeps room for it when it scrolls a focused answer into view.
+ * The page keeps room for it when it scrolls a focused element into view:
+ * its height as measured (ui/StickyAction.tsx, whatever the text size) and a
+ * little air, so the bar never hides what has the focus.
  */
 .sticky-action {
   position: sticky;
   bottom: var(--update-band-height, 0px);
   z-index: 1;
-  margin-inline: calc(-1 * var(--space-4));
-  padding: var(--space-3) var(--space-4);
+  margin-inline: calc(-1 * var(--gutter));
+  /* 12 px at most: at large text the room goes to the list, not to the bar. */
+  padding: min(var(--space-3), 12px) var(--gutter);
   border-top: 1px solid var(--color-rule);
   background: var(--color-bg);
 }
 
 html:has(.sticky-action) {
-  scroll-padding-block-end: calc(var(--update-band-height, 0px) + 6rem);
+  scroll-padding-block-end: calc(
+    var(--update-band-height, 0px) + var(--sticky-action-height, 6rem) + var(--space-2)
+  );
 }
 
 /*
@@ -1717,6 +1887,15 @@ html:has(.sticky-action) {
 .referral__status {
   font-weight: var(--font-weight-strong);
   overflow-wrap: break-word;
+}
+
+/* Out of the layout while silent, still in the accessibility tree, so its first words are read. */
+.referral__status:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 /*
@@ -1857,7 +2036,8 @@ html:has(.sticky-action) {
   margin-top: calc(-1 * var(--space-3));
 }
 
-.signs__loading {
+.signs__loading,
+.check__loading {
   color: var(--color-text-muted);
 }
 
@@ -2282,8 +2462,10 @@ html:has(.sticky-action) {
   list-style: none;
 }
 
+/* At large text on a narrow phone the words drop under the tile rather than cut a word. */
 .result-summary__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   padding-block: var(--space-2);

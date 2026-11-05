@@ -15,6 +15,7 @@ import {
   strengthChoiceOf,
   strengthOptionLabel,
   substancesWithMaxDose,
+  unitsHeld,
   writtenNameOf,
 } from './search-index.js';
 
@@ -86,11 +87,11 @@ describe('displayOf', () => {
   it('names a product in the interface language, with its substances and strengths', () => {
     // The strength keeps to its unit with a no-break space.
     expect(displayOf(pack, { kind: 'product', id: 'paracetamol-500-generic' }, 'fr')).toEqual({
-      name: 'Paracétamol 500 mg (générique)',
+      name: 'Paracétamol 500 mg (générique)',
       detail: 'Paracétamol 500 mg',
     });
     expect(displayOf(pack, { kind: 'product', id: 'paracetamol-500-generic' }, 'en')).toEqual({
-      name: 'Paracetamol 500 mg (generic)',
+      name: 'Paracetamol 500 mg (generic)',
       detail: 'Paracetamol 500 mg',
     });
     expect(
@@ -98,11 +99,25 @@ describe('displayOf', () => {
     ).toBe('Paracétamol 500 mg, Codéine 30 mg');
   });
 
-  it('gives a plant its Latin name as detail', () => {
+  it('gives a plant its Latin name as detail, marked as Latin', () => {
     expect(displayOf(pack, { kind: 'plant', id: 'moringa' }, 'en')).toEqual({
       name: 'Moringa',
       detail: 'Moringa oleifera',
+      detailLang: 'la',
     });
+  });
+
+  it('holds every number of a product name to its unit, so "1000 mg" never splits', () => {
+    expect(displayOf(pack, { kind: 'product', id: 'doliprane-1000-mg-60234100' }, 'fr').name).toBe(
+      'DOLIPRANE 1000 mg, comprimé',
+    );
+    // Any number then a unit, joined by an ordinary space: none left in any name.
+    const split = /\d (?:mg|g|ml|mL|microgrammes|%|pour cent)(?!\p{L})/iu;
+    for (const product of pack.products) {
+      for (const lang of ['fr', 'en'] as const) {
+        expect(displayOf(pack, { kind: 'product', id: product.id }, lang).name).not.toMatch(split);
+      }
+    }
   });
 
   it('keeps the text of an unrecognised item, and the id of an item the pack lost', () => {
@@ -147,11 +162,12 @@ describe('displayOf', () => {
 describe('strengthOptionLabel', () => {
   it('says the brand once: each answer starts with what differs', () => {
     const candidate = first('doliprane', 'product');
+    // The number held to its unit by a no-break space.
     expect(strengthOptionLabel(pack, candidate, 'doliprane-1000-mg-60234100', 'fr')).toBe(
-      '1000 mg, comprimé',
+      '1000 mg, comprimé',
     );
     expect(strengthOptionLabel(pack, candidate, 'doliprane-2-4-pour-cent-66477582', 'fr')).toBe(
-      '2,4 POUR CENT, suspension buvable',
+      '2,4 POUR CENT, suspension buvable',
     );
   });
 });
@@ -216,6 +232,7 @@ describe('candidateDisplayOf', () => {
     expect(candidateDisplayOf(pack, first('nebeday', 'plant'), 'nebeday', 'fr')).toEqual({
       name: 'Moringa',
       detail: 'Moringa oleifera',
+      detailLang: 'la',
     });
   });
 
@@ -249,12 +266,12 @@ describe('displayOf a product of a family that differs only by its forms', () =>
     // CODOLIPRANE ADULTES 400 mg/20 mg is a variant of CODOLIPRANE 500 mg/30 mg.
     expect(
       displayOf(pack, { kind: 'product', id: 'codoliprane-500-mg-30-mg-62049552' }, 'fr').name,
-    ).toBe('CODOLIPRANE 500 mg/30 mg, gélule');
+    ).toBe('CODOLIPRANE 500 mg/30 mg, gélule');
   });
 
   it('keeps the whole name in a family of several strengths', () => {
     expect(displayOf(pack, { kind: 'product', id: 'efferalgan-500-mg-67326925' }, 'fr').name).toBe(
-      'EFFERALGAN 500 mg, comprimé',
+      'EFFERALGAN 500 mg, comprimé',
     );
   });
 });
@@ -287,7 +304,9 @@ describe('displayOf a product of a family without any strength in mg', () => {
         p.brands.length > 0,
     );
     if (alone === undefined) throw new Error('no product alone in its family without a strength');
-    expect(displayOf(pack, { kind: 'product', id: alone.id }, 'fr').name).toBe(alone.names.fr);
+    expect(displayOf(pack, { kind: 'product', id: alone.id }, 'fr').name).toBe(
+      unitsHeld(alone.names.fr),
+    );
   });
 });
 
@@ -412,17 +431,17 @@ describe('strengthOptionLabel', () => {
   it('drops the brand of a COVERSYL strength', () => {
     const candidate = first('coversyl', 'product');
     expect(strengthOptionLabel(pack, candidate, 'coversyl-2-5-mg-69475939', 'fr')).toBe(
-      '2,5 mg, comprimé pelliculé',
+      '2,5 mg, comprimé pelliculé',
     );
   });
 
   it('starts a generic strength with what the box shows, as for a brand', () => {
     const candidate = first('paracetamol', 'product');
     expect(strengthOptionLabel(pack, candidate, 'paracetamol-500-generic', 'fr')).toBe(
-      '500 mg, comprimé',
+      '500 mg, comprimé',
     );
     expect(strengthOptionLabel(pack, candidate, 'paracetamol-1000-generic', 'en')).toBe(
-      '1000 mg, comprimé',
+      '1000 mg, comprimé',
     );
   });
 });

@@ -304,13 +304,13 @@ describe('Result: several products in one finding', () => {
     await openResult({ items: [doliprane, sachet] });
 
     const name =
-      'À montrer avant la prochaine prise. DOLIPRANE 1000 mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)';
+      'À montrer avant la prochaine prise. DOLIPRANE 1000 mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)';
     // A duplicate and a daily maximum: two cards about the same two products.
     const cards = await screen.findAllByRole('article', { name });
     expect(cards).toHaveLength(2);
     const lines = [...(cards[0]?.querySelectorAll('.result__name') ?? [])];
     expect(lines.map((line) => line.textContent)).toEqual([
-      'DOLIPRANE 1000 mg, comprimé',
+      'DOLIPRANE 1000 mg, comprimé',
       'et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
     ]);
     const rows = within(screen.getByRole('list', { name: 'Résumé' })).getAllByRole('listitem');
@@ -478,7 +478,7 @@ describe('Result: one finding, the way back', () => {
     await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
 
     const card = await screen.findByRole('article', {
-      name: 'À montrer avant la prochaine prise. ADVIL 400 mg, comprimé enrobé',
+      name: 'À montrer avant la prochaine prise. ADVIL 400 mg, comprimé enrobé',
     });
     expect(
       within(card).getByText(

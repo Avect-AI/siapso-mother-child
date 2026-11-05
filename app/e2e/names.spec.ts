@@ -87,7 +87,8 @@ test('Advil typed as free text at 28 weeks: the card of what it looks like, befo
   page,
 }) => {
   await pregnantAt(page, 28, 'Aucune de ces situations');
-  await addAsTyped(page, 'Advil 400 mg comprimé pelliculé', /^ADVIL 400 mg/);
+  // The strength held to its unit by a no-break space ("\s" reads it).
+  await addAsTyped(page, 'Advil 400 mg comprimé pelliculé', /^ADVIL 400\smg/);
   await seeResult(page);
 
   const possible = page.getByRole('article', {

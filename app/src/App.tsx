@@ -273,20 +273,43 @@ function Screens() {
   );
   const key = screenKey(screen, profile, check, contact);
   const shown = useRef(key);
+  // The screen on show has not had the focus yet (its heading is still to come).
+  const focusOwed = useRef(false);
 
   // A new screen takes the focus to its heading, so a screen reader starts
   // reading it from the top, or to the field the screen exists for (the
   // search: its label says what the heading says); not on the first screen of
-  // a load, which starts there anyway.
+  // a load, which starts there anyway. A screen that shows its heading only
+  // once it has read what it needs (the check, her profile) gets the focus
+  // then, unless something already took it.
   useEffect(() => {
     const previous = shown.current;
-    if (previous === key) return;
-    shown.current = key;
-    if (previous === 'loading') return;
-    const target =
+    if (previous !== key) {
+      shown.current = key;
+      focusOwed.current = previous !== 'loading';
+    }
+    if (!focusOwed.current) return;
+    const target = () =>
       document.querySelector<HTMLElement>('main [data-autofocus]') ??
       document.querySelector<HTMLElement>('main h1');
-    target?.focus();
+    const now = target();
+    if (now !== null) {
+      focusOwed.current = false;
+      now.focus();
+      return;
+    }
+    const observer = new MutationObserver(() => {
+      const found = target();
+      if (found === null) return;
+      observer.disconnect();
+      focusOwed.current = false;
+      const active = document.activeElement;
+      if (active === null || active === document.body) found.focus();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+    };
   }, [key]);
 
   if (screen === null) return <Redirect to="/" replace />;
@@ -304,29 +327,31 @@ function Screens() {
       (session.status === 'locked' && (screen === 'danger' || screen === 'call')));
   return (
     <>
-      {screen === 'welcome' ? null : (
-        <Header
-          appName={APP_NAME}
-          dangerLabel={t('header.danger')}
-          offlineLabel={t('header.offline')}
-          online={online}
-          current={
-            screen === 'home' || screen === 'profiles'
-              ? 'home'
-              : screen === 'danger'
-                ? 'danger'
-                : null
-          }
-          quickExit={exitShown ? { label: t('header.quickExit'), onExit: session.quickExit } : null}
-        />
-      )}
+      {/* On every screen: the danger signs are one tap away even during the
+          welcome. The welcome shows the app's mark and name itself. */}
+      <Header
+        appName={screen === 'welcome' ? null : APP_NAME}
+        dangerLabel={t('header.danger')}
+        offlineLabel={t('header.offline')}
+        online={online}
+        current={
+          screen === 'home' || screen === 'profiles'
+            ? 'home'
+            : screen === 'danger'
+              ? 'danger'
+              : null
+        }
+        quickExit={exitShown ? { label: t('header.quickExit'), onExit: session.quickExit } : null}
+      />
       {screen === 'welcome' ? <Welcome /> : null}
       {screen === 'mode' ? <Welcome modeOnly /> : null}
       {screen === 'code' ? <CodeSetup mode={session.mode} /> : null}
       {screen === 'unlock' ? <Unlock /> : null}
       {screen === 'forgot' ? <ForgotCode /> : null}
       {screen === 'neutral' ? <Neutral /> : null}
-      {screen === 'settings' ? <Settings /> : null}
+      {/* A lock starts a new epoch: a language or a mode chosen and not applied
+          is forgotten with it, never left for whoever gives the code next. */}
+      {screen === 'settings' ? <Settings key={session.epoch} /> : null}
       {screen === 'status' ? <Status /> : null}
       {screen === 'about' ? <About /> : null}
       {screen === 'home' ? <Home /> : null}

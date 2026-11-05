@@ -8,6 +8,7 @@ import { forgetStaleEntry, inSession, sessionState } from '../state/entry-state.
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { StickyAction } from '../ui/StickyAction.js';
 import { CALL_PATH } from './Referral.js';
 
 /**
@@ -91,11 +92,11 @@ export function Danger() {
             }))}
           />
           {/* Held at the bottom while the list scrolls: in reach once a sign is ticked. */}
-          <div className="sticky-action">
+          <StickyAction>
             <Button type="submit" variant="primary" className="danger__now">
               {t('danger.now')}
             </Button>
-          </div>
+          </StickyAction>
         </form>
       );
   } else if (packError !== null) {

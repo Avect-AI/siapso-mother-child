@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { LEVELS, type Level } from '@siapso/engine';
 import { Button, DangerBanner, LevelBadge, LevelIcon, ResultCard, TextField } from './index.js';
+import { STICKY_HEIGHT, StickyAction } from './StickyAction.js';
 
 const baseCss = readFileSync(join(import.meta.dirname, '../styles/base.css'), 'utf8');
 const tokensCss = readFileSync(join(import.meta.dirname, '../styles/tokens.css'), 'utf8');
@@ -264,7 +265,10 @@ describe('ResultCard', () => {
   });
 
   it('makes who to show and when the clearest line of the reserve, apart from the product name', () => {
-    expect(rule('.result-card__orientation')).toMatch(/font-size:\s*var\(--font-size-title\)/);
+    // Title size, down to the reading size in a card narrow for the text size, so its words stay whole.
+    expect(rule('.result-card__orientation')).toMatch(
+      /font-size:\s*clamp\(var\(--font-size-body\),[^;]*var\(--font-size-title\)\)/,
+    );
     expect(rule('.result-card__orientation')).toMatch(
       /font-weight:\s*var\(--font-weight-heading\)/,
     );
@@ -295,7 +299,17 @@ describe('ResultCard', () => {
     expect(rule('.result-card__level')).toMatch(/font-size:\s*var\(--font-size-title\)/);
     expect(rule('.result-card__level')).toMatch(/font-weight:\s*var\(--font-weight-heading\)/);
     expect(rule('.result-card__title')).toMatch(/font-size:\s*var\(--font-size-body\)/);
-    expect(baseCss).not.toMatch(/hyphens:\s*auto/);
+    // Hyphens only for a reading word too wide for its line in a narrow card:
+    // never the product names (the title, a possible match, the name typed in
+    // a meta line, "Vous avez écrit : ..."), nor who and when, nor any meta
+    // line (sources, evidence, the term note).
+    const hyphenated = [...baseCss.matchAll(/([^{}]+)\{[^{}]*hyphens:\s*auto/g)].map((match) =>
+      (match[1] ?? '').replace(/\/\*[^]*?\*\//g, '').trim(),
+    );
+    expect(hyphenated).toEqual([
+      '.result-card__body > p:not(.result-card__possible, .result-card__orientation, .meta),\n  .result-card__details p:not(.meta)',
+    ]);
+    expect(baseCss).toMatch(/@container \(max-width: 18rem\) \{[^@]*hyphens:\s*auto/);
   });
 
   it('keeps form errors off the danger red', () => {
@@ -374,6 +388,15 @@ describe('DangerBanner', () => {
     expect(rule('.danger-banner__level')).toMatch(/font-size:\s*var\(--font-size-body\)/);
   });
 
+  it('says its instruction once: no group around it is named by the same words', () => {
+    const { container } = banner();
+    // A group named by its own heading made screen readers say the instruction
+    // twice: as the group's name, then as the heading in the alert.
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(container.querySelector('[aria-labelledby]')).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('Allez au poste de santé maintenant.');
+  });
+
   it('runs its action', async () => {
     const onAction = vi.fn();
     banner(onAction);
@@ -409,5 +432,25 @@ describe('DangerBanner', () => {
     expect(heading).not.toHaveClass('danger-banner__title--long');
     expect(rule('.danger-banner__title')).toMatch(/font-size:[^;]*var\(--font-size-headline\)/);
     expect(rule('.danger-banner__level')).toMatch(/font-size:\s*var\(--font-size-body\)/);
+  });
+});
+
+describe('StickyAction', () => {
+  it('gives the page its height as the room to keep under a focused element, while it shows', () => {
+    const { unmount } = render(
+      <StickyAction>
+        <Button variant="primary">C'est grave maintenant</Button>
+      </StickyAction>,
+    );
+    expect(screen.getByRole('button').parentElement).toHaveClass('sticky-action');
+    expect(document.documentElement.style.getPropertyValue(STICKY_HEIGHT)).toMatch(
+      /^\d+(\.\d+)?px$/,
+    );
+    // The page's scroll padding is the measured height, not a fixed guess.
+    expect(baseCss).toMatch(
+      /html:has\(\.sticky-action\) \{\s*scroll-padding-block-end: calc\([^;]*var\(--sticky-action-height/,
+    );
+    unmount();
+    expect(document.documentElement.style.getPropertyValue(STICKY_HEIGHT)).toBe('');
   });
 });

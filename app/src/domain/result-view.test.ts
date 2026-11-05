@@ -68,7 +68,7 @@ describe('buildResultView: woman mode', () => {
     expect(finding).toMatchObject({
       level: 'before-next-dose',
       levelLabel: 'À montrer avant la prochaine prise',
-      title: 'ADVIL 400 mg, comprimé enrobé',
+      title: 'ADVIL 400 mg, comprimé enrobé',
       orientation:
         "Montrez ce produit à la sage-femme, à l'infirmier ou au pharmacien avant la prochaine prise.",
       capped: false,
@@ -307,7 +307,7 @@ describe('buildResultView: titles', () => {
       'woman',
     );
     expect(duplicate.findings[0]?.title).toBe(
-      'DOLIPRANE 1000 mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
+      'DOLIPRANE 1000 mg, comprimé et Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
     );
     const english = viewOf(
       contextOf({ pregnancy: weeks(16), items: [DOLIPRANE, SACHET] }),
@@ -316,7 +316,7 @@ describe('buildResultView: titles', () => {
     );
     // A BDPM product keeps its French name in English (the name on the box).
     expect(english.findings[0]?.title).toBe(
-      'DOLIPRANE 1000 mg, comprimé and Cold remedy sachet (paracetamol, pheniramine, vitamin C)',
+      'DOLIPRANE 1000 mg, comprimé and Cold remedy sachet (paracetamol, pheniramine, vitamin C)',
     );
     const fever = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), 'woman');
     expect(onlyFinding(fever).title).toBe(pack.dangerSigns.find((d) => d.id === 'fever')?.label.fr);
@@ -330,7 +330,7 @@ describe('buildResultView: titles', () => {
       'woman',
     );
     expect(duplicate.findings[0]?.names).toEqual([
-      'DOLIPRANE 1000 mg, comprimé',
+      'DOLIPRANE 1000 mg, comprimé',
       'Sachet contre le rhume (paracétamol, phéniramine, vitamine C)',
     ]);
     const fever = viewOf(contextOf({ pregnancy: weeks(14), signs: ['fever'] }), 'woman');
@@ -894,7 +894,7 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
     const possible = view.findings.find((f) => f.level === 'before-next-dose');
     expect(possible).toMatchObject({
       title: text,
-      possible: `Ce nom ressemble à ADVIL 400 mg, comprimé enrobé (Ibuprofène 400${NBSP}mg). Si c'est ce produit${NBSP}:`,
+      possible: `Ce nom ressemble à ADVIL 400${NBSP}mg, comprimé enrobé (Ibuprofène 400${NBSP}mg). Si c'est ce produit${NBSP}:`,
     });
     // The text typed is still not recognised: its grey card stays, for the other case.
     const own = view.findings.find((f) => f.level === 'unknown');

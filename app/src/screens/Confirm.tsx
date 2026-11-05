@@ -18,7 +18,7 @@ import {
   type ConfirmCandidate,
 } from '../domain/search-index.js';
 import { parseUnits, stepUnits } from '../domain/units.js';
-import { useLang, useT, type MessageKey } from '../i18n/index.js';
+import { useLang, useT, useTNodes, type MessageKey } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
@@ -201,6 +201,7 @@ function ConfirmForm({
   onSearchAgain: () => void;
 }) {
   const t = useT();
+  const tNodes = useTNodes();
   const lang = useLang();
   const check = useCheck();
   const [, navigate] = useLocation();
@@ -396,13 +397,21 @@ function ConfirmForm({
     <form ref={formRef} className="confirm__form" noValidate onSubmit={confirm}>
       <div className="confirm__product">
         <p className="confirm__name">{shown.name}</p>
-        {shown.detail === undefined ? null : <p className="confirm__detail">{shown.detail}</p>}
+        {shown.detail === undefined ? null : (
+          // A Latin name is read with Latin rules (WCAG 3.1.2).
+          <p className="confirm__detail" lang={shown.detailLang}>
+            {shown.detail}
+          </p>
+        )}
         {chosen?.strengthUnknown === true ? (
           <p className="confirm__detail">{t('check.strengthUnknown')}</p>
         ) : null}
         {local === undefined ? null : (
           <p className="meta">
-            {t('search.localName', { name: local.text, lang: t(`nameLang.${local.lang}`) })}
+            {tNodes('search.localName', {
+              name: <span lang={local.lang}>{local.text}</span>,
+              lang: t(`nameLang.${local.lang}`),
+            })}
           </p>
         )}
         {written === undefined ? null : (

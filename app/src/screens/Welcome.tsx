@@ -5,12 +5,27 @@ import { APP_NAME } from '../config.js';
 import type { Mode } from '../domain/types.js';
 import { translate, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
+import { inVisit, visitState } from '../state/entry-state.js';
 import { AppMark } from '../ui/AppMark.js';
 import { Button } from '../ui/Button.js';
 import { Notice } from '../ui/Notice.js';
 import { CodeSetup } from './CodeSetup.js';
 
 type Step = 'language' | 'mode' | 'code';
+
+/** Where the welcome's history entry keeps the step reached. */
+const WELCOME_STEP = 'welcomeStep';
+
+/**
+ * The step reached on this history entry in this visit (Back from the danger
+ * signs, opened from the band during the welcome), else the first. The code
+ * step needs the mode answered.
+ */
+function reachedStep(modeKnown: boolean): Step {
+  const step = visitState()[WELCOME_STEP];
+  if (step === 'code') return modeKnown ? 'code' : 'mode';
+  return step === 'mode' ? 'mode' : 'language';
+}
 
 /**
  * A large two-line choice. Its name is everything it shows, label then hint
@@ -38,16 +53,21 @@ function Choice({ label, hint, onChoose }: { label: string; hint: string; onChoo
 export function Welcome({ modeOnly = false }: { modeOnly?: boolean }) {
   const t = useT();
   const { settings, setSettings, settingsUnavailable } = useApp();
-  const [step, setStep] = useState<Step>(modeOnly ? 'mode' : 'language');
+  const [step, setStep] = useState<Step>(() =>
+    modeOnly ? 'mode' : reachedStep(settings.mode !== null),
+  );
   const question = useRef<HTMLHeadingElement>(null);
   const shown = useRef(step);
 
-  // The button just pressed disappears with its step: put focus on the new question.
+  // The button just pressed disappears with its step: put focus on the new
+  // question. The step is kept on the history entry (in memory, as every
+  // screen's values), so Back from the danger signs comes back to it.
   useEffect(() => {
+    if (!modeOnly) window.history.replaceState(inVisit({ [WELCOME_STEP]: step }), '');
     if (shown.current === step) return;
     shown.current = step;
     question.current?.focus();
-  }, [step]);
+  }, [modeOnly, step]);
 
   // The screen follows each answer at once; storing it happens in the background.
   const chooseLanguage = (lang: Lang) => {

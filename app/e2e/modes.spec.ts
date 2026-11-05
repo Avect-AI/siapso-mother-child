@@ -308,6 +308,9 @@ test('changing the mode in the settings needs the code and deletes nothing', asy
 
   await page.getByRole('link', { name: 'Réglages' }).click();
   await page.getByText("J'accompagne des femmes", { exact: true }).click();
+  // The answer alone changes nothing: the mode changes with its button.
+  await page.getByRole('button', { name: 'Changer de mode' }).click();
+  await expect(page.getByText('Réglage enregistré.')).toBeVisible();
   await page.getByRole('button', { name: "Revenir à l'accueil" }).click();
 
   await expect(

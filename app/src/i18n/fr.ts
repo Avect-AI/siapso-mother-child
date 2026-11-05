@@ -297,6 +297,8 @@ export const fr = {
     // Woman mode: what she takes herself; accompanied mode: what the woman takes.
     titleWoman: 'Ce que vous prenez',
     titleAccompanied: "Ce qu'elle prend",
+    // Said only when the profile takes a moment to read.
+    loading: 'Chargement en cours.',
     lead: 'Ajoutez chaque médicament et chaque remède, un par un.',
     profile: 'Profil : {name}',
     listLabel: 'Produits ajoutés',
@@ -631,6 +633,10 @@ export const fr = {
     modeWomanNote:
       "En mode « Je suis enceinte ou j'allaite », seul votre profil s'ouvre. Les autres restent sur ce téléphone.",
     changed: 'Réglage enregistré.',
+    // A choice applies with its button, never with the answer alone. The
+    // language button is said in the language it switches to.
+    applyLanguage: 'Passer en français',
+    applyMode: 'Changer de mode',
     done: "Revenir à l'accueil",
   },
   // The two links to the status and about screens, on Home, the list of

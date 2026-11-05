@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { getStoredSettings, getStoredVerifier } from '../data/db.js';
@@ -65,7 +65,36 @@ describe('Welcome', () => {
     expect(screen.getByText('Choose your language')).toHaveAttribute('lang', 'en');
     expect(screen.getByRole('button', { name: 'Français' })).toHaveAttribute('lang', 'fr');
     expect(screen.getByRole('button', { name: 'English' })).toHaveAttribute('lang', 'en');
-    expect(screen.queryByRole('banner')).toBeNull();
+  });
+
+  it('keeps the danger signs one tap away in the band at every step, and comes back to the step', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    const dangerLink = () =>
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Signes de danger' });
+
+    await screen.findByRole('button', { name: 'Français' });
+    expect(dangerLink()).toHaveAttribute('href', '#/danger');
+    // The welcome shows the mark and the name itself: the band has no way home to itself.
+    expect(within(screen.getByRole('banner')).queryByRole('link', { name: 'Carnet' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Français' }));
+    await screen.findByRole('heading', { name: "Qui utilise l'application ?" });
+    expect(dangerLink()).toBeVisible();
+    await user.click(screen.getByRole('button', { name: /^Je suis enceinte ou j'allaite/ }));
+    await screen.findByRole('heading', { level: 1, name: 'Choisissez un code' });
+
+    await user.click(dangerLink());
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Signes de danger' }),
+    ).toBeVisible();
+    act(() => {
+      window.history.back();
+    });
+    // Back to the step she had reached, her answers kept.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Choisissez un code' }),
+    ).toBeVisible();
+    expect(screen.getByText('Ce code ouvre votre profil sur ce téléphone.')).toBeVisible();
   });
 
   it('stores French and woman mode, then shows Home in French', async () => {

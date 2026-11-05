@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { CODE_MAX, isCode, lockoutDelayMs, remainingLockMs } from '../domain/code.js';
+import { CODE_MAX, isCode, remainingLockMs } from '../domain/code.js';
 import { useT, type MessageKey, type Vars } from '../i18n/index.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { CodeInput } from '../ui/CodeInput.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { digitCount } from './code-words.js';
 import { FORGOT_PATH } from './ForgotCode.js';
@@ -42,6 +43,16 @@ export function Unlock() {
   const field = useRef<HTMLInputElement>(null);
   const left = remainingLockMs(lockout, now);
   const waiting = left > 0;
+  // The status region is empty when the screen appears, then says what it has
+  // to say: a wait still running after a reload is read out too.
+  const ready = useLiveRegionReady();
+  // A wait as this screen first showed it: the whole wait after a wrong code,
+  // the time left after a reload. Said once, as shown then; the countdown
+  // itself is not read out.
+  const [saidWait, setSaidWait] = useState<{ until: number; left: number } | null>(null);
+  if (waiting && lockout.lockedUntil !== null && saidWait?.until !== lockout.lockedUntil) {
+    setSaidWait({ until: lockout.lockedUntil, left });
+  }
 
   // The countdown: the clock read again every second while a wait runs.
   useEffect(() => {
@@ -65,7 +76,7 @@ export function Unlock() {
   let said = '';
   if (waiting) {
     shown = t(...waitMessage(left));
-    said = t(...waitMessage(lockoutDelayMs(lockout.failures)));
+    said = t(...waitMessage(saidWait?.until === lockout.lockedUntil ? saidWait.left : left));
   } else if (problem === 'invalid') {
     shown = t('code.invalid');
     said = shown;
@@ -125,7 +136,7 @@ export function Unlock() {
           }}
         />
         <p className="sr-only" role="status">
-          {busy ? t('code.opening') : said}
+          {busy ? t('code.opening') : ready ? said : ''}
         </p>
         {/* aria-disabled, not disabled: the focus stays on it while the wait runs. */}
         <Button

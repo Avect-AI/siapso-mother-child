@@ -14,9 +14,13 @@ import { useApp, withTimeout } from '../state/app-state.js';
 import { activeProfile, useCheck, type CheckChange } from '../state/check-state.js';
 import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { flowEntry, searchPath } from './check-flow.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+
+/** How long her profile may take to read before the screen says it is loading. */
+const CHECK_LOADING_DELAY_MS = 600;
 
 /** The last change to the list, said under it. */
 type Change =
@@ -63,7 +67,10 @@ function Item({
             {t(list === 'plant' ? 'check.notRecognisedPlant' : 'check.notRecognised')}
           </p>
         ) : shown.detail === undefined ? null : (
-          <p className="meta">{shown.detail}</p>
+          // A Latin name is read with Latin rules (WCAG 3.1.2).
+          <p className="meta" lang={shown.detailLang}>
+            {shown.detail}
+          </p>
         )}
         {item.strengthUnknown === true ? (
           <p className="meta">{t('check.strengthUnknown')}</p>
@@ -127,6 +134,8 @@ export function Check() {
   const emptyId = useId();
   const { start, profileId, changed, clearChanged } = check;
   useWarmSearchIndex(pack);
+  // True once the profile has taken a moment to read: the loading status speaks then.
+  const slow = useLiveRegionReady(CHECK_LOADING_DELAY_MS);
 
   // What the confirm or search screen just did to the list (added, already
   // there, updated) is said once, after this screen is up, so the live region
@@ -151,8 +160,10 @@ export function Check() {
       const lastAt = active === undefined ? undefined : await latestHistoryAt(active.id);
       return { profiles, active, lastAt };
     };
-    withTimeout(load(), storageTimeoutMs).then(
-      ({ profiles, active, lastAt }) => {
+    // What is done with the profile is in the chain too: an error there says
+    // the profiles could not be read, never leaves the screen empty.
+    withTimeout(load(), storageTimeoutMs)
+      .then(({ profiles, active, lastAt }) => {
         if (!live) return;
         if (active === undefined) {
           // Accompanied mode with profiles, none chosen: she is chosen in the list.
@@ -167,12 +178,11 @@ export function Check() {
         start(active.id);
         // Today from the phone's clock, handed to pure code.
         setProfile({ profile: active, today: todayIso(new Date()), lastAt });
-      },
-      (failure: unknown) => {
+      })
+      .catch((failure: unknown) => {
         console.warn('Profiles not read on this device', failure);
         if (live) setFailed(true);
-      },
-    );
+      });
     return () => {
       live = false;
     };
@@ -202,6 +212,21 @@ export function Check() {
     // One entry after this one: adding an item comes back here (check-flow.ts).
     navigate(searchPath(kind), { state: flowEntry({ stepsToCheck: 1 }) });
   };
+
+  // Nothing until her profile is read: without one, the profile screen opens
+  // instead, so the check never shows first, nor takes the focus, before it.
+  // The heading comes with the profile and takes the focus then (App.tsx).
+  // When storage is slow, a status says it is loading, after a moment only
+  // (a phone that answers at once never shows it).
+  if (profile === null && !failed) {
+    return (
+      <main className="screen check">
+        <p className="check__loading" role="status">
+          {slow ? t('check.loading') : ''}
+        </p>
+      </main>
+    );
+  }
 
   // A day the app has already seen: the knowledge pack's date, her last result.
   const notBefore = profile === null ? undefined : latestDay(pack?.date, profile.lastAt);

@@ -168,6 +168,24 @@ export interface ItemDisplay {
   name: string;
   /** Substances and strengths of a product, the Latin name of a plant. */
   detail: string | undefined;
+  /** The language of the detail when it is not the interface's: Latin for a plant's name. */
+  detailLang?: 'la';
+}
+
+/** A number, then a unit of a strength or a volume, as product names write them. */
+const NUMBER_THEN_UNIT =
+  /(\d)\s+(mg|g|µg|mcg|microgrammes?|milligrammes?|ml|UI|%|pour\s+cent)(?![\p{L}\d])/giu;
+
+/**
+ * A product name as shown: each number held to its unit by a no-break space
+ * ("1000 mg", "2,4 POUR CENT"), so a name never splits between them across
+ * two lines ("DOLIPRANE 1000" then "mg, comprimé" reads as another product).
+ */
+export function unitsHeld(name: string): string {
+  return name.replace(
+    NUMBER_THEN_UNIT,
+    (_match, digit: string, unit: string) => `${digit}\u00a0${unit.replace(/\s+/g, '\u00a0')}`,
+  );
 }
 
 /**
@@ -212,13 +230,13 @@ export function displayOf(
     if (product === undefined) return { name: ref.id, detail: undefined };
     if (strengthUnknown) return familyDisplayOf(pack, product, lang);
     return {
-      name: formsOnlyName(pack, product, lang) ?? product.names[lang],
+      name: unitsHeld(formsOnlyName(pack, product, lang) ?? product.names[lang]),
       detail: productDetail(pack, product, lang),
     };
   }
   const plant = pack.plants.find((p) => p.id === ref.id);
   return plant
-    ? { name: plant.names[lang], detail: plant.latinName }
+    ? { name: plant.names[lang], detail: plant.latinName, detailLang: 'la' }
     : { name: ref.id, detail: undefined };
 }
 
@@ -326,12 +344,12 @@ function familyDisplayOf(pack: Pack, product: Product, lang: Lang): ItemDisplay 
   const family = indexedOf(pack).familyOf.get(product.id) ?? '';
   const substances = substanceNames(pack, product, lang);
   if (!family.startsWith(GENERIC_FAMILY)) {
-    return { name: product.brands[0] ?? substances, detail: substances };
+    return { name: unitsHeld(product.brands[0] ?? substances), detail: substances };
   }
   const plain = (indexedOf(pack).members.get(family) ?? [])
     .map((id) => productOf(pack, id))
     .find((p): p is Product => p !== undefined && hasNoStrength(p));
-  return { name: plain?.names[lang] ?? substances, detail: substances };
+  return { name: unitsHeld(plain?.names[lang] ?? substances), detail: substances };
 }
 
 export interface StrengthChoice {
@@ -446,7 +464,7 @@ export function strengthOptionLabel(
     // Written as the names of the brand products are ("1000 mg, comprimé").
     const number = new Intl.NumberFormat(lang, { useGrouping: false, maximumFractionDigits: 3 });
     const strengths = product.components.flatMap((c) =>
-      c.strengthMg === undefined ? [] : [`${number.format(c.strengthMg)} mg`],
+      c.strengthMg === undefined ? [] : [`${number.format(c.strengthMg)}\u00a0mg`],
     );
     if (strengths.length > 0) return `${strengths.join('/')}, ${product.form}`;
   }
@@ -455,9 +473,11 @@ export function strengthOptionLabel(
   const brand = candidate.family.startsWith(GENERIC_FAMILY)
     ? undefined
     : productOf(pack, candidate.id)?.brands[0];
-  if (brand === undefined || !name.toLowerCase().startsWith(brand.toLowerCase())) return name;
+  if (brand === undefined || !name.toLowerCase().startsWith(brand.toLowerCase())) {
+    return unitsHeld(name);
+  }
   const after = name.charAt(brand.length);
-  if (after !== ' ' && after !== ',') return name;
+  if (after !== ' ' && after !== ',') return unitsHeld(name);
   const rest = name.slice(brand.length).replace(/^[\s,]+/, '');
-  return rest === '' ? name : rest;
+  return unitsHeld(rest === '' ? name : rest);
 }

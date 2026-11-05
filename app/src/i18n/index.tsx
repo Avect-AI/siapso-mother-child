@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Lang } from '@siapso/engine';
-import { createContext, useCallback, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, Fragment, useCallback, useContext, useEffect, type ReactNode } from 'react';
 import { translate, type MessageKey, type Vars } from './translate.js';
 
 export type { MessageKey, Vars } from './translate.js';
@@ -27,4 +27,28 @@ export function useLang(): Lang {
 export function useT(): (key: MessageKey, vars?: Vars) => string {
   const lang = useLang();
   return useCallback((key: MessageKey, vars?: Vars) => translate(lang, key, vars), [lang]);
+}
+
+/**
+ * A translation function whose placeholders take elements as well as text,
+ * for a word that must carry its own language (a Wolof name, lang="wo") in a
+ * sentence of the interface. A placeholder without a value stays visible.
+ */
+export function useTNodes(): (key: MessageKey, vars: Record<string, ReactNode>) => ReactNode {
+  const lang = useLang();
+  return useCallback(
+    (key: MessageKey, vars: Record<string, ReactNode>) =>
+      // The template itself (no values given), split around its placeholders:
+      // even parts are text, odd parts are placeholder names.
+      translate(lang, key)
+        .split(/\{(\w+)\}/)
+        .map((part, index) =>
+          index % 2 === 0 ? (
+            part
+          ) : (
+            <Fragment key={`${part}:${String(index)}`}>{vars[part] ?? `{${part}}`}</Fragment>
+          ),
+        ),
+    [lang],
+  );
 }

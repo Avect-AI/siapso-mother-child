@@ -9,7 +9,7 @@ import {
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
 import { candidateDisplayOf, localNameOf } from '../domain/search-index.js';
-import { useLang, useT } from '../i18n/index.js';
+import { useLang, useT, useTNodes } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { useSearchIndex } from '../state/search-index.js';
@@ -69,6 +69,7 @@ function CandidateButton({
   onChoose: () => void;
 }) {
   const t = useT();
+  const tNodes = useTNodes();
   const lang = useLang();
   const { pack } = useApp();
   if (pack === null) return null;
@@ -87,11 +88,17 @@ function CandidateButton({
         <span className="candidate__text">
           <span className="candidate__name">{shown.name}</span>
           {shown.detail === undefined ? null : (
-            <span className="candidate__detail">{shown.detail}</span>
+            // A Latin name is read with Latin rules (WCAG 3.1.2).
+            <span className="candidate__detail" lang={shown.detailLang}>
+              {shown.detail}
+            </span>
           )}
           {local === undefined ? null : (
             <span className="candidate__local">
-              {t('search.localName', { name: local.text, lang: t(`nameLang.${local.lang}`) })}
+              {tNodes('search.localName', {
+                name: <span lang={local.lang}>{local.text}</span>,
+                lang: t(`nameLang.${local.lang}`),
+              })}
             </span>
           )}
           {boxName === undefined ? null : (

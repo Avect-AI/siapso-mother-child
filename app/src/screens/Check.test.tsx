@@ -3,9 +3,11 @@ import type { Pack } from '@siapso/engine';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { closeAppDb } from '../data/db.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
+import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
 
@@ -81,6 +83,86 @@ describe('Check', () => {
     expect(screen.getByRole('button', { name: 'Ajouter un remède' })).toHaveClass(
       'button--secondary',
     );
+  });
+
+  it('never shows the check, nor gives it the focus, before the profile screen it opens', async () => {
+    const headings: string[] = [];
+    const observer = new MutationObserver(() => {
+      const text = document.querySelector('main h1')?.textContent;
+      if (text !== undefined && headings.at(-1) !== text) headings.push(text);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    try {
+      await openCheckFromHome();
+      const profile = await screen.findByRole('heading', { level: 1, name: 'Mon profil' });
+      await waitFor(() => {
+        expect(profile).toHaveFocus();
+      });
+    } finally {
+      observer.disconnect();
+    }
+    // From Home straight to her profile: no screen reader hears "Ce que vous prenez" first.
+    expect(headings).not.toContain('Ce que vous prenez');
+  });
+
+  it('says the profiles could not be read, under its heading with the focus, when the list fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/', packLoader: loaderOf(pack) });
+    const user = userEvent.setup();
+    const start = await screen.findByRole('button', { name: 'Regarder un produit' });
+    // The phone's storage refuses to open from now on.
+    closeAppDb();
+    breakIndexedDB('storage refused');
+    await user.click(start);
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    expect(screen.getByText(/^Les profils n'ont pas pu être lus sur ce téléphone/)).toBeVisible();
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
+  });
+
+  it('says it is loading after a moment, then that the profiles could not be read, when storage never answers', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await saveProfile(profileOf());
+    await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      storageTimeoutMs: 2500,
+    });
+    const user = userEvent.setup();
+    const start = await screen.findByRole('button', { name: 'Regarder un produit' });
+    closeAppDb();
+    hangIndexedDB();
+    await user.click(start);
+
+    // Not at once (a fast phone never shows it), and never as the check's heading.
+    const loading = within(screen.getByRole('main')).getByRole('status');
+    expect(loading).toHaveTextContent('');
+    expect(await screen.findByText('Chargement en cours.', {}, { timeout: 2000 })).toBe(loading);
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+
+    const heading = await screen.findByRole(
+      'heading',
+      { level: 1, name: 'Ce que vous prenez' },
+      { timeout: 5000 },
+    );
+    expect(screen.getByText(/^Les profils n'ont pas pu être lus sur ce téléphone/)).toBeVisible();
+    expect(screen.queryByText('Chargement en cours.')).toBeNull();
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
+  });
+
+  it('gives the check its heading and the focus once her profile is read', async () => {
+    await saveProfile(profileOf());
+    await openCheckFromHome();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
   });
 
   it('opens the profile screen first when there is no profile, then comes back to the check', async () => {
@@ -256,10 +338,15 @@ describe('Check', () => {
     expect(rows[0]).toHaveTextContent('Paracétamol 500 mg');
     expect(rows[1]).toHaveTextContent('Kinkéliba');
     expect(rows[1]).toHaveTextContent('Combretum micranthum');
+    // A Latin name is read with Latin rules (WCAG 3.1.2).
+    expect(within(rows[1] as HTMLElement).getByText('Combretum micranthum')).toHaveAttribute(
+      'lang',
+      'la',
+    );
     expect(screen.getByRole('button', { name: 'Voir le résultat' })).toBeEnabled();
 
     await user.click(
-      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
+      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
     );
 
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'kinkeliba' } }]);
@@ -287,7 +374,7 @@ describe('Check', () => {
     });
 
     await user.click(
-      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
+      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
     );
     expect(status()).toHaveTextContent('Paracétamol 500 mg (générique) est retiré de la liste.');
     await user.click(screen.getByRole('button', { name: 'Remettre dans la liste' }));
@@ -298,7 +385,7 @@ describe('Check', () => {
     ]);
     expect(status()).toHaveTextContent('Paracétamol 500 mg (générique) est remis dans la liste.');
     expect(
-      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
+      screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
     ).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Remettre dans la liste' })).toBeNull();
   });

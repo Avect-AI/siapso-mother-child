@@ -15,6 +15,7 @@ import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
 import { DialLink } from '../ui/DialLink.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { PhoneNumber } from '../ui/PhoneNumber.js';
 import { UNLOCK_PATH } from './Neutral.js';
@@ -174,6 +175,7 @@ export function Referral() {
   const nationalId = useId();
   // Read once when the screen opens, then forgotten: a later visit says nothing.
   const [justSaved] = useState(savedForCall);
+  const announce = useLiveRegionReady();
 
   // A state left in another visit, or by a result before a lock, goes from the history.
   useEffect(() => {
@@ -252,11 +254,11 @@ export function Referral() {
           )}
         </>
       )}
-      {saved === null ? null : (
-        <p className="referral__status" role="status">
-          {t('contacts.saved', { who: saved })}
-        </p>
-      )}
+      {/* There and empty when the screen appears, then filled: a status region
+          filled in the same moment it is added is often not read out. */}
+      <p className="referral__status" role="status">
+        {saved === null || !announce ? '' : t('contacts.saved', { who: saved })}
+      </p>
 
       {/* Always, and at once (built in until the deployment file is read): the
           emergency numbers, so a danger never ends on no one to call. */}

@@ -152,6 +152,25 @@ describe('Unlock', () => {
     expect(screen.getByRole('button', { name: 'Ouvrir' })).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('says the time left of a wait to a screen reader after a reload, as the screen shows it', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 5, 10, 0, 0));
+    // A 60 second wait (six wrong codes), the page loaded again 46 seconds into it.
+    await storeLockout({ failures: 6, lockedUntil: Date.now() + 14_000 });
+    await renderApp({ settings: woman, locked: true });
+
+    const field = await screen.findByLabelText('Code');
+    const waitLeft = "Trop d'essais. Attendez 14 secondes, puis essayez encore.";
+    expect(field).toHaveAccessibleDescription(waitLeft);
+    const status = within(screen.getByRole('main')).getByRole('status');
+    // Empty when the screen appears, then filled, so a screen reader reads it.
+    expect(status).toHaveTextContent('');
+    await waitFor(() => {
+      expect(status).toHaveTextContent(waitLeft);
+    });
+    expect(document.body.textContent).not.toContain('60 secondes');
+  });
+
   it('brings back the screen it locked, once the code is given; the address meanwhile is neutral', async () => {
     const user = userEvent.setup();
     await saveProfile(profileOf());

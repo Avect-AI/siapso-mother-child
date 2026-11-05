@@ -250,6 +250,28 @@ describe('Danger signs now, before the result', () => {
     expect(within(question).getAllByRole('checkbox')).toHaveLength(pack.dangerSigns.length + 1);
   });
 
+  it('puts the focus on the first sign shown by "Voir tous les signes", wherever its section is', async () => {
+    // A pregnancy: the new sections come after the shown one.
+    const { user } = await openSigns();
+    await screen.findByRole('checkbox', { name: label('fever') });
+    await user.click(screen.getByRole('button', { name: 'Voir tous les signes' }));
+    const postpartum = screen.getByRole('group', { name: "Après l'accouchement" });
+    expect(within(postpartum).getAllByRole('checkbox')[0]).toHaveFocus();
+    // Nothing is ticked by it.
+    expect(within(postpartum).getAllByRole('checkbox')[0]).not.toBeChecked();
+  });
+
+  it('puts the focus on the first sign of a section shown before the others', async () => {
+    // Breastfeeding: the pregnancy section, shown on request, comes first.
+    const breastfeeding = profileOf({ pregnant: false, breastfeeding: true, babyAgeWeeks: 6 });
+    const { user } = await openSigns({ settings: accompanied, profile: breastfeeding });
+    await screen.findByRole('group', { name: 'Chez le bébé' });
+    screen.getByRole('button', { name: 'Voir tous les signes' }).focus();
+    await user.keyboard('{Enter}');
+    const pregnancy = screen.getByRole('group', { name: 'Pendant la grossesse' });
+    expect(within(pregnancy).getAllByRole('checkbox')[0]).toHaveFocus();
+  });
+
   it('asks about after the birth and the baby up front when the baby may be born: a possibly past term', async () => {
     // "Je ne sais pas" to the term, 40 days ago: the check reads breastfeeding as possible.
     const unknown = profileOf({ term: { kind: 'unknown', givenOn: '2026-09-25' } });

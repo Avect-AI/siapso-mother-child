@@ -264,6 +264,7 @@ export const en: Dictionary = {
   check: {
     titleWoman: 'What you are taking',
     titleAccompanied: 'What she is taking',
+    loading: 'Loading.',
     lead: 'Add each medicine and each remedy, one at a time.',
     profile: 'Profile: {name}',
     listLabel: 'Products added',
@@ -536,6 +537,8 @@ export const en: Dictionary = {
     modeWomanNote:
       'In "I am pregnant or breastfeeding" mode, only your profile opens. The others stay on this phone.',
     changed: 'Setting saved.',
+    applyLanguage: 'Switch to English',
+    applyMode: 'Change the mode',
     done: 'Back to the start',
   },
   nav: {

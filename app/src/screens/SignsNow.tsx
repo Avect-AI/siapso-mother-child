@@ -13,6 +13,7 @@ import { useCheck } from '../state/check-state.js';
 import { Button } from '../ui/Button.js';
 import { SectionedCheckboxGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { StickyAction } from '../ui/StickyAction.js';
 import { flowEntry, flowState, oneMoreStep } from './check-flow.js';
 
 /** No answer yet, "none of these signs", or the signs present now. */
@@ -53,6 +54,8 @@ export function SignsNow() {
     lastAt: string | undefined;
   } | null>(null);
   const [all, setAll] = useState(false);
+  // The groups shown when "Voir tous les signes" was pressed: the focus goes to the first new one.
+  const revealedFrom = useRef<readonly string[] | null>(null);
   const [attempts, setAttempts] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   // A ref, not state: two taps in the same task both see it at once.
@@ -100,6 +103,19 @@ export function SignsNow() {
     const question = target.closest<HTMLElement>('.choice-group') ?? target;
     if (typeof question.scrollIntoView === 'function') question.scrollIntoView({ block: 'start' });
   }, [attempts]);
+
+  // "Voir tous les signes" is gone once pressed: the focus goes to the first
+  // sign it showed (in the order of the list, so a section shown before the
+  // others too), never to the page, so the new signs are read next.
+  useEffect(() => {
+    const before = revealedFrom.current;
+    if (!all || before === null) return;
+    revealedFrom.current = null;
+    const first = [
+      ...(formRef.current?.querySelectorAll<HTMLElement>('[data-section]') ?? []),
+    ].find((section) => !before.includes(section.dataset['section'] ?? ''));
+    first?.querySelector<HTMLInputElement>('input')?.focus();
+  }, [all]);
 
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
 
@@ -185,6 +201,7 @@ export function SignsNow() {
             variant="secondary"
             className="signs__all"
             onClick={() => {
+              revealedFrom.current = groups;
               setAll(true);
             }}
           >
@@ -198,7 +215,7 @@ export function SignsNow() {
         ) : null}
         {packError === null ? null : <Notice>{t('danger.listUnavailable')}</Notice>}
         {/* Held at the bottom while the list scrolls, as on the danger signs screen. */}
-        <div className="sticky-action">
+        <StickyAction>
           <Button
             type="submit"
             variant="primary"
@@ -207,7 +224,7 @@ export function SignsNow() {
           >
             {t('signs.seeResult')}
           </Button>
-        </div>
+        </StickyAction>
       </form>
     </main>
   );
