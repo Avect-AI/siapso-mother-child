@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { damerauLevenshtein } from './distance.js';
-import { compiledOf, infoOf, MIN_WORD_LENGTH } from './index-build.js';
+import { compiledOf, containable, infoOf, MIN_WORD_LENGTH } from './index-build.js';
 import type { CompiledIndex, CompiledName } from './index-build.js';
 import { formWords, normalize, splitAgeWords, withoutStopWords } from './normalize.js';
 import { parseStrength } from './strength.js';
@@ -9,6 +9,7 @@ import type {
   Candidate,
   IndexEntry,
   MatchKind,
+  Mention,
   ResolverIndex,
   SearchOptions,
   WeakWord,
@@ -259,25 +260,44 @@ function hasStrength(entry: IndexEntry, wanted: number | undefined): boolean {
   return written !== undefined && near(written);
 }
 
+/** What a cleaned query names: substances, brands, and its other words. */
+interface Mentions {
+  /** The substances it names by one of their names. */
+  substances: Set<string>;
+  /** The substances its brands imply ("advil": ibuprofen), named or not. */
+  implied: Set<string>;
+  /** Each substance and brand it names, in the order of the query, each once. */
+  mentions: Mention[];
+  /** The words that name no substance, the words that join a combination aside. */
+  rest: string[];
+}
+
+/** A mention and the word of the query it starts at. */
+interface Placed {
+  at: number;
+  mention: Mention;
+}
+
 /**
  * The substances a cleaned query names, by any of their names (the longest
  * name first: "acide ascorbique" before "acide"), and its other words, the
  * words that join a combination ("et", "avec") left out.
  */
-function mentionsOf(
+function substancesIn(
   compiled: CompiledIndex,
-  normalized: string,
-): { substances: Set<string>; rest: string[] } {
-  const words = normalized === '' ? [] : normalized.split(' ');
-  const substances = new Set<string>();
+  words: readonly string[],
+): { placed: Placed[]; rest: string[] } {
+  const placed: Placed[] = [];
   const rest: string[] = [];
   let at = 0;
   while (at < words.length) {
     let length = Math.min(compiled.substanceWords, words.length - at);
     for (; length > 0; length -= 1) {
-      const id = compiled.substances.get(words.slice(at, at + length).join(' '));
+      const key = words.slice(at, at + length).join(' ');
+      const id = compiled.substances.get(key);
       if (id === undefined) continue;
-      substances.add(id);
+      const name = compiled.substanceTexts.get(key) ?? key;
+      placed.push({ at, mention: { name, kind: 'substance', substances: [id] } });
       break;
     }
     if (length > 0) {
@@ -288,7 +308,54 @@ function mentionsOf(
     if (!JOINING_WORDS.has(word)) rest.push(word);
     at += 1;
   }
-  return { substances, rest };
+  return { placed, rest };
+}
+
+/**
+ * The brands a cleaned query names, the longest first ("ANTARENE CODEINE"
+ * before a brand of one word). A short brand ("SP") is a brand only as the
+ * whole query, as a short name is never found inside a longer text.
+ */
+function brandsIn(compiled: CompiledIndex, words: readonly string[]): Placed[] {
+  const placed: Placed[] = [];
+  let at = 0;
+  while (at < words.length) {
+    let length = Math.min(compiled.brandWords, words.length - at);
+    for (; length > 0; length -= 1) {
+      const key = words.slice(at, at + length).join(' ');
+      const brand = compiled.brands.get(key);
+      if (brand === undefined || !(containable(key) || length === words.length)) continue;
+      placed.push({
+        at,
+        mention: { name: brand.name, kind: 'brand', substances: brand.substances },
+      });
+      break;
+    }
+    at += Math.max(length, 1);
+  }
+  return placed;
+}
+
+/**
+ * The substances a cleaned query names, the brands it names with the
+ * substances they imply, and its words that name no substance.
+ */
+function mentionsOf(compiled: CompiledIndex, normalized: string): Mentions {
+  const words = normalized === '' ? [] : normalized.split(' ');
+  const { placed: named, rest } = substancesIn(compiled, words);
+  const brands = brandsIn(compiled, words);
+  const mentions: Mention[] = [];
+  for (const { mention } of [...brands, ...named].sort((a, b) => a.at - b.at)) {
+    if (!mentions.some((m) => m.kind === mention.kind && m.name === mention.name)) {
+      mentions.push(mention);
+    }
+  }
+  return {
+    substances: new Set(named.flatMap(({ mention }) => mention.substances)),
+    implied: new Set(brands.flatMap(({ mention }) => mention.substances)),
+    mentions,
+    rest,
+  };
 }
 
 /**
@@ -299,6 +366,19 @@ export function namedSubstances(index: ResolverIndex, query: string): string[] {
   const compiled = compiledOf(index);
   const { normalized } = cleanQuery(query, compiled);
   return [...mentionsOf(compiled, normalized).substances].sort();
+}
+
+/**
+ * The brands and substances a query names, in its order, each with the
+ * substances it stands for ("Advil codéine": the brand ADVIL, ibuprofen, and
+ * the substance codeine): the confirm screen says when the product chosen
+ * lacks the substances of a brand typed, and a name kept as typed is looked
+ * up again for each of them.
+ */
+export function queryMentions(index: ResolverIndex, query: string): Mention[] {
+  const compiled = compiledOf(index);
+  const { normalized } = cleanQuery(query, compiled);
+  return mentionsOf(compiled, normalized).mentions;
 }
 
 /** How many of the named substances an entry lacks (a plant lacks them all). */
@@ -357,13 +437,16 @@ export function search(
   const mentions = mentionsOf(compiled, normalized);
   const named = mentions.substances;
   const onlySubstances = named.size >= 2 && mentions.rest.length === 0;
+  // A brand named implies its substances ("Advil codéine": ibuprofen and
+  // codeine): a product lacking one ranks after the ones that hold them all.
+  const required = new Set([...named, ...mentions.implied]);
 
   const bestById = new Map<string, Match>();
   // The products one of whose names starts with the query as a whole word.
   const leading = new Set<string>();
   for (const name of compiled.names) {
     if (kinds && !kinds.includes(name.entry.kind)) continue;
-    const missing = missingFrom(name.entry, named);
+    const missing = missingFrom(name.entry, required);
     let { score: raw, kind } = scoreName(name, scored, minScore);
     if (kind === 'word' && name.leading.has(normalized)) leading.add(name.entry.id);
     if (onlySubstances && name.substance !== undefined && missing === 0) {

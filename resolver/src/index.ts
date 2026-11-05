@@ -20,6 +20,7 @@ export {
   DEFAULT_MIN_SCORE,
   DEFAULT_RELATIVE_CUTOFF,
   namedSubstances,
+  queryMentions,
   search,
 } from './search.js';
 export { trigrams } from './trigrams.js';
@@ -28,6 +29,7 @@ export type {
   EntryKind,
   IndexEntry,
   MatchKind,
+  Mention,
   NameLang,
   ResolverIndex,
   SearchOptions,

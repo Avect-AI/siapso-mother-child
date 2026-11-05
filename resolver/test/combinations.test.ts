@@ -3,7 +3,13 @@
 // never ranks a product without that substance before one that has it, and a
 // query made only of substance names finds the products that hold them all.
 import { describe, expect, it } from 'vitest';
-import { buildIndex, entriesFromPack, namedSubstances, search } from '../src/index.js';
+import {
+  buildIndex,
+  entriesFromPack,
+  namedSubstances,
+  queryMentions,
+  search,
+} from '../src/index.js';
 import type { PackNames } from '../src/index.js';
 
 const product = (
@@ -149,5 +155,90 @@ describe('a query that names a substance', () => {
     // "sel" is the start of "sels ferreux", not a name.
     expect(search(iron, 'sel')).toEqual([]);
     expect(namedSubstances(iron, 'fer')).toEqual(['iron']);
+  });
+});
+
+// Live test round 2 (depot-keeper#1): "Advil codéine" names a brand of
+// ibuprofen, so a codeine-only product must not come first, nor be taken
+// without a word that Advil is ibuprofen.
+describe('a brand named in the query', () => {
+  const withBrands = (products: PackNames['products']) =>
+    buildIndex(
+      entriesFromPack({
+        substances: [
+          { id: 'ibuprofen', names: { fr: 'Ibuprofène', en: 'Ibuprofen' } },
+          { id: 'codeine', names: { fr: 'Codéine', en: 'Codeine' } },
+          { id: 'paracetamol', names: { fr: 'Paracétamol', en: 'Paracetamol' } },
+        ],
+        products,
+        plants: [],
+      }),
+    );
+  const advil = [
+    product(
+      'advil-200',
+      'ADVIL 200 mg, comprimé enrobé',
+      ['ADVIL'],
+      [{ substance: 'ibuprofen', strengthMg: 200 }],
+    ),
+    product(
+      'advil-400',
+      'ADVIL 400 mg, comprimé enrobé',
+      ['ADVIL'],
+      [{ substance: 'ibuprofen', strengthMg: 400 }],
+    ),
+    product('codeine-generic', 'Codéine (générique)', [], [{ substance: 'codeine' }]),
+    product(
+      'neo-codion',
+      'Néo-Codion, comprimé enrobé',
+      ['Néo-Codion'],
+      [{ substance: 'codeine' }],
+    ),
+  ];
+  const antarene = product(
+    'antarene-codeine',
+    'ANTARENE CODEINE 200 mg/30 mg, comprimé pelliculé',
+    ['ANTARENE CODEINE'],
+    [
+      { substance: 'ibuprofen', strengthMg: 200 },
+      { substance: 'codeine', strengthMg: 30 },
+    ],
+  );
+
+  it('says which brands and substances a query names, with the substances each stands for', () => {
+    const brands = withBrands([...advil, antarene]);
+    expect(queryMentions(brands, 'Advil codéine')).toEqual([
+      { name: 'ADVIL', kind: 'brand', substances: ['ibuprofen'] },
+      { name: 'Codéine', kind: 'substance', substances: ['codeine'] },
+    ]);
+    expect(queryMentions(brands, 'advil 400 mg')).toEqual([
+      { name: 'ADVIL', kind: 'brand', substances: ['ibuprofen'] },
+    ]);
+    // The longest brand first: ANTARENE CODEINE, which also names codeine.
+    expect(queryMentions(brands, 'antarene codeine')).toEqual([
+      { name: 'ANTARENE CODEINE', kind: 'brand', substances: ['codeine', 'ibuprofen'] },
+      { name: 'Codéine', kind: 'substance', substances: ['codeine'] },
+    ]);
+    expect(queryMentions(brands, 'sirop')).toEqual([]);
+    // namedSubstances keeps to the substances named.
+    expect(namedSubstances(brands, 'Advil codéine')).toEqual(['codeine']);
+  });
+
+  it('ranks first the product that holds the substances of the brand and of the name', () => {
+    const found = search(withBrands([...advil, antarene]), 'Advil codéine').map((c) => c.id);
+    expect(found[0]).toBe('antarene-codeine');
+  });
+
+  it('ranks a product lacking the substance the brand implies after the ones that hold it', () => {
+    const found = search(withBrands([...advil, antarene]), 'Advil codéine', { limit: 5 }).map(
+      (c) => c.id,
+    );
+    expect(found.indexOf('antarene-codeine')).toBeLessThan(found.indexOf('codeine-generic'));
+  });
+
+  it('keeps both when no product holds them all: the brand and the substance', () => {
+    const found = search(withBrands(advil), 'Advil codéine', { limit: 5 }).map((c) => c.id);
+    expect(found).toEqual(expect.arrayContaining(['codeine-generic']));
+    expect(found.some((id) => id.startsWith('advil-'))).toBe(true);
   });
 });

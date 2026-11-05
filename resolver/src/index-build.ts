@@ -157,10 +157,55 @@ export interface CompiledIndex {
   families: Map<string, IndexEntry[]>;
   /** Every substance name (normalised, as matched) and the substance it names; the first wins. */
   substances: Map<string, string>;
+  /** Each substance name (normalised, as matched) as the pack writes it ("Codéine"). */
+  substanceTexts: Map<string, string>;
   /** The number of words of the longest substance name. */
   substanceWords: number;
+  /**
+   * Every brand of a product (normalised as matched, its age words aside), as
+   * the pack first writes it ("ADVIL"), with the substances every product of
+   * that brand holds (sorted): a brand named in a query implies them.
+   */
+  brands: Map<string, BrandOf>;
+  /** The number of words of the longest brand. */
+  brandWords: number;
   /** The words (normalised, as matched) found in the names of two families or more. */
   sharedWords: ReadonlySet<string>;
+}
+
+/** A brand of the index and the substances it implies. */
+export interface BrandOf {
+  name: string;
+  substances: string[];
+}
+
+/**
+ * The brands of the products and the substances each implies: those that
+ * every product of the brand holds ("ADVIL": ibuprofen), none for a brand
+ * whose products share no substance.
+ */
+function brandsOf(
+  entries: readonly IndexEntry[],
+  cleaned: (text: string) => string,
+): Map<string, BrandOf> {
+  const brands = new Map<string, BrandOf>();
+  for (const entry of entries) {
+    if (entry.kind !== 'product' || entry.substances === undefined) continue;
+    const held = entry.substances;
+    for (const name of entry.names) {
+      if (name.lang !== 'brand') continue;
+      const key = cleaned(name.text);
+      if (key === '') continue;
+      const known = brands.get(key);
+      brands.set(
+        key,
+        known === undefined
+          ? { name: name.text, substances: [...held].sort() }
+          : { ...known, substances: known.substances.filter((id) => held.includes(id)) },
+      );
+    }
+  }
+  return brands;
 }
 
 /** The words of the names that two families or more have in their names. */
@@ -255,6 +300,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
     agesById.set(entry.id, ages);
   }
   const substances = new Map<string, string>();
+  const substanceTexts = new Map<string, string>();
   let substanceWords = 0;
   for (const entry of entries) {
     for (const name of entry.names) {
@@ -274,7 +320,10 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         for (const part of substanceNameParts(name.text)) {
           const key = splitAgeWords(clean(part)).text;
           if (key === '') continue;
-          if (!substances.has(key)) substances.set(key, name.substance);
+          if (!substances.has(key)) {
+            substances.set(key, name.substance);
+            substanceTexts.set(key, part);
+          }
           substanceWords = Math.max(substanceWords, key.split(' ').length);
         }
       }
@@ -307,6 +356,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
   for (const name of names) {
     name.leading = leadingWordsOf(name.text, cleanedPart, substances, substanceWords);
   }
+  const brands = brandsOf(entries, cleanedPart);
   const index: ResolverIndex = Object.freeze({ size: entries.length });
   compiled.set(index, {
     size: entries.length,
@@ -314,7 +364,10 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
     keepSalts,
     families: buildFamilies(entries),
     substances,
+    substanceTexts,
     substanceWords,
+    brands,
+    brandWords: Math.max(0, ...[...brands.keys()].map((key) => key.split(' ').length)),
     sharedWords: sharedWordsOf(names),
   });
   return index;

@@ -79,6 +79,19 @@ export interface Candidate {
   variants: string[];
 }
 
+/**
+ * A brand or a substance a query names (queryMentions), with the substances
+ * it stands for: "Advil codéine" names the brand ADVIL (ibuprofen) and the
+ * substance codeine.
+ */
+export interface Mention {
+  /** As the pack writes it: a brand ("ADVIL") or a substance name ("Codéine"). */
+  name: string;
+  kind: 'brand' | 'substance';
+  /** The substance ids it names, or that every product of the brand holds, sorted. */
+  substances: string[];
+}
+
 export interface ResolverIndex {
   /** The number of entries given to buildIndex (a product can have two: names and INN). */
   readonly size: number;

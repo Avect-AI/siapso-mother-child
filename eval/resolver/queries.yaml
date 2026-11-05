@@ -1383,6 +1383,16 @@
 - { query: huile ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
 - { query: huile de castor, type: local-fr, expect: { kind: plant, id: castor-oil } }
 - { query: 'méfénamique', type: inn, expect: { kind: product, id: mefenamic-acid-generic } }
+# A brand of ibuprofen with codeine: the products holding both (depot-keeper#1).
+- {
+    query: 'Advil codéine',
+    type: brand,
+    expect:
+      [
+        { kind: product, id: antarene-codeine-200-mg-30-mg-63755329 },
+        { kind: product, id: antarene-codeine-400-mg-60-mg-63881961 },
+      ],
+  }
 # A carrier or generic word alone names no remedy: the search lists the
 # remedies that have it in their name instead (app), the resolver none.
 - { query: feuille, type: noise, expect: none }
