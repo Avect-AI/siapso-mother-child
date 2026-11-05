@@ -38,6 +38,13 @@ jobs:
         run: |
           shellcheck tools/github/merge-pr.sh tools/github/merge-pr.test.sh
           sh tools/github/merge-pr.test.sh
+      # The local runner of these checks, used while GitHub Actions is
+      # unavailable (CONTRIBUTING.md, step 7). Its test also fails when this
+      # file or hygiene.yml gain a step the runner does not know.
+      - name: Local CI script (shellcheck and fake gh test)
+        run: |
+          shellcheck tools/ci/local-ci.sh tools/ci/local-ci.test.sh
+          sh tools/ci/local-ci.test.sh
       # Fixture repositories only: the audit of the real history is run by
       # hand before publication and at release (docs/audit/2026-11-audit.md).
       # The test downloads the pinned gitleaks release and checks its SHA-256.
