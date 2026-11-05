@@ -111,7 +111,7 @@ describe('createVoiceService', () => {
     });
   });
 
-  it('reads a pack missing on the server (offline, say) as a download that failed', async () => {
+  it('keeps a pack the server does not give (offline, say) apart from a download cut short', async () => {
     const speech = fakeSpeech();
     speech.module.voicePackInfo.mockRejectedValueOnce(
       Object.assign(new Error('not available'), { name: 'VoicePackError', reason: 'unavailable' }),
@@ -119,7 +119,10 @@ describe('createVoiceService', () => {
     const service = createVoiceService(speech.port);
     await service.refresh();
     await service.install('wo');
-    expect(service.getSnapshot().activity).toMatchObject({ kind: 'failed', failure: 'download' });
+    expect(service.getSnapshot().activity).toMatchObject({
+      kind: 'failed',
+      failure: 'unavailable',
+    });
   });
 
   it('installs one pack at a time', async () => {

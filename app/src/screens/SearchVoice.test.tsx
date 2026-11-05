@@ -216,8 +216,8 @@ describe('Search: saying a name', () => {
     expect(within(panel).getByText('Aucun remède ne correspond à ce nom.')).toBeVisible();
     expect(screen.getAllByText('Aucun remède ne correspond à ce nom.')).toHaveLength(1);
     expect(screen.getByText('Écrivez le nom, ou choisissez-le dans la liste.')).toBeVisible();
-    // What the machine heard is not added as typed.
-    expect(screen.queryByRole('button', { name: 'Je ne trouve pas ce remède' })).toBeNull();
+    // The way out of a typed name is offered at once (live test round 2).
+    expect(screen.getByRole('button', { name: 'Je ne trouve pas ce remède' })).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Écrire le nom' }));
     expect(field).toHaveFocus();
@@ -226,6 +226,7 @@ describe('Search: saying a name', () => {
     const all = await screen.findByRole('region', { name: 'Tous les remèdes' });
     const names = within(all)
       .getAllByRole('button')
+      .filter((button) => button.classList.contains('candidate'))
       .map((button) => button.textContent);
     expect(names.length).toBe(pack.plants.length);
     // By letter, a heading each, so a screen reader goes from letter to letter.
@@ -273,7 +274,71 @@ describe('Search: saying a name', () => {
     }
   });
 
-  it('says when it heard no name at all', async () => {
+  it('lists the names on the boxes, a letter to jump to, and a filter (live test round 2)', async () => {
+    const { user } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcript: 'zzqxw',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await user.click(
+      await screen.findByRole('button', { name: 'Choisir dans la liste des médicaments' }),
+    );
+    const all = await screen.findByRole('region', { name: 'Tous les médicaments' });
+
+    // The name on the box, under its letter, opening the generic.
+    const letterC = within(all).getByRole('heading', { level: 3, name: 'C' });
+    const cytotec = within(all).getByRole('button', { name: /^Cytotec/ });
+    expect(cytotec).toHaveTextContent('Nom sur la boîte de Misoprostol (générique)');
+    expect(
+      letterC.compareDocumentPosition(cytotec) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+
+    // A French name is another name, never a local one.
+    const codoliprane = within(all).getByRole('button', { name: /^CODOLIPRANE ADULTES/ });
+    expect(codoliprane).toHaveTextContent('Autre nom : Doliprane codéine');
+    expect(codoliprane).not.toHaveTextContent('Nom local');
+
+    // A letter jumps to its heading.
+    const letters = within(all).getByRole('navigation', { name: 'Aller à une lettre' });
+    await user.click(within(letters).getByRole('button', { name: 'Lettre M' }));
+    expect(within(all).getByRole('heading', { level: 3, name: 'M' })).toHaveFocus();
+
+    // The filter keeps the names that hold what she types.
+    await user.type(within(all).getByRole('searchbox', { name: 'Filtrer la liste' }), 'cyto');
+    const shown = within(all)
+      .getAllByRole('button')
+      .filter((button) => button.classList.contains('candidate'));
+    expect(shown.map((button) => button.querySelector('.candidate__name')?.textContent)).toEqual([
+      'Cytotec',
+    ]);
+    expect(within(all).queryByRole('heading', { level: 3, name: 'M' })).toBeNull();
+
+    await user.click(cytotec);
+    expect(window.location.hash).toBe('#/confirm/product');
+    const product = document.querySelector('.confirm__product');
+    expect(product).toHaveTextContent('Misoprostol (générique)');
+    expect(product).toHaveTextContent('Nom sur la boîte : Cytotec');
+  });
+
+  it('says when the filter keeps no name', async () => {
+    const { user } = await openSearch('Ajouter un remède', {
+      installed: ['wo'],
+      transcript: 'Zzqxw.',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en wolof.");
+    await user.click(mic());
+    await user.click(
+      await screen.findByRole('button', { name: 'Choisir dans la liste des remèdes' }),
+    );
+    const all = await screen.findByRole('region', { name: 'Tous les remèdes' });
+    await user.type(within(all).getByRole('searchbox', { name: 'Filtrer la liste' }), 'zzqxw');
+    expect(within(all).getByText('Aucun nom de la liste ne contient « zzqxw ».')).toBeVisible();
+  });
+
+  it('says when it heard no name at all, in one message', async () => {
     const { user, field } = await openSearch('Ajouter un remède', {
       installed: ['wo'],
       transcript: ' ... ',
@@ -281,8 +346,76 @@ describe('Search: saying a name', () => {
     await user.click(mic());
     await screen.findByText("J'écoute en wolof.");
     await user.click(mic());
-    expect(await screen.findByText("Je n'ai pas entendu de nom.")).toBeVisible();
+    expect(
+      await screen.findByText("Je n'ai pas entendu de nom. Réessayez, ou écrivez le nom."),
+    ).toBeVisible();
+    // Nothing that says a name matched nothing: there was no name.
+    expect(screen.queryByText('Aucun remède ne correspond à ce nom.')).toBeNull();
+    expect(screen.queryByText('Écrivez le nom, ou choisissez-le dans la liste.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Choisir dans la liste des remèdes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Je ne trouve pas ce remède' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Écrire le nom' })).toBeVisible();
     expect(field).toHaveValue('');
+  });
+
+  it('adds a name heard that matches nothing as she said it, through the same question', async () => {
+    const { user, probe } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcript: 'sirop du marché',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce produit' }));
+    // A lookalike first, as for a typed name; otherwise added at once.
+    const none = screen.queryByRole('button', { name: /^Non, aucun de ces/ });
+    if (none !== null) await user.click(none);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'unrecognised', text: 'sirop du marché' } },
+    ]);
+    const row = within(screen.getByRole('list', { name: 'Produits ajoutés' })).getByRole(
+      'listitem',
+    );
+    expect(row).toHaveTextContent('« sirop du marché »');
+  });
+
+  it('says "Vous avez dit" for a name the voice heard, and keeps the name on the box', async () => {
+    const { user } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcript: 'birufen',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent(/^Ibuprofène \(générique\)/);
+    });
+    expect(candidates()[0]).toHaveTextContent('Nom sur la boîte : Brufen');
+    await user.click(candidates()[0] as HTMLElement);
+
+    const product = document.querySelector('.confirm__product');
+    expect(product).toHaveTextContent('Vous avez dit : « birufen »');
+    expect(product).not.toHaveTextContent('Vous avez écrit');
+    expect(product).toHaveTextContent('Nom sur la boîte : Brufen');
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    const row = within(await screen.findByRole('list', { name: 'Produits ajoutés' })).getByRole(
+      'listitem',
+    );
+    expect(row).toHaveTextContent('Vous avez dit : « birufen »');
+    expect(row).not.toHaveTextContent('Vous avez écrit');
+  });
+
+  it('keeps the letters typed before the microphone, through the voice screen', async () => {
+    const { user, field } = await openSearch('Ajouter un remède');
+    await user.type(field, 'neb');
+    await user.click(mic());
+    await screen.findByRole('heading', { level: 1, name: "Parler au lieu d'écrire" });
+    await user.click(screen.getByRole('button', { name: 'Revenir à la recherche' }));
+    expect(await screen.findByRole('searchbox')).toHaveValue('neb');
   });
 
   it('typing gives up a recording, and the keyboard goes on as usual', async () => {
@@ -311,20 +444,48 @@ describe('Search: saying a name', () => {
 });
 
 describe('Search: when the voice cannot be used', () => {
-  it('explains in words how to allow a refused microphone, and offers typing', async () => {
+  it('explains in steps how to allow a refused microphone in the browser, and offers typing', async () => {
     const { user, field } = await openSearch('Ajouter un remède', {
       installed: ['wo'],
       startError: new DOMException('Permission denied', 'NotAllowedError'),
     });
     await user.click(mic());
     expect(await screen.findByText('Le micro est bloqué pour cette application.')).toBeVisible();
-    expect(
-      screen.getByText(
-        /Paramètres des sites, Micro, et permettez ce site, puis touchez à nouveau le micro/,
-      ),
-    ).toBeVisible();
+    const steps = within(screen.getByRole('list', { name: 'Pour autoriser le micro' }))
+      .getAllByRole('listitem')
+      .map((step) => step.textContent);
+    expect(steps).toEqual([
+      'Dans Chrome, touchez les trois points en haut, puis Paramètres.',
+      'Touchez Paramètres des sites, puis Micro.',
+      'Autorisez ce site, puis revenez ici et touchez à nouveau le micro.',
+    ]);
+    expect(screen.getByText('En attendant, écrivez le nom.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Écrire le nom' }));
     expect(field).toHaveFocus();
+  });
+
+  it('gives the steps of the phone settings in the installed app, which has no browser menu', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      (query: string) =>
+        ({ matches: query === '(display-mode: standalone)', media: query }) as MediaQueryList,
+    );
+    const { user } = await openSearch('Ajouter un remède', {
+      installed: ['wo'],
+      startError: new DOMException('Permission denied', 'NotAllowedError'),
+    });
+    await user.click(mic());
+    expect(await screen.findByText('Le micro est bloqué pour cette application.')).toBeVisible();
+    const steps = within(screen.getByRole('list', { name: 'Pour autoriser le micro' }))
+      .getAllByRole('listitem')
+      .map((step) => step.textContent);
+    expect(steps).toEqual([
+      'Ouvrez les réglages du téléphone, puis Applications.',
+      'Touchez Carnet, puis Autorisations, puis Micro.',
+      'Choisissez Autoriser, puis revenez ici et touchez à nouveau le micro.',
+    ]);
+    expect(screen.queryByText(/trois points/)).toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it('says a missing microphone in words', async () => {
@@ -347,6 +508,12 @@ describe('Search: when the voice cannot be used', () => {
     expect(await screen.findByText(/La voix n'a pas pu démarrer sur ce téléphone\./)).toBeVisible();
     expect(screen.queryByText(/out of memory/)).toBeNull();
     expect(speech.recorder().cancel).toHaveBeenCalled();
+    // If it happens again: the voice screen, to remove it and install it again.
+    expect(screen.getByText(/Si cela recommence, retirez la voix/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Retirer ou réinstaller la voix' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Parler au lieu d'écrire" }),
+    ).toBeVisible();
   });
 
   it('offers to install the voice again when its files are missing', async () => {

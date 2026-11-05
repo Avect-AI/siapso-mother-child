@@ -71,10 +71,13 @@ export interface VoicePackInfo {
 
 /**
  * Why a voice operation failed, for a clear message on the voice screen:
- * - `unavailable`: the pack is not installed (or not reachable to install);
- * - `invalid`: its manifest is wrong;
+ * - `unavailable`: the pack is not installed, or the server does not give it
+ *   (no network, a 404, the app page instead of its manifest);
+ * - `invalid`: its manifest is wrong, or a file received is not the one the
+ *   manifest describes (its size): damaged;
  * - `storage`: not enough space, or no Cache API;
- * - `download`: the installation download failed;
+ * - `download`: the installation download stopped (the network, a server
+ *   error): what was stored is kept, to resume;
  * - `load`: the model could not start (worker, memory, runtime);
  * - `transcribe`: a transcription failed or timed out.
  */
@@ -209,10 +212,14 @@ export async function voicePackInfo(
   const cache = await openCache();
   const installed = await readJson(async () => (await cache?.match(url)) ?? notFound());
   if (installed.json !== undefined) return parseManifest(installed.json, base);
-  if (online.status === 'not-json') {
-    throw new VoicePackError('invalid', `${MANIFEST_FILE} at ${url} is not JSON`);
-  }
-  throw new VoicePackError('unavailable', `The voice pack is not available at ${url}`);
+  // Something else than JSON is a host that does not serve the pack (it
+  // answers with the app page): the pack is not there, not damaged.
+  throw new VoicePackError(
+    'unavailable',
+    online.status === 'not-json'
+      ? `${MANIFEST_FILE} at ${url} is not JSON: the server does not serve the voice pack`
+      : `The voice pack is not available at ${url}`,
+  );
 }
 
 function notFound(): Response {
@@ -372,8 +379,10 @@ export async function installVoicePack(
       throw new VoicePackError('download', `Could not download ${file.path}`, { cause: error });
     }
     if (!response.ok || response.body === null) {
+      // A file the server does not have is a pack it does not give, not a download cut short.
+      const missing = response.status === 404 || response.status === 410;
       throw new VoicePackError(
-        'download',
+        missing ? 'unavailable' : 'download',
         `Could not download ${file.path}: HTTP ${String(response.status)}`,
       );
     }
@@ -403,8 +412,9 @@ export async function installVoicePack(
     }
     if (received !== file.bytes) {
       await cache.delete(url);
+      // Received whole, but not the file the manifest describes: damaged.
       throw new VoicePackError(
-        'download',
+        'invalid',
         `${file.path} has ${String(received)} bytes, the manifest says ${String(file.bytes)}`,
       );
     }

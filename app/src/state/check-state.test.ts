@@ -67,6 +67,33 @@ describe('useCheckStore', () => {
     expect(result.current.writtenOf(cytotec)).toBeUndefined();
   });
 
+  it('remembers that the voice heard a name, for the name she said and a text kept as said', () => {
+    const ibuprofen: CheckedItem = { ref: { kind: 'product', id: 'ibuprofen-generic' } };
+    const syrup: CheckedItem = { ref: { kind: 'unrecognised', text: 'sirop du marché' } };
+    const typed: CheckedItem = { ref: { kind: 'unrecognised', text: 'poudre' } };
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('p1');
+      result.current.add(ibuprofen, { written: 'birufen', said: true });
+      result.current.add(syrup, { list: 'product', said: true });
+      result.current.add(typed, { list: 'product' });
+    });
+    expect(result.current.saidOf(ibuprofen)).toBe(true);
+    expect(result.current.saidOf({ ref: { kind: 'unrecognised', text: 'Sirop du marché' } })).toBe(
+      true,
+    );
+    expect(result.current.saidOf(typed)).toBe(false);
+    // Confirmed again from a typed name: it is no longer said to be heard.
+    act(() => {
+      result.current.add(ibuprofen, { written: 'brufenn' });
+    });
+    expect(result.current.saidOf(ibuprofen)).toBe(false);
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.saidOf(syrup)).toBe(false);
+  });
+
   it('remembers a name kept as typed after "none of these", until the check is reset', () => {
     const coco: CheckedItem = { ref: { kind: 'unrecognised', text: 'huile de coco' } };
     const market: CheckedItem = { ref: { kind: 'unrecognised', text: 'poudre du marché' } };

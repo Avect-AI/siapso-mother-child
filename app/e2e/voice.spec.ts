@@ -259,11 +259,18 @@ test('the app never fetches a voice file before the install button', async ({ pa
   await mic(page).click();
   // The first tap loads the small speech chunk to look at the phone: slower on a loaded machine.
   await expect(page.getByRole('radio', { name: /^Wolof, 326/ })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('radio', { name: /^Français, 137/ })).toBeChecked();
+  // No language is chosen for her: the install asks for one first.
+  await expect(page.getByRole('radio', { name: /^Français, 137/ })).not.toBeChecked();
+  await expect(page.getByRole('radio', { name: /^Wolof, 326/ })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Installer la voix', exact: true }).click();
+  await expect(page.getByText('Choisissez une langue.')).toBeVisible();
   await page.getByRole('radio', { name: /^Wolof, 326/ }).check();
   await page.getByRole('button', { name: 'Revenir à la recherche' }).click();
+  // The letters typed before the microphone are still there.
+  await expect(page.getByRole('searchbox')).toHaveValue('nebeday');
   await page.goto('/#/settings');
   await page.getByRole('link', { name: "Parler au lieu d'écrire" }).click();
+  await page.getByRole('radio', { name: /^Français, 137/ }).check();
   await expect(page.getByRole('button', { name: 'Installer la voix en français' })).toBeVisible();
   await page.waitForTimeout(500);
   expect(requested).toEqual([]);
@@ -478,12 +485,53 @@ test('a refused microphone is explained in words, and typing goes on', async ({
   await installWolof(page);
   await mic(page).click();
   await expect(page.getByText('Le micro est bloqué pour cette application.')).toBeVisible();
-  await expect(page.getByText(/Paramètres des sites, Micro/)).toBeVisible();
+  await expect(page.getByText('Touchez Paramètres des sites, puis Micro.')).toBeVisible();
   await page.getByRole('button', { name: 'Écrire le nom' }).click();
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type('kinkeliba');
   await expect(page.locator('.candidate').first()).toContainText('Kinkéliba');
   await expectNoSeriousViolation(page);
+});
+
+test('offline, the install button is off and says to connect, and nothing is requested', async ({
+  page,
+  context,
+}) => {
+  const requested = await serveFakePacks(context);
+  await mockSpeechWorker(page, 'nebeday');
+  await startWithProfile(page);
+  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+  await mic(page).click();
+  await page.getByRole('radio', { name: /^Français, 137/ }).check({ timeout: 15_000 });
+  await context.setOffline(true);
+  const install = page.getByRole('button', { name: 'Installer la voix en français' });
+  await expect(install).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByText('Connectez-vous à Internet pour installer la voix.')).toBeVisible();
+  // A tap anyway (aria-disabled keeps it focusable): nothing happens.
+  await install.click({ force: true });
+  await page.waitForTimeout(500);
+  expect(requested).toEqual([]);
+  await expect(page.getByText(/Reprendre|interrompu/)).toHaveCount(0);
+  await expectNoSeriousViolation(page);
+});
+
+test('a server that answers the voice with the app page says the voice is not available', async ({
+  page,
+  context,
+}) => {
+  await context.route('**/voice/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Carnet</title>' }),
+  );
+  await startWithProfile(page);
+  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+  await mic(page).click();
+  await page.getByRole('radio', { name: /^Français, 137/ }).check({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Installer la voix en français' }).click();
+  await expect(
+    page.getByText(/^La voix ne peut pas être téléchargée pour le moment/),
+  ).toBeVisible();
+  await expect(page.getByText(/dites-le au poste de santé|ne sont pas bons/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: "Reprendre l'installation" })).toHaveCount(0);
 });
 
 test.describe('at 360 px with text at 200 percent', () => {
@@ -521,7 +569,9 @@ test.describe('at 360 px with text at 200 percent', () => {
     await startWithProfile(page);
     await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await mic(page).click();
-    await expect(page.getByRole('button', { name: 'Installer la voix en français' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Installer la voix', exact: true }),
+    ).toBeVisible();
     await expectFitsAndTargets(page);
 
     await page.getByRole('button', { name: 'Revenir à la recherche' }).click();
@@ -530,6 +580,7 @@ test.describe('at 360 px with text at 200 percent', () => {
     await expect(page.getByText("J'ai entendu : zzqxw")).toBeVisible();
     await page.getByRole('button', { name: 'Choisir dans la liste des remèdes' }).click();
     await expect(page.getByRole('region', { name: 'Tous les remèdes' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Aller à une lettre' })).toBeVisible();
     await expectFitsAndTargets(page);
     await expectNoSeriousViolation(page);
 

@@ -1276,8 +1276,34 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
     );
     // The text alone: the screen quotes it under its own label, never inside a sentence.
     expect(onlyFinding(view).written).toEqual(['cytotec']);
+    expect(onlyFinding(view)).not.toHaveProperty('said');
     const plain = viewOf(context, 'woman');
     expect(onlyFinding(plain)).not.toHaveProperty('written');
+  });
+
+  it('says which of her words the voice heard, so the screen says "Vous avez dit"', () => {
+    const cytotec: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    const syrup: CheckedItem = { ref: { kind: 'unrecognised', text: 'sirop du marché' } };
+    const context = contextOf({ pregnancy: weeks(10), items: [cytotec, syrup] });
+    const view = buildResultView(
+      evaluate(pack, context),
+      pack,
+      context.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      [],
+      {
+        writtenOf: (item) => (item.ref.kind === 'product' ? 'sitotek' : undefined),
+        saidOf: () => true,
+      },
+    );
+    const misoprostol = view.findings.find((finding) => finding.written?.includes('sitotek'));
+    expect(misoprostol?.said).toEqual(['sitotek']);
+    const unrecognised = view.findings.find((finding) =>
+      finding.typed?.includes('sirop du marché'),
+    );
+    expect(unrecognised?.said).toEqual(['sirop du marché']);
   });
 });
 

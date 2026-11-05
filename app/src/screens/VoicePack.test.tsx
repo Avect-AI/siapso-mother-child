@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Settings } from '../domain/types.js';
 import { renderApp } from '../test/render-app.js';
-import { fakeSpeech, type FakeSpeechOptions } from '../test/voice.js';
+import { fakeSpeech, voicePackError, type FakeSpeechOptions } from '../test/voice.js';
 import { createVoiceService } from '../voice/voice-service.js';
 
 vi.setConfig({ testTimeout: 20_000 });
@@ -18,6 +18,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** The question of the voice screen. */
+const LANGUAGE = `Dans quelle langue allez-vous dire les noms${NBSP}?`;
+
+/** Chooses French, as she does before installing. */
+async function chooseFrench(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('radio', { name: `Français, 137${NBSP}Mo` }));
+}
+
 async function openVoicePack(options: FakeSpeechOptions = {}, settings = french) {
   const speech = fakeSpeech(options);
   await renderApp({ settings, hash: '#/voice', voice: createVoiceService(speech.port) });
@@ -28,25 +36,47 @@ async function openVoicePack(options: FakeSpeechOptions = {}, settings = french)
 }
 
 describe('VoicePack', () => {
-  it('offers both languages with their size, Wolof first, French chosen in French', async () => {
+  it('asks the language, Wolof first with its size, and chooses none for her', async () => {
     await openVoicePack();
-    const group = await screen.findByRole('group', { name: 'Langue de la voix' });
+    const group = await screen.findByRole('group', { name: LANGUAGE });
     const radios = within(group).getAllByRole('radio');
     expect(radios.map((radio) => radio.closest('label')?.textContent)).toEqual([
       `Wolof, 326${NBSP}Mo`,
       `Français, 137${NBSP}Mo`,
     ]);
-    expect(within(group).getByRole('radio', { name: `Français, 137${NBSP}Mo` })).toBeChecked();
+    expect(radios.every((radio) => !(radio as HTMLInputElement).checked)).toBe(true);
+    // Changing later means downloading the other voice: said before she chooses.
+    expect(group).toHaveAccessibleDescription(
+      "Une seule voix à la fois. Pour changer de langue plus tard, il faudra retirer cette voix et télécharger l'autre.",
+    );
+    expect(screen.queryByText(/^Modèle Whisper/)).toBeNull();
+    expect(
+      screen.getByText(
+        'À installer une seule fois, en wifi, au poste de santé par exemple. Ensuite, la voix marche sans Internet.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Installer la voix' })).toHaveClass(
+      'button--primary',
+    );
+    expect(screen.getByText(/Votre voix reste sur ce téléphone/)).toBeVisible();
+  });
+
+  it('asks for a language before it installs anything', async () => {
+    const { user, speech } = await openVoicePack();
+    await user.click(await screen.findByRole('button', { name: 'Installer la voix' }));
+    const group = screen.getByRole('group', { name: LANGUAGE });
+    expect(within(group).getByText('Choisissez une langue.')).toBeVisible();
+    expect(within(group).getAllByRole('radio')[0]).toHaveFocus();
+    expect(speech.module.voicePackInfo).not.toHaveBeenCalled();
+
+    await user.click(within(group).getByRole('radio', { name: `Français, 137${NBSP}Mo` }));
     expect(screen.getByText("Modèle Whisper base d'OpenAI, licence MIT.")).toBeVisible();
     expect(
       screen.getByText(
         'À installer une seule fois, en wifi, au poste de santé par exemple : 137 Mo à télécharger. Ensuite, la voix marche sans Internet.',
       ),
     ).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Installer la voix en français' })).toHaveClass(
-      'button--primary',
-    );
-    expect(screen.getByText(/Votre voix reste sur ce téléphone/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Installer la voix en français' })).toBeVisible();
   });
 
   it('follows the language chosen: its size, its model and its button', async () => {
@@ -59,24 +89,41 @@ describe('VoicePack', () => {
     expect(screen.getByRole('button', { name: 'Installer la voix en wolof' })).toBeVisible();
   });
 
-  it('chooses French at first in English too, with Wolof offered beside it', async () => {
+  it('chooses no language for her in English either', async () => {
     await openVoicePack({}, english);
-    const group = await screen.findByRole('group', { name: 'Language of the voice' });
+    const group = await screen.findByRole('group', {
+      name: 'In which language will you say the names?',
+    });
     expect(within(group).getByRole('radio', { name: 'Wolof, 326 MB' })).not.toBeChecked();
-    expect(within(group).getByRole('radio', { name: 'French, 137 MB' })).toBeChecked();
-    expect(screen.getByRole('button', { name: 'Install the voice in French' })).toBeVisible();
+    expect(within(group).getByRole('radio', { name: 'French, 137 MB' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Install the voice' })).toBeVisible();
+  });
+
+  it('offline, keeps the install button off and says to connect', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    const { user, speech } = await openVoicePack();
+    await user.click(await screen.findByRole('radio', { name: `Français, 137${NBSP}Mo` }));
+    const install = screen.getByRole('button', { name: 'Installer la voix en français' });
+    expect(install).toHaveAttribute('aria-disabled', 'true');
+    expect(install).toHaveAccessibleDescription(
+      'Connectez-vous à Internet pour installer la voix.',
+    );
+    await user.click(install);
+    expect(speech.module.voicePackInfo).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Reprendre/)).toBeNull();
   });
 
   it('downloads nothing until the install button is pressed', async () => {
     const { speech } = await openVoicePack();
-    await screen.findByRole('group', { name: 'Langue de la voix' });
+    await screen.findByRole('group', { name: LANGUAGE });
     expect(speech.module.voicePackInfo).not.toHaveBeenCalled();
     expect(speech.module.installVoicePack).not.toHaveBeenCalled();
   });
 
   it('installs with its progress and a cancel, and keeps what it downloaded to resume', async () => {
     const { user, speech } = await openVoicePack({ installHangs: true });
-    await user.click(await screen.findByRole('button', { name: 'Installer la voix en français' }));
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
 
     expect(await screen.findByText('Installation de la voix en français')).toBeVisible();
     const progress = await screen.findByRole('progressbar', {
@@ -114,13 +161,18 @@ describe('VoicePack', () => {
 
   it('says once installed, with how to use it, and a removal asked twice', async () => {
     const { user, speech } = await openVoicePack();
-    await user.click(await screen.findByRole('button', { name: 'Installer la voix en français' }));
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
     expect(await screen.findByText('La voix en français est installée (137 Mo).')).toBeVisible();
     expect(
       screen.getByText('Touchez le micro à côté du champ de recherche pour dire un nom.'),
     ).toBeVisible();
-    expect(screen.getByText("Pour changer de langue, retirez d'abord cette voix.")).toBeVisible();
-    expect(screen.queryByRole('group', { name: 'Langue de la voix' })).toBeNull();
+    expect(
+      screen.getByText(
+        "Pour changer de langue, retirez d'abord cette voix : il faudra ensuite télécharger l'autre voix.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('group', { name: LANGUAGE })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Retirer la voix en français' }));
     expect(
@@ -135,13 +187,58 @@ describe('VoicePack', () => {
     await user.click(screen.getByRole('button', { name: 'Oui, retirer la voix' }));
     expect(await screen.findByText('La voix est retirée de ce téléphone.')).toBeVisible();
     expect(speech.module.removeVoicePackFiles).toHaveBeenCalledWith('voice/whisper-base-fr-q8/');
-    expect(await screen.findByRole('group', { name: 'Langue de la voix' })).toBeVisible();
+    expect(await screen.findByRole('group', { name: LANGUAGE })).toBeVisible();
   });
 
-  it('says why an installation failed, in plain words, and offers to go on', async () => {
+  it('says a download cut short, and offers to go on from what it kept', async () => {
     const { user } = await openVoicePack({ installFails: 'download' });
-    await user.click(await screen.findByRole('button', { name: 'Installer la voix en français' }));
-    expect(await screen.findByText(/Le téléchargement s'est interrompu\./)).toBeVisible();
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
+    expect(
+      await screen.findByText(
+        /^Le téléchargement s'est interrompu\. Ce qui est déjà téléchargé est gardé\./,
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: "Reprendre l'installation" })).toBeVisible();
+  });
+
+  it('says a voice the server does not give, without a button that is not there', async () => {
+    const { user, speech } = await openVoicePack();
+    speech.module.voicePackInfo.mockRejectedValueOnce(voicePackError('unavailable'));
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
+    expect(
+      await screen.findByText(/^La voix ne peut pas être téléchargée pour le moment/),
+    ).toBeVisible();
+    expect(screen.getByText(/En attendant, écrivez le nom\./)).toBeVisible();
+    expect(screen.queryByText(/Reprendre|poste de santé\.$|dites-le/)).toBeNull();
+    expect(screen.queryByRole('button', { name: "Reprendre l'installation" })).toBeNull();
+  });
+
+  it('says when the files received are damaged, never to report it to the health post', async () => {
+    const { user, speech } = await openVoicePack();
+    speech.module.voicePackInfo.mockRejectedValueOnce(voicePackError('invalid'));
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
+    expect(
+      await screen.findByText(
+        /^Les fichiers de la voix reçus sont abîmés : ils n'ont pas été gardés\./,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/dites-le au poste de santé/)).toBeNull();
+    expect(screen.queryByRole('button', { name: "Reprendre l'installation" })).toBeNull();
+  });
+
+  it('says a damaged file was dropped while what came before it is kept, to resume (review of #58)', async () => {
+    // The fake keeps half the pack, then a file comes of another size.
+    const { user } = await openVoicePack({ installFails: 'invalid' });
+    await chooseFrench(user);
+    await user.click(screen.getByRole('button', { name: 'Installer la voix en français' }));
+    expect(
+      await screen.findByText(/^Un fichier de la voix reçu était abîmé : il n'a pas été gardé\./),
+    ).toBeVisible();
+    expect(screen.getByText(/Ce qui est déjà téléchargé est gardé/)).toBeVisible();
+    expect(screen.queryByText(/ils n'ont pas été gardés/)).toBeNull();
     expect(screen.getByRole('button', { name: "Reprendre l'installation" })).toBeVisible();
   });
 

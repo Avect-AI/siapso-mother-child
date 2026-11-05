@@ -86,8 +86,19 @@ jobs:
 
   e2e:
     name: End-to-end
+    # The browser and its system libraries come with the image: no apt mirror
+    # is on the way (it once took 14 minutes), so the limit measures the tests.
     timeout-minutes: 20
     runs-on: ubuntu-latest
+    container:
+      # The official Playwright image of the version app/package.json pins,
+      # pinned by digest like the actions. tools/ci/check-playwright-image.mjs
+      # fails the unit tests and this job when the two differ: a Playwright
+      # update changes the tag and the digest here too.
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:2f05f8a734509a7b3f26a912639488ee08f58a7b292d14d62271bcff9038768f
+      # The runner's user, which owns the workspace and the tool cache; the
+      # host's shared memory, which Chromium needs (Playwright's advice).
+      options: --user 1001 --ipc=host
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -98,8 +109,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
 
+      - name: The image is the Playwright app/package.json pins, by digest
+        run: node tools/ci/check-playwright-image.mjs
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @siapso/app exec playwright install --with-deps chromium
+      # The digest decides what is pulled: a tag moved without its digest
+      # pulls the old image, whose Chromium builds this Playwright lacks.
+      - name: The image holds the Chromium builds this Playwright expects
+        run: node tools/ci/check-playwright-image.mjs --browsers
       # The pack, then the tests: the Playwright web server makes a demo build
       # in app/dist-demo (never published) that accepts the unsigned pack.
       - run: pnpm knowledge:build

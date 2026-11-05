@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import {
   VOICE_PACK_OPTIONS,
-  defaultVoiceLang,
   megabytes,
   type VoiceLang,
   type VoicePackOption,
 } from '../config/voice.js';
-import { failureMessage } from '../domain/voice-flow.js';
-import { useLang, useT, type MessageKey } from '../i18n/index.js';
+import { installFailureMessage, installFailureOf } from '../domain/voice-flow.js';
+import { useT, type MessageKey } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { sessionState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
@@ -28,13 +27,23 @@ function optionOf(lang: VoiceLang): VoicePackOption {
   return option;
 }
 
-/** What the last action ended with, said once; a warning for what went wrong. */
-function activityLine(activity: VoiceActivity): { key: MessageKey; warning: boolean } | null {
+/**
+ * What the last action ended with, said once; a warning for what went wrong.
+ * A failed installation says whether the voice did not come at all, came
+ * damaged, or stopped with part of it kept (`storedBytes` of its pack).
+ */
+function activityLine(
+  activity: VoiceActivity,
+  storedBytes: (lang: VoiceLang) => number,
+): { key: MessageKey; warning: boolean } | null {
   switch (activity.kind) {
     case 'cancelled':
       return { key: 'voicePack.cancelled', warning: false };
     case 'failed':
-      return { key: failureMessage(activity.failure), warning: true };
+      return {
+        key: installFailureMessage(installFailureOf(activity.failure, storedBytes(activity.lang))),
+        warning: true,
+      };
     case 'removed':
       return { key: 'voicePack.removed', warning: false };
     case 'remove-failed':
@@ -46,23 +55,30 @@ function activityLine(activity: VoiceActivity): { key: MessageKey; warning: bool
 
 /**
  * The voice screen: the one place where the voice is installed or removed.
- * It says what the voice does and that it stays on the phone, offers the two
- * languages with their size (Wolof first; the interface language chosen at
- * first, French in English), advises wifi at the health post, and downloads
- * only on the install button, with its progress and a cancel. An installation
- * cut short keeps its files, to go on later or be removed. Once installed: how
- * to use it, and a removal asked twice. One voice at a time, to spare the
- * phone's storage. Opened from the search, it goes back there.
+ * It says what the voice does and that it stays on the phone, asks the
+ * language the names will be said in (Wolof first, each with its size; none
+ * chosen for her, and changing later means downloading the other voice),
+ * advises wifi at the health post, and downloads only on the install button,
+ * with its progress and a cancel; offline, that button is off and the screen
+ * says to connect. An installation cut short keeps its files, to go on later
+ * or be removed. A failed installation says whether the voice did not come
+ * (no Internet, or not on this server), came damaged, or stopped part way.
+ * Once installed: how to use it, and a removal asked twice. One voice at a
+ * time, to spare the phone's storage. Opened from the search, it goes back
+ * there.
  */
 export function VoicePack() {
   const t = useT();
-  const lang = useLang();
   const { online } = useApp();
   const [, navigate] = useLocation();
   const { service, snapshot } = useVoice();
+  const offlineId = useId();
   // Read once: whether this entry was opened from the search.
   const [fromSearch] = useState(() => sessionState()['fromSearch'] === true);
-  const [chosen, setChosen] = useState<VoiceLang>(() => defaultVoiceLang(lang));
+  // Never chosen for her: the language is her answer.
+  const [chosen, setChosen] = useState<VoiceLang | null>(null);
+  // The install button was pressed with no language chosen: the question says so.
+  const [asked, setAsked] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const sectionStart = useRef<HTMLElement | null>(null);
   const markSection = (element: HTMLElement | null) => {
@@ -72,6 +88,11 @@ export function VoicePack() {
   const size = (bytes: number) => t('voicePack.megabytes', { count: megabytes(bytes) });
   const { activity } = snapshot;
   const installed = installedPackOf(snapshot);
+  const storedOf = (lang: VoiceLang) =>
+    snapshot.packs?.find((pack) => pack.option.lang === lang)?.storedBytes ?? 0;
+  // An installation cut short was her choice: it is the one to go on with.
+  const partial = VOICE_PACK_OPTIONS.find((option) => storedOf(option.lang) > 0)?.lang ?? null;
+  const language = chosen ?? partial;
   const section = !snapshot.supported
     ? 'unsupported'
     : snapshot.packageFailed
@@ -94,11 +115,17 @@ export function VoicePack() {
     if (previous !== 'checking') sectionStart.current?.focus();
   }, [section]);
 
+  // Install pressed with no language: the first answer takes the focus, with the question's error.
+  useEffect(() => {
+    if (asked === 0) return;
+    sectionStart.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [asked]);
+
   const back = () => {
     if (fromSearch) window.history.back();
     else navigate('/');
   };
-  const line = activityLine(activity);
+  const line = activityLine(activity, storedOf);
   const said = (
     <p className={line?.warning ? 'voice-pack__said notice' : 'voice-pack__said'} role="status">
       {line?.warning ? <WarningMark /> : null}
@@ -190,15 +217,23 @@ export function VoicePack() {
     );
   } else {
     backIsPrimary = false;
-    const option = optionOf(chosen);
-    const stored = snapshot.packs?.find((pack) => pack.option.lang === chosen)?.storedBytes ?? 0;
+    const option = language === null ? undefined : optionOf(language);
+    const stored = language === null ? 0 : storedOf(language);
     const busy = activity.kind === 'removing';
+    // Offline, nothing can be downloaded: the button is off and says why.
+    const off = busy || !online;
+    let install = t('voicePack.installPlain');
+    if (stored > 0) install = t('voicePack.resume');
+    else if (language !== null) {
+      install = t('voicePack.install', { languageIn: t(`voicePack.languageIn.${language}`) });
+    }
     body = (
       <section className="voice-pack__choose">
         <div ref={markSection} tabIndex={-1}>
           <RadioGroup<VoiceLang>
             legend={t('voicePack.language')}
             hint={t('voicePack.languageHint')}
+            error={asked > 0 && language === null ? t('voicePack.chooseLanguage') : undefined}
             question
             options={VOICE_PACK_OPTIONS.map((candidate) => ({
               value: candidate.lang,
@@ -207,34 +242,39 @@ export function VoicePack() {
                 size: size(candidate.bytes),
               }),
             }))}
-            value={chosen}
+            value={language}
             onChange={setChosen}
           />
         </div>
-        <p className="meta">{t(`voicePack.model.${chosen}`)}</p>
-        <p className="voice-pack__advice">{t('voicePack.advice', { size: size(option.bytes) })}</p>
-        {online ? null : <Notice>{t('voicePack.offline')}</Notice>}
+        {language === null ? null : <p className="meta">{t(`voicePack.model.${language}`)}</p>}
+        <p className="voice-pack__advice">
+          {option === undefined
+            ? t('voicePack.adviceNoSize')
+            : t('voicePack.advice', { size: size(option.bytes) })}
+        </p>
+        {online ? null : <Notice id={offlineId}>{t('voicePack.offline')}</Notice>}
         {said}
-        {stored > 0 ? (
+        {stored > 0 && option !== undefined ? (
           <p>{t('voicePack.partial', { stored: size(stored), size: size(option.bytes) })}</p>
         ) : null}
         <Button
           variant="primary"
           className="voice-pack__install"
-          aria-disabled={busy ? true : undefined}
+          aria-disabled={off ? true : undefined}
+          aria-describedby={online ? undefined : offlineId}
           onClick={() => {
-            if (!busy) void service.install(chosen);
+            if (off) return;
+            if (language === null) setAsked((n) => n + 1);
+            else void service.install(language);
           }}
         >
-          {stored > 0
-            ? t('voicePack.resume')
-            : t('voicePack.install', { languageIn: t(`voicePack.languageIn.${chosen}`) })}
+          {install}
         </Button>
-        {stored > 0 ? (
+        {stored > 0 && language !== null ? (
           <Button
             variant="secondary"
             onClick={() => {
-              void service.remove(chosen);
+              void service.remove(language);
             }}
           >
             {t('voicePack.removePartial')}

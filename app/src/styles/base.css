@@ -970,13 +970,10 @@ a {
 .header {
   --color-focus: var(--color-primary-text);
 
+  container-type: inline-size;
   padding: var(--space-2) var(--column-gutter);
   background: var(--color-primary);
   color: var(--color-primary-text);
-}
-
-.header__inner {
-  container-type: inline-size;
 }
 
 /* A short screen: the band tightens around its 48 px targets, the screen keeps the room. */
@@ -1082,6 +1079,42 @@ a {
   flex: none;
   width: 1.25rem;
   height: 1.25rem;
+}
+
+/*
+ * A wide band (a desktop, a tablet, a phone held sideways; 37.5rem at the
+ * text size, so large text keeps the two rows longer): one row. The name, then
+ * the offline badge and the quick exit, then the danger signs shortcut, which
+ * ends the row in every state as it ends the first row on a phone: it keeps
+ * one place, and the quick exit sits before it, never in its place. Only the
+ * order on screen changes: the reading and focus order stay those of the phone
+ * (the name, the danger signs, then the badge and the quick exit), so the
+ * danger signs still come first after the name. 37.5rem: the French row with
+ * the badge and "Quitter" needs 594 px (37.1rem) and fits; every window wider
+ * than the column has 38rem of band, so none sits on the edge.
+ */
+@container (min-width: 37.5rem) {
+  .header__inner {
+    display: flex;
+    align-items: center;
+    gap: min(var(--space-3), 12px);
+  }
+
+  .header__bar {
+    display: contents;
+  }
+
+  .header__more,
+  .header__more:has(.offline-badge, .quick-exit) {
+    order: 1;
+    flex-wrap: nowrap;
+    margin-top: 0;
+  }
+
+  .header__danger {
+    order: 2;
+    flex: none;
+  }
 }
 
 /* On the danger signs screen the shortcut shows where you are: outlined, not filled. */
@@ -2550,6 +2583,20 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   min-height: var(--touch-target-large);
 }
 
+/*
+ * A long name in the search field: cut with an ellipsis while the field is not
+ * being typed in, and the browser's clear mark kept apart from the words by
+ * its own room, so it never sits on the end of the name, where the strength or
+ * the form usually is (live test round 2).
+ */
+.search__field .text-field__input {
+  text-overflow: ellipsis;
+}
+
+.search__field .text-field__input::-webkit-search-cancel-button {
+  margin-inline-start: var(--space-3);
+}
+
 .mic {
   position: relative;
   display: inline-flex;
@@ -2661,6 +2708,14 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   justify-self: start;
 }
 
+/* How to allow the microphone again: short numbered steps, one per line. */
+.voice__steps {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: 1.5em;
+}
+
 /* The whole list of a kind, after a name said found nothing. */
 .search__browse {
   display: grid;
@@ -2670,6 +2725,48 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 
 .search__browse h2 {
   font-size: var(--font-size-title);
+}
+
+/*
+ * The letters of the whole list, each a 48 px target that jumps to its
+ * heading: outlined like a secondary button, at reading weight, so a list of
+ * two hundred names is never scrolled whole.
+ */
+.search__letters ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search__jump {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-2);
+  border: var(--border-width) solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--font-weight-strong);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .search__jump:hover {
+    background: var(--color-primary-tint);
+  }
+}
+
+/* What the filter kept nothing of: out of the layout while empty, still read when it speaks. */
+.search__filtered:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 /* A letter of the whole list: a heading at label size over its names. */
