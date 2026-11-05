@@ -48,6 +48,8 @@ jobs:
       - name: The build changes no committed file (NOTICE included)
         run: git diff --exit-code
       - run: pnpm budget:app
+      - name: The server image builds (built locally on the runner, never pushed)
+        run: docker build -f server/Dockerfile -t siapso-server:ci .
 
   e2e:
     name: End-to-end

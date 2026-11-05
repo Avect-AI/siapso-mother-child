@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    projects: ['engine', 'resolver', 'speech', 'app', 'tools/*'],
+    projects: ['engine', 'resolver', 'speech', 'app', 'tools/*', 'server'],
     coverage: {
       provider: 'v8',
       include: ['engine/src/**', 'resolver/src/**', 'speech/src/**', 'app/src/**'],

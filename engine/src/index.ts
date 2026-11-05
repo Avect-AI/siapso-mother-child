@@ -5,7 +5,7 @@ export type { Level } from './levels.js';
 export { itemMatches, substancesOf } from './match.js';
 export { CONDITION_IDS, PackError, parsePack, RULE_KINDS, RULE_WHEN_KEYS } from './pack.js';
 export { rangeFromMonths, UNKNOWN_TERM, weeksFromLmp } from './pregnancy.js';
-export { BUILTIN_MESSAGES } from './types.js';
+export { BUILTIN_MESSAGES, CHECK_IDS, EVIDENCE_GRADES } from './types.js';
 export type {
   BreastfeedingContext,
   CheckedItem,

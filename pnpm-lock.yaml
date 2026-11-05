@@ -268,6 +268,25 @@ importers:
 
   resolver: {}
 
+  server:
+    dependencies:
+      '@siapso/engine':
+        specifier: workspace:*
+        version: link:../engine
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+    devDependencies:
+      '@siapso/pack-tools':
+        specifier: workspace:*
+        version: link:../tools/knowledge
+
   speech:
     dependencies:
       '@huggingface/transformers':

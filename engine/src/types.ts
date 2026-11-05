@@ -3,7 +3,8 @@ import type { Level } from './levels.js';
 
 export type { Level };
 
-export type Evidence = 'A' | 'B' | 'C' | 'D' | 'E' | '0';
+export const EVIDENCE_GRADES = ['A', 'B', 'C', 'D', 'E', '0'] as const;
+export type Evidence = (typeof EVIDENCE_GRADES)[number];
 export type WindowId = 'lt12' | '12-19' | '20-29' | '30-plus';
 export type TermPrecision = 'exact' | 'estimated' | 'unknown';
 export type ConditionId =
@@ -25,20 +26,22 @@ export type RuleKind =
   | 'condition'
   | 'contraception-info'
   | 'reminder';
-export type CheckId =
-  | 'C1'
-  | 'C2'
-  | 'C3'
-  | 'C4'
-  | 'C5'
-  | 'C6'
-  | 'C7'
-  | 'C8'
-  | 'C9'
-  | 'C10'
-  | 'C11'
-  | 'C12'
-  | 'no-finding';
+export const CHECK_IDS = [
+  'C1',
+  'C2',
+  'C3',
+  'C4',
+  'C5',
+  'C6',
+  'C7',
+  'C8',
+  'C9',
+  'C10',
+  'C11',
+  'C12',
+  'no-finding',
+] as const;
+export type CheckId = (typeof CHECK_IDS)[number];
 export type Lang = 'fr' | 'en';
 
 export interface Localized {

@@ -10,3 +10,6 @@ test-results/
 app/public/pack/
 docs/superpowers/
 LICENSES/
+
+# Generated from the request schema (pnpm --filter @siapso/server openapi)
+server/openapi.yaml

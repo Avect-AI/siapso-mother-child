@@ -1,0 +1,27 @@
+{
+  "name": "@siapso/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference HTTP API: runs the offline engine on a request, with API keys and quotas.",
+  "bin": {
+    "siapso-server": "./bin/siapso-server.js"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node bin/siapso-server.js",
+    "openapi": "node bin/siapso-server.js openapi",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@siapso/engine": "workspace:*",
+    "ajv": "8.20.0",
+    "tsx": "4.23.15",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@siapso/pack-tools": "workspace:*"
+  }
+}
