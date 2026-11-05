@@ -61,6 +61,8 @@ describe('withPossibleMatches after "Non, aucun de ces produits"', () => {
     ['oseille', /^bissap$/],
     // ASPIRINE UPSA: after the substance name, the word reads as the brand.
     ['upsa', /^aspirine-upsa-/],
+    // The second word of a substance name, said alone (live test round 2).
+    ['méfénamique', /^mefenamic-acid-generic$/],
   ])('keeps a brand or a local name as a very strong resemblance: %s', (text, id) => {
     const net = withPossibleMatches(pack, [typed(text)], { declined });
     expect((net.items[1]?.ref as { id?: string } | undefined)?.id).toMatch(id);

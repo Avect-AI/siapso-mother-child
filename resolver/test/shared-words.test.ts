@@ -54,6 +54,20 @@ const index = buildIndex([
   },
   // A word after the brand word of its own family: a qualifier of the brand.
   product('voltarene-emulgel', 'brand:voltaren emulgel', 'VOLTARENE EMULGEL 1 %, gel'),
+  // A substance named in two words, the second the one people say alone
+  // (live test round 2: "méfénamique").
+  {
+    id: 'mefenamic-acid-generic',
+    kind: 'product',
+    family: 'substances:mefenamic-acid',
+    display: { fr: 'Acide méfénamique (générique)', en: 'Mefenamic acid (generic)' },
+    priority: 2,
+    detail: '',
+    names: [
+      { text: 'Acide méfénamique (générique)', lang: 'fr' },
+      { text: 'Acide méfénamique', lang: 'inn', substance: 'mefenamic-acid' },
+    ],
+  },
 ]);
 
 describe('a query equal to one word of a name', () => {
@@ -83,6 +97,13 @@ describe('a query equal to one word of a name', () => {
       expect(best?.weakWord).toBeUndefined();
     },
   );
+
+  it('is the substance for each word of a substance name of several words: méfénamique', () => {
+    const [best] = search(index, 'méfénamique');
+    expect(best?.id).toBe('mefenamic-acid-generic');
+    expect(best?.match).toBe('word');
+    expect(best?.weakWord).toBeUndefined();
+  });
 
   it.each(['chrono', 'cutanée', 'application', 'emulgel'])(
     'is an inner word when it is not the first word of the name: %s',

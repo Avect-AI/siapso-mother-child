@@ -120,8 +120,12 @@ function leadingWordsOf(
     while (at < words.length) {
       let length = Math.min(substanceWords, words.length - at);
       while (length > 0 && !substances.has(words.slice(at, at + length).join(' '))) length -= 1;
-      if (length > 0) at += length;
-      else if ((words[at] ?? '').length <= PREFIX_LENGTH) at += 1;
+      if (length > 0) {
+        // Each word of a substance name of several words names it ("méfénamique"
+        // of "Acide méfénamique": people say the second word alone).
+        for (const word of words.slice(at + 1, at + length)) leading.add(word);
+        at += length;
+      } else if ((words[at] ?? '').length <= PREFIX_LENGTH) at += 1;
       else break;
     }
     const brand = words[at];

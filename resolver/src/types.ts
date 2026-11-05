@@ -65,8 +65,10 @@ export interface Candidate {
    * "DEPAKINE CHRONO", "emulgel" of "VOLTARENE EMULGEL"; a word of a
    * description, "cutanée"). A word after only substance names or a short
    * prefix is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of
-   * "Néo-Codion", "profenid" of "BI PROFENID LP"), and the first word of a name
-   * in brackets leads it ("oseille" of "Bissap (oseille de Guinée)"). A caller
+   * "Néo-Codion", "profenid" of "BI PROFENID LP"), each word of a substance
+   * name of several words names it ("méfénamique" of "Acide méfénamique"), and
+   * the first word of a name in brackets leads it ("oseille" of "Bissap
+   * (oseille de Guinée)"). A caller
    * weighs such a match as a weak resemblance; the score and the order are
    * not changed.
    */
