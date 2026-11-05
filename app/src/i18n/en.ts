@@ -60,6 +60,10 @@ export const en: Dictionary = {
     unavailable: 'The code could not be read on this phone. Close the app, then open it again.',
     exists: 'A code already exists on this phone: enter it to open the app.',
     notSaved: 'The code could not be saved on this phone. Try again.',
+    openFailed:
+      'The code is right, but the profiles could not be opened on this phone. Type the code again.',
+    typeAgain: 'The app locked while it was opening. Type the code again.',
+    unsupported: 'This code was made by a newer version of the app. Update the app to open it.',
     keypad: 'Code keypad',
     erase: 'Delete',
     eraseName: 'Delete the last digit',
@@ -85,6 +89,15 @@ export const en: Dictionary = {
       'A year, one digit repeated or digits in a row (such as 1234) are the first codes someone else tries. Do not use a year of birth.',
     weakOther: 'Choose another code',
     weakKeep: 'Keep this code',
+  },
+  autoLock: {
+    soon: 'The app is about to lock: touch the screen to continue.',
+    stay: 'Continue',
+    restored: 'Your answers are back, but they are not saved yet.',
+  },
+  conceal: {
+    situations: 'Hidden situations: tap to show them',
+    note: 'Hidden information: tap to show it',
   },
   home: {
     title: 'A medicine or a remedy?',
@@ -427,6 +440,7 @@ export const en: Dictionary = {
       '{situation}: our knowledge base does not take this situation into account yet, and neither does this result. Add to the list each medicine taken for this treatment or this illness: it will be looked at like the others.',
     conditionOrientation: 'Talk about it with the midwife or the doctor at the next visit.',
     situations: 'Situations not taken into account',
+    noReminder: 'No reminder for this result.',
     unknown: {
       noInformation: 'We have no reliable information.',
       mayHarm: 'We do not know whether this product can cause harm.',

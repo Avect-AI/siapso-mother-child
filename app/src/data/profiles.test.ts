@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fromBase64Url, toBase64Url } from '../domain/code.js';
 import type { HistoryEntry, Profile } from '../domain/types.js';
-import { verifierOf } from '../test/verifier.js';
+import { openVaultOf, verifierOf } from '../test/verifier.js';
 import { codeOpened, NoCodeError } from './code-guard.js';
-import { closeAppDb, storeVerifier } from './db.js';
+import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import { listHistory, recordHistory } from './history.js';
 import { deleteProfile, getProfile, listProfiles, saveProfile } from './profiles.js';
+import { closeVault, LockedError } from './vault.js';
 
-// Profile data is written only while a code is on the phone (code-guard.ts).
+// Profile data is written only while a code is on the phone (code-guard.ts),
+// and read or written only while the code is open in the page (vault.ts).
 beforeEach(async () => {
   await storeVerifier(await verifierOf('2468'));
+  await openVaultOf('2468');
 });
 
 function profile(id: string, createdAt: string, patch: Partial<Profile> = {}): Profile {
@@ -123,5 +127,83 @@ describe('profiles', () => {
     await expect(deleteProfile('a')).rejects.toBeInstanceOf(NoCodeError);
     expect(await getProfile('a')).toBeDefined();
     expect(await listHistory('a')).toHaveLength(1);
+  });
+});
+
+describe('profiles at rest', () => {
+  const aminata = (): Profile =>
+    profile('a', '2026-11-04T08:00:00.000Z', {
+      pseudonym: 'Aminata',
+      conditions: ['hiv-cotrimoxazole'],
+      term: { kind: 'lmp', date: '2026-08-01' },
+    });
+
+  it('keeps nothing readable: the id and a sealed record only', async () => {
+    await saveProfile(aminata());
+
+    const stored: unknown = await (await openAppDb()).get('profiles', 'a');
+    expect(Object.keys(stored as object).sort()).toEqual(['id', 'sealed']);
+    const text = JSON.stringify(stored);
+    for (const clear of ['Aminata', 'hiv', 'lmp', '2026-08-01', '2026-11-04', 'pregnant']) {
+      expect(text).not.toContain(clear);
+    }
+  });
+
+  it('seals each save anew: another data key and other IVs', async () => {
+    await saveProfile(aminata());
+    const db = await openAppDb();
+    const first = JSON.stringify(await db.get('profiles', 'a'));
+    await saveProfile(aminata());
+
+    expect(JSON.stringify(await db.get('profiles', 'a'))).not.toBe(first);
+    expect(await getProfile('a')).toEqual(aminata());
+  });
+
+  it('reads and writes nothing while the code is not open (locked)', async () => {
+    await saveProfile(aminata());
+    closeVault();
+
+    await expect(listProfiles()).rejects.toBeInstanceOf(LockedError);
+    await expect(getProfile('a')).rejects.toBeInstanceOf(LockedError);
+    await expect(saveProfile(aminata())).rejects.toBeInstanceOf(LockedError);
+    await expect(deleteProfile('a')).rejects.toBeInstanceOf(LockedError);
+    await openVaultOf('2468');
+    expect(await getProfile('a')).toEqual(aminata());
+  });
+
+  it('leaves out a profile its code does not open: another code, or a byte changed', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await saveProfile(aminata());
+    await openVaultOf('1357');
+    await saveProfile(profile('b', '2026-11-05T08:00:00.000Z'));
+    await openVaultOf('2468');
+    await saveProfile(profile('c', '2026-11-06T08:00:00.000Z'));
+    // Someone changed one bit of the stored record of 'c'.
+    const db = await openAppDb();
+    const stored = (await db.get('profiles', 'c')) as unknown as {
+      id: string;
+      sealed: { data: string };
+    };
+    const bytes = fromBase64Url(stored.sealed.data);
+    bytes[0] = (bytes[0] ?? 0) ^ 1;
+    await db.put('profiles', {
+      ...stored,
+      sealed: { ...stored.sealed, data: toBase64Url(bytes) },
+    } as unknown as Profile);
+
+    expect((await listProfiles()).map((p) => p.id)).toEqual(['a']);
+    expect(await getProfile('b')).toBeUndefined();
+    expect(await getProfile('c')).toBeUndefined();
+    vi.restoreAllMocks();
+  });
+
+  it('never shows a profile kept in clear: it is left out as one that does not open', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await (await openAppDb()).put('profiles', aminata());
+
+    expect(await listProfiles()).toEqual([]);
+    expect(await getProfile('a')).toBeUndefined();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

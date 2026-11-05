@@ -6,7 +6,7 @@ import {
   type ConditionId,
   type Evaluation,
 } from '@siapso/engine';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Redirect, useLocation } from 'wouter';
 import { historyEntryOf, recordHistoryOnce } from '../data/history.js';
 import { contextFromProfile } from '../domain/context.js';
@@ -38,6 +38,7 @@ import { readCheckProfile } from '../state/check-profile.js';
 import { useCheck } from '../state/check-state.js';
 import { inSession } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
+import { Concealed } from '../ui/Concealed.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
 import { LevelIcon } from '../ui/LevelIcon.js';
 import { Notice } from '../ui/Notice.js';
@@ -380,22 +381,55 @@ function Summary({ view }: { view: ResultView }) {
   );
 }
 
-/** Notes or reminders under their heading: never a level, so never a level colour. */
-function Notes({ heading, notes }: { heading: MessageKey; notes: ResultView['notes'] }) {
+/**
+ * Notes or reminders under their heading: never a level, so never a level
+ * colour. A note on contraception shows only at an explicit tap. With
+ * `concealAll`, the whole section is one button whatever it holds (the
+ * situations, one of which could say HIV; the reminders, whose absence could
+ * say it), and with `empty` it shows even with nothing in it, so that its
+ * presence says nothing either.
+ */
+function Notes({
+  heading,
+  notes,
+  concealAll = false,
+  empty,
+}: {
+  heading: MessageKey;
+  notes: ResultView['notes'];
+  concealAll?: boolean;
+  /** Said when there is no note; the section then shows anyway. */
+  empty?: string;
+}) {
   const t = useT();
   const id = useId();
-  if (notes.length === 0) return null;
+  if (notes.length === 0 && empty === undefined) return null;
+  const items =
+    notes.length === 0 ? (
+      <p className="result__note">{empty}</p>
+    ) : (
+      notes.map((note) => {
+        const words = (
+          <div className="result__note">
+            <p>{note.text}</p>
+            {note.orientation === undefined ? null : (
+              <p className="orientation">{note.orientation}</p>
+            )}
+          </div>
+        );
+        return note.concealed && !concealAll ? (
+          <Concealed key={note.key} label={t('conceal.note')}>
+            {words}
+          </Concealed>
+        ) : (
+          <Fragment key={note.key}>{words}</Fragment>
+        );
+      })
+    );
   return (
     <section className="result__notes" aria-labelledby={id}>
       <h2 id={id}>{t(heading)}</h2>
-      {notes.map((note) => (
-        <div key={note.key} className="result__note">
-          <p>{note.text}</p>
-          {note.orientation === undefined ? null : (
-            <p className="orientation">{note.orientation}</p>
-          )}
-        </div>
-      ))}
+      {concealAll ? <Concealed label={t('conceal.note')}>{items}</Concealed> : items}
     </section>
   );
 }
@@ -656,14 +690,23 @@ export function Result() {
           {ready.findings.length > 1 ? <Summary view={ready} /> : null}
           <Basis view={ready} />
           {/* The situations the result leaves out, said before any card. */}
-          <Notes heading="result.situations" notes={ready.situations} />
+          <Notes heading="result.situations" notes={ready.situations} concealAll />
           <div className="result__findings">
             {ready.findings.map((finding) => (
               <Finding key={finding.key} finding={finding} />
             ))}
           </div>
           <Notes heading="result.notes" notes={ready.notes} />
-          <Notes heading="result.reminders" notes={ready.reminders} />
+          {/* Accompanied mode: always there, always hidden, so that a reminder
+              left out (the IPTp one, for HIV with cotrimoxazole) says nothing. */}
+          {mode === 'accompanied' ? (
+            <Notes
+              heading="result.reminders"
+              notes={ready.reminders}
+              concealAll
+              empty={t('result.noReminder')}
+            />
+          ) : null}
           <Closing view={ready} />
         </>
       )}

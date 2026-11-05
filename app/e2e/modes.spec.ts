@@ -87,12 +87,14 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
   await expectStart(page, 'woman');
   await expect(page.getByRole('banner').getByRole('button', { name: 'Quitter' })).toBeVisible();
 
-  // Only the verifier is kept: PBKDF2 at 600 000 iterations, never the code.
+  // Only the verifier is kept: the HKDF check of PBKDF2 at 600 000
+  // iterations (version 2), never the code nor the key of the data.
   const verifier = await stored(page, 'code');
   expect(verifier).toEqual({
     salt: expect.stringMatching(/^[\w-]{22}$/) as unknown,
     hash: expect.stringMatching(/^[\w-]{43}$/) as unknown,
     iterations: 600_000,
+    version: 2,
   });
 
   // Her profile, then a reload: locked.

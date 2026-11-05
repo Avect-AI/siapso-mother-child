@@ -83,6 +83,8 @@ export function CodeSetup({
       onCreated?.();
       return;
     }
+    // Locked meanwhile (an exit): the code is kept, and the code screen asks for it.
+    if (made === 'cancelled') return;
     // Not made: a code was already there (the code screen comes and asks for it),
     // or the phone did not keep it. Either way, a new start, with the reason.
     setBusy(false);

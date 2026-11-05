@@ -5,6 +5,7 @@ import { addDays } from './dates.js';
 import {
   afterBirth,
   conditionsShown,
+  isConcealedCondition,
   emptyForm,
   formFromProfile,
   monthsAsWeeks,
@@ -52,6 +53,14 @@ function stored(patch: Partial<Profile> = {}): Profile {
     ...patch,
   };
 }
+
+describe('isConcealedCondition', () => {
+  it('hides on screen the situations that say HIV, and only those', () => {
+    expect(conditionsShown('accompanied').filter(isConcealedCondition)).toEqual([
+      'hiv-cotrimoxazole',
+    ]);
+  });
+});
 
 describe('conditionsShown', () => {
   it('shows four situations to a woman and seven in accompanied mode', () => {

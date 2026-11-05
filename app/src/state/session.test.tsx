@@ -16,23 +16,26 @@ import {
   storeLockout,
   storeVerifier,
 } from '../data/db.js';
-import { recordHistory } from '../data/history.js';
+import { listHistory, recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import { loadSavedContacts, saveContacts } from '../data/referral.js';
+import { isVaultOpen, LockedError } from '../data/vault.js';
 import {
   AUTO_LOCK_MS,
   checkCode,
+  createCodeKeys,
+  LOCK_WARNING_MS,
   PBKDF2_ITERATIONS,
   type CodeVerifier,
   type LockoutState,
 } from '../domain/code.js';
-import type { Settings } from '../domain/types.js';
+import type { HistoryEntry, Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
-import { breakIndexedDB } from '../test/idb.js';
+import { breakIndexedDB, failWrites } from '../test/idb.js';
 import { profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, shellPack } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
-import { verifierOf, weakVerifier } from '../test/verifier.js';
+import { legacyVerifier, openVaultOf, verifierOf, weakVerifier } from '../test/verifier.js';
 import { AppProvider, useApp } from './app-state.js';
 import { epochToken, inSession, inVisit, sessionState, visitState } from './entry-state.js';
 import { EPOCH_KEY, SESSION_CHANNEL } from './tab-sync.js';
@@ -539,6 +542,7 @@ describe('session across tabs and failures', () => {
   it('a forgotten code erases the profiles, contacts, history and code, keeps the language and the pack', async () => {
     await storeSettings({ lang: 'en', mode: 'accompanied', onboarded: true });
     await storeVerifier(await verifierOf(CODE));
+    await openVaultOf(CODE);
     await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
     await saveContacts([{ id: 'c1', role: 'relay', name: 'Mariama', phone: '000 000 001' }]);
     await recordHistory({
@@ -569,9 +573,9 @@ describe('session across tabs and failures', () => {
     expect(session.current().status).toBe('new');
     expect(session.current().lockout).toEqual({ failures: 0, lockedUntil: null });
     expect(check.current().profileId).toBeNull();
-    expect(await listProfiles()).toEqual([]);
-    expect(await loadSavedContacts()).toEqual([]);
     const db = await openAppDb();
+    expect(await db.getAll('profiles')).toEqual([]);
+    expect(await db.getAll('contacts')).toEqual([]);
     expect(await db.getAll('history')).toEqual([]);
     expect(await getStoredVerifier()).toBeUndefined();
     expect(await getStoredLockout()).toBeUndefined();
@@ -1059,7 +1063,7 @@ describe('a code made while storage is slow or the welcome was cut short', () =>
     return session;
   }
 
-  it('opens only once the stalled store shows its own code', async () => {
+  it('opens nothing, and writes nothing, when its store does not end in time', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const session = renderSlowTab();
     await waitFor(() => {
@@ -1067,24 +1071,49 @@ describe('a code made while storage is slow or the welcome was cut short', () =>
     });
     const hold = await holdSettings();
 
-    let made: Promise<string> = Promise.resolve('');
-    act(() => {
-      made = session.current().createCode(CODE);
-    });
-    // The store waits beyond the timeout: nothing is opened meanwhile.
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(session.current().unlocked).toBe(false);
-
-    await hold.release();
+    // The storage stays held until the code is given up (however long the
+    // derivation takes before the store starts): nothing is opened.
     let result = '';
     await act(async () => {
-      result = await made;
+      result = await session.current().createCode(CODE);
+    });
+    expect(result).toBe('unsaved');
+    expect(session.current().unlocked).toBe(false);
+
+    // Given up truly: once the storage answers, it holds no code, and the welcome asks again.
+    await hold.release();
+    expect(await getStoredVerifier()).toBeUndefined();
+  });
+
+  it('makes the code of a phone that kept profiles in clear, however slow the encryption', async () => {
+    const db = await openAppDb();
+    await db.put('profiles', profileOf({ id: 'a', pseudonym: 'Aminata' }));
+    await db.put('profiles', profileOf({ id: 'b', pseudonym: 'Ndeye' }));
+    await db.put('profiles', profileOf({ id: 'c', pseudonym: 'Coumba' }));
+    const session = probeSession();
+    render(
+      <AppProvider packLoader={loaderOf(shellPack())} storageTimeoutMs={100}>
+        {session.element}
+      </AppProvider>,
+    );
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+    const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'encrypt').mockImplementation(async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      return encrypt(...args);
     });
 
-    expect(result).toBe('made');
-    expect(session.current().unlocked).toBe(true);
-    const stored = await getStoredVerifier();
-    expect(stored === undefined ? false : await checkCode(CODE, stored)).toBe(true);
+    // Six encryptions of 80 ms: more than four storage timeouts of 100 ms.
+    let made = '';
+    await act(async () => {
+      made = await session.current().createCode(CODE);
+    });
+    vi.restoreAllMocks();
+
+    expect(made).toBe('made');
+    expect((await listProfiles()).map((p) => p.pseudonym)).toEqual(['Aminata', 'Ndeye', 'Coumba']);
   });
 
   it('never opens when another code was stored while its store stalled: it asks for that one', async () => {
@@ -1133,5 +1162,661 @@ describe('a code made while storage is slow or the welcome was cut short', () =>
     expect(session.current().status).toBe('locked');
     expect(session.current().codeRefused).toBe(true);
     expect(settings()?.onboarded).toBe(true);
+  });
+});
+
+describe('the keys of the open session (SCRUM-39)', () => {
+  const aminata = profileOf({ id: 'a', pseudonym: 'Aminata', conditions: ['hiv-cotrimoxazole'] });
+  const checked: HistoryEntry = {
+    id: 'h1',
+    profileId: 'a',
+    at: '2026-11-04T10:00:00.000Z',
+    packVersion: '0.1.0',
+    level: 'danger',
+    ruleIds: ['misoprostol-pregnancy'],
+    items: [{ ref: { kind: 'unrecognised', text: 'pilule secrete zx' } }],
+    signs: ['fever'],
+  };
+  const midwife = { id: 'c1', role: 'midwife', name: 'Awa Diop', phone: '000 000 001' } as const;
+
+  /** What an older version left: everything in clear. */
+  async function seedInClear(): Promise<void> {
+    const db = await openAppDb();
+    await db.put('profiles', aminata);
+    await db.put('history', checked);
+    await db.put('contacts', [midwife], 'saved');
+  }
+
+  /** Every record of the profile stores, as someone reading the storage would see them. */
+  async function dump(): Promise<string> {
+    const db = await openAppDb();
+    return JSON.stringify([
+      await db.getAll('profiles'),
+      await db.getAll('history'),
+      await db.getAll('contacts'),
+    ]);
+  }
+
+  async function unlockWith(session: ReturnType<typeof probeSession>, code: string) {
+    let result = '';
+    await act(async () => {
+      result = await session.current().unlock(code);
+    });
+    return result;
+  }
+
+  it('opens the keys with the right code only, and forgets them at the lock', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+
+    expect(await unlockWith(session, '1111')).toBe('wrong');
+    expect(isVaultOpen()).toBe(false);
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    expect(isVaultOpen()).toBe(true);
+    await saveProfile(aminata);
+    expect(await listProfiles()).toEqual([aminata]);
+
+    act(() => {
+      session.current().lock();
+    });
+
+    expect(isVaultOpen()).toBe(false);
+    await expect(listProfiles()).rejects.toBeInstanceOf(LockedError);
+  });
+
+  it('forgets them at the auto-lock and at the quick exit', async () => {
+    await openVaultOf(CODE);
+    const { session } = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(session.current().unlocked).toBe(true);
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().touch();
+    });
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS);
+    });
+    expect(session.current().status).toBe('locked');
+    expect(isVaultOpen()).toBe(false);
+    vi.useRealTimers();
+
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    expect(isVaultOpen()).toBe(true);
+    act(() => {
+      session.current().quickExit();
+    });
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('a lock in another tab makes every tab forget them, a tab that missed it once back', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const other = renderTab({ startUnlocked: true });
+    const here = renderTab({ startUnlocked: true });
+    const deaf = renderTab({ startUnlocked: true, deaf: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+      expect(deaf.session.current().unlocked).toBe(true);
+    });
+
+    act(() => {
+      here.session.current().lock();
+    });
+    // The tabs of this test share one page: the keys the other tab holds come back.
+    await openVaultOf(CODE);
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(isVaultOpen()).toBe(false);
+
+    // The tab that missed the message forgets them as soon as it comes back.
+    await openVaultOf(CODE);
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+    });
+    expect(deaf.session.current().status).toBe('locked');
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('the forgotten-code erase forgets them in every tab', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const locked = renderTab();
+    // It misses the message, so the test knows when it hears of the erase.
+    const open = renderTab({ startUnlocked: true, deaf: true });
+    await waitFor(() => {
+      expect(locked.session.current().status).toBe('locked');
+      expect(open.session.current().unlocked).toBe(true);
+    });
+
+    await act(async () => {
+      await locked.session.current().forgetCode();
+    });
+    expect(isVaultOpen()).toBe(false);
+    // The tabs of this test share one page: the keys the open tab holds come back.
+    await openVaultOf(CODE);
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(open.session.current().status).toBe('new');
+    });
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('a code made opens them, and the same code opens what was sealed after a lock', async () => {
+    const { session } = await renderSession({ code: null });
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+    await act(async () => {
+      await session.current().createCode('135790');
+    });
+    expect(isVaultOpen()).toBe(true);
+    await saveProfile(aminata);
+
+    act(() => {
+      session.current().lock();
+    });
+    expect(await unlockWith(session, '135790')).toBe('ok');
+
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+
+  it('seals what a phone onboarded before codes existed kept in clear, once the code is made', async () => {
+    await seedInClear();
+    const { session } = await renderSession({ code: null });
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+
+    await act(async () => {
+      await session.current().createCode(CODE);
+    });
+
+    expect(await dump()).not.toContain('Aminata');
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+
+  it('the first unlock after the update seals what was kept in clear and makes the code again', async () => {
+    const old = await legacyVerifier(CODE);
+    await seedInClear();
+    const { session } = await renderSession({ verifier: old });
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+
+    expect(await unlockWith(session, CODE)).toBe('ok');
+
+    const stored = await getStoredVerifier();
+    expect(stored?.version).toBe(2);
+    expect(stored?.salt).not.toBe(old.salt);
+    expect(stored === undefined ? null : codeFingerprint(stored)).toBe(openedCode());
+    const text = await dump();
+    for (const clear of ['Aminata', 'hiv', 'pilule', 'misoprostol', 'Awa Diop', '000 000 001']) {
+      expect(text).not.toContain(clear);
+    }
+    expect(await listProfiles()).toEqual([aminata]);
+    expect(await listHistory('a')).toEqual([checked]);
+    expect(await loadSavedContacts()).toEqual([midwife]);
+    // Locked, then the code again: the new verifier opens it all.
+    act(() => {
+      session.current().lock();
+    });
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+
+  it('opens nothing, and leaves everything as it was, when that first unlock cannot seal', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const old = await legacyVerifier(CODE);
+    await seedInClear();
+    const before = await dump();
+    const { session } = await renderSession({ verifier: old });
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    const refused = failWrites((store) => store.name === 'profiles');
+
+    expect(await unlockWith(session, CODE)).toBe('failed');
+
+    expect(session.current().unlocked).toBe(false);
+    expect(isVaultOpen()).toBe(false);
+    expect(session.current().lockout).toEqual({ failures: 0, lockedUntil: null });
+    expect(await getStoredVerifier()).toEqual(old);
+    expect(await dump()).toBe(before);
+    refused.restore();
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    expect(await dump()).not.toContain('Aminata');
+  });
+
+  it('never opens after a quick exit made while the code was being worked out', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+
+    let pending: Promise<string> = Promise.resolve('');
+    act(() => {
+      pending = session.current().unlock(CODE);
+    });
+    act(() => {
+      session.current().quickExit();
+    });
+    let result = '';
+    await act(async () => {
+      result = await pending;
+    });
+
+    expect(result).toBe('cancelled');
+    expect(session.current().status).toBe('locked');
+    expect(session.current().exited).toBe(true);
+    expect(session.current().keyMaterial()).toBeNull();
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('never opens after a lock from another tab made while the code was being worked out', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const here = renderTab();
+    const other = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(here.session.current().status).toBe('locked');
+      expect(other.session.current().unlocked).toBe(true);
+    });
+
+    let pending: Promise<string> = Promise.resolve('');
+    act(() => {
+      pending = here.session.current().unlock(CODE);
+      other.session.current().lock();
+    });
+    let result = '';
+    await act(async () => {
+      result = await pending;
+    });
+
+    expect(result).toBe('cancelled');
+    expect(here.session.current().status).toBe('locked');
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('opens with the verifier stored when the same code was made again elsewhere meanwhile', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    // Erased and made again in another tab, with the same digits: another salt.
+    const again = await createCodeKeys(CODE);
+    await storeVerifier(again.verifier);
+
+    expect(await unlockWith(session, CODE)).toBe('ok');
+
+    expect(openedCode()).toBe(codeFingerprint(again.verifier));
+    await saveProfile(aminata);
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+
+  it('opens nothing when another code was made elsewhere meanwhile, and counts the try', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    await storeVerifier(await verifierOf('1357'));
+
+    expect(await unlockWith(session, CODE)).toBe('wrong');
+
+    expect(session.current().unlocked).toBe(false);
+    expect(isVaultOpen()).toBe(false);
+    expect(session.current().lockout.failures).toBe(1);
+  });
+
+  it('never shows records written in clear after the update, and deletes them at the next unlock', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    await saveProfile(profileOf({ id: 'n', pseudonym: 'Ndeye' }));
+    // Someone writes records in clear into the storage.
+    const db = await openAppDb();
+    await db.put('profiles', aminata);
+    await db.put('history', checked);
+    await db.put('contacts', [{ ...midwife, phone: '000 000 999' }], 'saved');
+
+    expect((await listProfiles()).map((p) => p.pseudonym)).toEqual(['Ndeye']);
+    expect(await listHistory('a')).toEqual([]);
+    await expect(loadSavedContacts()).rejects.toThrow();
+    act(() => {
+      session.current().lock();
+    });
+    expect(await unlockWith(session, CODE)).toBe('ok');
+
+    expect(await db.count('profiles')).toBe(1);
+    expect(await db.count('history')).toBe(0);
+    expect(await db.count('contacts')).toBe(0);
+    expect(await dump()).not.toMatch(/Aminata|000 000 999|pilule/);
+  });
+
+  it('times the storage only: a slow encryption at the first unlock after the update still opens', async () => {
+    const old = await legacyVerifier(CODE);
+    await storeVerifier(old);
+    await seedInClear();
+    const session = probeSession();
+    render(
+      <AppProvider packLoader={loaderOf(shellPack())} storageTimeoutMs={100}>
+        {session.element}
+      </AppProvider>,
+    );
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'encrypt').mockImplementation(async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      return encrypt(...args);
+    });
+
+    // Six encryptions of 80 ms, more than three storage timeouts of 100 ms.
+    expect(await unlockWith(session, CODE)).toBe('ok');
+    vi.restoreAllMocks();
+
+    expect((await getStoredVerifier())?.version).toBe(2);
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+
+  it('never opens after a quick exit made while waiting for another tab trying a code', async () => {
+    const { session } = await renderSession();
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+    // Another tab holds the lock of the code tries for a while (Web Locks).
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: {
+        request: (_name: string, work: () => Promise<unknown>) =>
+          new Promise((resolve) => setTimeout(resolve, 100)).then(work),
+      },
+    });
+
+    let pending: Promise<string> = Promise.resolve('');
+    act(() => {
+      pending = session.current().unlock(CODE);
+    });
+    act(() => {
+      session.current().quickExit();
+    });
+    let result = '';
+    await act(async () => {
+      result = await pending;
+    });
+    Reflect.deleteProperty(navigator, 'locks');
+
+    expect(result).toBe('cancelled');
+    expect(session.current().unlocked).toBe(false);
+    expect(isVaultOpen()).toBe(false);
+  });
+
+  it('never opens a code made while the session was locked meanwhile', async () => {
+    const { session } = await renderSession({ code: null });
+    await waitFor(() => {
+      expect(session.current().status).toBe('new');
+    });
+
+    let pending: Promise<string> = Promise.resolve('');
+    act(() => {
+      pending = session.current().createCode(CODE);
+    });
+    act(() => {
+      session.current().quickExit();
+    });
+    let made = '';
+    await act(async () => {
+      made = await pending;
+    });
+
+    expect(made).toBe('cancelled');
+    expect(session.current().unlocked).toBe(false);
+    expect(session.current().status).toBe('locked');
+    expect(isVaultOpen()).toBe(false);
+    // The code is kept: it opens the phone.
+    expect(await unlockWith(session, CODE)).toBe('ok');
+  });
+
+  it('opens nothing, and counts no try, with a verifier of a newer version of the app', async () => {
+    const newer = { ...(await verifierOf(CODE)), version: 3 };
+    const { session } = await renderSession({ verifier: newer });
+    await waitFor(() => {
+      expect(session.current().status).toBe('locked');
+    });
+
+    expect(await unlockWith(session, CODE)).toBe('unsupported');
+
+    expect(session.current().unlocked).toBe(false);
+    expect(session.current().lockout).toEqual({ failures: 0, lockedUntil: null });
+    expect(await getStoredLockout()).toBeUndefined();
+  });
+
+  it('tells the other tabs once the verifier is made again: they lock and ask for the code', async () => {
+    const old = await legacyVerifier(CODE);
+    await storeVerifier(old);
+    await seedInClear();
+    const open = renderTab({ startUnlocked: true });
+    const here = renderTab();
+    await waitFor(() => {
+      expect(open.session.current().unlocked).toBe(true);
+      expect(here.session.current().status).toBe('locked');
+    });
+
+    expect(await unlockWith(here.session, CODE)).toBe('ok');
+
+    await waitFor(() => {
+      expect(open.session.current().status).toBe('locked');
+    });
+  });
+
+  it('a second tab that read the older code opens with the one the first tab made', async () => {
+    const old = await legacyVerifier(CODE);
+    await storeVerifier(old);
+    await seedInClear();
+    const first = renderTab();
+    const second = renderTab();
+    await waitFor(() => {
+      expect(first.session.current().status).toBe('locked');
+      expect(second.session.current().status).toBe('locked');
+    });
+
+    expect(await unlockWith(first.session, CODE)).toBe('ok');
+    const made = await getStoredVerifier();
+    expect(await unlockWith(second.session, CODE)).toBe('ok');
+
+    expect(await getStoredVerifier()).toEqual(made);
+    expect(await listProfiles()).toEqual([aminata]);
+  });
+});
+
+describe('answers not saved when the session locks', () => {
+  async function openSession() {
+    await openVaultOf(CODE);
+    const tab = await renderSession({ startUnlocked: true });
+    await waitFor(() => {
+      expect(tab.session.current().unlocked).toBe(true);
+    });
+    return tab;
+  }
+
+  function autoLock(session: ReturnType<typeof probeSession>) {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().touch();
+    });
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS);
+    });
+    vi.useRealTimers();
+    expect(session.current().status).toBe('locked');
+  }
+
+  it('are kept in memory across an auto-lock, never stored, and given back after the code', async () => {
+    const { session } = await openSession();
+    act(() => {
+      session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+    });
+
+    autoLock(session);
+
+    const db = await openAppDb();
+    const entries = (storage: Storage) =>
+      Array.from({ length: storage.length }, (_, i) => {
+        const key = storage.key(i) ?? '';
+        return [key, storage.getItem(key)];
+      });
+    const stored = JSON.stringify([
+      await db.getAll('settings'),
+      await db.getAll('profiles'),
+      entries(localStorage),
+      entries(sessionStorage),
+      window.history.state,
+    ]);
+    expect(stored).not.toContain('Mariama');
+    await act(async () => {
+      await session.current().unlock(CODE);
+    });
+    // To their own screen only.
+    expect(session.current().draftFor('profile:mine')).toBeNull();
+    expect(session.current().draftFor('profile:new')).toEqual({ value: { pseudonym: 'Mariama' } });
+  });
+
+  it('are dropped once another screen shows, and kept while their own screen does', async () => {
+    const { session } = await openSession();
+    act(() => {
+      session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+      session.current().dropDraft('profile:new');
+    });
+    expect(session.current().draftFor('profile:new')).not.toBeNull();
+
+    act(() => {
+      session.current().dropDraft('home');
+    });
+    expect(session.current().draftFor('profile:new')).toBeNull();
+  });
+
+  it('are forgotten at a lock from another tab and at the quick exit', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const other = renderTab({ startUnlocked: true });
+    const here = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(other.session.current().unlocked).toBe(true);
+      expect(here.session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      other.session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+      here.session.current().keepDraft('profile:new', { pseudonym: 'Coumba' }, true);
+    });
+
+    act(() => {
+      here.session.current().lock();
+    });
+    await waitFor(() => {
+      expect(other.session.current().status).toBe('locked');
+    });
+    expect(other.session.current().draftFor('profile:new')).toBeNull();
+
+    act(() => {
+      here.session.current().quickExit();
+    });
+    expect(here.session.current().draftFor('profile:new')).toBeNull();
+  });
+
+  it('are forgotten at the erase and when another code is on the phone', async () => {
+    await storeVerifier(await verifierOf(CODE));
+    const locked = renderTab();
+    const open = renderTab({ startUnlocked: true });
+    await waitFor(() => {
+      expect(locked.session.current().status).toBe('locked');
+      expect(open.session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      open.session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+      locked.session.current().keepDraft('profile:new', { pseudonym: 'Coumba' }, true);
+    });
+
+    await act(async () => {
+      await locked.session.current().forgetCode();
+    });
+    expect(locked.session.current().draftFor('profile:new')).toBeNull();
+    await waitFor(() => {
+      expect(open.session.current().status).toBe('new');
+    });
+    expect(open.session.current().draftFor('profile:new')).toBeNull();
+
+    // Another code made elsewhere: a tab that held answers under the old one drops them.
+    await storeVerifier(await verifierOf(CODE));
+    const before = renderTab({ startUnlocked: true, deaf: true });
+    await waitFor(() => {
+      expect(before.session.current().unlocked).toBe(true);
+    });
+    act(() => {
+      before.session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+    });
+    await eraseProfilesAndCode();
+    await storeNewVerifier(await verifierOf('1111'));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await waitFor(() => {
+      expect(before.session.current().status).toBe('locked');
+    });
+    expect(before.session.current().draftFor('profile:new')).toBeNull();
+  });
+
+  it('warn 30 s before the auto-lock, and a touch puts it off for two minutes', async () => {
+    const { session } = await openSession();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().keepDraft('profile:new', { pseudonym: 'Mariama' }, true);
+      session.current().touch();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS - LOCK_WARNING_MS - 1);
+    });
+    expect(session.current().lockSoon).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(session.current().lockSoon).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new Event('pointerdown'));
+    });
+    expect(session.current().lockSoon).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS - 1);
+    });
+    expect(session.current().unlocked).toBe(true);
+    expect(session.current().lockSoon).toBe(true);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(session.current().status).toBe('locked');
+    expect(session.current().lockSoon).toBe(false);
+  });
+
+  it('never warn when every answer is saved', async () => {
+    const { session } = await openSession();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      session.current().keepDraft('profile:new', { pseudonym: 'Femme 1' }, false);
+      session.current().touch();
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(AUTO_LOCK_MS - 1);
+    });
+
+    expect(session.current().lockSoon).toBe(false);
   });
 });

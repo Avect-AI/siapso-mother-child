@@ -7,10 +7,12 @@ import {
   claimTry,
   isCodeVerifier,
   isLockoutState,
+  verifierFields,
   type CodeClaim,
   type CodeVerifier,
   type LockoutState,
 } from '../domain/code.js';
+import type { Sealed } from '../domain/crypto.js';
 import type { HistoryEntry, Profile, ReferralContact, Settings } from '../domain/types.js';
 import { CodeExistsError, requireCodeForSettings } from './code-guard.js';
 import { compareVersions, isVersion, originKey, type PackOrigin } from './pack-verify.js';
@@ -54,6 +56,28 @@ export function versionOf(stored: StoredPack): unknown {
 /** 'unchanged': the same version with the same fragments was already stored. */
 export type StoreOutcome = 'stored' | 'unchanged';
 
+/**
+ * A profile as stored since SCRUM-39: its id (random) and the profile sealed
+ * (domain/crypto.ts). A record in clear is a Profile an older version kept,
+ * sealed at the first unlock (data/migration.ts).
+ */
+export interface SealedProfile {
+  id: string;
+  sealed: Sealed;
+}
+
+/** A history entry as stored since SCRUM-39: its id, its profile's id (the index), the entry sealed. */
+export interface SealedHistoryEntry {
+  id: string;
+  profileId: string;
+  sealed: Sealed;
+}
+
+/** The saved contacts as stored since SCRUM-39: the list sealed. */
+export interface SealedContacts {
+  sealed: Sealed;
+}
+
 interface SiapsoDb extends DBSchema {
   /** The active knowledge pack and the one before it. */
   pack: { key: PackSlot; value: StoredPack };
@@ -62,10 +86,15 @@ interface SiapsoDb extends DBSchema {
    * wrong codes in a row with the end of their wait, each under its own key.
    */
   settings: { key: SettingsKey; value: Settings | CodeVerifier | LockoutState | TabMarks };
-  profiles: { key: string; value: Profile };
-  history: { key: string; value: HistoryEntry; indexes: { profileId: string } };
+  /** Sealed, or in clear when an older version kept them (sealed at the first unlock). */
+  profiles: { key: string; value: SealedProfile | Profile };
+  history: {
+    key: string;
+    value: SealedHistoryEntry | HistoryEntry;
+    indexes: { profileId: string };
+  };
   /** The referral contacts saved on this phone, in their order, under one key (version 2). */
-  contacts: { key: 'saved'; value: ReferralContact[] };
+  contacts: { key: 'saved'; value: SealedContacts | ReferralContact[] };
 }
 
 const NAME = 'siapso';
@@ -258,8 +287,7 @@ export async function getStoredVerifier(): Promise<CodeVerifier | undefined> {
 }
 
 export async function storeVerifier(verifier: CodeVerifier): Promise<void> {
-  const { salt, hash, iterations } = verifier;
-  await (await openAppDb()).put('settings', { salt, hash, iterations }, 'code');
+  await (await openAppDb()).put('settings', verifierFields(verifier), 'code');
 }
 
 /**
@@ -275,8 +303,7 @@ export async function storeNewVerifier(verifier: CodeVerifier): Promise<void> {
     tx.abort();
     throw new CodeExistsError();
   }
-  const { salt, hash, iterations } = verifier;
-  await tx.store.put({ salt, hash, iterations }, 'code');
+  await tx.store.put(verifierFields(verifier), 'code');
   await tx.done;
 }
 

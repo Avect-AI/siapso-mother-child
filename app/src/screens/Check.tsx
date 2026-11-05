@@ -209,6 +209,8 @@ export function Check() {
     };
   }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs]);
 
+  // Once the list itself has changed (a render for another reason, such as the
+  // profile read meanwhile, must not move the focus on the list before it).
   useEffect(() => {
     const index = focusRow.current;
     if (index === null) return;
@@ -216,7 +218,7 @@ export function Check() {
     const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('.check__remove') ?? [];
     const next = buttons[Math.min(index, buttons.length - 1)];
     (next ?? addRef.current?.querySelector('button'))?.focus();
-  });
+  }, [check.items]);
 
   const putBack = (removed: Extract<Change, { kind: 'removed' }>) => {
     focusRow.current = removed.index;

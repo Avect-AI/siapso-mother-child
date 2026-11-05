@@ -10,10 +10,12 @@
 // the phone dials.
 import { findForbiddenWording } from '@siapso/engine';
 import { isReferralContact, REFERRAL_ROLES, telHref } from '../domain/contacts.js';
+import { isSealed, UnsealError } from '../domain/crypto.js';
 import { readReferralFile, type ReferralConfig } from '../domain/referral-file.js';
 import type { ReferralContact } from '../domain/types.js';
 import { requireCode } from './code-guard.js';
 import { openAppDb } from './db.js';
+import { CONTACTS_SCOPE, openRecord, sealRecord, vaultKey } from './vault.js';
 
 export type { ReferralConfig } from '../domain/referral-file.js';
 export type { EmergencyNumber, ReferralContact, ReferralRole } from '../domain/types.js';
@@ -92,19 +94,38 @@ export async function fetchDeploymentReferral(
   }
 }
 
-/** The contacts saved on this phone, in the order of the circuit (a stored value that is not one is left out). */
+/**
+ * The contacts saved on this phone, sealed (domain/crypto.ts), in the order
+ * of the circuit (a stored value that is not one is left out). LockedError
+ * while the code is not open; UnsealError when its code does not open them,
+ * and for contacts in clear, which no version since SCRUM-39 writes
+ * (migration.ts): the circuit then says they cannot be read, never that
+ * there are none, and never lists a number written into the storage.
+ */
 export async function loadSavedContacts(): Promise<ReferralContact[]> {
-  const saved: unknown = await (await openAppDb()).get('contacts', 'saved');
+  vaultKey();
+  const stored: unknown = await (await openAppDb()).get('contacts', 'saved');
+  if (stored === undefined) return [];
+  if (
+    typeof stored !== 'object' ||
+    stored === null ||
+    !('sealed' in stored) ||
+    !isSealed(stored.sealed)
+  ) {
+    throw new UnsealError('Contacts in clear on this phone are not read');
+  }
+  const saved = await openRecord(stored.sealed, CONTACTS_SCOPE);
   return Array.isArray(saved) ? inCircuitOrder(saved.filter(isReferralContact)) : [];
 }
 
 /**
- * Keeps these contacts on the phone in place of the ones saved before, in
- * the order of the circuit (relay, Bajenu Gox, ICP, midwife, other; the
- * order given within a role): the first one is the first to call, never
- * just the first one entered. Throws a RangeError, and keeps nothing, for a
- * contact the circuit could not dial or two contacts with one id; NoCodeError
- * while no code is on the phone.
+ * Keeps these contacts on the phone, sealed, in place of the ones saved
+ * before, in the order of the circuit (relay, Bajenu Gox, ICP, midwife,
+ * other; the order given within a role): the first one is the first to call,
+ * never just the first one entered. Throws a RangeError, and keeps nothing,
+ * for a contact the circuit could not dial or two contacts with one id;
+ * NoCodeError while no code is on the phone, LockedError while the code is
+ * not open here.
  */
 export async function saveContacts(contacts: readonly ReferralContact[]): Promise<void> {
   const ids = new Set<string>();
@@ -120,9 +141,11 @@ export async function saveContacts(contacts: readonly ReferralContact[]): Promis
     name,
     phone,
   }));
+  // Sealed before the transaction: a transaction cannot wait for WebCrypto.
+  const sealed = await sealRecord(copies, CONTACTS_SCOPE);
   const tx = (await openAppDb()).transaction(['contacts', 'settings'], 'readwrite');
   await requireCode(tx);
-  await tx.objectStore('contacts').put(copies, 'saved');
+  await tx.objectStore('contacts').put({ sealed }, 'saved');
   await tx.done;
 }
 

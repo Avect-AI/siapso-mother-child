@@ -6,7 +6,7 @@
 // about. The codes and pseudonyms here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectStart, onboard, unlock } from './support.js';
+import { expectStart, onboard, seedBeforeUpdate, unlock } from './support.js';
 
 // Whole journeys with accessibility scans of long forms: on a loaded runner
 // they can take longer than the 30 s default.
@@ -167,43 +167,29 @@ test('a midwife finds a woman among many, with "Ajouter un profil" at the top', 
     'Mariama',
     'Ndeye',
   ];
-  await page.evaluate(
-    (pseudonyms) =>
-      new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open('siapso');
-        open.onerror = () => {
-          reject(new Error('cannot open the database'));
-        };
-        open.onsuccess = () => {
-          const today = new Date().toISOString().slice(0, 10);
-          const write = open.result.transaction('profiles', 'readwrite');
-          pseudonyms.forEach((pseudonym, index) => {
-            write.objectStore('profiles').put({
-              id: `e2e-${String(index)}`,
-              self: false,
-              pseudonym,
-              pregnant: true,
-              term: { kind: 'weeks', weeks: 20, givenOn: today },
-              breastfeeding: false,
-              conditions: [],
-              longTermItems: [],
-              createdAt: `${today}T08:00:00.000Z`,
-              updatedAt: `${today}T08:00:00.000Z`,
-            });
-          });
-          write.oncomplete = () => {
-            open.result.close();
-            resolve();
-          };
-        };
-      }),
-    names,
-  );
+  // As a phone updated from the version before SCRUM-39 holds them (in
+  // clear): the first code seals them.
+  const today = new Date().toISOString().slice(0, 10);
+  await seedBeforeUpdate(page, {
+    profiles: names.map((pseudonym, index) => ({
+      id: `e2e-${String(index)}`,
+      self: false,
+      pseudonym,
+      pregnant: true,
+      term: { kind: 'weeks', weeks: 20, givenOn: today },
+      breastfeeding: false,
+      conditions: [],
+      longTermItems: [],
+      createdAt: `${today}T08:00:00.000Z`,
+      updatedAt: `${today}T08:00:00.000Z`,
+    })),
+  });
   await page.reload();
   await unlock(page);
   await expectStart(page, 'accompanied');
 
-  await expect(profilesList(page).getByRole('listitem')).toHaveCount(9);
+  // Sealed at this first code: the list may take a moment on a loaded runner.
+  await expect(profilesList(page).getByRole('listitem')).toHaveCount(9, { timeout: 20_000 });
   // In the first screen, above the list.
   await expect(page.getByRole('button', { name: 'Ajouter un profil' })).toBeInViewport();
   await page.getByRole('searchbox', { name: 'Chercher un profil' }).fill('aiss');

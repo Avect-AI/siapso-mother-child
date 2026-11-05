@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: CC-BY-4.0
 id: amodiaquine-with-antiretrovirals
 fr:
-  fact: "Ce produit contient de l'amodiaquine (par exemple l'ASAQ), un traitement du paludisme, pris avec un traitement du VIH ou du cotrimoxazole."
-  risk: 'Avec certains traitements du VIH ou le cotrimoxazole, des cas graves ont été rapportés (baisse des globules blancs, atteinte du foie), mais le traitement du paludisme reste important : rien ne doit changer sans un professionnel.'
+  fact: "Ce produit contient de l'amodiaquine (par exemple l'ASAQ), un traitement du paludisme."
+  risk: 'Si elle suit un traitement du VIH ou prend du cotrimoxazole, des cas graves ont été rapportés avec ces traitements (baisse des globules blancs, atteinte du foie), mais le traitement du paludisme reste important : rien ne doit changer sans un professionnel.'
   risk-detail: "Avec l'éfavirenz, un cas d'atteinte du foie a été publié. Chez des enfants vivant avec le VIH, l'artésunate-amodiaquine a souvent fait baisser fortement les globules blancs, surtout avec un traitement antirétroviral. Il n'y a pas de données chez la femme enceinte. Le soignant choisit le traitement du paludisme."
   orientation: "Parlez-en rapidement à la sage-femme, à l'infirmier ou au médecin, sans rien changer aux traitements en attendant."
 en:
-  fact: 'This product contains amodiaquine (for example ASAQ), a malaria treatment, taken with an HIV treatment or co-trimoxazole.'
-  risk: 'With some HIV treatments or co-trimoxazole, serious cases have been reported (fall in white blood cells, liver damage), but the malaria treatment still matters: nothing should change without a professional.'
+  fact: 'This product contains amodiaquine (for example ASAQ), a malaria treatment.'
+  risk: 'If she follows an HIV treatment or takes co-trimoxazole, serious cases have been reported with these treatments (fall in white blood cells, liver damage), but the malaria treatment still matters: nothing should change without a professional.'
   risk-detail: 'With efavirenz, a case of liver damage has been published. In children living with HIV, artesunate-amodiaquine often caused a strong fall in white blood cells, mostly with antiretroviral treatment. There are no data in pregnant women. The health worker chooses the malaria treatment.'
   orientation: 'Talk to the midwife, the nurse or the doctor soon, and change nothing in the treatments until then.'

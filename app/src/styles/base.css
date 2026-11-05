@@ -465,6 +465,25 @@ a {
   background: var(--color-primary-tint);
 }
 
+/*
+ * A sensitive answer hidden until a tap (an HIV-related situation): the same
+ * row, a dashed contour, the words of the button; it looks the same whether
+ * the answer is ticked or not.
+ */
+.option--concealed {
+  width: 100%;
+  border-style: dashed;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: var(--font-weight-strong);
+  text-align: start;
+}
+
+.option--concealed:focus-visible {
+  outline: var(--contour-width) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 /* An answer missing: every answer takes the 3 px ink contour, as an invalid text field does. */
 .choice-group--invalid .option:not(.option--checked) {
   --option-contour: var(--contour-width);

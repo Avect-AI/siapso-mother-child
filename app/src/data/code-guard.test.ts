@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { HistoryEntry } from '../domain/types.js';
 import { profileOf } from '../test/knowledge-pack.js';
 import { storeTestCode } from '../test/render-app.js';
-import { verifierOf } from '../test/verifier.js';
+import { openVaultOf, verifierOf } from '../test/verifier.js';
 import { CodeExistsError, codeFingerprint, codeOpened, NoCodeError } from './code-guard.js';
 import {
   eraseProfilesAndCode,
@@ -52,6 +52,7 @@ describe('the code a tab opened', () => {
     const hers = await verifierOf('2468');
     await storeVerifier(hers);
     codeOpened(hers);
+    await openVaultOf('2468');
     await saveProfile(profileOf({ id: 'a', pseudonym: 'Aminata' }));
 
     // Erased, then someone else made his code; this tab still holds hers.
@@ -111,6 +112,8 @@ describe('settings written from a tab', () => {
 
 describe('writes about a profile', () => {
   it('are refused while no code is on the phone, and nothing is kept', async () => {
+    // Even from a page that still holds the keys of a code no longer on the phone.
+    await openVaultOf('2468');
     await expect(saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }))).rejects.toBeInstanceOf(
       NoCodeError,
     );

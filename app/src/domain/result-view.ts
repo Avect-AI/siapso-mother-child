@@ -158,6 +158,12 @@ export interface NoteView {
   key: string;
   text: string;
   orientation?: string;
+  /**
+   * Shown only at an explicit tap: a note on contraception can say a secret
+   * to whoever sees the screen (the result screen hides the situations and
+   * the reminders as whole sections).
+   */
+  concealed?: true;
 }
 
 export interface ResultView {
@@ -595,6 +601,7 @@ function noteView(scope: Scope, note: Reminder, kind: Note['kind'] | 'reminder')
   const message = messageOf(scope, note.message);
   const view: NoteView = { key: `${kind}:${note.ruleId}`, text: `${message.fact} ${message.risk}` };
   if (message.orientation !== undefined) view.orientation = message.orientation;
+  if (kind === 'contraception') view.concealed = true;
   return view;
 }
 

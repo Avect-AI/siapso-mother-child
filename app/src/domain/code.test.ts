@@ -1,29 +1,32 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it, vi } from 'vitest';
-import { verifierOf, weakVerifier } from '../test/verifier.js';
+import { codeKeysOf, pbkdf2Of, verifierOf, weakVerifier } from '../test/verifier.js';
 import {
   AUTO_LOCK_MS,
   checkCode,
   CODE_MAX,
   CODE_MIN,
   constantTimeEqual,
+  createCodeKeys,
   createVerifier,
   easyToGuess,
   fromBase64Url,
   isCode,
   isCodeVerifier,
   isLockoutState,
+  LOCK_WARNING_MS,
   lockoutDelayMs,
   MAX_WAIT_MS,
   mergeLockouts,
   NO_LOCKOUT,
   nextLockout,
+  openCode,
   PBKDF2_ITERATIONS,
   remainingLockMs,
   toBase64Url,
-  unlockKey,
   type LockoutState,
 } from './code.js';
+import { seal, unseal } from './crypto.js';
 
 // Every verifier the app makes is at the full count: a derivation takes a
 // while, so the tests share one per code.
@@ -34,6 +37,11 @@ describe('codes', () => {
     expect([CODE_MIN, CODE_MAX, PBKDF2_ITERATIONS, AUTO_LOCK_MS, MAX_WAIT_MS]).toEqual([
       4, 6, 600_000, 120_000, 1_800_000,
     ]);
+  });
+
+  it('warns 30 s before the auto-lock: more than the 20 s WCAG 2.2.1 asks to extend', () => {
+    expect(LOCK_WARNING_MS).toBe(30_000);
+    expect(LOCK_WARNING_MS).toBeLessThan(AUTO_LOCK_MS);
   });
 
   it('finds the codes most often tried first: one digit repeated, digits in a row, a year', () => {
@@ -78,7 +86,8 @@ describe('verifier', () => {
     const verifier = await verifierOf('2468');
 
     expect(verifier.iterations).toBe(PBKDF2_ITERATIONS);
-    // base64url: 16 bytes of salt, 32 bytes of PBKDF2-SHA-256.
+    expect(verifier.version).toBe(2);
+    // base64url: 16 bytes of salt, 32 bytes of the HKDF check of PBKDF2-SHA-256.
     expect(fromBase64Url(verifier.salt)).toHaveLength(16);
     expect(fromBase64Url(verifier.hash)).toHaveLength(32);
     expect(verifier.salt).toMatch(/^[\w-]+$/);
@@ -126,24 +135,91 @@ describe('verifier', () => {
     expect(await checkCode('1111', old)).toBe(false);
   });
 
-  it('hands over the key material of a matching code only, never readable', async () => {
-    const verifier = await weakVerifier('2468', 1000);
+  it('stores the check half only: neither the PBKDF2 output nor the wrapping key', async () => {
+    const { verifier, wrappingKey } = await codeKeysOf('2468');
+    const salt = fromBase64Url(verifier.salt);
+    const secret = await pbkdf2Of('2468', salt, verifier.iterations);
+    const sealed = await seal({ pseudonym: 'Awa' }, wrappingKey, 'profile:a');
 
-    const key = await unlockKey('2468', verifier);
-    expect(key).not.toBeNull();
-    expect(key?.extractable).toBe(false);
-    expect(key?.usages).toEqual(expect.arrayContaining(['deriveBits', 'deriveKey']) as unknown);
-    expect(await unlockKey('1111', verifier)).toBeNull();
+    expect(verifier.hash).not.toBe(toBase64Url(secret));
+    // What storage holds, used as a key, opens nothing.
+    const stored = await crypto.subtle.importKey(
+      'raw',
+      fromBase64Url(verifier.hash) as BufferSource,
+      'AES-GCM',
+      false,
+      ['decrypt'],
+    );
+    await expect(unseal(sealed, stored, 'profile:a')).rejects.toThrow();
+    expect(wrappingKey.extractable).toBe(false);
+  });
+
+  it('opens with the right code: its wrapping key opens what the code sealed', async () => {
+    const { verifier, wrappingKey } = await codeKeysOf('2468');
+    const sealed = await seal({ pseudonym: 'Awa' }, wrappingKey, 'profile:a');
+
+    const opened = await openCode('2468', verifier);
+
+    expect(opened?.renew).toBe(false);
+    expect(opened?.wrappingKey?.extractable).toBe(false);
+    if (!opened?.wrappingKey) throw new Error('no key');
+    expect(await unseal(sealed, opened.wrappingKey, 'profile:a')).toEqual({ pseudonym: 'Awa' });
+    expect(await openCode('1111', verifier)).toBeNull();
+  });
+
+  it('works out PBKDF2 once per unlock, then splits it', async () => {
+    const verifier = await verifierOf('2468');
+    const derive = vi.spyOn(crypto.subtle, 'deriveBits');
+
+    await openCode('2468', verifier);
+
+    const pbkdf2 = derive.mock.calls.filter(([params]) => (params as Algorithm).name === 'PBKDF2');
+    expect(pbkdf2).toHaveLength(1);
+    derive.mockRestore();
+  });
+
+  it('opens an older verifier with no key, to be made again: its hash is the PBKDF2 output', async () => {
+    const old = await weakVerifier('2468', 1000);
+
+    expect(await openCode('2468', old)).toEqual({ wrappingKey: null, renew: true });
+    expect(await openCode('1111', old)).toBeNull();
+  });
+
+  it('opens a split verifier with fewer iterations with its key, to be made again', async () => {
+    const weak = await weakVerifier('2468', 1000, { split: true });
+
+    const opened = await openCode('2468', weak);
+
+    expect(opened?.renew).toBe(true);
+    expect(opened?.wrappingKey).not.toBeNull();
+    expect(await openCode('1111', weak)).toBeNull();
+  });
+
+  it('opens nothing with a verifier of a format it does not know', async () => {
+    const verifier = await verifierOf('2468');
+
+    expect(await openCode('2468', { ...verifier, version: 3 })).toBeNull();
+  });
+
+  it('makes the verifier and its wrapping key with one new salt', async () => {
+    const first = await createCodeKeys('1357');
+    const sealed = await seal([1, 2], first.wrappingKey, 'contacts:saved');
+    const second = await createCodeKeys('1357');
+
+    expect(second.verifier.salt).not.toBe(first.verifier.salt);
+    await expect(unseal(sealed, second.wrappingKey, 'contacts:saved')).rejects.toThrow();
   });
 
   it('recognises a stored verifier and nothing else', async () => {
     expect(isCodeVerifier(await verifierOf('2468'))).toBe(true);
+    expect(isCodeVerifier(await weakVerifier('2468', 1000))).toBe(true);
     for (const value of [
       null,
       '2468',
       { salt: 'a', hash: 'b' },
       { salt: 'a', hash: 'b', iterations: '600000' },
       { salt: 1, hash: 'b', iterations: 600_000 },
+      { salt: 'a', hash: 'b', iterations: 600_000, version: '2' },
     ]) {
       expect(isCodeVerifier(value), JSON.stringify(value)).toBe(false);
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { useId, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { WarningMark } from './WarningMark.js';
 
 /** What every answer of an invalid group carries: aria-invalid and the error as its description. */
@@ -158,7 +158,12 @@ function showWholeAnswer(control: HTMLInputElement): void {
 }
 
 /** One checkbox answer: a whole-width label, the words being the target. */
-function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
+function box(
+  option: CheckboxOption,
+  answer: AnswerState,
+  extra?: string,
+  inputRef?: (input: HTMLInputElement | null) => void,
+) {
   return (
     <label
       key={option.id}
@@ -167,6 +172,7 @@ function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
         .join(' ')}
     >
       <input
+        ref={inputRef}
         type="checkbox"
         checked={option.checked}
         {...answer}
@@ -182,7 +188,16 @@ function box(option: CheckboxOption, answer: AnswerState, extra?: string) {
   );
 }
 
-/** Any number of answers, then an optional exclusive one set apart ("none of these"). */
+/**
+ * Any number of answers, then an optional exclusive one set apart ("none of
+ * these"). `concealed`: the answers are sensitive (an HIV status), so they
+ * are hidden, every one of them, behind one button with these words, until
+ * an explicit tap, which hands the focus to the first answer. Hiding them all
+ * keeps the screen the same whatever is ticked: one answer hidden alone would
+ * show through "none of these". They are hidden again whenever the group is
+ * shown anew (after a lock, on another visit), and shown at once when the
+ * group has an error to fix.
+ */
 export function CheckboxGroup({
   legend,
   hint,
@@ -190,6 +205,7 @@ export function CheckboxGroup({
   options,
   none,
   question = false,
+  concealed,
 }: {
   legend: string;
   hint?: string | undefined;
@@ -197,15 +213,43 @@ export function CheckboxGroup({
   options: readonly CheckboxOption[];
   none?: CheckboxOption;
   question?: boolean;
+  concealed?: string | undefined;
 }) {
+  const [revealed, setRevealed] = useState(false);
+  const focusFirst = useRef(false);
+  const hidden = concealed !== undefined && !revealed && error === undefined;
+  const first = (input: HTMLInputElement | null) => {
+    if (input === null || !focusFirst.current) return;
+    focusFirst.current = false;
+    input.focus();
+  };
   return (
     <Fieldset legend={legend} hint={hint} error={error} question={question}>
-      {(answer) => (
-        <div className="options">
-          {options.map((option) => box(option, answer))}
-          {none ? box(none, answer, 'option--none') : null}
-        </div>
-      )}
+      {(answer) =>
+        hidden ? (
+          <div className="options">
+            <button
+              type="button"
+              className="option option--concealed"
+              onClick={() => {
+                focusFirst.current = true;
+                setRevealed(true);
+              }}
+            >
+              <span>{concealed}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="options">
+            {options.map((option, index) =>
+              box(option, answer, undefined, index === 0 ? first : undefined),
+            )}
+            {none
+              ? box(none, answer, 'option--none', options.length === 0 ? first : undefined)
+              : null}
+          </div>
+        )
+      }
     </Fieldset>
   );
 }

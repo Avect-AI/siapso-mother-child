@@ -12,7 +12,73 @@ import { verifierOf } from '../test/verifier.js';
 
 vi.setConfig({ testTimeout: 30_000 });
 
+/** How many reads of the settings never answer, as a slow storage (the reads of the code do). */
+const hang = vi.hoisted(() => ({ settings: 0 }));
+
+vi.mock('../data/db.js', async (importOriginal) => {
+  const db = await importOriginal<typeof import('../data/db.js')>();
+  return {
+    ...db,
+    getStoredSettings: () => {
+      if (hang.settings === 0) return db.getStoredSettings();
+      hang.settings -= 1;
+      return new Promise<never>(() => undefined);
+    },
+  };
+});
+
+/** The settings as stored, read past the slow storage of the test. */
+async function storedSettings() {
+  const db = await vi.importActual<typeof import('../data/db.js')>('../data/db.js');
+  return db.getStoredSettings();
+}
+
 describe('a welcome cut short', () => {
+  it('keeps the language and the mode stored when only their first read gave up', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    // As the welcome left them: English, accompanied mode, her code; not ended.
+    await storeSettings({ lang: 'en', mode: 'accompanied', onboarded: false });
+    await storeTestCode();
+    hang.settings = 1;
+    const user = userEvent.setup();
+    await renderApp({ locked: true, storageTimeoutMs: 300 });
+
+    // The defaults meanwhile: the code screen in French.
+    await enterCode(user);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profiles' })).toBeVisible();
+    await vi.waitFor(async () => {
+      expect(await storedSettings()).toEqual({
+        lang: 'en',
+        mode: 'accompanied',
+        onboarded: true,
+      });
+    });
+    vi.restoreAllMocks();
+  });
+
+  it('stores nothing over the stored settings while they still cannot be read', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await storeSettings({ lang: 'en', mode: 'accompanied', onboarded: false });
+    await storeTestCode();
+    hang.settings = 2;
+    const user = userEvent.setup();
+    await renderApp({ locked: true, storageTimeoutMs: 300 });
+
+    await enterCode(user);
+
+    // The welcome is over in this tab; the mode is asked again, nothing is stored.
+    expect(
+      await screen.findByRole('heading', { name: /^Qui utilise l'application/ }),
+    ).toBeVisible();
+    expect(await storedSettings()).toEqual({
+      lang: 'en',
+      mode: 'accompanied',
+      onboarded: false,
+    });
+    vi.restoreAllMocks();
+  });
+
   it('asks for the code stored, then the mode, then opens Home', async () => {
     // The app closed after the code was stored, before the welcome ended.
     await storeSettings({ lang: 'fr', mode: null, onboarded: false });

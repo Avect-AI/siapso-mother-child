@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { listHistory } from '../data/history.js';
 import type { LoadedPack } from '../data/pack-loader.js';
 import { saveProfile } from '../data/profiles.js';
-import type { Settings } from '../domain/types.js';
+import type { Profile, Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, pendingPack, renderApp, storeTestCode } from '../test/render-app.js';
@@ -47,6 +47,8 @@ vi.setConfig({ testTimeout: 20_000 });
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
+/** The button in place of a note on contraception (a no-break space before the colon). */
+const HIDDEN_NOTE = "Information masquée : touchez pour l'afficher";
 const ADVIL: CheckedItem = { ref: { kind: 'product', id: 'advil-400-mg-63646874' } };
 const CODEINE: CheckedItem = { ref: { kind: 'product', id: 'codeine-generic' } };
 /** A strength keeps its unit on its line in a product name ("400 mg"). */
@@ -352,8 +354,22 @@ describe('Result: woman mode', () => {
       details: main.querySelector('.result-card__details') !== null,
     });
 
-    const { view } = await openResult({ items, settings: accompanied });
+    const { view, user } = await openResult({ items, settings: accompanied });
     await screen.findAllByRole('article');
+    // A note on contraception shows at an explicit tap only, which hands it the focus.
+    expect(within(screen.getByRole('main')).queryByText(contraception)).toBeNull();
+    await user.click(
+      within(screen.getByRole('region', { name: 'À noter aussi' })).getByRole('button', {
+        name: HIDDEN_NOTE,
+      }),
+    );
+    expect(screen.getByText(contraception).closest('[tabindex="-1"]')).toHaveFocus();
+    // The reminders, hidden as one section, show at their own tap.
+    await user.click(
+      within(screen.getByRole('region', { name: 'Rappels' })).getByRole('button', {
+        name: HIDDEN_NOTE,
+      }),
+    );
     // The same check in accompanied mode says every one of them.
     expect(hidden(screen.getByRole('main'))).toEqual({
       reminders: true,
@@ -390,9 +406,12 @@ describe('Result: a situation the base does not read', () => {
         conditions: ['sickle-cell', 'uterine-scar'],
       }),
     );
-    await openResult({ items: [ADVIL], settings: woman });
+    const { user } = await openResult({ items: [ADVIL], settings: woman });
     const [card] = await screen.findAllByRole('article');
     const situations = screen.getByRole('region', { name: 'Situations non prises en compte' });
+    // One hidden section, whatever situations it holds (one of them could say HIV).
+    expect(within(situations).queryByText(/^Drépanocytose/)).toBeNull();
+    await user.click(within(situations).getByRole('button', { name: HIDDEN_NOTE }));
     expect(
       within(situations).getByText(/^Drépanocytose\s: notre base ne tient pas encore compte/),
     ).toBeVisible();
@@ -407,6 +426,49 @@ describe('Result: a situation the base does not read', () => {
       situations.compareDocumentPosition(card as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'À noter aussi' })).toBeNull();
+  });
+});
+
+describe('Result: nothing on screen says HIV by elimination', () => {
+  /** What the result shows before any tap: its words and its buttons. */
+  async function seenFor(conditions: Profile['conditions']) {
+    await saveProfile(
+      profileOf({ term: { kind: 'weeks', weeks: 20, givenOn: '2026-11-04' }, conditions }),
+    );
+    const { view } = await openResult({ items: [ADVIL], settings: accompanied });
+    await screen.findByRole('article');
+    const main = screen.getByRole('main');
+    const seen = {
+      text: main.textContent,
+      buttons: within(main)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    };
+    view.unmount();
+    return seen;
+  }
+
+  it('shows the result of an HIV profile as that of a profile with no situation', async () => {
+    const withHiv = await seenFor(['hiv-cotrimoxazole']);
+    const without = await seenFor([]);
+
+    expect(withHiv).toEqual(without);
+    expect(withHiv.text).not.toMatch(/VIH|cotrimoxazole|TPI|paludisme/i);
+  });
+
+  it('keeps the reminders behind one tap, also when there is none', async () => {
+    await saveProfile(
+      profileOf({
+        term: { kind: 'weeks', weeks: 20, givenOn: '2026-11-04' },
+        conditions: ['hiv-cotrimoxazole'],
+      }),
+    );
+    const { user } = await openResult({ items: [ADVIL], settings: accompanied });
+    const reminders = await screen.findByRole('region', { name: 'Rappels' });
+
+    await user.click(within(reminders).getByRole('button', { name: HIDDEN_NOTE }));
+
+    expect(within(reminders).getByText('Aucun rappel pour ce résultat.')).toBeVisible();
   });
 });
 

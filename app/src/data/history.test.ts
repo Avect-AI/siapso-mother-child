@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 import type { Evaluation } from '@siapso/engine';
 import { IDBFactory } from 'fake-indexeddb';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HistoryEntry } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
 import { profileOf } from '../test/knowledge-pack.js';
-import { verifierOf } from '../test/verifier.js';
-import { closeAppDb, storeVerifier } from './db.js';
+import { openVaultOf, verifierOf } from '../test/verifier.js';
+import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import {
   forgetVisit,
   HISTORY_PER_PROFILE,
@@ -17,10 +17,13 @@ import {
   recordHistoryOnce,
 } from './history.js';
 import { deleteProfile, saveProfile } from './profiles.js';
+import { closeVault, LockedError } from './vault.js';
 
-// Profile data is written only while a code is on the phone (code-guard.ts).
+// Profile data is written only while a code is on the phone (code-guard.ts),
+// and read or written only while the code is open in the page (vault.ts).
 beforeEach(async () => {
   await storeVerifier(await verifierOf('2468'));
+  await openVaultOf('2468');
 });
 
 function entry(profileId: string, n: number): HistoryEntry {
@@ -74,6 +77,63 @@ describe('recordHistory', () => {
     expect(kept[0]?.id).toBe('p1-23');
     expect(kept.at(-1)?.id).toBe('p1-4');
     expect((await listHistory('p2')).map((e) => e.id)).toEqual(['p2-0']);
+  });
+});
+
+describe('history at rest', () => {
+  const kept = (): HistoryEntry => ({
+    ...entry('p1', 1),
+    level: 'danger',
+    ruleIds: ['misoprostol-pregnancy'],
+    items: [{ ref: { kind: 'unrecognised', text: 'pilule secrete zx' } }],
+    signs: ['fever'],
+  });
+
+  it('keeps nothing readable: its id, its profile id and a sealed entry only', async () => {
+    await recordHistory(kept());
+
+    const stored: unknown = await (await openAppDb()).get('history', 'p1-1');
+    expect(Object.keys(stored as object).sort()).toEqual(['id', 'profileId', 'sealed']);
+    const text = JSON.stringify(stored);
+    for (const clear of ['danger', 'misoprostol', 'pilule', 'fever', '2026-11-04', '0.1.0']) {
+      expect(text).not.toContain(clear);
+    }
+    expect(await listHistory('p1')).toEqual([kept()]);
+  });
+
+  it('reads and writes nothing while the code is not open (locked)', async () => {
+    await recordHistory(kept());
+    closeVault();
+
+    await expect(listHistory('p1')).rejects.toBeInstanceOf(LockedError);
+    await expect(latestHistoryAt('p1')).rejects.toBeInstanceOf(LockedError);
+    await expect(recordHistory(entry('p1', 2))).rejects.toBeInstanceOf(LockedError);
+  });
+
+  it('leaves out an entry its code does not open, and lets it go first when over 20', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await openVaultOf('1357');
+    await recordHistory(entry('p1', 30));
+    await openVaultOf('2468');
+    await recordHistory(entry('p1', 1));
+    expect((await listHistory('p1')).map((e) => e.id)).toEqual(['p1-1']);
+
+    for (let n = 2; n <= 20; n += 1) await recordHistory(entry('p1', n));
+    // 21 records: the one that does not open goes, the 20 that open stay.
+    const db = await openAppDb();
+    expect(await db.getAllKeysFromIndex('history', 'profileId', 'p1')).toHaveLength(20);
+    expect(await listHistory('p1')).toHaveLength(20);
+    vi.restoreAllMocks();
+  });
+
+  it('never shows an entry kept in clear: it is left out as one that does not open', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await (await openAppDb()).put('history', entry('p1', 1));
+    await recordHistory(entry('p1', 2));
+
+    expect((await listHistory('p1')).map((e) => e.id)).toEqual(['p1-2']);
+    expect(await latestHistoryAt('p1')).toBe(entry('p1', 2).at);
+    warn.mockRestore();
   });
 });
 

@@ -68,6 +68,15 @@ export const fr = {
     // A code made in a tab while one was already on the phone (another tab, a welcome cut short).
     exists: "Un code existe déjà sur ce téléphone : entrez-le pour ouvrir l'application.",
     notSaved: "Le code n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
+    // The right code, but what an older version kept in clear could not be sealed: nothing opens.
+    openFailed:
+      "Le code est bon, mais les profils n'ont pas pu être ouverts sur ce téléphone. Tapez le code encore une fois.",
+    // Locked meanwhile (the quick exit, another tab) while the code was being worked out.
+    typeAgain:
+      "L'application s'est verrouillée pendant l'ouverture. Tapez le code encore une fois.",
+    // A verifier made by a newer version of the app: nothing is tried.
+    unsupported:
+      "Ce code a été créé par une version plus récente de l'application. Mettez l'application à jour pour l'ouvrir.",
     keypad: 'Clavier du code',
     // The key that takes the last digit off: never the word of the data wipe (EFFACER).
     erase: 'Corriger',
@@ -99,6 +108,19 @@ export const fr = {
       "Une année, un même chiffre répété ou des chiffres qui se suivent (comme 1234) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une année de naissance.",
     weakOther: 'Choisir un autre code',
     weakKeep: 'Garder ce code',
+  },
+  // Shortly before the two minutes run out, while a form has answers not saved.
+  autoLock: {
+    soon: "L'application va se verrouiller : touchez l'écran pour continuer.",
+    stay: 'Continuer',
+    // Answers kept in memory across an auto-lock, given back after the code.
+    restored: 'Vos réponses sont revenues, mais elles ne sont pas encore enregistrées.',
+  },
+  // A sensitive answer (an HIV-related situation, a note on contraception),
+  // hidden until an explicit tap, worded so that it says nothing of what it hides.
+  conceal: {
+    situations: 'Situations masquées : touchez pour les afficher',
+    note: "Information masquée : touchez pour l'afficher",
   },
   home: {
     title: 'Un médicament ou un remède ?',
@@ -516,6 +538,8 @@ export const fr = {
     conditionOrientation: 'Parlez-en à la sage-femme ou au médecin à la prochaine visite.',
     // The heading of those notes, said before the cards.
     situations: 'Situations non prises en compte',
+    // The reminders section, hidden behind a tap, when it holds none.
+    noReminder: 'Aucun rappel pour ce résultat.',
     // "On ne sait pas" without an orientation of its own: these come first (spec section 10),
     // each unless what the card has just said contains its phrase (unknownSaid, lowercase).
     // Said positively: a listener who hears only the end never hears "sans risque".

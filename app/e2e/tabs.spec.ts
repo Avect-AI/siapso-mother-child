@@ -22,20 +22,20 @@ async function fillHerProfile(page: Page) {
   await page.getByText('VIH, avec cotrimoxazole').click();
 }
 
-/** The pseudonyms in the app's IndexedDB. */
-function storedPseudonyms(page: Page): Promise<string[]> {
+/** How many profiles the app's IndexedDB holds (sealed: nothing in them is readable). */
+function storedProfiles(page: Page): Promise<number> {
   return page.evaluate(
     () =>
-      new Promise<string[]>((resolve, reject) => {
+      new Promise<number>((resolve, reject) => {
         const open = indexedDB.open('siapso');
         open.onerror = () => {
           reject(new Error('cannot open the database'));
         };
         open.onsuccess = () => {
-          const all = open.result.transaction('profiles').objectStore('profiles').getAll();
-          all.onsuccess = () => {
+          const count = open.result.transaction('profiles').objectStore('profiles').count();
+          count.onsuccess = () => {
             open.result.close();
-            resolve((all.result as { pseudonym: string }[]).map((profile) => profile.pseudonym));
+            resolve(count.result);
           };
         };
       }),
@@ -93,7 +93,7 @@ test('an erase in one tab sends the other to the welcome', async ({ page }) => {
 
   await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
   await expect(page.getByText('Aminata')).toHaveCount(0);
-  expect(await storedPseudonyms(other)).toEqual([]);
+  expect(await storedProfiles(other)).toBe(0);
 });
 
 test('a tab without the channel still follows the erase, through local storage', async ({
@@ -114,7 +114,7 @@ test('a tab without the channel still follows the erase, through local storage',
 
   await expect(other.getByRole('button', { name: 'Français' })).toBeVisible();
   await expect(other.getByText('Aminata')).toHaveCount(0);
-  expect(await storedPseudonyms(page)).toEqual([]);
+  expect(await storedProfiles(page)).toBe(0);
 });
 /** A tab that hears no other tab and has no local storage: as a frozen tab in a strict browser. */
 async function deafTab(page: Page): Promise<Page> {
@@ -249,7 +249,7 @@ test('a tab that missed the erase cannot write her profile under the next code e
       .getByText("Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.")
       .or(stale.getByRole('heading', { level: 1, name: 'Entrez votre code' })),
   ).toBeVisible();
-  expect(await storedPseudonyms(page)).toEqual([]);
+  expect(await storedProfiles(page)).toBe(0);
   await page.getByRole('link', { name: 'Mon profil' }).click();
   await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
 });

@@ -17,11 +17,21 @@
 // in its own tab: each tab counts its own two minutes.
 //
 // Threat model: casual access by someone else in the family, not a forensic
-// attacker. The code is never stored, only its verifier (domain/code.ts). The
-// session holds the code's key material in memory while open and drops it on
-// lock: SCRUM-39 derives from it the key that encrypts the profiles at rest,
-// never from the verifier's own derivation (see domain/code.ts). Wrong codes
-// are counted in storage, shared by every tab, before the code is worked out.
+// attacker. The code is never stored, only its verifier (domain/code.ts).
+// The profiles, their history and the contacts are sealed at rest
+// (domain/crypto.ts): the code's wrapping key is held in this page's memory
+// while the session is open (data/vault.ts), and forgotten at every lock, the
+// quick exit, a lock from another tab, the erase and another code. The first
+// unlock after the update seals what an older version kept in clear and makes
+// the verifier again (data/migration.ts). Wrong codes are counted in storage,
+// shared by every tab, before the code is worked out.
+//
+// Answers typed in a form and not saved yet (a profile half filled when the
+// two minutes run out) are kept in this page's memory only, never stored,
+// hidden while locked, and given back to the same screen once the code opens
+// the session again; the quick exit, a lock from another tab, the erase and
+// another code drop them. While they are not saved, the screen warns shortly
+// before the auto-lock, and a touch puts it off.
 import {
   createContext,
   useCallback,
@@ -33,7 +43,7 @@ import {
   type ReactNode,
 } from 'react';
 import { navigate } from 'wouter/use-hash-location';
-import { CodeExistsError, codeFingerprint, codeOpened } from '../data/code-guard.js';
+import { CodeExistsError, codeFingerprint, codeOpened, NoCodeError } from '../data/code-guard.js';
 import {
   addTabMark,
   claimCodeTry,
@@ -44,21 +54,23 @@ import {
   getStoredVerifier,
   readTabMarks,
   storeLockout,
-  storeNewVerifier,
-  storeVerifier,
 } from '../data/db.js';
 import { forgetVisit } from '../data/history.js';
+import { sealStoredData, storeNewCode, type SealOptions } from '../data/migration.js';
+import { closeVault, openVault } from '../data/vault.js';
 import {
   AUTO_LOCK_MS,
   claimTry,
-  codeKey,
-  createVerifier,
+  createCodeKeys,
+  LOCK_WARNING_MS,
+  VERIFIER_VERSION,
   NO_LOCKOUT,
-  PBKDF2_ITERATIONS,
-  unlockKey,
+  openCode,
   type CodeClaim,
+  type CodeKeys,
   type CodeVerifier,
   type LockoutState,
+  type OpenedCode,
 } from '../domain/code.js';
 import type { Mode } from '../domain/types.js';
 import { useApp, withTimeout } from './app-state.js';
@@ -76,9 +88,15 @@ export type SessionStatus = 'loading' | 'new' | 'locked' | 'unlocked';
 /**
  * 'locked': a wait after too many wrong codes is running, so the code was not
  * even tried. 'unavailable': the stored code could not be read, so the try is
- * not counted.
+ * not counted. 'failed': the code is right, but what an older version kept in
+ * clear could not be sealed on this phone: nothing opens, everything stays as
+ * it was, and the next try starts again. 'cancelled': the session was locked
+ * (the quick exit, a lock from another tab, the erase, another code) while the
+ * code was worked out: nothing opens. 'unsupported': the code's verifier was
+ * made by a newer version of the app: nothing is tried, nothing counted.
  */
-export type UnlockResult = 'ok' | 'wrong' | 'locked' | 'unavailable';
+export type UnlockResult =
+  'ok' | 'wrong' | 'locked' | 'unavailable' | 'failed' | 'cancelled' | 'unsupported';
 
 /**
  * 'made': the code is stored and the session open. 'exists': a code was
@@ -86,12 +104,20 @@ export type UnlockResult = 'ok' | 'wrong' | 'locked' | 'unavailable';
  * nothing is replaced, and this tab asks for that code. 'unsaved': the phone
  * did not keep the code: nothing is opened, the welcome asks again.
  */
-export type CodeMade = 'made' | 'exists' | 'unsaved';
+export type CodeMade = 'made' | 'exists' | 'unsaved' | 'cancelled';
 
 /** A screen the session locked, held in memory (never in the address) until the code is given. */
 export interface HeldScreen {
   path: string;
   state: unknown;
+}
+
+/** The answers of a form being filled, for the screen `key`, in memory only. */
+interface Draft {
+  key: string;
+  value: unknown;
+  /** Some answer differs from what is saved: the screen warns before the auto-lock. */
+  unsaved: boolean;
 }
 
 export interface Session {
@@ -135,18 +161,46 @@ export interface Session {
   forgetCode: () => Promise<void>;
   /** An interaction the window does not see: the two minutes start again. */
   touch: () => void;
-  /** The key material of the open session, null while locked. */
+  /** The wrapping key of the open session (data/vault.ts), null while locked. */
   keyMaterial: () => CryptoKey | null;
   /** Keeps in memory the screen the session locked on, to give it back after the code. */
   holdScreen: (path: string, state: unknown) => void;
   /** The screen held, once; null when none is. */
   takeHeldScreen: () => HeldScreen | null;
+  /**
+   * Keeps in memory (never stored) the answers of the form of the screen
+   * `key` as they are typed; `unsaved` when some answer is not saved yet.
+   */
+  keepDraft: (key: string, value: unknown, unsaved: boolean) => void;
+  /**
+   * The answers kept for the screen `key`, null when none are. They stay
+   * while that screen shows (its form keeps them up to date), and go once
+   * another screen shows (dropDraft).
+   */
+  draftFor: (key: string) => { value: unknown } | null;
+  /** Drops the answers kept, unless they are those of the screen `key` (the one shown). */
+  dropDraft: (key: string) => void;
+  /**
+   * The auto-lock comes in LOCK_WARNING_MS while a form has answers not saved:
+   * the screen says so, and a touch (or `touch`) puts it off.
+   */
+  lockSoon: boolean;
 }
 
 export interface SessionOptions {
-  /** Tests only: start open. The app always starts locked. */
+  /**
+   * Tests only: start open (the test opens the vault itself, as storeTestCode
+   * does: no code is given here). The app always starts locked.
+   */
   startUnlocked?: boolean;
 }
+
+/**
+ * The draft key of a passer-by's questions ("Regarder sans enregistrer",
+ * the `quick` screen of App.tsx): warned about before the auto-lock like any
+ * form, but let go at every lock with her, never given back after the code.
+ */
+export const PASSER_BY_DRAFT = 'quick';
 
 /** What the user does: each one starts the two minutes again. */
 const INTERACTIONS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const;
@@ -162,20 +216,11 @@ function aloneAmongTabs<T>(work: () => Promise<T>): Promise<T> {
   return locks === undefined ? work() : locks.request('siapso-code-try', work);
 }
 
-/** How many storage timeouts a slow store of a new code is given to settle. */
+/**
+ * How many storage timeouts the stored code is given to answer after a new
+ * code could not be stored (another tab may hold the storage).
+ */
 const STORE_SETTLE_FACTOR = 3;
-
-/** Resolves once `promise` settles, or after `ms`, whichever comes first; never rejects. */
-function settledWithin(promise: Promise<unknown>, ms: number): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    const done = () => {
-      clearTimeout(timer);
-      resolve();
-    };
-    promise.then(done, done);
-  });
-}
 
 const SessionContext = createContext<Session | null>(null);
 
@@ -196,16 +241,20 @@ export function SessionProvider({
   const [codeUnavailable, setCodeUnavailable] = useState(false);
   const [codeRefused, setCodeRefused] = useState(false);
   const [epoch, setEpoch] = useState(epochToken);
+  const [lockSoon, setLockSoon] = useState(false);
   const verifier = useRef<CodeVerifier | null>(null);
   const failures = useRef<LockoutState>(NO_LOCKOUT);
   const key = useRef<CryptoKey | null>(null);
   const held = useRef<HeldScreen | null>(null);
+  const draft = useRef<Draft | null>(null);
   /** Locked from another tab: the screen it locked on is not held. */
   const holdNothing = useRef(false);
   const attempt = useRef<Promise<UnlockResult> | null>(null);
   /** Tries claimed in this tab: a count read before the last one is out of date. */
   const claims = useRef(0);
   const restartIdle = useRef<() => void>(() => undefined);
+  /** Counts the locks, exits, erases and other codes: an unlock under way when one comes opens nothing. */
+  const closings = useRef(0);
   const tabs = useRef<TabLink | null>(null);
 
   useEffect(() => {
@@ -275,6 +324,7 @@ export function SessionProvider({
   /** Opens the session with the code of `opened`: this tab writes with that code only. */
   const open = useCallback((material: CryptoKey, opened: CodeVerifier) => {
     key.current = material;
+    openVault(material);
     codeOpened(opened);
     holdNothing.current = false;
     setExited(false);
@@ -290,18 +340,26 @@ export function SessionProvider({
 
   /**
    * What a lock forgets of the visit: the lists waiting for the other women,
-   * and a passer-by (her screen is then not held: the code opens the start).
-   * The list of a woman on screen stays with the screen held.
+   * and a passer-by (her screen is then not held: the code opens the start)
+   * with the answers typed for her and not used yet. The list of a woman on
+   * screen stays with the screen held.
    */
   const forgetAtLock = useCallback(() => {
     if (passerBy.current) holdNothing.current = true;
+    if (draft.current?.key === PASSER_BY_DRAFT) draft.current = null;
     forgetOthers();
     forgetQuick();
   }, [forgetOthers, forgetQuick]);
 
-  /** Locks this tab only (its own two minutes are over). */
+  /**
+   * Locks this tab only (its own two minutes are over): its keys are
+   * forgotten, with the passer-by and the other women's lists (memory only).
+   */
   const lockHere = useCallback(() => {
+    closings.current += 1;
     key.current = null;
+    closeVault();
+    setLockSoon(false);
     renewEpoch();
     forgetAtLock();
     setStatus((now) => (now === 'unlocked' ? 'locked' : now));
@@ -346,45 +404,128 @@ export function SessionProvider({
     }
   }, [storageTimeoutMs]);
 
-  /** A verifier from an older version, made with fewer iterations, made again at the full count. */
-  const rehash = useCallback(
-    async (code: string) => {
-      try {
-        const made = await createVerifier(code);
-        verifier.current = made;
-        await withTimeout(storeVerifier(made), storageTimeoutMs);
-        // The same code, its new verifier: this tab writes with it now.
-        codeOpened(made);
-      } catch (failure) {
-        console.warn('Code not made again on this device', failure);
-      }
-    },
+  /**
+   * Makes the verifier again and seals, or sweeps what was written in clear
+   * (data/migration.ts). Each storage step has its time; the encryption has
+   * none, so a slow phone never fails for being slow.
+   */
+  const sealData = useCallback(
+    (options: SealOptions) => sealStoredData({ ...options, storageTimeoutMs }),
     [storageTimeoutMs],
+  );
+
+  /**
+   * The verifier and key the session opens with, once the right code opened
+   * `stored`. A version 2 verifier opens with its key, after a sweep of what
+   * was written in clear into the storage. A verifier of the format before
+   * SCRUM-39 (no key) or with fewer iterations is made again with a new salt,
+   * stored in the same transaction as the sealed data with every data key
+   * wrapped for its key; after any failure the stored verifier is read again,
+   * and the new key opens only when its verifier is the one stored (the
+   * transaction committed anyway). When storage holds another verifier (made
+   * again in another tab), the code is tried on that one, once: 'wrong' when
+   * it does not open it. Null when nothing can be opened safely: nothing
+   * opens, and storage stays as it was.
+   */
+  const openData = useCallback(
+    (
+      code: string,
+      first: CodeVerifier,
+      firstOpened: OpenedCode,
+    ): Promise<CodeKeys | 'wrong' | null> => {
+      const attempt = async (
+        stored: CodeVerifier,
+        opened: OpenedCode,
+        again: boolean,
+      ): Promise<CodeKeys | 'wrong' | null> => {
+        const current = { fingerprint: codeFingerprint(stored), wrappingKey: opened.wrappingKey };
+        /** The code tried on the verifier stored now, when it is another one. */
+        const reopen = async (now: CodeVerifier | null): Promise<CodeKeys | 'wrong' | null> => {
+          if (now === null || codeFingerprint(now) === current.fingerprint) return null;
+          const reopened = await openCode(code, now);
+          return reopened === null ? 'wrong' : attempt(now, reopened, false);
+        };
+        if (!opened.renew && opened.wrappingKey !== null) {
+          try {
+            await sealData({ current });
+          } catch (failure) {
+            // Never open with a verifier storage no longer holds.
+            if (failure instanceof NoCodeError) {
+              return again ? reopen(await readVerifierAgain()) : null;
+            }
+            // Only a sweep of records nobody reads: the next unlock does it.
+            console.warn('Records in clear not swept on this device yet', failure);
+          }
+          return { verifier: stored, wrappingKey: opened.wrappingKey };
+        }
+        const next = await createCodeKeys(code);
+        try {
+          await sealData({ current, next });
+          verifier.current = next.verifier;
+          // The other tabs hold the verifier made again: they lock and ask for the code.
+          tabs.current?.announceCode();
+          return next;
+        } catch (failure) {
+          // What storage holds now decides: the write may have committed anyway.
+          const now = await readVerifierAgain();
+          if (now !== null && codeFingerprint(now) === codeFingerprint(next.verifier)) {
+            tabs.current?.announceCode();
+            return next;
+          }
+          if (failure instanceof NoCodeError) {
+            // Another tab made the verifier again meanwhile: the same code opens it.
+            return again ? reopen(now) : null;
+          }
+          console.warn('Code not made again on this device', failure);
+          // The new key opens nothing stored: it is not kept.
+          return opened.wrappingKey === null
+            ? null
+            : { verifier: stored, wrappingKey: opened.wrappingKey };
+        }
+      };
+      return attempt(first, firstOpened, true);
+    },
+    [readVerifierAgain, sealData],
   );
 
   const unlock = useCallback(
     (code: string): Promise<UnlockResult> => {
       // A second tap while the code is being worked out gives the same answer.
       if (attempt.current) return attempt.current;
+      // A lock, an exit, an erase or another code while the code is worked
+      // out (seconds, the first time after the update), or while another tab
+      // tries one: nothing opens then.
+      const since = closings.current;
       const tried = aloneAmongTabs(async (): Promise<UnlockResult> => {
         const stored = verifier.current ?? (await readVerifierAgain());
         // The code cannot be read: nothing to compare with, so the try does not count.
         if (stored === null) return 'unavailable';
+        // Made by a newer version of the app: this one cannot open it, and the try does not count.
+        if (stored.version !== undefined && stored.version !== VERIFIER_VERSION) {
+          return 'unsupported';
+        }
         const claimed = await claim();
         failures.current = claimed.after;
         if (!claimed.allowed) {
           setLockout(claimed.before);
           return 'locked';
         }
-        const material = await unlockKey(code, stored);
-        if (material === null) {
+        const opened = await openCode(code, stored);
+        if (opened === null) {
           // Counted already, in storage, by the claim.
           setLockout(claimed.after);
           return 'wrong';
         }
         keepLockout(NO_LOCKOUT);
-        open(material, stored);
-        if (stored.iterations < PBKDF2_ITERATIONS) void rehash(code);
+        const keys = await openData(code, stored, opened);
+        if (keys === 'wrong') {
+          // Not the code on the phone now: the try counts.
+          keepLockout(claimed.after);
+          return 'wrong';
+        }
+        if (keys === null) return 'failed';
+        if (closings.current !== since) return 'cancelled';
+        open(keys.wrappingKey, keys.verifier);
         return 'ok';
       }).finally(() => {
         attempt.current = null;
@@ -392,15 +533,19 @@ export function SessionProvider({
       attempt.current = tried;
       return tried;
     },
-    [claim, keepLockout, open, readVerifierAgain, rehash],
+    [claim, keepLockout, open, openData, readVerifierAgain],
   );
 
-  /** Forgets what memory holds about profiles: the check, the visit's checks, the held screen. */
+  /**
+   * Forgets what memory holds about profiles: the check, the visit's checks,
+   * the held screen, the answers not saved.
+   */
   const forgetMemory = useCallback(() => {
     reset();
     forgetVisit();
     newVisit();
     held.current = null;
+    draft.current = null;
   }, [reset]);
 
   /** The quick exit in this tab: locked, memory forgotten, the neutral screen on the entry. */
@@ -419,7 +564,10 @@ export function SessionProvider({
 
   /** No code any more, in this tab: everything in memory goes, and the welcome comes back. */
   const forgetAll = useCallback(() => {
+    closings.current += 1;
     key.current = null;
+    closeVault();
+    setLockSoon(false);
     verifier.current = null;
     codeOpened(null);
     failures.current = NO_LOCKOUT;
@@ -460,9 +608,13 @@ export function SessionProvider({
     }
     if (known !== null && codeFingerprint(known) === codeFingerprint(stored)) return;
     verifier.current = stored;
+    closings.current += 1;
     key.current = null;
-    // Nothing of this tab comes back after another code: no screen is held.
+    closeVault();
+    setLockSoon(false);
+    // Nothing of this tab comes back after another code: no screen, no answer is held.
     held.current = null;
+    draft.current = null;
     holdNothing.current = true;
     forgetAtLock();
     renewEpoch();
@@ -488,21 +640,27 @@ export function SessionProvider({
 
   const createCode = useCallback(
     async (code: string): Promise<CodeMade> => {
-      const made = await createVerifier(code);
-      const material = await codeKey(code);
-      const storing = storeNewVerifier(made);
+      // A lock, an exit, an erase or another code while it is made: it is
+      // kept, and nothing opens.
+      const since = closings.current;
+      const keys = await createCodeKeys(code);
+      const { verifier: made, wrappingKey } = keys;
+      // The verifier, and in the same transaction what a phone from before
+      // codes existed kept in clear, sealed (data/migration.ts). Each storage
+      // step has its time, the encryption none: a step that does not end in
+      // time is given up for good (aborted unless it committed), never left
+      // to land later.
       try {
-        await withTimeout(storing, storageTimeoutMs);
+        await storeNewCode(keys, { storageTimeoutMs });
       } catch (failure) {
         // Another tab made the code first: it stays, and this tab asks for it.
         if (failure instanceof CodeExistsError) return refuseCode();
-        console.warn('Code not stored on this device at once', failure);
-        // A slow or failed store: nothing opens on a code storage may not hold.
-        // Once the store settles (or a while longer), storage alone decides.
-        await settledWithin(storing, STORE_SETTLE_FACTOR * storageTimeoutMs);
+        console.warn('Code not stored on this device', failure);
+        // Nothing opens on a code storage may not hold: storage alone decides,
+        // given a while longer to answer (another tab may hold it).
         let stored: CodeVerifier | undefined;
         try {
-          stored = await withTimeout(getStoredVerifier(), storageTimeoutMs);
+          stored = await withTimeout(getStoredVerifier(), STORE_SETTLE_FACTOR * storageTimeoutMs);
         } catch {
           return 'unsaved';
         }
@@ -512,8 +670,13 @@ export function SessionProvider({
       verifier.current = made;
       keepLockout(NO_LOCKOUT);
       setCodeUnavailable(false);
-      open(material, made);
       tabs.current?.announceCode();
+      if (closings.current !== since) {
+        // The code is on the phone: it is asked.
+        setStatus((now) => (now === 'loading' ? now : 'locked'));
+        return 'cancelled';
+      }
+      open(wrappingKey, made);
       return 'made';
     },
     [keepLockout, open, refuseCode, storageTimeoutMs],
@@ -535,6 +698,7 @@ export function SessionProvider({
       } else {
         lockHere();
         held.current = null;
+        draft.current = null;
         holdNothing.current = true;
       }
     },
@@ -580,26 +744,50 @@ export function SessionProvider({
     return screen;
   }, []);
 
+  const keepDraft = useCallback((key: string, value: unknown, unsaved: boolean) => {
+    draft.current = { key, value, unsaved };
+    if (!unsaved) setLockSoon(false);
+  }, []);
+
+  const draftFor = useCallback((key: string) => {
+    const kept = draft.current;
+    return kept?.key === key ? { value: kept.value } : null;
+  }, []);
+
+  const dropDraft = useCallback((key: string) => {
+    if (draft.current?.key !== key) draft.current = null;
+  }, []);
+
   // Two minutes without interaction, or more than two minutes hidden: while
   // open, the session locks (in this tab only); while locked, a new epoch
   // starts, so the danger signs ticked without the code are forgotten. The
   // clock is read again when the page comes back, because a hidden page on a
-  // phone may run no timer at all.
+  // phone may run no timer at all. While open with answers not saved, the
+  // screen warns LOCK_WARNING_MS before.
   useEffect(() => {
-    const idle = status === 'unlocked' ? lockHere : renewEpoch;
+    const open = status === 'unlocked';
+    const idle = open ? lockHere : renewEpoch;
     let last = Date.now();
     let hiddenAt: number | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let warning: ReturnType<typeof setTimeout> | undefined;
+    const warn = () => {
+      if (draft.current?.unsaved === true) setLockSoon(true);
+    };
     const restart = () => {
       last = Date.now();
       clearTimeout(timer);
+      clearTimeout(warning);
+      setLockSoon(false);
       timer = setTimeout(expire, AUTO_LOCK_MS);
+      if (open) warning = setTimeout(warn, AUTO_LOCK_MS - LOCK_WARNING_MS);
     };
     const expire = () => {
       idle();
       restart();
     };
     timer = setTimeout(expire, AUTO_LOCK_MS);
+    if (open) warning = setTimeout(warn, AUTO_LOCK_MS - LOCK_WARNING_MS);
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
         hiddenAt ??= Date.now();
@@ -618,6 +806,7 @@ export function SessionProvider({
     window.addEventListener('pageshow', onVisibility);
     return () => {
       clearTimeout(timer);
+      clearTimeout(warning);
       restartIdle.current = () => undefined;
       for (const type of INTERACTIONS) {
         window.removeEventListener(type, restart, { capture: true });
@@ -647,6 +836,10 @@ export function SessionProvider({
       keyMaterial,
       holdScreen,
       takeHeldScreen,
+      keepDraft,
+      draftFor,
+      dropDraft,
+      lockSoon,
     }),
     [
       status,
@@ -665,6 +858,10 @@ export function SessionProvider({
       keyMaterial,
       holdScreen,
       takeHeldScreen,
+      keepDraft,
+      draftFor,
+      dropDraft,
+      lockSoon,
     ],
   );
 

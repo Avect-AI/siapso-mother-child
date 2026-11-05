@@ -57,10 +57,13 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
   expect(counter.steps.taps).toBeLessThanOrEqual(8);
   expect(counter.steps.typedFields).toBe(1);
 
-  // Edit: the saved answers come back, a change is kept across a reload.
+  // Edit: the saved answers come back, a change is kept across a reload. The
+  // situations saved show at a tap (one of them says HIV).
   await page.getByRole('link', { name: 'Mon profil' }).click();
   const weeks = page.getByRole('textbox', { name: 'Nombre de semaines' });
   await expect(weeks).toHaveValue('26');
+  await expect(page.getByRole('checkbox', { name: 'Aucune de ces situations' })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Situations masquées/ }).click();
   await expect(page.getByRole('checkbox', { name: 'Aucune de ces situations' })).toBeChecked();
   await weeks.fill('27');
   // A new number on her saved profile: the day it was known is asked again.
@@ -76,6 +79,7 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
   await page.getByRole('link', { name: 'Mon profil' }).click();
   await expect(weeks).toHaveValue('27');
   await expect(page.getByText('Environ 27 semaines')).toBeVisible();
+  await page.getByRole('button', { name: /^Situations masquées/ }).click();
   await expect(
     page.getByRole('checkbox', { name: "Ancienne césarienne (cicatrice sur l'utérus)" }),
   ).toBeChecked();
@@ -113,6 +117,7 @@ test('an accompanying person creates a profile from a last period date and a bre
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  // Stored sealed: its random id and the sealed record, nothing readable.
   const stored = await page.evaluate(
     () =>
       new Promise<unknown[]>((resolve, reject) => {
@@ -129,16 +134,25 @@ test('an accompanying person creates a profile from a last period date and a bre
       }),
   );
   expect(stored).toEqual([
-    expect.objectContaining({
-      pseudonym: 'Femme 1',
-      pregnant: true,
-      term: { kind: 'lmp', date: tenWeeksAgo },
-      breastfeeding: true,
-      babyAgeWeeks: 60,
-      premature: null,
-      conditions: ['sickle-cell'],
-    }),
+    { id: expect.any(String) as unknown, sealed: expect.any(Object) as unknown },
   ]);
+  for (const clear of ['Femme 1', tenWeeksAgo, 'sickle-cell', 'pregnant', 'lmp']) {
+    expect(JSON.stringify(stored)).not.toContain(clear);
+  }
+  // What was given comes back on the profile screen.
+  await page
+    .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
+    .getByRole('link', { name: 'Modifier le profil de Femme 1' })
+    .click();
+  await expect(page.getByLabel('Premier jour des dernières règles')).toHaveValue(tenWeeksAgo);
+  await expect(page.getByRole('textbox', { name: 'Âge en mois' })).toHaveValue('14');
+  await expect(
+    page
+      .getByRole('group', { name: /^Né avant terme/ })
+      .getByRole('radio', { name: 'Je ne sais pas' }),
+  ).toBeChecked();
+  await page.getByRole('button', { name: /^Situations masquées/ }).click();
+  await expect(page.getByRole('checkbox', { name: 'Drépanocytose' })).toBeChecked();
 });
 
 test('the profile screen names what is missing, in words next to each question', async ({

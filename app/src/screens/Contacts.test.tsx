@@ -235,10 +235,10 @@ describe('Contacts', () => {
 
     // Opened from the list, saving goes back to the list.
     await saysInStatus('Contact enregistré : Sage-femme.');
-    expect(screen.getByRole('link', { name: 'Appeler Sage-femme, 000 000 004' })).toHaveAttribute(
-      'href',
-      'tel:000000004',
-    );
+    // The list reads the contacts again (a decryption): it may come after the status.
+    expect(
+      await screen.findByRole('link', { name: 'Appeler Sage-femme, 000 000 004' }),
+    ).toHaveAttribute('href', 'tel:000000004');
     expect(await loadSavedContacts()).toEqual([
       { id: expect.any(String) as unknown, role: 'midwife', name: '', phone: '000 000 004' },
     ]);

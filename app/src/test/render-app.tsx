@@ -6,11 +6,12 @@ import { App } from '../App.js';
 import { codeOpened } from '../data/code-guard.js';
 import { closeAppDb, getStoredVerifier, storeSettings, storeVerifier } from '../data/db.js';
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
+import type { CodeVerifier } from '../domain/code.js';
 import type { Settings } from '../domain/types.js';
 import { AppProvider } from '../state/app-state.js';
 import { VoiceProvider } from '../voice/voice-context.js';
 import type { VoiceService } from '../voice/voice-service.js';
-import { verifierOf } from './verifier.js';
+import { openVaultOf, verifierOf } from './verifier.js';
 
 /** The code of the phone in tests. */
 export const TEST_CODE = '2468';
@@ -47,11 +48,14 @@ export const noRollback = () =>
   Promise.reject(new Error('There is no previous pack to roll back to'));
 
 /**
- * Stores the verifier of TEST_CODE, as the welcome leaves it, then closes the
- * connection, so the app starts as on a phone, with none open.
+ * Stores the verifier of TEST_CODE, as the welcome leaves it, and opens the
+ * vault of the page with its key (as the code does), so the test can write
+ * and read profile data; then closes the connection, so the app starts as on
+ * a phone, with none open.
  */
 export async function storeTestCode(): Promise<void> {
   await storeVerifier(await verifierOf(TEST_CODE));
+  await openVaultOf(TEST_CODE);
   closeAppDb();
 }
 
@@ -87,11 +91,14 @@ export async function renderApp({
   locked = false,
   open,
   entryState,
+  verifier,
   voice,
   children,
 }: {
   /** The state of the history entry of `hash`, as a screen leaves it. */
   entryState?: unknown;
+  /** The code's verifier stored instead of TEST_CODE's (one an older version made, say). */
+  verifier?: CodeVerifier;
   settings?: Settings;
   hash?: string;
   packLoader?: () => Promise<LoadedPack>;
@@ -110,7 +117,8 @@ export async function renderApp({
   children?: ReactNode;
 } = {}) {
   if (settings) await seedSettings(settings);
-  if (settings?.onboarded) await storeTestCode();
+  if (verifier) await storeVerifier(verifier);
+  else if (settings?.onboarded) await storeTestCode();
   window.location.hash = hash;
   if (entryState !== undefined) window.history.replaceState(entryState, '');
   return render(

@@ -3,7 +3,7 @@ import type { Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { storeLockout } from '../data/db.js';
+import { openAppDb, storeLockout } from '../data/db.js';
 import { recordHistory } from '../data/history.js';
 import { saveProfile } from '../data/profiles.js';
 import { saveContacts } from '../data/referral.js';
@@ -12,9 +12,12 @@ import { translate, type MessageKey, type Vars } from '../i18n/index.js';
 import { waitTime } from './code-words.js';
 import { inSession } from '../state/entry-state.js';
 import { enterCode } from '../test/code-steps.js';
+import { failWrites } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode, TEST_CODE } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
+import { legacyVerifier, verifierOf } from '../test/verifier.js';
+import { SESSION_CHANNEL } from '../state/tab-sync.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -95,6 +98,99 @@ describe('Unlock', () => {
     expect(
       within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }),
     ).toBeVisible();
+  });
+
+  it('opens a phone updated from a version that kept the profiles in clear, sealing them', async () => {
+    const user = userEvent.setup();
+    await (await openAppDb()).put('profiles', profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await renderApp({
+      settings: accompanied,
+      locked: true,
+      verifier: await legacyVerifier(TEST_CODE),
+    });
+
+    await enterCode(user);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Profils' }, { timeout: 15_000 }),
+    ).toBeVisible();
+    expect(await screen.findByText('Awa')).toBeVisible();
+    expect(JSON.stringify(await (await openAppDb()).getAll('profiles'))).not.toContain('Awa');
+  });
+
+  it('says when the right code could not open the profiles on this phone, and asks it again', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    await (await openAppDb()).put('profiles', profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await renderApp({ settings: woman, locked: true, verifier: await legacyVerifier(TEST_CODE) });
+    const refused = failWrites((store) => store.name === 'profiles');
+
+    await enterCode(user);
+
+    expect(
+      await screen.findByText(
+        "Le code est bon, mais les profils n'ont pas pu être ouverts sur ce téléphone. Tapez le code encore une fois.",
+        {},
+        // Two derivations at 600 000 iterations: the code, then the verifier made again.
+        { timeout: 15_000 },
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+    // The field is empty: the code is typed again, never left on screen.
+    expect(screen.getByLabelText('Code')).toHaveValue('');
+    refused.restore();
+    await enterCode(user);
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: /^Un médicament ou un remède/ },
+        { timeout: 15_000 },
+      ),
+    ).toBeVisible();
+  });
+
+  it('asks the code again when the app locked while it was opening (another tab)', async () => {
+    const user = userEvent.setup();
+    await renderApp({ settings: woman, locked: true });
+
+    // The code takes a moment to work out, as on a phone.
+    const derive = crypto.subtle.deriveBits.bind(crypto.subtle);
+    vi.spyOn(crypto.subtle, 'deriveBits').mockImplementation(async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return derive(...args);
+    });
+
+    await enterCode(user);
+    // A lock in another tab, while the code is worked out.
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'lock', mark: crypto.randomUUID() });
+    other.close();
+
+    expect(
+      await screen.findByText(
+        "L'application s'est verrouillée pendant l'ouverture. Tapez le code encore une fois.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Code')).toHaveValue('');
+    expect(screen.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  });
+
+  it('says a code of a newer version of the app cannot be opened here, and counts no try', async () => {
+    const user = userEvent.setup();
+    await renderApp({
+      settings: woman,
+      locked: true,
+      verifier: { ...(await verifierOf(TEST_CODE)), version: 3 },
+    });
+
+    await enterCode(user);
+
+    expect(
+      await screen.findByText(
+        "Ce code a été créé par une version plus récente de l'application. Mettez l'application à jour pour l'ouvrir.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Ce n'est pas le bon code/)).toBeNull();
   });
 
   it('says a code is 4 to 6 digits before trying it', async () => {

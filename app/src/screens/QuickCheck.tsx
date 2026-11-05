@@ -6,16 +6,20 @@ import { afterBirth, emptyForm, formFromProfile, reenterTerm } from '../domain/p
 import type { Profile } from '../domain/types.js';
 import { useT } from '../i18n/index.js';
 import { useCheck } from '../state/check-state.js';
+import { sessionState } from '../state/entry-state.js';
+import { PASSER_BY_DRAFT } from '../state/session.js';
 import { QUICK_PATH } from './edit-route.js';
 import { ProfileQuestions } from './ProfileEdit.js';
 
 export { QUICK_PATH };
 
-/** What the outdated-term step asks for a passer-by: the baby is born, or the term again. */
+/**
+ * What the outdated-term step asks for a passer-by: the baby is born, or the
+ * term again (behind marks on the entry, the answer in memory: entry-state.ts).
+ */
 function updateAsked(): 'born' | 'term' | null {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null || !('update' in state)) return null;
-  return state.update === 'born' || state.update === 'term' ? state.update : null;
+  const { update } = sessionState();
+  return update === 'born' || update === 'term' ? update : null;
 }
 
 /**
@@ -27,6 +31,8 @@ function updateAsked(): 'born' | 'term' | null {
  * stay in memory only (check-state `quick`): no profile and no history are
  * stored, and she is let go as soon as another woman or passer-by is looked
  * at, at every lock, at a change of mode, at the quick exit and at a reload.
+ * The answers typed and not used yet are warned about before the auto-lock,
+ * then go with her (session.tsx, PASSER_BY_DRAFT).
  * "Regarder ses produits" opens the check in place of this screen, so Back
  * from the check goes to the list of profiles.
  *
@@ -72,6 +78,7 @@ export function QuickCheck() {
       </div>
       <ProfileQuestions
         quick
+        draftKey={PASSER_BY_DRAFT}
         mode="accompanied"
         today={today}
         base={update?.base}

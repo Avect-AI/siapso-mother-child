@@ -10,6 +10,7 @@ import {
   conditionsShown,
   emptyForm,
   formFromProfile,
+  isConcealedCondition,
   monthsAsWeeks,
   monthsLookLikeWeeks,
   monthsNearTerm,
@@ -33,6 +34,8 @@ import type { Mode, Profile, TermInput } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { ownProfile, useCheck } from '../state/check-state.js';
+import { useDraft } from '../state/draft.js';
+import { inSession, sessionState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { CheckboxGroup, RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
@@ -40,6 +43,11 @@ import { TextField } from '../ui/TextField.js';
 
 /** Which profile the screen opens: hers (woman mode), a new one, or one by its id. */
 export type ProfileTarget = { kind: 'mine' } | { kind: 'new' } | { kind: 'edit'; id: string };
+
+/** A name for the profile screen of `target`: a change of profile is a new screen, and its own answers. */
+export function profileScreenKey(target: ProfileTarget): string {
+  return target.kind === 'edit' ? `profile:${target.id}` : `profile:${target.kind}`;
+}
 
 /**
  * Fields whose error shows as soon as something is typed in them, before any
@@ -126,11 +134,14 @@ interface EntryAsk {
 }
 
 function entryAsk(): EntryAsk {
+  // The outdated-term step leaves both in memory, behind marks (entry-state.ts);
+  // the check leaves `next` alone in clear, which says nothing of her.
+  const kept = sessionState();
   const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null) return { next: null, update: null };
-  const next = 'next' in state && state.next === '/check' ? '/check' : null;
-  const update =
-    'update' in state && (state.update === 'born' || state.update === 'term') ? state.update : null;
+  const plainNext =
+    typeof state === 'object' && state !== null && 'next' in state && state.next === '/check';
+  const next = kept['next'] === '/check' || plainNext ? '/check' : null;
+  const update = kept['update'] === 'born' || kept['update'] === 'term' ? kept['update'] : null;
   return { next, update };
 }
 
@@ -200,6 +211,7 @@ export function ProfileQuestions({
   today,
   base,
   self,
+  draftKey,
   initial,
   taken,
   onSaved,
@@ -211,7 +223,12 @@ export function ProfileQuestions({
   base: Profile | undefined;
   /** A new profile is her own (woman mode) or another woman's (accompanied mode). */
   self: boolean;
-  /** Read once, when the form mounts: later renders (a language change) keep the answers typed. */
+  /** The screen's name: the answers typed are kept under it across an auto-lock (state/draft.ts). */
+  draftKey: string;
+  /**
+   * Read once, when the form mounts: later renders (a language change) keep
+   * the answers typed. Answers kept across an auto-lock come back instead.
+   */
   initial: ProfileForm;
   /** The pseudonyms of the other profiles of the phone. */
   taken: readonly string[];
@@ -227,7 +244,7 @@ export function ProfileQuestions({
   // A new weeks number asks again the day it was known: always in accompanied
   // mode, and on her own profile once saved (a new one keeps today).
   const asksDay = mode === 'accompanied' || base !== undefined;
-  const [form, setForm] = useState(initial);
+  const { value: form, setValue: setForm, restored } = useDraft(draftKey, initial);
   // Each failed save attempt; from the first one, every error follows the answers live.
   const [attempts, setAttempts] = useState(0);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -281,6 +298,12 @@ export function ProfileQuestions({
   };
 
   const shown = conditionsShown(mode);
+  // A form that opens with the situations answered (a saved profile, answers
+  // given back after the code) hides them all until an explicit tap: one of
+  // them says HIV. A new form has nothing to hide yet.
+  const [situationsHidden] = useState(
+    () => shown.some(isConcealedCondition) && (form.conditions.length > 0 || form.noCondition),
+  );
   const toggleCondition = (id: ConditionId, checked: boolean) => {
     setForm((current) => ({
       ...current,
@@ -389,6 +412,12 @@ export function ProfileQuestions({
         void submit(event);
       }}
     >
+      {/* Answers kept across an auto-lock: back, and not saved yet. */}
+      {restored ? (
+        <div role="status">
+          <Notice>{t('autoLock.restored')}</Notice>
+        </div>
+      ) : null}
       {quick ? null : (
         <TextField
           label={t('profile.pseudonym')}
@@ -684,6 +713,7 @@ export function ProfileQuestions({
               toggleCondition(id, checked);
             },
           }))}
+          concealed={situationsHidden ? t('conceal.situations') : undefined}
           none={{
             id: 'none',
             label: t('profile.noCondition'),
@@ -895,10 +925,12 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
             forget(base.id);
             navigate('/', {
               replace: true,
-              state:
+              // Marks only on the entry: the pseudonym stays in memory (entry-state.ts).
+              state: inSession(
                 mode === 'woman'
                   ? { profileDeletedMine: true }
                   : { profileDeleted: base.pseudonym },
+              ),
             });
           }}
         />
@@ -920,6 +952,7 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
             today={ready.today}
             base={ready.base}
             self={kind === 'mine'}
+            draftKey={profileScreenKey(target)}
             taken={ready.taken}
             initial={
               ready.form === null
@@ -945,7 +978,10 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
                 return;
               }
               // Home reads the pseudonym from the history entry to say which profile was saved.
-              navigate('/', { replace: true, state: { profileSaved: profile.pseudonym } });
+              navigate('/', {
+                replace: true,
+                state: inSession({ profileSaved: profile.pseudonym }),
+              });
             }}
           />
         ) : null}

@@ -28,7 +28,9 @@ export function Unlock() {
   const { unlock, lockout, codeUnavailable, codeRefused } = useSession();
   const [, navigate] = useLocation();
   const [code, setCode] = useState('');
-  const [problem, setProblem] = useState<'wrong' | 'invalid' | null>(null);
+  const [problem, setProblem] = useState<
+    'wrong' | 'invalid' | 'failed' | 'cancelled' | 'unsupported' | null
+  >(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const field = useRef<HTMLInputElement>(null);
@@ -90,12 +92,22 @@ export function Unlock() {
       return;
     }
     setBusy(true);
+    setProblem(null);
     const result = await unlock(code);
     // Open: this screen is gone. Otherwise the next try starts from an empty field.
     if (result === 'ok') return;
     setBusy(false);
     // The stored code could not be read: the notice says so, the try was not counted.
     if (result === 'unavailable') return;
+    // The right code but nothing opened (the profiles could not be opened, the
+    // app locked meanwhile), or a code of a newer version: never left in the
+    // field, typed again.
+    if (result === 'failed' || result === 'cancelled' || result === 'unsupported') {
+      setCode('');
+      setProblem(result);
+      field.current?.focus();
+      return;
+    }
     setCode('');
     setProblem('wrong');
     setNow(Date.now());
@@ -107,6 +119,11 @@ export function Unlock() {
       {codeUnavailable ? <Notice>{t('code.unavailable')}</Notice> : null}
       {/* A code made in this tab was refused: the one on the phone is asked. */}
       {codeRefused ? <Notice>{t('code.exists')}</Notice> : null}
+      <div role="alert">
+        {problem === 'failed' ? <Notice>{t('code.openFailed')}</Notice> : null}
+        {problem === 'cancelled' ? <Notice>{t('code.typeAgain')}</Notice> : null}
+        {problem === 'unsupported' ? <Notice>{t('code.unsupported')}</Notice> : null}
+      </div>
       <form
         className="code-form"
         noValidate

@@ -111,7 +111,7 @@ describe('Quick exit', () => {
       expect(window.location.hash).toBe('#/');
     });
     // The check was forgotten: Awa is chosen again from the list.
-    expect(screen.getByRole('button', { name: /^Awa / })).toBeVisible();
+    expect(await screen.findByRole('button', { name: /^Awa / })).toBeVisible();
   });
 
   it('keeps the danger signs one tap away from the neutral screen', async () => {

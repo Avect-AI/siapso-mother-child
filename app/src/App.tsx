@@ -10,13 +10,13 @@ import { About } from './screens/About.js';
 import { Check } from './screens/Check.js';
 import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
-import { ContactEdit, Contacts, type ContactTarget } from './screens/Contacts.js';
+import { ContactEdit, Contacts, contactScreenKey, type ContactTarget } from './screens/Contacts.js';
 import { Danger } from './screens/Danger.js';
 import { CONTACT_EDIT_PATH, editedId, PROFILE_EDIT_PATH } from './screens/edit-route.js';
 import { FORGOT_PATH, ForgotCode } from './screens/ForgotCode.js';
 import { Home } from './screens/Home.js';
 import { Neutral, UNLOCK_PATH } from './screens/Neutral.js';
-import { ProfileEdit, type ProfileTarget } from './screens/ProfileEdit.js';
+import { ProfileEdit, profileScreenKey, type ProfileTarget } from './screens/ProfileEdit.js';
 import { Profiles } from './screens/Profiles.js';
 import { QUICK_PATH, QuickCheck } from './screens/QuickCheck.js';
 import { CALL_PATH, Referral } from './screens/Referral.js';
@@ -32,6 +32,7 @@ import { useApp } from './state/app-state.js';
 import { intoThisEpoch } from './state/entry-state.js';
 import { useSession, type SessionStatus } from './state/session.js';
 import { Header } from './ui/Header.js';
+import { LockWarning } from './ui/LockWarning.js';
 
 /** The licences screen, with the full licence texts: its own chunk, out of the first load. */
 const Licences = lazy(() =>
@@ -251,11 +252,9 @@ function screenKey(
   check: CheckRoute | null,
   contact: 'list' | ContactTarget | null,
 ): string | null {
-  if (screen === 'profile' && profile) {
-    return profile.kind === 'edit' ? `profile:${profile.id}` : `profile:${profile.kind}`;
-  }
+  if (screen === 'profile' && profile) return profileScreenKey(profile);
   if (screen === 'contact' && contact !== null && contact !== 'list') {
-    return contact.kind === 'edit' ? `contact:${contact.id}` : 'contact:new';
+    return contactScreenKey(contact);
   }
   if (screen === 'search' && check?.screen === 'search') return `search:${check.kind}`;
   if (screen === 'confirm' && check?.screen === 'confirm') {
@@ -291,6 +290,13 @@ function Screens() {
   const shown = useRef(key);
   // The screen on show has not had the focus yet (its heading is still to come).
   const focusOwed = useRef(false);
+
+  // Answers kept for a form (state/draft.ts) stay while its screen shows, and
+  // across a lock until the code brings it back; another screen drops them.
+  const { unlocked, dropDraft } = session;
+  useEffect(() => {
+    if (unlocked && key !== null && key !== 'unlocked' && key !== 'loading') dropDraft(key);
+  }, [unlocked, key, dropDraft]);
 
   // A new screen takes the focus to its heading, so a screen reader starts
   // reading it from the top, or to the field the screen exists for (the
@@ -397,6 +403,12 @@ function Screens() {
       ) : null}
       {screen === 'signs' ? <SignsNow /> : null}
       {screen === 'result' ? <Result /> : null}
+      <LockWarning
+        open={session.unlocked && session.lockSoon}
+        message={t('autoLock.soon')}
+        action={t('autoLock.stay')}
+        onStay={session.touch}
+      />
     </>
   );
 }

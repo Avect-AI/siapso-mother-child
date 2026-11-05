@@ -62,6 +62,83 @@ export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: s
   await expectStart(page, mode, lang);
 }
 
+/** Records in clear, store by store, as the version before SCRUM-39 kept them. */
+export interface BeforeUpdate {
+  settings?: Record<string, unknown>;
+  profiles?: Record<string, unknown>[];
+  history?: Record<string, unknown>[];
+  /** The saved contacts, kept as one record. */
+  contacts?: Record<string, unknown>[];
+}
+
+/**
+ * Writes what a phone updated from the version before SCRUM-39 holds: the
+ * code's verifier in that version's format (its hash is the PBKDF2 output of
+ * `code` itself) and the records given, in clear. The app must have opened
+ * once (its database is made). After a reload, the first code seals them and
+ * makes the verifier again (app/src/data/migration.ts); a record in clear
+ * written next to a newer verifier is never read. Returns the salt written.
+ */
+export function seedBeforeUpdate(
+  page: Page,
+  records: BeforeUpdate,
+  code: string = CODE,
+): Promise<string> {
+  return page.evaluate(
+    async ({ records, code }) => {
+      const base64url = (bytes: Uint8Array) =>
+        btoa(String.fromCharCode(...bytes))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '');
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(code),
+        'PBKDF2',
+        false,
+        ['deriveBits'],
+      );
+      const hash = new Uint8Array(
+        await crypto.subtle.deriveBits(
+          { name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600_000 },
+          key,
+          256,
+        ),
+      );
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = indexedDB.open('siapso');
+        open.onsuccess = () => {
+          resolve(open.result);
+        };
+        open.onerror = () => {
+          reject(new Error('cannot open the database'));
+        };
+      });
+      const tx = db.transaction(['settings', 'profiles', 'history', 'contacts'], 'readwrite');
+      if (records.settings) tx.objectStore('settings').put(records.settings, 'settings');
+      tx.objectStore('settings').put(
+        { salt: base64url(salt), hash: base64url(hash), iterations: 600_000 },
+        'code',
+      );
+      for (const profile of records.profiles ?? []) tx.objectStore('profiles').put(profile);
+      for (const entry of records.history ?? []) tx.objectStore('history').put(entry);
+      if (records.contacts) tx.objectStore('contacts').put(records.contacts, 'saved');
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => {
+          resolve();
+        };
+        tx.onerror = () => {
+          reject(new Error('not written'));
+        };
+      });
+      db.close();
+      return base64url(salt);
+    },
+    { records, code },
+  );
+}
+
 /** The code screen: the code, then "Ouvrir". */
 export async function unlock(page: Page, code: string = CODE, lang: Lang = 'fr') {
   const words = WORDS[lang];

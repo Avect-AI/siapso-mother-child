@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReferralContact } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
-import { verifierOf } from '../test/verifier.js';
-import { closeAppDb, storeVerifier } from './db.js';
+import { openVaultOf, verifierOf } from '../test/verifier.js';
+import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import {
   fetchDeploymentReferral,
   loadReferral,
@@ -16,10 +16,13 @@ import {
   parseReferral,
   saveContacts,
 } from './referral.js';
+import { closeVault, LockedError } from './vault.js';
 
-// Profile data is written only while a code is on the phone (code-guard.ts).
+// Profile data is written only while a code is on the phone (code-guard.ts),
+// and read or written only while the code is open in the page (vault.ts).
 beforeEach(async () => {
   await storeVerifier(await verifierOf('2468'));
+  await openVaultOf('2468');
 });
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -86,6 +89,47 @@ describe('saveContacts and loadSavedContacts', () => {
     await expect(saveContacts([{ ...AWA, phone: 'abc' }])).rejects.toThrow(RangeError);
     await expect(saveContacts([AWA, { ...FATOU, id: AWA.id }])).rejects.toThrow(RangeError);
     expect(await loadSavedContacts()).toEqual([]);
+  });
+});
+
+describe('contacts at rest', () => {
+  it('keeps nothing readable: no name and no number in storage', async () => {
+    await saveContacts([AWA, FATOU]);
+
+    const stored: unknown = await (await openAppDb()).get('contacts', 'saved');
+    expect(Object.keys(stored as object)).toEqual(['sealed']);
+    const text = JSON.stringify(stored);
+    for (const clear of ['Awa', 'Fatou', '000 000 001', '999', 'midwife', 'relay']) {
+      expect(text).not.toContain(clear);
+    }
+    expect(await loadSavedContacts()).toEqual([AWA, FATOU]);
+  });
+
+  it('reads and writes nothing while the code is not open (locked)', async () => {
+    await saveContacts([AWA]);
+    closeVault();
+
+    await expect(loadSavedContacts()).rejects.toBeInstanceOf(LockedError);
+    await expect(saveContacts([FATOU])).rejects.toBeInstanceOf(LockedError);
+  });
+
+  it('cannot read contacts its code does not open, and says so rather than none', async () => {
+    await openVaultOf('1357');
+    await saveContacts([AWA]);
+    await openVaultOf('2468');
+
+    await expect(loadSavedContacts()).rejects.toThrow();
+    const circuit = await loadReferral({ fetch: serving().fetch });
+    expect(circuit.savedUnavailable).toBe(true);
+  });
+
+  it('never shows contacts kept in clear: they cannot be read, never listed', async () => {
+    await (await openAppDb()).put('contacts', [FATOU, { ...AWA, phone: '000 000 999' }], 'saved');
+
+    await expect(loadSavedContacts()).rejects.toThrow();
+    const circuit = await loadReferral({ fetch: serving().fetch });
+    expect(circuit.savedUnavailable).toBe(true);
+    expect(circuit.contacts.map((contact) => contact.phone)).not.toContain('000 000 999');
   });
 });
 

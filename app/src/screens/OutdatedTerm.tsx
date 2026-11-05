@@ -3,21 +3,22 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import type { Mode, Profile } from '../domain/types.js';
 import { useT } from '../i18n/index.js';
+import { inSession } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
-import { editEntry, PROFILE_EDIT_PATH, QUICK_PATH } from './edit-route.js';
+import { PROFILE_EDIT_PATH, QUICK_PATH } from './edit-route.js';
 
 /**
- * The profile screen of this profile and the state to open it with: hers in
- * woman mode; in accompanied mode the edit screen, her id in the entry's
- * state, never in the address (edit-route.ts).
+ * The profile screen of this profile and what to open it with: hers in woman
+ * mode; in accompanied mode the edit screen, her id kept in memory, never in
+ * the address (edit-route.ts).
  */
 function profileEdit(
   mode: Mode,
   profile: Pick<Profile, 'id'>,
-): { path: string; state: Record<string, unknown> } {
+): { path: string; values: Record<string, unknown> } {
   return mode === 'accompanied'
-    ? { path: PROFILE_EDIT_PATH, state: editEntry(profile.id) }
-    : { path: '/profile', state: {} };
+    ? { path: PROFILE_EDIT_PATH, values: { editId: profile.id } }
+    : { path: '/profile', values: {} };
 }
 
 /**
@@ -55,12 +56,16 @@ export function OutdatedTerm({
   const update = (answer: 'born' | 'term') => {
     // In place of this entry: once saved, the profile screen (or a passer-by's
     // questions) gives way to the check, so Back never shows the same check twice.
+    // Marks only on the entry: what the answer says of her stays in memory (entry-state.ts).
     if (passerBy) {
-      navigate(QUICK_PATH, { replace: true, state: { update: answer } });
+      navigate(QUICK_PATH, { replace: true, state: inSession({ update: answer }) });
       return;
     }
-    const { path, state } = profileEdit(mode, profile);
-    navigate(path, { replace: true, state: { ...state, update: answer, next: '/check' } });
+    const { path, values } = profileEdit(mode, profile);
+    navigate(path, {
+      replace: true,
+      state: inSession({ ...values, update: answer, next: '/check' }),
+    });
   };
   return (
     <div className="outdated">

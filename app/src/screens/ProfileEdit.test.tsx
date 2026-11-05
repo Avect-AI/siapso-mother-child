@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App.js';
@@ -8,6 +8,7 @@ import { listHistory, recordHistory } from '../data/history.js';
 import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { AppProvider, useApp } from '../state/app-state.js';
+import { inSession } from '../state/entry-state.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { loaderOf, renderApp, seedSettings, shellPack, storeTestCode } from '../test/render-app.js';
 
@@ -39,6 +40,9 @@ function stored(patch: Partial<Profile> = {}): Profile {
     ...patch,
   };
 }
+
+/** The button that shows the situations of a saved profile (a no-break space before the colon). */
+const HIDDEN_SITUATIONS = 'Situations masquées\u00a0: touchez pour les afficher';
 
 function group(name: string | RegExp) {
   return screen.getByRole('group', { name });
@@ -109,6 +113,8 @@ describe('ProfileEdit: the common case', () => {
     expect(screen.getByRole('textbox', { name: 'Nombre de semaines' })).toHaveValue('26');
     expect(screen.getByText('Environ 26 semaines')).toBeVisible();
     expect(option(/^Allaite/, 'Non')).toBeChecked();
+    // The situations saved show at a tap.
+    await user.click(screen.getByRole('button', { name: HIDDEN_SITUATIONS }));
     expect(screen.getByRole('checkbox', { name: "Traitement contre l'épilepsie" })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Aucune de ces situations' })).not.toBeChecked();
 
@@ -602,7 +608,7 @@ describe('ProfileEdit: an outdated term', () => {
     await renderApp({
       settings: accompanied,
       hash: '#/profile/p1',
-      entryState: { update: 'born', next: '/check' },
+      entryState: inSession({ update: 'born', next: '/check' }),
     });
     await screen.findByRole('button', { name: 'Enregistrer' });
 
@@ -638,7 +644,7 @@ describe('ProfileEdit: an outdated term', () => {
     await renderApp({
       settings: accompanied,
       hash: '#/profile/p1',
-      entryState: { update: 'term', next: '/check' },
+      entryState: inSession({ update: 'term', next: '/check' }),
     });
     await screen.findByRole('button', { name: 'Enregistrer' });
 
@@ -742,7 +748,7 @@ describe('ProfileEdit: deleting a profile', () => {
     await renderApp({
       settings: accompanied,
       hash: '#/profile/p1',
-      entryState: { update: 'born', next: '/check' },
+      entryState: inSession({ update: 'born', next: '/check' }),
     });
     await screen.findByRole('button', { name: 'Enregistrer' });
 
@@ -775,7 +781,7 @@ describe('ProfileEdit: deleting a profile', () => {
     await renderApp({
       settings: accompanied,
       hash: '#/profile/p1',
-      entryState: { update: 'born', next: '/check' },
+      entryState: inSession({ update: 'born', next: '/check' }),
     });
     await screen.findByRole('button', { name: 'Enregistrer' });
 
@@ -921,6 +927,43 @@ describe('ProfileEdit: situations and modes', () => {
     ]);
   });
 
+  it('hides the situations of a saved profile until an explicit tap: HIV or not, the same screen', async () => {
+    await saveProfile(stored({ conditions: ['hiv-cotrimoxazole'] }));
+    const user = userEvent.setup();
+    await openForm(woman);
+    // What the situations show: their words, and which boxes are ticked.
+    const seen = () => {
+      const situations = group('Situations de longue durée');
+      return [
+        situations.textContent,
+        within(situations)
+          .queryAllByRole('checkbox')
+          .map((box) => (box as HTMLInputElement).checked),
+      ];
+    };
+    const withHiv = seen();
+
+    expect(document.body.textContent).not.toMatch(/VIH/);
+    expect(withHiv[1]).toEqual([]);
+    await user.click(screen.getByRole('button', { name: HIDDEN_SITUATIONS }));
+    expect(screen.getByRole('checkbox', { name: 'VIH, avec cotrimoxazole' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'VIH, avec cotrimoxazole' })).toHaveFocus();
+
+    // The same profile with no situation: the same screen.
+    await saveProfile(stored({ conditions: [] }));
+    act(() => {
+      window.location.hash = '#/';
+    });
+    await screen.findByRole('heading', { level: 1, name: /^Un médicament ou un remède/ });
+    act(() => {
+      window.location.hash = '#/profile';
+    });
+    await screen.findByRole('button', { name: HIDDEN_SITUATIONS });
+    expect(seen()).toEqual(withHiv);
+    await user.click(screen.getByRole('button', { name: HIDDEN_SITUATIONS }));
+    expect(screen.getByRole('checkbox', { name: 'Aucune de ces situations' })).toBeChecked();
+  });
+
   it('shows seven situations in accompanied mode, and numbers the new profile', async () => {
     await saveProfile(stored());
     await openForm(accompanied, '#/profile/new');
@@ -952,6 +995,7 @@ describe('ProfileEdit: situations and modes', () => {
     await saveProfile(stored({ conditions: ['sickle-cell'] }));
     const user = userEvent.setup();
     await openForm(woman);
+    await user.click(screen.getByRole('button', { name: HIDDEN_SITUATIONS }));
 
     expect(screen.queryByRole('checkbox', { name: 'Drépanocytose' })).toBeNull();
     expect(screen.getByRole('checkbox', { name: 'Aucune de ces situations' })).toBeChecked();

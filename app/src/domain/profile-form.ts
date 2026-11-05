@@ -126,6 +126,14 @@ export function conditionsShown(mode: Mode): readonly ConditionId[] {
   return mode === 'accompanied' ? ALL_CONDITIONS : WOMAN_CONDITIONS;
 }
 
+/** Situations that say HIV: a secret on a shared phone, hidden on screen until an explicit tap. */
+const CONCEALED_CONDITIONS: readonly ConditionId[] = ['hiv-cotrimoxazole'];
+
+/** Whether a situation is shown only after an explicit tap (the profile, the result). */
+export function isConcealedCondition(condition: ConditionId): boolean {
+  return CONCEALED_CONDITIONS.includes(condition);
+}
+
 /** A whole number written with digits only (spaces around allowed), or undefined. */
 function wholeNumber(text: string): number | undefined {
   const trimmed = text.trim();

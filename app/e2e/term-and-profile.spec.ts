@@ -104,9 +104,10 @@ test('an outdated term asks whether the baby is born before any check, then upda
   // Back on her check, as a breastfeeding mother now.
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
   await expect(page.getByText('Allaite, bébé de 2 semaines')).toBeVisible();
-  expect(await storedAll(page, 'profiles')).toEqual([
-    expect.objectContaining({ pregnant: false, breastfeeding: true, babyAgeWeeks: 2 }),
-  ]);
+  // Kept sealed: one record, nothing readable in it.
+  const stored = await storedAll(page, 'profiles');
+  expect(stored).toHaveLength(1);
+  expect(JSON.stringify(stored)).not.toMatch(/breastfeeding|babyAgeWeeks|pregnant/);
 });
 
 test('the list marks an outdated profile, and "still pregnant" asks for the term again', async ({
@@ -354,9 +355,8 @@ test('one profile is deleted with its history after a last yes; the others stay'
   await expect(page.getByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();
   await expect(list.getByRole('listitem')).toHaveCount(1);
   await expect(list.getByRole('button', { name: /^Binta/ })).toBeVisible();
-  expect(await storedAll(page, 'profiles')).toEqual([
-    expect.objectContaining({ pseudonym: 'Binta' }),
-  ]);
+  // One sealed record left (Binta's, as the list shows), and no history.
+  expect(await storedAll(page, 'profiles')).toHaveLength(1);
   expect(await storedAll(page, 'history')).toEqual([]);
 });
 

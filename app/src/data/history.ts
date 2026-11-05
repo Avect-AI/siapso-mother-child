@@ -1,17 +1,26 @@
 // SPDX-License-Identifier: MIT
 // The history of evaluations, kept in IndexedDB on the phone only and never
 // sent anywhere: what was looked at, the level, the rules that gave it and
-// the pack version, so a later visit can see what was said and why.
+// the pack version, so a later visit can see what was said and why. Each
+// entry is sealed with its own data key under the code's wrapping key
+// (domain/crypto.ts): what is stored is its random id, its profile's random
+// id (the index that deletes it with her profile) and the sealed entry. Read
+// and written only while the code is open in this page (vault.ts).
 import type { CheckedItem, Evaluation } from '@siapso/engine';
+import { isSealed, UnsealError } from '../domain/crypto.js';
 import type { HistoryEntry } from '../domain/types.js';
 import { requireCode } from './code-guard.js';
-import { openAppDb } from './db.js';
+import { openAppDb, type SealedHistoryEntry } from './db.js';
+import { historyScope, openRecord, sealRecord, vaultKey } from './vault.js';
 
 /** Evaluations kept per profile; older ones are removed. */
 export const HISTORY_PER_PROFILE = 20;
 
 /** Newest first, then by id, so the order never depends on storage. */
-function newestFirst(a: HistoryEntry, b: HistoryEntry): number {
+function newestFirst(
+  a: Pick<HistoryEntry, 'id' | 'at'>,
+  b: Pick<HistoryEntry, 'id' | 'at'>,
+): number {
   if (a.at !== b.at) return a.at > b.at ? -1 : 1;
   return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
 }
@@ -48,14 +57,64 @@ export function historyEntryOf({
   };
 }
 
+function isSealedEntry(record: SealedHistoryEntry | HistoryEntry): record is SealedHistoryEntry {
+  return 'sealed' in record && isSealed(record.sealed);
+}
+
 /**
- * Stores an evaluation, then keeps only the last HISTORY_PER_PROFILE of its
- * profile, in one transaction with the profiles and the code: nothing is
- * kept for a profile no longer on the phone (deleted while its result was
- * open), so a deletion never leaves part of her behind. Resolves whether it
- * stored; NoCodeError while the code this tab opened is not on the phone.
+ * The entry a stored record holds, opened with the session's key. Undefined
+ * for a record the code does not open (another code, a change), and for a
+ * record in clear, which no version since SCRUM-39 writes (migration.ts).
+ */
+async function entryOf(
+  record: SealedHistoryEntry | HistoryEntry,
+): Promise<HistoryEntry | undefined> {
+  if (!isSealedEntry(record)) return undefined;
+  try {
+    const value = await openRecord(record.sealed, historyScope(record.profileId, record.id));
+    if (typeof value === 'object' && value !== null && (value as HistoryEntry).id === record.id) {
+      return value as HistoryEntry;
+    }
+  } catch (failure) {
+    if (!(failure instanceof UnsealError)) throw failure;
+  }
+  return undefined;
+}
+
+/**
+ * The ids of the entries of a profile to remove once `entry` is kept: past
+ * the newest HISTORY_PER_PROFILE, an entry the code does not open counting
+ * as the oldest.
+ */
+async function staleIds(entry: HistoryEntry): Promise<string[]> {
+  const records = await (
+    await openAppDb()
+  ).getAllFromIndex('history', 'profileId', entry.profileId);
+  const known = await Promise.all(
+    records
+      .filter((record) => record.id !== entry.id)
+      .map(async (record) => ({ id: record.id, at: (await entryOf(record))?.at ?? '' })),
+  );
+  return [...known, { id: entry.id, at: entry.at }]
+    .sort(newestFirst)
+    .slice(HISTORY_PER_PROFILE)
+    .map((stale) => stale.id);
+}
+
+/**
+ * Stores an evaluation sealed, then keeps only the last HISTORY_PER_PROFILE
+ * of its profile, in one transaction with the profiles and the code: nothing
+ * is kept for a profile no longer on the phone (deleted while its result was
+ * open), so a deletion never leaves part of her behind. The entries to remove
+ * are worked out before the transaction (their dates are sealed, and a
+ * transaction cannot wait for WebCrypto): one kept meanwhile by another tab
+ * is removed at a later record. Resolves whether it stored; NoCodeError while
+ * the code this tab opened is not on the phone, LockedError while the code is
+ * not open here.
  */
 export async function recordHistory(entry: HistoryEntry): Promise<boolean> {
+  const sealed = await sealRecord(entry, historyScope(entry.profileId, entry.id));
+  const stale = await staleIds(entry);
   const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
   await requireCode(tx);
   const history = tx.objectStore('history');
@@ -63,10 +122,8 @@ export async function recordHistory(entry: HistoryEntry): Promise<boolean> {
     await tx.done;
     return false;
   }
-  await history.put(entry);
-  const all = await history.index('profileId').getAll(entry.profileId);
-  const old = all.sort(newestFirst).slice(HISTORY_PER_PROFILE);
-  await Promise.all(old.map((stale) => history.delete(stale.id)));
+  await history.put({ id: entry.id, profileId: entry.profileId, sealed });
+  await Promise.all(stale.map((id) => history.delete(id)));
   await tx.done;
   return true;
 }
@@ -130,8 +187,17 @@ export function forgetVisit(): void {
   recordedThisVisit.clear();
 }
 
-/** The evaluations kept for a profile, newest first. */
+/**
+ * The evaluations kept for a profile, newest first (one its code does not
+ * open is left out, with a warning). LockedError while the code is not open.
+ */
 export async function listHistory(profileId: string): Promise<HistoryEntry[]> {
-  const all = await (await openAppDb()).getAllFromIndex('history', 'profileId', profileId);
-  return all.sort(newestFirst);
+  vaultKey();
+  const records = await (await openAppDb()).getAllFromIndex('history', 'profileId', profileId);
+  const entries = await Promise.all(records.map(entryOf));
+  const opened = entries.filter((entry) => entry !== undefined);
+  if (opened.length < entries.length) {
+    console.warn('A history entry on this phone does not open with this code: it is left out');
+  }
+  return opened.sort(newestFirst);
 }

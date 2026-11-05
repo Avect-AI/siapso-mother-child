@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from 'react';
 import type { MessageKey, Vars } from '../i18n/translate.js';
+import { sessionState } from '../state/entry-state.js';
 
 /**
- * What the profile screen just did, left in the history entry it went to: a
- * profile saved or deleted (by its pseudonym), or her own profile deleted.
+ * What the profile screen just did, left on the history entry it went to as
+ * marks only (entry-state.ts: the pseudonym stays in the page's memory, never
+ * on the entry, which the browser writes to disk): a profile saved or deleted
+ * (by its pseudonym), or her own profile deleted.
  */
 export type ProfileNote =
   { kind: 'saved'; name: string } | { kind: 'deleted'; name: string } | { kind: 'deletedMine' };
@@ -43,7 +46,7 @@ export function profileNoteText(
  * history entry, so a reload or Back does not repeat it.
  */
 export function useProfileNote(): ProfileNote | null {
-  const [note] = useState(() => noteOf(window.history.state));
+  const [note] = useState(() => noteOf(sessionState()));
   useEffect(() => {
     if (note !== null) window.history.replaceState(null, '', window.location.href);
   }, [note]);

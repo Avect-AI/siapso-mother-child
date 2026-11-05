@@ -571,6 +571,67 @@ describe('buildResultView: situations the base does not read', () => {
   });
 });
 
+describe('buildResultView: what is shown only at an explicit tap', () => {
+  it('hides the contraception notes, never the dose notes nor the reminders', () => {
+    const items: CheckedItem[] = [
+      { ref: { kind: 'product', id: 'efavirenz-generic' } },
+      {
+        ref: { kind: 'product', id: 'paracetamol-generic' },
+        unitsPerDay: 3,
+        strengthUnknown: true,
+      },
+    ];
+    const context = contextOf({ pregnancy: weeks(16), items });
+    const view = buildResultView(
+      evaluate(pack, context),
+      pack,
+      items,
+      'accompanied',
+      'fr',
+      tOf('fr'),
+    );
+
+    const notes = view.notes.map((note) => [note.key.split(':')[0], note.concealed === true]);
+    expect(notes).toContainEqual(['contraception', true]);
+    expect(notes).toContainEqual(['dose', false]);
+    expect(view.reminders.every((reminder) => reminder.concealed === undefined)).toBe(true);
+  });
+
+  it('marks no situation note alone: the screen hides the section whole, HIV or not', () => {
+    // A base that would not read HIV with cotrimoxazole yet.
+    const unread: Pack = {
+      ...pack,
+      rules: pack.rules.filter(
+        (rule) =>
+          !(rule.when.unlessConditions ?? []).includes('hiv-cotrimoxazole') &&
+          !(rule.when.requires ?? []).some(
+            (r) => 'condition' in r && r.condition === 'hiv-cotrimoxazole',
+          ),
+      ),
+    };
+    const context = contextOf({
+      pregnancy: weeks(16),
+      conditions: ['hiv-cotrimoxazole', 'sickle-cell'],
+      items: [ADVIL],
+    });
+    const view = buildResultView(
+      evaluate(unread, context),
+      unread,
+      context.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      context.conditions,
+    );
+
+    // One note marked alone would say which situation it is.
+    expect(view.situations.map((note) => [note.key, note.concealed === true])).toEqual([
+      ['condition:hiv-cotrimoxazole', false],
+      ['condition:sickle-cell', false],
+    ]);
+  });
+});
+
 describe('buildResultView: misoprostol', () => {
   const MISOPROSTOL: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
   const fallback = {

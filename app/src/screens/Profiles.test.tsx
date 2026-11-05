@@ -10,6 +10,7 @@ import { probeCheck } from '../test/check-probe.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { inSession } from '../state/entry-state.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -92,7 +93,7 @@ describe('Profiles', () => {
     await renderApp({
       settings: accompanied,
       hash: '#/',
-      entryState: { profileDeleted: 'Awa' },
+      entryState: inSession({ profileDeleted: 'Awa' }),
     });
 
     expect(await screen.findByText(/^Profil supprimé\s: Awa\.$/)).toBeVisible();

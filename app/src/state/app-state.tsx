@@ -186,6 +186,8 @@ export function AppProvider({
   const [settingsReady, setSettingsReady] = useState(false);
   const [settingsUnavailable, setSettingsUnavailable] = useState(false);
   const latest = useRef<Settings>(DEFAULT_SETTINGS);
+  /** The stored settings were read: memory holds them, and a store keeps what it did not change. */
+  const read = useRef(false);
   const [packState, setPackState] = useState<PackState>(NO_PACK);
 
   const online = useSyncExternalStore(subscribeOnline, isOnline);
@@ -198,6 +200,7 @@ export function AppProvider({
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      read.current = !unavailable;
       latest.current = { ...DEFAULT_SETTINGS, ...stored };
       setSettingsState(latest.current);
       setSettingsUnavailable(unavailable);
@@ -261,13 +264,32 @@ export function AppProvider({
   const setSettings = useCallback(
     async (patch: Partial<Settings>, { store = true }: { store?: boolean } = {}) => {
       const before = latest.current;
-      const next = { ...before, ...patch };
+      let next = { ...before, ...patch };
       latest.current = next;
       // A passer-by is looked up in accompanied mode only: any change of mode lets her go.
       if (next.mode !== before.mode) forgetQuick();
       // The screen follows the choice at once; storage never holds it up.
       setSettingsState(next);
       if (!store) return;
+      if (!read.current) {
+        // The first read gave up (a slow storage): memory holds the defaults,
+        // not what is stored. The stored settings are read again first, so a
+        // store never puts the defaults over her language and mode (the end of
+        // a welcome cut short, stored after the code); while they still cannot
+        // be read, nothing is stored.
+        try {
+          const stored = await withTimeout(getStoredSettings(), storageTimeoutMs);
+          read.current = true;
+          next = { ...DEFAULT_SETTINGS, ...stored, ...patch };
+          latest.current = next;
+          setSettingsState(next);
+          setSettingsUnavailable(false);
+        } catch (error) {
+          console.warn('Settings not read on this device: nothing stored over them', error);
+          setSettingsUnavailable(true);
+          return;
+        }
+      }
       if (!before.onboarded && next.onboarded) requestPersistentStorage();
       try {
         await withTimeout(storeSettings(next), storageTimeoutMs);

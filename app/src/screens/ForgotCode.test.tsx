@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getStoredSettings, getStoredVerifier, openAppDb, storeLockout } from '../data/db.js';
 import { recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
-import { loadSavedContacts, saveContacts } from '../data/referral.js';
+import { saveContacts } from '../data/referral.js';
+import { isVaultOpen } from '../data/vault.js';
 import type { Settings } from '../domain/types.js';
 import { profileOf } from '../test/knowledge-pack.js';
 import { renderApp, storeTestCode } from '../test/render-app.js';
@@ -72,9 +73,12 @@ describe('Forgotten code', () => {
     await user.click(screen.getByRole('button', { name: 'Effacer les profils' }));
 
     expect(await screen.findByRole('button', { name: 'Français' })).toBeVisible();
-    expect(await listProfiles()).toEqual([]);
-    expect(await loadSavedContacts()).toEqual([]);
-    expect(await (await openAppDb()).getAll('history')).toEqual([]);
+    // Sealed or not, nothing is left: the keys are gone too.
+    const db = await openAppDb();
+    expect(await db.getAll('profiles')).toEqual([]);
+    expect(await db.getAll('contacts')).toEqual([]);
+    expect(await db.getAll('history')).toEqual([]);
+    expect(isVaultOpen()).toBe(false);
     expect(await getStoredVerifier()).toBeUndefined();
     expect(await getStoredSettings()).toEqual({ lang: 'fr', mode: null, onboarded: false });
   });

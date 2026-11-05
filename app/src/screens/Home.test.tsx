@@ -8,6 +8,7 @@ import { AppProvider } from '../state/app-state.js';
 import { makeCode } from '../test/code-steps.js';
 import { breakIndexedDB } from '../test/idb.js';
 import { loaderOf, noPack, pendingPack, renderApp, shellPack } from '../test/render-app.js';
+import { inSession } from '../state/entry-state.js';
 
 const onboarded = { lang: 'fr', mode: 'woman', onboarded: true } as const;
 
@@ -109,7 +110,7 @@ describe('Home', () => {
   it('says once that the profile was saved, and not again after a reload', async () => {
     // As the profile screen leaves it, set before anything renders.
     await storeSettings(onboarded);
-    window.history.replaceState({ profileSaved: 'Awa' }, '', '#/');
+    window.history.replaceState(inSession({ profileSaved: 'Awa' }), '', '#/');
     const { unmount } = render(
       <AppProvider packLoader={loaderOf(shellPack())} session={{ startUnlocked: true }}>
         <App />

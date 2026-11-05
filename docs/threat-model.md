@@ -2,12 +2,53 @@
 
 # Threat model
 
-This document lists what SIAPSO Mother-Child protects, against whom, how, and what it does not protect against. It covers the knowledge pack (SCRUM-38, details in `docs/pack-signing.md`). The threats on the phone itself (casual access on a shared phone, the code, the quick exit, a forensic attacker) are in `docs/privacy.md`; a lost phone is added with the encryption at rest (SCRUM-39).
+This document lists what SIAPSO Mother-Child protects, against whom, how, and what it does not protect against. It covers the personal data kept on the phone and its encryption at rest (SCRUM-39), and the knowledge pack (SCRUM-38, details in `docs/pack-signing.md`). How the interface keeps a shared phone discreet (the code, the locks, the quick exit, the tabs) is in `docs/privacy.md`, with the inventory of what the browser's storage holds.
 
 ## What is protected
 
 - **The alert levels.** The deterministic engine sets every level from the knowledge pack (rules, products, plants, danger signs, messages). A wrong pack can lower an alert for a pregnant or breastfeeding woman: its integrity and freshness are a safety matter.
-- **Personal data on the phone** (profiles, history, contacts): see `docs/privacy.md`.
+- **Personal data on the phone**: the profiles (pseudonym, pregnancy and term, baby's age, long-term situations such as HIV with cotrimoxazole, products taken every day), the history of their results (products and remedies checked, names typed as unrecognised, danger signs ticked, level, rules, date) and the saved contacts (names and numbers of health workers). A pregnancy, an HIV status or a contraception can be a secret in the family that shares the phone.
+
+## Personal data on the phone (SCRUM-39)
+
+### Threats
+
+- **Casual access on a shared phone:** someone in the family picks up the phone. Nothing about a profile shows without the code, in any tab (`docs/privacy.md`).
+- **A lost or taken phone, or someone who reads the browser's storage without the code** (the developer tools of a desktop browser, a copy of the browser's files): they read nothing about a profile, its history or the saved contacts. The records are sealed with a key that only the code gives.
+- **A changed record:** a byte changed, a record moved under another id or into another store, a wrapped key swapped between records. Every record is authenticated: one that does not open is left out (a profile, a history entry) or the contacts are said unreadable; a sealed record is never shown altered. A record in clear is never shown either once a version 2 verifier is stored (below).
+- **A tab left open:** the key is in each page's memory only while its session is open, and every page forgets it at a lock, the quick exit, a lock or quick exit from another tab, the erase, and when another code is made; an unlock still being worked out when one of these comes opens nothing. A page with a stale key cannot write either: every write checks the code stored in its own transaction (`app/src/data/code-guard.ts`).
+
+### Key hierarchy
+
+- **The code** (4 to 6 digits) is never stored. At each unlock, one PBKDF2-SHA-256 derivation (600 000 iterations, the verifier's random 16-byte salt) gives a 32-byte secret, which is never stored and wiped after use.
+- **HKDF-SHA-256 splits that secret** under two labels (`siapso code verifier v2`, `siapso data key wrapping v2`): the **check**, stored as the verifier (`version: 2`), and the **wrapping key**, an AES-GCM 256 key created non-extractable and kept in the page's memory only while the session is open (`app/src/data/vault.ts`). The two outputs are independent: the stored check gives nothing of the wrapping key, and one expensive derivation serves both.
+- **Each record written has its own data key**, 256 random bits. The record (JSON) is encrypted with it by AES-GCM, with a new random 96-bit IV; the data key is encrypted (wrapped) with the wrapping key by AES-GCM, with its own new IV. The additional data of both binds the envelope version and the record: `profile:<id>`, `history:<profile id>:<id>` or `contacts:saved` (`app/src/domain/crypto.ts`). A fresh data key and fresh IVs at every write mean that no key and IV pair is ever used twice.
+- **One code per phone:** in woman mode it is hers, in accompanied mode the accompanying person's; it wraps every data key the phone holds. Whoever knows the code opens every profile of the phone, by design.
+- **Record format:** a profile is stored as `{ id, sealed }`, a history entry as `{ id, profileId, sealed }`, the saved contacts as `{ sealed }`, where `sealed` is `{ v, keyIv, key, iv, data }` in base64url.
+
+### The update from the versions in clear
+
+- The versions before SCRUM-39 kept the records in clear, and their verifier is the PBKDF2 output itself: a key derived from that output would be readable from storage. At the first right code after the update, the app makes a new verifier with a **new salt** (a second derivation, once), seals every record kept in clear with the new wrapping key, and writes the new verifier and the sealed records **in one IndexedDB transaction**, which also checks that the code stored is still the one opened. A failure or a tab closed in the middle leaves the plaintext and the old verifier whole: nothing opens (the code screen says that the profiles could not be opened) and the next right code tries again. A record is never half migrated, and the two forms are never both lost.
+- The same transaction makes the verifier again when it has fewer iterations than the app makes: every data key is wrapped again for the new key, and the records themselves are not encrypted again. The app has no other change of code: a forgotten code is erased with everything, and the encrypted data would be unreadable anyway.
+- **Invariant: a version 2 verifier means that no legitimate record is in clear.** Records in clear are sealed only in the transaction that replaces a verifier of the format before SCRUM-39, or in the one that stores the first code of a phone from before codes existed (`storeNewCode`, refused when a code is stored). With a version 2 verifier, a record in clear can only have been written into the storage from outside: the readers never show it (a profile or history entry is left out, the contacts are said unreadable and never listed), and the next unlock deletes it, never seals it. A sealed record no key of the code opens (a record of another code, a verifier made again without its key) is left as it is, unreadable, and the pass goes on.
+- **Time:** only the storage steps are timed, never the encryption, so a slow phone is never refused for being slow. A read that does not answer in time writes nothing. A write that does not end in time is aborted; it counts as done only if its transaction committed anyway, and after any failure the app reads the stored verifier again and opens with the new key only when its verifier is the one stored. The new key is otherwise dropped.
+- An older version left open in another tab cannot open the new verifier, and its writes are refused once the verifier changed. The tabs are told when the verifier is made again, so they lock and ask for the code. A verifier of a newer version of the app is not tried here, and no try is counted.
+- An unlock under way when the session is locked (the quick exit, a lock from another tab, the erase, another code), also while it waits for another tab's try, opens nothing; so does a code being made. The code is then typed again.
+
+### What stays visible without the code
+
+- The settings: the language, the mode (woman or accompanied) and whether the welcome is over. The mode says whether the phone is used by a woman for herself or by someone who accompanies women.
+- The code's verifier (salt, check, iterations, version), the count of wrong codes and the end of their wait, and the tabs' random marks (`docs/privacy.md`).
+- The random ids of the profiles, history entries and saved contacts; the profile id of each history entry, so the number of results kept per profile (20 at most); the number of records and their sizes, which grow with the length of a pseudonym, the number of situations or items.
+- The knowledge pack, which is public, and the times at which the browser writes its own files.
+
+### Limits
+
+- **The code bounds the encryption.** Someone who copies the storage can try every code offline against the stored check, without the waits after wrong codes: 10 000 codes of 4 digits, 1 000 000 of 6 digits, each costing one PBKDF2 derivation at 600 000 iterations. A graphics card goes through every 6-digit code in minutes, a laptop in hours or days. This forensic attacker, with the phone and tools and time, stays out of scope (below); the encryption stops anyone who reads the storage without trying codes, and makes the code, not a glance at the storage, the way in.
+- **Plaintext left behind by the update:** the browser's storage engine may keep the replaced plaintext records, and the old verifier, in its files until it compacts them. A forensic copy taken soon after the update may hold them. The new verifier has a new salt, so the old one gives no key to the sealed data.
+- **Memory while open:** the wrapping key and the records of the screens shown are in the page's memory while the session is open. Whoever holds the phone then sees what the app shows, until the two-minute lock or the quick exit. Reading a running browser's memory is out of scope.
+- **Deletion and rollback of storage:** someone with the phone can delete records or put back an older copy of the browser's storage, its verifier included; the app cannot tell an older sealed record from a current one. Records written in clear into the storage are never read (above). Editing the storage stays out of scope (below).
+- **On screen:** the encryption protects the storage, not the screen. A result names the products checked, and a finding is never hidden (a safety message). The situations of a saved profile, a note on contraception, the situations the base does not read (one section) and, in accompanied mode, the reminders (one section, always there, since the IPTp reminder is left out for HIV with cotrimoxazole) show at a tap only, so that the result of an HIV profile and that of a profile with no situation look the same before any tap, except when SP (sulfadoxine-pyrimethamine) or amodiaquine (ASAQ included) is checked. Two findings also fire on the HIV situation alone (SP with cotrimoxazole, amodiaquine with HIV treatments): with SP or amodiaquine checked, the HIV profile gets their card at a higher level ("before the next dose" where a profile with no situation gets "unknown"), in both modes and at every state of the pregnancy, because the interaction is real. Their messages say it as a condition, never as a fact about her, but the card and its level are there, and someone who has seen SP checked for other women, with no such card, can infer her situation. The team keeps the rules: removing them would harm women on cotrimoxazole, and showing the card to every woman would discourage the routine preventive treatment of malaria (IPTp); the clinical committee is asked about it (`knowledge/README.md`, H-1).
 
 ## Knowledge pack
 
@@ -64,7 +105,7 @@ A demo build (`pnpm build`, Vite mode `demo`, with `VITE_ALLOW_UNSIGNED_PACK=tru
 
 ## Out of scope
 
-- A forensic attacker with the phone and unlimited time, including one who edits the app's storage on the phone.
+- A forensic attacker with the phone and unlimited time, including one who edits the app's storage on the phone or tries every code offline against a copy of it (see "Personal data on the phone", Limits).
 - A compromised build machine or web host that serves a modified app: the signature protects the pack, not the app code, which can carry other keys. The deployment's host and access control protect the app.
 - The evaluation API (`server/`), which reads `pack.json` from the team's own build; `pack.json` is not signed and the app never reads it.
 - Denial of service against the download (see "Withheld updates").

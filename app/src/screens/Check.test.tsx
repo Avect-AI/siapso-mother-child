@@ -313,7 +313,7 @@ describe('Check', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
     ).toBeVisible();
-    expect(screen.getByText(/^À confirmer\s: le bébé est peut-être né$/)).toBeVisible();
+    expect(await screen.findByText(/^À confirmer\s: le bébé est peut-être né$/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
   });
 

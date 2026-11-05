@@ -6,13 +6,16 @@
 // Threat model: casual access by someone else in the family on a shared
 // phone, not a forensic attacker. Offline, the only clock is the phone's: a
 // clock set forward ends a wait early (one set back never stretches it, see
-// remainingLockMs). The profiles are encrypted at rest with SCRUM-39, which
-// derives its keys from the key material that unlockKey hands over. That data
-// key must never reuse the verifier's derivation: the verifier is the
-// PBKDF2 output itself and is stored, so a key equal to it, or derived from
-// it, would be readable from storage. SCRUM-39 derives with another salt (or
-// splits one PBKDF2 output with HKDF into a stored verifier part and a
-// secret key part, changing the verifier format).
+// remainingLockMs).
+//
+// The profiles are encrypted at rest (SCRUM-39, domain/crypto.ts). One PBKDF2
+// output per unlock is split with HKDF into the check, stored as the verifier
+// (version 2), and the wrapping key of the data keys, kept in memory only: the
+// stored verifier never gives the key. A verifier of the versions before (no
+// version: its hash is the PBKDF2 output itself, so any key derived from that
+// output would be readable from storage) opens with no key, and is made again
+// with a new salt at the next right code.
+import { splitCodeSecret } from './crypto.js';
 
 export const CODE_MIN = 4;
 export const CODE_MAX = 6;
@@ -20,6 +23,11 @@ export const CODE_MAX = 6;
 export const PBKDF2_ITERATIONS = 600_000;
 /** Two minutes without a touch, a key or a pointer, or hidden for longer, and the app locks. */
 export const AUTO_LOCK_MS = 120_000;
+/**
+ * How long before the auto-lock the screen warns, while a form has answers not
+ * saved: more than the 20 seconds WCAG 2.2.1 asks to extend a time limit.
+ */
+export const LOCK_WARNING_MS = 30_000;
 /** The longest wait after wrong codes: the doubling stops at 30 minutes (from the 11th wrong code). */
 export const MAX_WAIT_MS = 30 * 60_000;
 
@@ -30,11 +38,40 @@ const FIRST_WAIT_MS = 30_000;
 const SALT_BYTES = 16;
 const HASH_BYTES = 32;
 
-/** What is stored instead of the code: base64url salt and hash, PBKDF2-SHA-256 of 32 bytes. */
+/** The verifier format of SCRUM-39: the hash is the HKDF check half of the PBKDF2 output. */
+export const VERIFIER_VERSION = 2;
+
+/**
+ * What is stored instead of the code: base64url salt (16 bytes) and hash (32
+ * bytes), and the PBKDF2-SHA-256 iterations.
+ */
 export interface CodeVerifier {
   salt: string;
   hash: string;
   iterations: number;
+  /**
+   * 2: the hash is the check half of the PBKDF2 output split with HKDF (the
+   * other half wraps the data keys and is never stored). Absent: a verifier
+   * of the versions before SCRUM-39, whose hash is the PBKDF2 output itself.
+   */
+  version?: number;
+}
+
+/** A code worked out: its verifier, to store, and the key that wraps the data keys, memory only. */
+export interface CodeKeys {
+  verifier: CodeVerifier;
+  wrappingKey: CryptoKey;
+}
+
+/**
+ * The right code opened a verifier: the wrapping key of the data keys (null
+ * for a verifier of the format before SCRUM-39, which holds no key), and
+ * whether the verifier must be made again (that older format, or fewer
+ * iterations than the app makes now).
+ */
+export interface OpenedCode {
+  wrappingKey: CryptoKey | null;
+  renew: boolean;
 }
 
 /** Wrong codes in a row, and the end of the wait they set (epoch milliseconds), if any. */
@@ -100,35 +137,33 @@ export function constantTimeEqual(a: ArrayLike<number>, b: ArrayLike<number>): b
   return difference === 0;
 }
 
-/**
- * The code as a non-extractable PBKDF2 key: the key material a session keeps
- * while open. The code text is not kept, and the key cannot be read back.
- */
-export function codeKey(code: string): Promise<CryptoKey> {
+/** The code as a non-extractable PBKDF2 key: the code text is not kept, and the key cannot be read back. */
+function codeKey(code: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', new TextEncoder().encode(code), 'PBKDF2', false, [
     'deriveBits',
-    'deriveKey',
   ]);
 }
 
-async function derive(key: CryptoKey, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+/** The one expensive derivation of an unlock: PBKDF2-SHA-256 of the code with the verifier's salt. */
+async function derive(code: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
   const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations },
-    key,
+    await codeKey(code),
     HASH_BYTES * 8,
   );
   return new Uint8Array(bits);
 }
 
 /**
- * A verifier for `code`: a new random salt, then PBKDF2-SHA-256 at
- * PBKDF2_ITERATIONS or more. RangeError for anything but a code, or for a
- * lower count: a weak verifier is never made.
+ * A new verifier for `code` and its wrapping key: a new random salt, then
+ * PBKDF2-SHA-256 at PBKDF2_ITERATIONS or more, split with HKDF. RangeError
+ * for anything but a code, or for a lower count: a weak verifier is never
+ * made.
  */
-export async function createVerifier(
+export async function createCodeKeys(
   code: string,
   iterations: number = PBKDF2_ITERATIONS,
-): Promise<CodeVerifier> {
+): Promise<CodeKeys> {
   if (!isCode(code)) throw new RangeError('A code is 4 to 6 digits');
   if (!Number.isInteger(iterations) || iterations < PBKDF2_ITERATIONS) {
     throw new RangeError(
@@ -136,18 +171,40 @@ export async function createVerifier(
     );
   }
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
-  const hash = await derive(await codeKey(code), salt, iterations);
-  return { salt: toBase64Url(salt), hash: toBase64Url(hash), iterations };
+  const secret = await derive(code, salt, iterations);
+  try {
+    const { check, wrappingKey } = await splitCodeSecret(secret);
+    return {
+      verifier: {
+        salt: toBase64Url(salt),
+        hash: toBase64Url(check),
+        iterations,
+        version: VERIFIER_VERSION,
+      },
+      wrappingKey,
+    };
+  } finally {
+    secret.fill(0);
+  }
+}
+
+/** A verifier for `code` (createCodeKeys, without its key). */
+export async function createVerifier(
+  code: string,
+  iterations: number = PBKDF2_ITERATIONS,
+): Promise<CodeVerifier> {
+  return (await createCodeKeys(code, iterations)).verifier;
 }
 
 /**
- * The key material of `code` when it opens `verifier`, else null: a
- * non-extractable PBKDF2 key, kept by the session while it is open (SCRUM-39
- * derives the data key from it with its own salt). A verifier that is not one
- * opens with no code.
+ * What `code` opens of `verifier` (OpenedCode), or null for a wrong code, a
+ * verifier that is not one, or of a format this version does not know. One
+ * PBKDF2 derivation, compared in constant time.
  */
-export async function unlockKey(code: string, verifier: CodeVerifier): Promise<CryptoKey | null> {
+export async function openCode(code: string, verifier: CodeVerifier): Promise<OpenedCode | null> {
   if (!isCode(code) || !isCodeVerifier(verifier)) return null;
+  const version = verifier.version;
+  if (version !== undefined && version !== VERIFIER_VERSION) return null;
   let salt: Uint8Array;
   let expected: Uint8Array;
   try {
@@ -157,26 +214,41 @@ export async function unlockKey(code: string, verifier: CodeVerifier): Promise<C
     return null;
   }
   if (expected.length !== HASH_BYTES) return null;
-  const key = await codeKey(code);
-  const derived = await derive(key, salt, verifier.iterations);
-  return constantTimeEqual(derived, expected) ? key : null;
+  const secret = await derive(code, salt, verifier.iterations);
+  try {
+    if (version === undefined) {
+      return constantTimeEqual(secret, expected) ? { wrappingKey: null, renew: true } : null;
+    }
+    const { check, wrappingKey } = await splitCodeSecret(secret);
+    if (!constantTimeEqual(check, expected)) return null;
+    return { wrappingKey, renew: verifier.iterations < PBKDF2_ITERATIONS };
+  } finally {
+    secret.fill(0);
+  }
 }
 
 /** Whether `code` opens `verifier` (constant-time comparison of the derived bytes). */
 export async function checkCode(code: string, verifier: CodeVerifier): Promise<boolean> {
-  return (await unlockKey(code, verifier)) !== null;
+  return (await openCode(code, verifier)) !== null;
 }
 
 export function isCodeVerifier(value: unknown): value is CodeVerifier {
   if (typeof value !== 'object' || value === null) return false;
-  const { salt, hash, iterations } = value as Record<string, unknown>;
+  const { salt, hash, iterations, version } = value as Record<string, unknown>;
   return (
     typeof salt === 'string' &&
     typeof hash === 'string' &&
     typeof iterations === 'number' &&
     Number.isInteger(iterations) &&
-    iterations >= 1
+    iterations >= 1 &&
+    (version === undefined || (typeof version === 'number' && Number.isInteger(version)))
   );
+}
+
+/** The fields of a verifier, as stored (nothing else a value may carry). */
+export function verifierFields(verifier: CodeVerifier): CodeVerifier {
+  const { salt, hash, iterations, version } = verifier;
+  return version === undefined ? { salt, hash, iterations } : { salt, hash, iterations, version };
 }
 
 export function isLockoutState(value: unknown): value is LockoutState {

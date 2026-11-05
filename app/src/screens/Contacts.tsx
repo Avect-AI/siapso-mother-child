@@ -23,7 +23,8 @@ import type { ReferralContact, ReferralRole } from '../domain/types.js';
 import { useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { FROM_CALL, noteSavedForCall } from '../state/contact-return.js';
-import { visitState } from '../state/entry-state.js';
+import { useDraft } from '../state/draft.js';
+import { inSession, sessionState, visitState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { DialLink } from '../ui/DialLink.js';
@@ -35,11 +36,16 @@ import { CONTACT_EDIT_PATH, editEntry } from './edit-route.js';
 /** The contact screen a route opens: a new contact, or one saved on this phone. */
 export type ContactTarget = { kind: 'new' } | { kind: 'edit'; id: string };
 
+/** A name for the contact screen of `target`: a change of contact is a new screen, and its own answers. */
+export function contactScreenKey(target: ContactTarget): string {
+  return target.kind === 'edit' ? `contact:${target.id}` : 'contact:new';
+}
+
 /** The contact just saved, left by the contact screen on the list's history entry. */
+/** Who was just saved, left on the entry as marks only (the name stays in memory, entry-state.ts). */
 function justSaved(): string | null {
-  const state: unknown = window.history.state;
-  if (typeof state !== 'object' || state === null || !('contactSaved' in state)) return null;
-  return typeof state.contactSaved === 'string' ? state.contactSaved : null;
+  const { contactSaved } = sessionState();
+  return typeof contactSaved === 'string' ? contactSaved : null;
 }
 
 /** What just happened to the list, said under it. */
@@ -293,6 +299,7 @@ export function ContactEdit({ target }: { target: ContactTarget }) {
       {loaded.status === 'failed' ? <Notice>{t('contacts.loadFailed')}</Notice> : null}
       {loaded.status === 'ready' ? (
         <ContactFormView
+          draftKey={contactScreenKey(target)}
           initial={loaded.form}
           onSave={async (form) => {
             const contact = contactFromForm(form, id ?? crypto.randomUUID());
@@ -309,7 +316,10 @@ export function ContactEdit({ target }: { target: ContactTarget }) {
               return;
             }
             // The list reads the contact from the history entry to say it was saved.
-            navigate('/contacts', { replace: true, state: { contactSaved: whoOf(contact, t) } });
+            navigate('/contacts', {
+              replace: true,
+              state: inSession({ contactSaved: whoOf(contact, t) }),
+            });
           }}
         />
       ) : null}
@@ -318,15 +328,19 @@ export function ContactEdit({ target }: { target: ContactTarget }) {
 }
 
 function ContactFormView({
+  draftKey,
   initial,
   onSave,
 }: {
+  /** The screen's name: the answers typed are kept under it across an auto-lock (state/draft.ts). */
+  draftKey: string;
+  /** What is saved; answers kept across an auto-lock come back instead. */
   initial: ContactForm;
   /** Keeps the contact; rejects when the phone could not keep it. */
   onSave: (form: ContactForm) => Promise<void>;
 }) {
   const t = useT();
-  const [form, setForm] = useState(initial);
+  const { value: form, setValue: setForm, restored } = useDraft(draftKey, initial);
   const [attempts, setAttempts] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -367,6 +381,12 @@ function ContactFormView({
         });
       }}
     >
+      {/* Answers kept across an auto-lock: back, and not saved yet. */}
+      {restored ? (
+        <div role="status">
+          <Notice>{t('autoLock.restored')}</Notice>
+        </div>
+      ) : null}
       <RadioGroup<ReferralRole>
         legend={t('contacts.role')}
         error={error(errors.role)}
