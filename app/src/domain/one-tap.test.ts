@@ -69,6 +69,8 @@ describe('one tap adds a product (SCRUM-56, S11, as the safety review set it)', 
 
   it('asks first what a rule needs: the strength of aspirin, the daily count of paracetamol', () => {
     expect(tap('kardegic')).toBeNull();
+    // Generic aspirin has no strength: its dose is always asked ("100 mg ou moins").
+    expect(tap('aspirine')).toBeNull();
     expect(tap('doliprane')).toBeNull();
     expect(tap('paracetamol')).toBeNull();
   });

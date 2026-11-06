@@ -349,6 +349,24 @@ describe('contextFromProfile: conditions, items and signs', () => {
     ]);
   });
 
+  it('keeps the dose range of a product both checked and long-term only when both give one, the larger', () => {
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const both = contextFromProfile(
+      profile({ longTermItems: [{ ...aspirin, strengthAtMostMg: 100 }] }),
+      { items: [{ ...aspirin, strengthAtMostMg: 75 }], signs: [] },
+      TODAY,
+    );
+    expect(both.items).toEqual([{ ...aspirin, strengthAtMostMg: 100, longTerm: true }]);
+
+    // One of them says no range ("Plus de 100 mg", or none asked): the safer reading, none.
+    const one = contextFromProfile(
+      profile({ longTermItems: [aspirin] }),
+      { items: [{ ...aspirin, strengthAtMostMg: 100 }], signs: [] },
+      TODAY,
+    );
+    expect(one.items).toEqual([{ ...aspirin, longTerm: true }]);
+  });
+
   it('keeps the larger units per day of a product both checked and long-term (safer for a maximum dose)', () => {
     const largerLongTerm = contextFromProfile(
       profile({ longTermItems: [{ ...doliprane, unitsPerDay: 3 }] }),

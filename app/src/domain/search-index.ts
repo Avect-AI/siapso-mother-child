@@ -619,6 +619,44 @@ export function strengthNotFoundOf(
   return known ? undefined : typed;
 }
 
+/**
+ * The dose question of a box the pack has no strength for, which a strength
+ * threshold reads (generic aspirin, SCRUM-56): the threshold in mg, asked as
+ * "100 mg ou moins / Plus de 100 mg / Je ne sais pas" (CheckedItem.strengthAtMostMg).
+ * Undefined for a remedy, a box whose components all have a strength or more
+ * than one has none, a substance no threshold reads, or a family with a box
+ * at or below the threshold (the strength question offers that box). The
+ * lowest threshold of the substance: at most it keeps every threshold rule
+ * off, and above it reads as not known, which every one of them reads.
+ */
+export function doseRangeOf(
+  pack: Pack,
+  candidate: ConfirmCandidate,
+  productId: string,
+): number | undefined {
+  const product = candidate.kind === 'product' ? productOf(pack, productId) : undefined;
+  const unknown = product?.components.filter((c) => c.strengthMg === undefined) ?? [];
+  const [only] = unknown;
+  if (only === undefined || unknown.length > 1) return undefined;
+  const thresholds = pack.rules.flatMap(({ when: { subject, strengthAboveMg } }) =>
+    strengthAboveMg !== undefined &&
+    subject !== undefined &&
+    'substance' in subject &&
+    subject.substance === only.substance
+      ? [strengthAboveMg]
+      : [],
+  );
+  if (thresholds.length === 0) return undefined;
+  const threshold = Math.min(...thresholds);
+  const offered = [candidate.id, ...candidate.variants].some((id) =>
+    productOf(pack, id)?.components.some(
+      (c) =>
+        c.substance === only.substance && c.strengthMg !== undefined && c.strengthMg <= threshold,
+    ),
+  );
+  return offered ? undefined : threshold;
+}
+
 /** A strength in mg as the language writes it ("3000 mg", "0,4 mg"). */
 export function strengthText(mg: number, lang: Lang): string {
   return milligrams(mg, lang);

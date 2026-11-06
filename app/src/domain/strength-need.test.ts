@@ -207,6 +207,48 @@ function boxLevel(context: Omit<EvaluationContext, 'items'>, items: CheckedItem[
   return maxLevel(findings.filter((f) => f.items.includes(0)).map((f) => f.level));
 }
 
+describe('the dose of generic aspirin answered by a range (SCRUM-56)', () => {
+  const generic = 'aspirin-generic';
+  const at100 = 'acide-acetylsalicylique-biogaran-100-mg-66313736';
+  const at500 = 'aspegic-500-mg-61162942';
+
+  it('reads "100 mg ou moins" as a 100 mg box, and "Plus de 100 mg" or "Je ne sais pas" as before', () => {
+    let pairs = 0;
+    for (const term of TERMS) {
+      for (const nursing of NURSING) {
+        for (const condition of [[], ...CONDITION_IDS.map((c) => [c as ConditionId])]) {
+          const context = { ...term, ...nursing, conditions: condition, signs: [] };
+          const level = (item: CheckedItem) => boxLevel(context, [item]);
+          pairs += 1;
+          expect(level({ ...productItem(generic), strengthAtMostMg: 100 })).toBe(
+            level(productItem(at100)),
+          );
+          // Above the threshold, or not known: read as a box above it, never lower.
+          expect(levelRank(level(productItem(generic)))).toBeGreaterThanOrEqual(
+            levelRank(level(productItem(at500))),
+          );
+          expect(level(productItem(generic, true))).toBe(level(productItem(generic)));
+        }
+      }
+    }
+    expect(pairs).toBeGreaterThan(200);
+  });
+
+  it('keeps the aspirin card off a woman on low-dose aspirin at 24 weeks', () => {
+    const context = {
+      pregnancy: { weeksMin: 24, weeksMax: 24, precision: 'exact' as const },
+      conditions: [],
+      signs: [],
+    };
+    const rules = (item: CheckedItem) =>
+      evaluate(pack, { ...context, items: [item] }).findings.map((f) => f.ruleId);
+    expect(rules(productItem(generic))).toContain('aspirin-analgesic-dose-pregnancy');
+    expect(rules({ ...productItem(generic), strengthAtMostMg: 100 })).not.toContain(
+      'aspirin-analgesic-dose-pregnancy',
+    );
+  });
+});
+
 describe('a box without its strength never reads lower than a box of its family (SCRUM-56, S10)', () => {
   it('in every situation, beside every partner of a rule, breastfeeding or not, at every term', () => {
     let pairs = 0;

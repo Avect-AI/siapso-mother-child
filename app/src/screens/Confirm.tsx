@@ -9,6 +9,7 @@ import {
   candidateDisplayOf,
   candidateOf,
   displayOf,
+  doseRangeOf,
   localNameOf,
   missingSubstancesOf,
   needsUnitsPerDay,
@@ -37,6 +38,13 @@ import { Typed } from './Typed.js';
 
 /** The radio value of "I do not know"; never a product id (ids have no colon). */
 const DONT_KNOW = ':dont-know';
+
+/**
+ * The radio values of the dose question of a box with no strength (generic
+ * aspirin): at most the threshold, above it; "I do not know" is DONT_KNOW.
+ */
+const AT_MOST = ':at-most';
+const ABOVE = ':above';
 
 /** The units typed while the strength waits for a count (a daily maximum, no strength typed). */
 const FIRST_UNITS = 'first';
@@ -178,10 +186,14 @@ function upperFirst(text: string): string {
   return text.charAt(0).toLocaleUpperCase() + text.slice(1);
 }
 
-/** The product "yes" is about: an id, with its strength unknown when she said "I do not know". */
+/**
+ * The product "yes" is about: an id, with its strength unknown when she said
+ * "I do not know", or at most a value when she answered the dose by a range.
+ */
 interface Chosen {
   id: string;
   strengthUnknown: boolean;
+  atMostMg?: number;
 }
 
 /** An item of the check, with its place in the list. */
@@ -228,9 +240,13 @@ function planOf(
     const known = family.filter(({ item }) => item.strengthUnknown !== true);
     return known.length > 0 ? { kind: 'ask', known } : { kind: 'new' };
   }
+  // The same box with another dose range is written again: never kept at the one listed.
   const same = family.find(
     ({ item }) =>
-      item.strengthUnknown !== true && item.ref.kind === 'product' && item.ref.id === chosen.id,
+      item.strengthUnknown !== true &&
+      item.ref.kind === 'product' &&
+      item.ref.id === chosen.id &&
+      item.strengthAtMostMg === chosen.atMostMg,
   );
   if (same) return { kind: 'listed', ...same };
   return unknown ? { kind: 'askReplace', ...unknown } : { kind: 'new' };
@@ -257,6 +273,13 @@ function ConfirmForm({
   const [choice] = useState(() => strengthChoiceOf(pack, candidate, query));
   // A strength typed that no box of the family has ("clamoxyl 3g"): said, and the question asked.
   const [notFound] = useState(() => strengthNotFoundOf(pack, candidate, query));
+  // A box with no strength that a threshold reads (generic aspirin): its dose
+  // is asked by a range, the one of a strength typed chosen as a strength is.
+  const [startRange] = useState(() => doseRangeOf(pack, candidate, candidate.id));
+  const [band, setBand] = useState<string | null>(() => {
+    if (startRange === undefined || notFound === undefined) return null;
+    return notFound <= startRange ? AT_MOST : ABOVE;
+  });
   // Nothing chosen for her, generic or brand, unless she typed the strength or the form.
   const [selected, setSelected] = useState<string | null>(() =>
     choice?.preselected === 'candidate' ? candidate.id : null,
@@ -301,12 +324,22 @@ function ConfirmForm({
   const countGiven = apart && firstCount.ok && firstCount.units !== undefined;
   const asked = choice !== null && (!deferred || countGiven);
 
-  // The product "yes" is about, or null while the strength question is not answered.
-  let chosen: Chosen | null = { id: candidate.id, strengthUnknown: false };
+  // The box chosen, or null while the strength question is not answered.
+  let picked: Chosen | null = { id: candidate.id, strengthUnknown: false };
   if (choice !== null) {
-    if (!asked) chosen = notGiven;
-    else if (selected === DONT_KNOW) chosen = notGiven;
-    else chosen = selected === null ? null : { id: selected, strengthUnknown: false };
+    if (!asked) picked = notGiven;
+    else if (selected === DONT_KNOW) picked = notGiven;
+    else picked = selected === null ? null : { id: selected, strengthUnknown: false };
+  }
+  // Its dose by a range, when it has no strength a threshold reads (generic aspirin).
+  const range = picked === null ? undefined : doseRangeOf(pack, candidate, picked.id);
+  // The product "yes" is about, or null while a question is not answered.
+  let chosen: Chosen | null = picked;
+  if (picked !== null && range !== undefined) {
+    if (band === AT_MOST) chosen = { id: picked.id, strengthUnknown: false, atMostMg: range };
+    else if (band === ABOVE) chosen = { id: picked.id, strengthUnknown: false };
+    else if (band === DONT_KNOW) chosen = { id: picked.id, strengthUnknown: true };
+    else chosen = null;
   }
   const plan = chosen === null ? null : planOf(pack, candidate, chosen, check.items);
 
@@ -324,6 +357,7 @@ function ConfirmForm({
         : {
             ref: { kind: candidate.kind, id: chosen.id },
             ...(chosen.strengthUnknown ? { strengthUnknown: true } : {}),
+            ...(chosen.atMostMg === undefined ? {} : { strengthAtMostMg: chosen.atMostMg }),
           };
   const waitsForSameBox = (plan?.kind === 'ask' || plan?.kind === 'askReplace') && sameBox === null;
   // The box listed with its strength unknown, when she said this one is the same box.
@@ -381,7 +415,11 @@ function ConfirmForm({
             choice.options.map((id) => strengthOptionLabel(pack, candidate, id, lang)),
           )
     ];
-  const strengthError = attempts > 0 && chosen === null ? t(asks.error) : undefined;
+  const strengthError = attempts > 0 && picked === null ? t(asks.error) : undefined;
+  const rangeError =
+    attempts > 0 && range !== undefined && chosen === null
+      ? t('confirm.chooseStrength')
+      : undefined;
   const sameBoxError = attempts > 0 && waitsForSameBox ? t('confirm.sameBoxError') : undefined;
 
   // What "yes" does, said where it is decided.
@@ -433,6 +471,9 @@ function ConfirmForm({
       ref: writes.ref,
       ...(unitsPerDay === undefined ? {} : { unitsPerDay }),
       ...(writes.strengthUnknown === true ? { strengthUnknown: true } : {}),
+      ...(writes.strengthAtMostMg === undefined
+        ? {}
+        : { strengthAtMostMg: writes.strengthAtMostMg }),
     };
     check.add(item, {
       ...(family === undefined ? {} : { family }),
@@ -572,6 +613,11 @@ function ConfirmForm({
         {chosen?.strengthUnknown === true ? (
           <p className="confirm__detail">{t('check.strengthUnknown')}</p>
         ) : null}
+        {chosen?.atMostMg === undefined ? null : (
+          <p className="confirm__detail">
+            {t('check.strengthAtMost', { strength: strengthText(chosen.atMostMg, lang) })}
+          </p>
+        )}
         {local === undefined ? null : (
           <p className="meta">
             {tNodes(localNameKey(local, lang), {
@@ -596,7 +642,7 @@ function ConfirmForm({
         </Notice>
       )}
 
-      {notFound === undefined ? null : (
+      {notFound === undefined || startRange !== undefined ? null : (
         <Notice>{t('confirm.strengthNotFound', { strength: strengthText(notFound, lang) })}</Notice>
       )}
 
@@ -630,6 +676,33 @@ function ConfirmForm({
           {t('confirm.showAllStrengths', { count: choice.options.length })}
         </Button>
       ) : null}
+
+      {range === undefined ? null : (
+        <RadioGroup
+          question
+          legend={t('confirm.strength')}
+          hint={t('confirm.strengthHint')}
+          error={rangeError}
+          options={[
+            {
+              value: AT_MOST,
+              label: t('check.strengthAtMost', { strength: strengthText(range, lang) }),
+            },
+            {
+              value: ABOVE,
+              label: t('confirm.strengthAbove', { strength: strengthText(range, lang) }),
+            },
+            // "I do not know" reads as above it, as a box of unknown strength does.
+            { value: DONT_KNOW, label: t('confirm.dontKnow'), apart: true },
+          ]}
+          value={band}
+          onChange={(value) => {
+            answered.current = true;
+            setBand(value);
+            setSameBox(null);
+          }}
+        />
+      )}
 
       {sameBoxQuestion}
 

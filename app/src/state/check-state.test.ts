@@ -236,6 +236,34 @@ describe('useCheckStore', () => {
     expect(result.current.changed?.kind).toBe('added');
   });
 
+  it('updates a box whose dose range changes, and says it is there when it does not', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    act(() => {
+      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
+    });
+    act(() => {
+      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
+    });
+    expect(result.current.changed?.kind).toBe('already');
+    // "Plus de 100 mg" this time: never kept as "100 mg ou moins".
+    act(() => {
+      result.current.add(aspirin);
+    });
+    expect(result.current.items).toEqual([aspirin]);
+    expect(result.current.changed?.kind).toBe('updated');
+  });
+
+  it('refuses a dose range that is not a number greater than 0, as the engine does', () => {
+    const { result } = renderHook(() => useCheckStore());
+    for (const bad of [0, -100, Number.NaN, '100']) {
+      expect(() => {
+        result.current.add({ ...paracetamol, strengthAtMostMg: bad } as unknown as CheckedItem);
+      }).toThrow(RangeError);
+    }
+    expect(result.current.items).toEqual([]);
+  });
+
   it('refuses a strengthUnknown that is not a boolean, as the engine does', () => {
     const { result } = renderHook(() => useCheckStore());
     expect(() => {

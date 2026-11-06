@@ -393,6 +393,8 @@ export const fr = {
     // The strength is not given: "Je ne sais pas", or not asked since no rule
     // reads it (SCRUM-56). The clinical committee decides the words (Q-C3).
     strengthUnknown: 'Dosage non précisé',
+    // The dose answered by a range, for a box with no strength in the base (generic aspirin).
+    strengthAtMost: '{strength} ou moins',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },
@@ -464,6 +466,9 @@ export const fr = {
     strength: 'Quel dosage est écrit sur la boîte ?',
     strengthHint: 'Sur la boîte ou sur la plaquette : le nombre suivi de mg ou de g.',
     dontKnow: 'Je ne sais pas',
+    // The dose of a box with no strength in the base, asked by a range (generic
+    // aspirin): "{strength} ou moins" (check.strengthAtMost), this, or "Je ne sais pas".
+    strengthAbove: 'Plus de {strength}',
     // A long list shows the strength typed first: the others on demand.
     showAllStrengths: 'Voir tous les dosages ({count})',
     chooseStrength: 'Choisissez un dosage, ou « Je ne sais pas ».',

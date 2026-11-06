@@ -326,6 +326,7 @@ export const en: Dictionary = {
     notRecognised: 'Product not recognised',
     notRecognisedPlant: 'Remedy not recognised',
     strengthUnknown: 'Strength not stated',
+    strengthAtMost: '{strength} or less',
     writtenAs: 'You wrote: {text}',
   },
   search: {
@@ -383,6 +384,7 @@ export const en: Dictionary = {
     strength: 'Which strength is written on the box?',
     strengthHint: 'On the box or the blister strip: the number followed by mg or g.',
     dontKnow: "I don't know",
+    strengthAbove: 'More than {strength}',
     showAllStrengths: 'See every strength ({count})',
     chooseStrength: 'Choose a strength, or "I don\'t know".',
     // The answers are forms only (a coated tablet, a syrup): the question asks the form.

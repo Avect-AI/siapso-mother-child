@@ -10,6 +10,7 @@ import {
   candidateDisplayOf,
   candidateOf,
   displayOf,
+  doseRangeOf,
   filterBrowseEntries,
   localNameOf,
   missingSubstancesOf,
@@ -165,9 +166,35 @@ describe('displayOf', () => {
   });
 });
 
+describe('doseRangeOf', () => {
+  const rangeOf = (query: string, id?: string) => {
+    const candidate = first(query, 'product');
+    return doseRangeOf(pack, candidate, id ?? candidate.id);
+  };
+
+  it('asks the dose of generic aspirin, which has no strength, by the threshold its rules read', () => {
+    expect(first('aspirine', 'product').id).toBe('aspirin-generic');
+    expect(rangeOf('aspirine')).toBe(100);
+  });
+
+  it('asks nothing of a box with a strength, or of a family that has a box at or below it', () => {
+    expect(rangeOf('kardegic')).toBeUndefined();
+    // ASPEGIC ADULTES 1000 mg holds no strength in mg, but ASPEGIC NOURRISSONS 100 mg is offered.
+    expect(rangeOf('aspegic', 'aspegic-adultes-1000-mg-63936571')).toBeUndefined();
+  });
+
+  it('asks nothing when no threshold reads the substance (a syrup of amoxicillin)', () => {
+    expect(rangeOf('clamoxyl', 'clamoxyl-125-mg-5-ml-61155773')).toBeUndefined();
+    expect(rangeOf('doliprane')).toBeUndefined();
+  });
+
+  it('asks nothing of a remedy', () => {
+    expect(doseRangeOf(pack, first('nebeday', 'plant'), 'moringa')).toBeUndefined();
+  });
+});
+
 describe('strengthNotFoundOf', () => {
-  const notFound = (query: string) =>
-    strengthNotFoundOf(pack, first(query, 'product'), query);
+  const notFound = (query: string) => strengthNotFoundOf(pack, first(query, 'product'), query);
 
   it('gives the strength typed when no box of the family is known at it (clamoxyl 3g)', () => {
     expect(notFound('clamoxyl 3g')).toBe(3000);

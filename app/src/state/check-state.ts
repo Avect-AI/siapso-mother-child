@@ -257,6 +257,7 @@ function sameItem(a: CheckedItem, b: CheckedItem): boolean {
     sameRef(a.ref, b.ref) &&
     a.unitsPerDay === b.unitsPerDay &&
     (a.strengthUnknown ?? false) === (b.strengthUnknown ?? false) &&
+    a.strengthAtMostMg === b.strengthAtMostMg &&
     (a.longTerm ?? false) === (b.longTerm ?? false)
   );
 }
@@ -395,6 +396,15 @@ function checkedCopy(item: CheckedItem): CheckedItem {
   const unknown: unknown = item.strengthUnknown;
   if (unknown !== undefined && typeof unknown !== 'boolean') {
     throw new TypeError(`strengthUnknown must be a boolean, not ${typeof unknown}`);
+  }
+  const atMost: unknown = item.strengthAtMostMg;
+  if (
+    atMost !== undefined &&
+    !(typeof atMost === 'number' && Number.isFinite(atMost) && atMost > 0)
+  ) {
+    throw new RangeError(
+      `A dose range must be a number of mg greater than 0: ${typeof atMost === 'number' ? String(atMost) : typeof atMost}`,
+    );
   }
   if (item.ref.kind === 'unrecognised' && item.ref.text.trim() === '') {
     throw new RangeError('An unrecognised item needs the text typed');

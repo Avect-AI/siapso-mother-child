@@ -6,7 +6,7 @@ import { latestHistoryAt } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { profileSummary } from '../domain/profile-summary.js';
-import { displayOf, type ItemDisplay } from '../domain/search-index.js';
+import { displayOf, strengthText, type ItemDisplay } from '../domain/search-index.js';
 import { joinNames } from '../domain/result-view.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
@@ -62,7 +62,9 @@ function Item({
   onRemove: () => void;
 }) {
   const t = useT();
+  const lang = useLang();
   const units = item.unitsPerDay;
+  const atMost = item.strengthAtMostMg;
   return (
     <li className="check__item">
       <div className="check__item-text">
@@ -83,6 +85,11 @@ function Item({
         {item.strengthUnknown === true ? (
           <p className="meta">{t('check.strengthUnknown')}</p>
         ) : null}
+        {atMost === undefined ? null : (
+          <p className="meta">
+            {t('check.strengthAtMost', { strength: strengthText(atMost, lang) })}
+          </p>
+        )}
         {/* Last in the product block, as on the confirm screen. */}
         {written === undefined ? null : (
           <p className="meta">

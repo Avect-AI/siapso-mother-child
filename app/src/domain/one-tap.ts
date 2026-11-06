@@ -7,14 +7,16 @@
 // checked against the box, a name the voice heard that is not a whole name,
 // a substance the name typed says and the product lacks ("Codéine : ce
 // produit n'en contient pas"), a strength typed that no box has
-// ("clamoxyl 3g"), the strength a rule reads, the daily count of
-// a daily maximum, or a family already listed (is it the same box?).
+// ("clamoxyl 3g"), the strength or the dose a rule reads ("100 mg ou
+// moins" for generic aspirin), the daily count of a daily maximum, or a
+// family already listed (is it the same box?).
 import type { CheckedItem, Pack } from '@siapso/engine';
 import type { Candidate } from '@siapso/resolver';
 import {
   localNameOf,
   missingSubstancesOf,
   needsUnitsPerDay,
+  doseRangeOf,
   productFamilyOf,
   strengthChoiceOf,
   strengthNotFoundOf,
@@ -51,6 +53,8 @@ export function oneTapItem(
   const ref = { kind: 'product' as const, id: candidate.id };
   // The daily count of a daily maximum is asked on the confirm screen.
   if (needsUnitsPerDay(pack, ref)) return null;
+  // So is the dose of a box with no strength that a threshold reads (generic aspirin).
+  if (doseRangeOf(pack, candidate, candidate.id) !== undefined) return null;
   const listed = items.some(
     (item) =>
       item.ref.kind === 'product' && productFamilyOf(pack, item.ref.id) === candidate.family,

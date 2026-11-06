@@ -151,6 +151,7 @@ function checkKey(entry: HistoryEntry): string {
         item.unitsPerDay ?? null,
         item.longTerm === true,
         item.strengthUnknown === true,
+        item.strengthAtMostMg ?? null,
       ]),
     )
     .sort();
