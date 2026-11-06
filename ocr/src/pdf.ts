@@ -7,13 +7,15 @@
 // code runs in the worker and, with the legacy build of the same version,
 // in the tests. pdf.js opens an untrusted file: no XFA, no scripting (the
 // pack has no pdf.sandbox and no annotation layer is drawn), no font faces,
-// no system fonts, an image of more than MAX_PDF_IMAGE_PIXELS left out (and
-// the PDF refused as too large), and no fetch of any kind: the bytes are
+// no system fonts, a PDF with an image or a mask of more than
+// MAX_PDF_IMAGE_PIXELS refused as too large (read from its bytes first,
+// pdf-images.ts, then pdf.js's maxImageSize), and no fetch of any kind: the bytes are
 // given, no cMap, font or ICC address is set, and its WebAssembly image
 // decoders come from the pack through packDecoders. pdf.js 6 has no eval
 // path at all (`isEvalSupported` is gone). docs/threat-model.md.
 import { MAX_PDF_IMAGE_PIXELS } from './limits.js';
 import { OcrPackError, PDF_FILES } from './ocr-pack.js';
+import { oversizedImage } from './pdf-images.js';
 
 /** A PDF is read up to its third page. */
 export const MAX_PDF_PAGES = 3;
@@ -339,6 +341,12 @@ export async function readPdf(
 ): Promise<PdfRead> {
   const { readScan, signal } = options;
   stopIfCancelled(signal);
+  // First, from the file's bytes: pdf.js checks maxImageSize against the
+  // painted image only, not its masks nor the size of JPEG data.
+  const oversized = oversizedImage(bytes, MAX_PDF_IMAGE_PIXELS);
+  if (oversized !== null) {
+    throw new OcrPackError('too-large', `The PDF is too large for this phone: ${oversized}.`);
+  }
   let leftOut = false;
   const stopIfLeftOut = () => {
     if (leftOut) {
@@ -362,7 +370,7 @@ export async function readPdf(
     disableStream: true,
     disableRange: true,
     stopAtErrors: false,
-    // Larger images are left out with a warning, which watchWarnings sees.
+    // A second line: larger images are left out with a warning, which watchWarnings sees.
     maxImageSize: MAX_PDF_IMAGE_PIXELS,
     verbosity: 1,
     ...(options.CanvasFactory === undefined ? {} : { CanvasFactory: options.CanvasFactory }),

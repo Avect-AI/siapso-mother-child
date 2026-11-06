@@ -29,10 +29,22 @@ export interface PdfImage {
   rect?: readonly [number, number, number, number];
 }
 
-/** A page: text lines, an image under them, or both. */
+/** A page: text lines, an image under them, or both; `content` is drawn first, as written. */
 export interface PdfPage {
   lines?: readonly PdfLine[];
   image?: PdfImage;
+  content?: string;
+}
+
+/**
+ * An object added after the pages: a stream (`dict` and `data`, such as a
+ * soft mask) or a plain value (`value`, such as a number). An image dictionary
+ * names the k-th of them `@k 0 R`.
+ */
+export interface PdfObject {
+  dict?: string;
+  data?: Uint8Array;
+  value?: string;
 }
 
 const latin1 = (text: string) =>
@@ -107,12 +119,13 @@ const hex = (bytes: Uint8Array) => [...bytes].map((b) => b.toString(16).padStart
 
 /**
  * The PDF bytes of `pages` (each a list of lines, or a page with an image),
- * optionally with a user password. A page given as an empty list of lines
- * is a drawing with no text.
+ * optionally with a user password and `extra` objects after the pages. A
+ * page given as an empty list of lines is a drawing with no text.
  */
 export function makePdf(
   pages: readonly (readonly PdfLine[] | PdfPage)[],
   password?: string,
+  extra: readonly PdfObject[] = [],
 ): Uint8Array {
   const id = md5(latin1('siapso synthetic test pdf'));
   const permissions = -4;
@@ -136,12 +149,15 @@ export function makePdf(
   // Each page takes three objects: the page, its content and its image (an
   // empty dictionary when it has none).
   const kids = pages.map((_, i) => `${String(4 + i * 3)} 0 R`).join(' ');
+  const extraBase = 4 + pages.length * 3;
+  const link = (dict: string) =>
+    dict.replace(/@(\d+)/g, (_, k: string) => String(extraBase + Number(k)));
   objects.push('<< /Type /Catalog /Pages 2 0 R >>');
   objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${String(pages.length)} >>`);
   objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
   const streams = new Map<number, Uint8Array>();
   pages.forEach((spec, i) => {
-    const { lines = [], image }: PdfPage = isLines(spec) ? { lines: spec } : spec;
+    const { lines = [], image, content = '' }: PdfPage = isLines(spec) ? { lines: spec } : spec;
     const pageNum = 4 + i * 3;
     const contentNum = pageNum + 1;
     const imageNum = pageNum + 2;
@@ -150,7 +166,7 @@ export function makePdf(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >>${xobjects} >> /Contents ${String(contentNum)} 0 R >>`,
     );
     const drawing =
-      lines.length === 0 && image === undefined
+      lines.length === 0 && image === undefined && content === ''
         ? '0.2 0.2 0.2 rg 60 500 300 80 re f\n80 400 m 400 420 l S'
         : '';
     const [x, y, w, h] = image?.rect ?? A4;
@@ -158,7 +174,7 @@ export function makePdf(
       image === undefined
         ? ''
         : `q ${String(w)} 0 0 ${String(h)} ${String(x)} ${String(y)} cm /Im1 Do Q\n`;
-    const body = encrypt(contentNum, latin1(painted + contentOf(lines) + drawing));
+    const body = encrypt(contentNum, latin1(content + painted + contentOf(lines) + drawing));
     streams.set(contentNum, body);
     objects.push(`<< /Length ${String(body.length)} >>`);
     if (image === undefined) {
@@ -167,9 +183,19 @@ export function makePdf(
       const data = encrypt(imageNum, image.data);
       streams.set(imageNum, data);
       objects.push(
-        `<< /Type /XObject /Subtype /Image ${image.dict} /Length ${String(data.length)} >>`,
+        `<< /Type /XObject /Subtype /Image ${link(image.dict)} /Length ${String(data.length)} >>`,
       );
     }
+  });
+  extra.forEach((object, k) => {
+    const num = extraBase + k;
+    if (object.data === undefined) {
+      objects.push(link(object.value ?? object.dict ?? 'null'));
+      return;
+    }
+    const data = encrypt(num, object.data);
+    streams.set(num, data);
+    objects.push(`<< ${link(object.dict ?? '')} /Length ${String(data.length)} >>`);
   });
   let encryptNum: number | undefined;
   if (owner !== undefined && user !== undefined) {
