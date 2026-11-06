@@ -5,7 +5,7 @@
 // knows for it.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard } from './support.js';
+import { aboutHer, CHECK_TITLE, onboard } from './support.js';
 
 const NBSP = ' ';
 
@@ -17,22 +17,10 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-function answer(page: Page, question: string | RegExp, label: string) {
-  return page.getByRole('group', { name: question }).getByText(label, { exact: true });
-}
-
-/** Welcome in French, woman mode, then her profile: pregnant at `weeks` weeks, with `situation`. */
+/** Welcome in French, woman mode, then her answers on her check: pregnant at `weeks` weeks, with `situation`. */
 async function pregnantAt(page: Page, weeks: number, situation: string) {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
-  await answer(page, /^Enceinte/, 'Oui').click();
-  await answer(page, 'Terme de la grossesse', 'En semaines').click();
-  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
-  await answer(page, /^Allaite/, 'Non').click();
-  await page.getByText(situation, { exact: true }).click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await aboutHer(page, weeks, situation);
 }
 
 /** Types `name` among the medicines, then keeps it as typed through the question "not found" asks first. */
@@ -142,7 +130,7 @@ async function addTyped(page: Page, name: string) {
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
   // "Non, aucun de ces médicaments" (or "produits", "remèdes"), never the danger signs answer.
   const none = page.getByRole('button', { name: /^Non, aucun de ces (?!signes)/ });
-  const check = page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+  const check = page.getByRole('heading', { level: 1, name: CHECK_TITLE });
   await expect(none.or(check)).toBeVisible();
   if (await none.isVisible()) await none.click();
   await expect(check).toBeVisible();

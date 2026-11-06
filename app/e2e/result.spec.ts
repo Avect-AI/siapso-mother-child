@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addOnCheck, onboard, type Mode } from './support.js';
+import { addOnCheck, CHECK_TITLE, onboard, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -17,15 +17,17 @@ function answer(page: Page, question: string | RegExp, label: string) {
 
 /**
  * Welcome in French, a mode and the code, then the profile: pregnant at
- * `weeks` weeks, no situation. Woman mode goes from Home, accompanied mode
- * adds the profile in the list, then opens it.
+ * `weeks` weeks, no situation. Woman mode answers on her first check (SCRUM-56,
+ * 8.3), accompanied mode adds the profile in the list, then opens it.
  */
 async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await onboard(page, mode);
-  await (mode === 'woman'
-    ? page.getByRole('button', { name: 'Regarder un produit' }).click()
-    : page.getByRole('button', { name: 'Ajouter un profil' }).click());
-  await expect(page.getByRole('heading', { level: 1, name: /profil$/i })).toBeVisible();
+  if (mode === 'woman') {
+    await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
+  } else {
+    await page.getByRole('button', { name: 'Ajouter un profil' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: /profil$/i })).toBeVisible();
+  }
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
@@ -35,7 +37,8 @@ async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await page.getByText('Aucune de ces situations').click();
   // Saved, her check opens, a new profile in accompanied mode included (SCRUM-56).
   await page.getByRole('button', { name: /^Enregistrer/ }).click();
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+  await expect(page.getByRole('searchbox')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 const womanAt = (page: Page, weeks: number) => pregnantAt(page, weeks, 'woman');
@@ -50,8 +53,8 @@ async function seeResult(page: Page) {
 /** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56), confirmed. */
 async function add(page: Page, query: string) {
   await addOnCheck(page, query);
-  // "Ce que vous prenez" in woman mode, "Ce qu'elle prend" in accompanied mode.
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+  // Her start in woman mode, "Ce qu'elle prend" in accompanied mode.
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the closing lines', async ({
@@ -100,7 +103,8 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   await expect(page.getByRole('article')).toHaveCount(2);
   await expect(page.getByText(/^Signes de danger maintenant\s: aucun$/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toHaveCount(0);
-  expect(new URL(page.url()).hash).toBe('#/check');
+  // Her check, her start (SCRUM-56, S4): the start address, nothing after it.
+  expect(new URL(page.url()).hash).toMatch(/^(#\/)?$/);
 });
 
 test('a danger is seen: a product that makes one after a first result takes the focus to the banner', async ({

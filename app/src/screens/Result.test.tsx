@@ -50,6 +50,8 @@ vi.mock('../data/profiles.js', async (importOriginal) => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
 /** The button in place of a note on contraception (a no-break space before the colon). */
@@ -115,9 +117,12 @@ async function openResult({
     for (const item of items) check.add(item, said ? { said: true } : {});
     check.setSigns(signs);
   });
-  act(() => {
-    window.location.hash = '#/check';
-  });
+  // Woman mode: her check is her start, on show already (SCRUM-56, S4).
+  if (settings.mode !== 'woman') {
+    act(() => {
+      window.location.hash = '#/check';
+    });
+  }
   // The hash change arrives as an event: wait for the result on the check (SCRUM-56, S15).
   await screen.findByRole('heading', { name: heading });
   return { probe, view, user: userEvent.setup() };
@@ -315,9 +320,6 @@ describe('Result: a name typed as not recognised that looks like a known one', (
       }
       check.setSigns([]);
     });
-    act(() => {
-      window.location.hash = '#/check';
-    });
 
     await screen.findByRole('heading', { level: 2, name: 'Résultat' });
     expect(await screen.findAllByRole('article')).toHaveLength(5);
@@ -340,9 +342,6 @@ describe('Result: a name typed as not recognised that looks like a known one', (
       check.start('p1');
       check.add({ ref: { kind: 'product', id: 'misoprostol-generic' } }, { written: 'cytotec' });
       check.setSigns([]);
-    });
-    act(() => {
-      window.location.hash = '#/check';
     });
 
     const card = await screen.findByRole('article', { name: /Misoprostol \(générique\)$/ });
@@ -587,13 +586,16 @@ describe('Result: one finding, on the check under the list (SCRUM-56, S15)', () 
     const probe = probeCheck();
     await renderApp({
       settings: woman,
-      hash: '#/',
+      hash: '#/about',
       packLoader: loaderOf(pack),
       children: probe.element,
     });
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
-    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    // Her check, her start, by the band's "Carnet" (SCRUM-56, S4).
+    await user.click(
+      within(await screen.findByRole('banner')).getByRole('link', { name: 'Carnet' }),
+    );
+    await screen.findByRole('heading', { level: 1, name: START });
     act(() => {
       probe.current().add(ADVIL);
     });
@@ -617,21 +619,19 @@ describe('Result: one finding, on the check under the list (SCRUM-56, S15)', () 
     expect(screen.queryByRole('button', { name: 'Revenir à la liste' })).toBeNull();
     expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
     expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('ADVIL');
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toEqual([ADVIL]);
     // One entry for the check: Back leaves it.
     window.history.back();
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'À propos' })).toBeVisible();
   });
 
   it('sends the old address of the result screen to the check', async () => {
     await saveProfile(profileOf());
     await renderApp({ settings: woman, hash: '#/result', packLoader: loaderOf(pack) });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
   });
 });
 
@@ -848,7 +848,10 @@ describe('Result: what a reader in a hurry sees first', () => {
     await openResult({ items: [ADVIL] });
 
     const card = await screen.findByRole('article');
-    const stale = screen.getByText(/^Base de connaissances ancienne\s: plus de 90 jours/);
+    // In the result too, not only above the field (SCRUM-56, S4).
+    const stale = within(resultSection()).getByText(
+      /^Base de connaissances ancienne\s: plus de 90 jours/,
+    );
     expect(stale).toBeVisible();
     expect(before(stale, card)).toBe(true);
     expect(before(screen.getByRole('heading', { level: 1 }), stale)).toBe(true);
@@ -978,14 +981,14 @@ describe('Result: waiting and failures, never a blank screen', () => {
   it('shows no result when her profile cannot be read, and says so', async () => {
     failure.listProfiles = new Error('storage refused');
     await saveProfile(profileOf());
-    await openResult({ items: [KINKELIBA], heading: /^Ce que vous prenez/ });
+    await openResult({ items: [KINKELIBA], heading: /^Un médicament ou un remède/ });
     expect(await screen.findByText(/Les profils n'ont pas pu être lus/)).toBeVisible();
     expect(screen.queryByRole('region', { name: /^Résultat/ })).toBeNull();
     expect(await listHistory('p1')).toEqual([]);
   });
 
-  it('opens her profile when the profile of the check is no longer on the phone', async () => {
-    await openResult({ items: [KINKELIBA], heading: /^Mon profil$/ });
+  it('asks about her on her check when her profile is no longer on the phone', async () => {
+    await openResult({ items: [KINKELIBA], heading: /^À propos de vous$/ });
     expect(screen.queryByRole('region', { name: /^Résultat/ })).toBeNull();
   });
 });

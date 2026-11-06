@@ -1374,47 +1374,29 @@ a {
 }
 
 /*
- * Home: the question and its one action held together, centred in the space
- * between the band and the closing line: in easy thumb reach on a phone, and
- * when the offline badge appears the group moves half as far.
+ * Her check as her start in woman mode (SCRUM-56, S4): what Home said is
+ * around it. A profile just saved is said in strong ink; the readiness line,
+ * the quiet links and the closing line come last, low on the screen.
  */
-
-/* minmax(0, 1fr): a long word at large text breaks instead of widening the track. */
-.home__task {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-  margin-block: auto;
+.check__saved:empty {
+  display: none;
 }
 
-.home__intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-.home__check,
-.home__profile {
-  width: 100%;
-}
-
-/* A link dressed as a secondary button: no underline, as the header shortcut. */
-.home__profile {
-  text-decoration: none;
-}
-
-.home__saved {
+.check__saved {
   font-weight: var(--font-weight-strong);
 }
-/* The settings link and the closing line, low on the screen. */
-.home__closing {
+
+.check__closing {
   display: grid;
   justify-items: start;
   gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
 }
 
 /* A quiet link on its own line: its words line up with the column. */
-.home__settings,
+.check__link,
 .profiles__settings,
 .code-form__aside {
   justify-self: start;
@@ -2013,11 +1995,6 @@ a {
   gap: var(--space-3);
 }
 
-.home__closing {
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-rule);
-}
-
 /* A problem the user can act on: ink with the triangle mark, never red. */
 .notice {
   display: flex;
@@ -2378,6 +2355,13 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   gap: var(--space-2);
 }
 
+/* Her first check in woman mode: the questions about her, where the search will be (SCRUM-56, 8.3). */
+.check__about {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
 /* Who the check is for and where she stands: one line each. */
 /*
  * Who the check is for: one line each, but "Situations" (a quiet button) sits
@@ -2399,7 +2383,8 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   flex: 0 1 auto;
 }
 
-.check__profile > .check__situations {
+.check__profile > .check__situations,
+.check__profile > .check__edit {
   flex: 0 0 auto;
   min-height: var(--touch-target);
 }

@@ -710,8 +710,8 @@ describe('ProfileEdit: deleting a profile', () => {
 
     expect(await screen.findByText('Votre profil est supprimé.')).toBeVisible();
     expect(await listProfiles()).toEqual([]);
-    await user.click(screen.getByRole('link', { name: 'Mon profil' }));
-    expect(await screen.findByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+    // Her start, her check, asks about her again, nothing answered (SCRUM-56, 8.3).
+    expect(await screen.findByRole('region', { name: 'À propos de vous' })).toBeVisible();
     expect(option(/^Enceinte/, 'Oui')).not.toBeChecked();
   });
 
@@ -1068,6 +1068,7 @@ describe('ProfileEdit: storage', () => {
 
   it('says so when the profiles cannot be read', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await saveProfile(stored({ id: 'mine', pseudonym: 'Moi' }));
     const user = userEvent.setup();
     await renderApp({ settings: woman });
     const link = await screen.findByRole('link', { name: 'Mon profil' });
@@ -1084,6 +1085,7 @@ describe('ProfileEdit: storage', () => {
 
   it('stops waiting for storage that never answers', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await saveProfile(stored({ id: 'mine', pseudonym: 'Moi' }));
     const user = userEvent.setup();
     await renderApp({ settings: woman, storageTimeoutMs: 1000 });
     const link = await screen.findByRole('link', { name: 'Mon profil' });

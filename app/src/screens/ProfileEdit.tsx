@@ -217,6 +217,7 @@ export function ProfileQuestions({
   onSaved,
   onDelete,
   quick = false,
+  named = true,
   saveLabel,
 }: {
   mode: Mode;
@@ -238,6 +239,12 @@ export function ProfileQuestions({
   onDelete?: (() => void) | undefined;
   /** A passer-by: no pseudonym asked, nothing stored. */
   quick?: boolean;
+  /**
+   * The pseudonym is asked (true by default). Her own profile made on her
+   * first check (SCRUM-56, 8.3) keeps the one offered, unasked; it is asked
+   * when a profile of the phone already has it.
+   */
+  named?: boolean;
   /** What the save button says, when it does more than save ("Enregistrer et regarder ses produits"). */
   saveLabel?: MessageKey | undefined;
 }) {
@@ -440,7 +447,7 @@ export function ProfileQuestions({
           <Notice>{t('autoLock.restored')}</Notice>
         </div>
       ) : null}
-      {quick ? null : (
+      {quick || !named ? null : (
         <TextField
           label={t('profile.pseudonym')}
           hint={t('profile.pseudonymHint')}
@@ -1033,7 +1040,8 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
                 navigate('/check', { replace: true });
                 return;
               }
-              // Home reads the pseudonym from the history entry to say which profile was saved.
+              // The start (her check, the list of profiles) reads the pseudonym from the
+              // history entry to say which profile was saved.
               navigate('/', {
                 replace: true,
                 state: inSession({ profileSaved: profile.pseudonym }),

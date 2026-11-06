@@ -112,7 +112,7 @@ describe('types (checked by tsc)', () => {
     const missing: Dictionary['update'] = { ready: 'x' };
     // @ts-expect-error: a section with a key French does not have
     const extra: Dictionary['update'] = { ready: 'x', reload: 'y', later: 'z' };
-    expectTypeOf<'home.check'>().toExtend<MessageKey>();
+    expectTypeOf<'home.closing'>().toExtend<MessageKey>();
     expectTypeOf<'home.later'>().not.toExtend<MessageKey>();
     expectTypeOf<'home'>().not.toExtend<MessageKey>();
     expect([missing, extra]).toHaveLength(2);

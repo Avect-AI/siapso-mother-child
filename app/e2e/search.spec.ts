@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { checkField, onboard } from './support.js';
+import { CHECK_TITLE, checkField, onboard } from './support.js';
 
 const NBSP = ' ';
 
@@ -13,13 +13,12 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-/** Welcome in French, woman mode, then her profile (pregnant, term unknown), as the check asks for it. */
+/** Welcome in French, woman mode, then her answers on her first check (pregnant, term unknown). */
 async function startWithProfile(page: Page) {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
-  // No profile yet: the profile screen comes first, then the check.
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  // No profile yet: her check asks about her first (SCRUM-56, 8.3).
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
   await page
     .getByRole('group', { name: /^Enceinte/ })
     .getByText('Oui', { exact: true })
@@ -34,7 +33,7 @@ async function startWithProfile(page: Page) {
     .click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(checkField(page)).toBeVisible();
 }
 
 /** Presses Tab until `target` has the focus (at most 20 times). */
@@ -88,6 +87,7 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await startWithProfile(page);
   // She came to look up a product: the field has the focus.
   await expect(checkField(page)).toBeFocused();
+  const entries = await page.evaluate(() => window.history.length);
 
   await addByKeyboard(page, 'ibuprofene', /^Ibuprofène/);
   await addByKeyboard(page, 'kinkiliba', /^Kinkéliba/);
@@ -119,9 +119,8 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
     'aria-expanded',
     'false',
   );
-  // Back from the check goes home: no step of the check is stacked behind it.
-  await page.goBack();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  // Her check is one history entry: no step of it is stacked (SCRUM-56, 8.3).
+  expect(await page.evaluate(() => window.history.length)).toBe(entries);
 });
 
 test('DOLIPRANE without a count is added with its strength not given (SCRUM-56, S10)', async ({
@@ -253,7 +252,7 @@ test.describe('at 360 px with text at 200 percent', () => {
 
     await page.getByRole('radio', { name: 'Je ne sais pas' }).check();
     await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await expectFitsAndTargets(page);
 
     await page.getByRole('searchbox').fill('nebeday');
@@ -276,7 +275,7 @@ test.describe('at 360 px with text at 200 percent', () => {
     await expectFitsAndTargets(page);
 
     await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await expectFitsAndTargets(page);
   });
 });

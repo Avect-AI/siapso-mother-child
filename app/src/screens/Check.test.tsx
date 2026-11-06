@@ -6,10 +6,12 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { closeAppDb } from '../data/db.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
+import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
+import { makeCode } from '../test/code-steps.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
-import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { loaderOf, noPack, pendingPack, renderApp, storeTestCode } from '../test/render-app.js';
 import { fakeSpeech } from '../test/voice.js';
 import { createVoiceService, type VoiceService } from '../voice/voice-service.js';
 import { untilMidnight } from './Check.js';
@@ -42,15 +44,48 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function openCheckFromHome(settings: Settings = woman) {
+/** Her start in woman mode: her check, at #/ (SCRUM-56, S4). */
+async function openStart() {
   const probe = probeCheck();
-  await renderApp({ settings, hash: '#/', packLoader: loaderOf(pack), children: probe.element });
-  const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
-  return { user, probe };
+  await renderApp({
+    settings: woman,
+    hash: '#/',
+    packLoader: loaderOf(pack),
+    children: probe.element,
+  });
+  return { user: userEvent.setup(), probe };
 }
 
+/** Her check opened from another screen (the about screen), by the band's "Carnet". */
+async function openStartFromAbout(options: { storageTimeoutMs?: number } = {}) {
+  const probe = probeCheck();
+  await renderApp({
+    settings: woman,
+    hash: '#/about',
+    packLoader: loaderOf(pack),
+    children: probe.element,
+    ...options,
+  });
+  const user = userEvent.setup();
+  const home = within(await screen.findByRole('banner')).getByRole('link', { name: 'Carnet' });
+  return { user, probe, home };
+}
+
+// Her start's heading: a no-break space before "?", as French writes it.
+const START = 'Un médicament ou un remède ?';
 const FIELD = 'Nom du médicament ou du remède';
+
+/** Answers the questions about her: pregnant at `weeks` weeks, not breastfeeding, no situation. */
+async function answerAboutHer(user: ReturnType<typeof userEvent.setup>, weeks: string) {
+  await user.click(
+    within(screen.getByRole('group', { name: /^Enceinte/ })).getByRole('radio', { name: 'Oui' }),
+  );
+  await user.type(screen.getByRole('textbox', { name: 'Nombre de semaines' }), weeks);
+  await user.click(
+    within(screen.getByRole('group', { name: /^Allaite/ })).getByRole('radio', { name: 'Non' }),
+  );
+  await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
+}
 
 function field() {
   return screen.getByRole('searchbox', { name: FIELD });
@@ -101,14 +136,18 @@ async function addThrough(user: ReturnType<typeof userEvent.setup>, query: strin
 }
 
 describe('Check', () => {
-  it('opens from Home for her profile, empty, with the result out of reach until an item is added', async () => {
+  it('is her start in woman mode, at #/, empty, with the result out of reach until an item is added (SCRUM-56, S4)', async () => {
     await saveProfile(profileOf());
-    await openCheckFromHome();
+    await openStart();
 
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+    // The start of the app: the band's "Carnet" says it is the page shown.
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Carnet' }),
+    ).toHaveAttribute('aria-current', 'page');
+    // What the app is for, while nothing is listed.
+    expect(screen.getByText('Sachez à qui le montrer, et quand.')).toBeVisible();
     // Nothing listed: no danger signs question and no way to a result yet (SCRUM-56, S13).
     expect(
       screen.getByText(
@@ -126,7 +165,59 @@ describe('Check', () => {
     expect(screen.queryByRole('button', { name: 'Ajouter un remède' })).toBeNull();
   });
 
-  it('never shows the check, nor gives it the focus, before the profile screen it opens', async () => {
+  it('opens #/check at #/ in woman mode: one address for her check', async () => {
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/check', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#/');
+    });
+  });
+
+  it('asks about her on her first check, then keeps her answers as her profile (SCRUM-56, 8.3)', async () => {
+    const { user, probe, home } = await openStartFromAbout();
+    await user.click(home);
+
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    const about = screen.getByRole('region', { name: 'À propos de vous' });
+    // The first thing to answer takes the focus: the questions start under it.
+    await waitFor(() => {
+      expect(within(about).getByRole('heading', { level: 2 })).toHaveFocus();
+    });
+    expect(within(about).getByText('Ces réponses restent sur ce téléphone.')).toBeVisible();
+    // Her own profile: no pseudonym to give; nothing to look up before her term is known.
+    expect(within(about).queryByRole('textbox', { name: /^Surnom/ })).toBeNull();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Modifier' })).toBeNull();
+
+    await answerAboutHer(user, '24');
+    await user.click(within(about).getByRole('button', { name: 'Enregistrer' }));
+
+    // Folded into the line of her term; the field takes the focus for the first name.
+    await waitFor(() => {
+      expect(field()).toHaveFocus();
+    });
+    expect(screen.queryByRole('region', { name: 'À propos de vous' })).toBeNull();
+    expect(screen.getByText('Environ 24 semaines')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Modifier' })).toHaveAttribute('href', '#/profile');
+    expect(screen.getByText('Profil enregistré : Moi.')).toBeVisible();
+    const [saved] = await listProfiles();
+    expect(saved).toMatchObject({
+      pseudonym: 'Moi',
+      self: true,
+      pregnant: true,
+      term: { kind: 'weeks', weeks: 24, givenOn: '2026-11-04' },
+      breastfeeding: false,
+      conditions: [],
+    });
+    await waitFor(() => {
+      expect(probe.current().profileId).toBe(saved?.id);
+    });
+    expect(window.location.hash).toBe('#/');
+  });
+
+  it('never shows the search, nor a heading other than its own, before her first answers', async () => {
     const headings: string[] = [];
     const observer = new MutationObserver(() => {
       const text = document.querySelector('main h1')?.textContent;
@@ -134,30 +225,26 @@ describe('Check', () => {
     });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
     try {
-      await openCheckFromHome();
-      const profile = await screen.findByRole('heading', { level: 1, name: 'Mon profil' });
-      await waitFor(() => {
-        expect(profile).toHaveFocus();
-      });
+      await openStart();
+      await screen.findByRole('region', { name: 'À propos de vous' });
     } finally {
       observer.disconnect();
     }
-    // From Home straight to her profile: no screen reader hears "Ce que vous prenez" first.
-    expect(headings).not.toContain('Ce que vous prenez');
+    expect(headings).toEqual([START]);
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: 'Mon profil' })).toBeNull();
   });
 
   it('says the profiles could not be read, under its heading with the focus, when the list fails', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await saveProfile(profileOf());
-    await renderApp({ settings: woman, hash: '#/', packLoader: loaderOf(pack) });
-    const user = userEvent.setup();
-    const start = await screen.findByRole('button', { name: 'Regarder un produit' });
+    const { user, home } = await openStartFromAbout();
     // The phone's storage refuses to open from now on.
     closeAppDb();
     breakIndexedDB('storage refused');
-    await user.click(start);
+    await user.click(home);
 
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    const heading = await screen.findByRole('heading', { level: 1, name: START });
     expect(screen.getByText(/^Les profils n'ont pas pu être lus sur ce téléphone/)).toBeVisible();
     await waitFor(() => {
       expect(heading).toHaveFocus();
@@ -167,17 +254,10 @@ describe('Check', () => {
   it('says it is loading after a moment, then that the profiles could not be read, when storage never answers', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await saveProfile(profileOf());
-    await renderApp({
-      settings: woman,
-      hash: '#/',
-      packLoader: loaderOf(pack),
-      storageTimeoutMs: 2500,
-    });
-    const user = userEvent.setup();
-    const start = await screen.findByRole('button', { name: 'Regarder un produit' });
+    const { user, home } = await openStartFromAbout({ storageTimeoutMs: 2500 });
     closeAppDb();
     hangIndexedDB();
-    await user.click(start);
+    await user.click(home);
 
     // Not at once (a fast phone never shows it), and never as the check's heading.
     const loading = within(screen.getByRole('main')).getByRole('status');
@@ -187,7 +267,7 @@ describe('Check', () => {
 
     const heading = await screen.findByRole(
       'heading',
-      { level: 1, name: 'Ce que vous prenez' },
+      { level: 1, name: START },
       { timeout: 5000 },
     );
     expect(screen.getByText(/^Les profils n'ont pas pu être lus sur ce téléphone/)).toBeVisible();
@@ -199,37 +279,11 @@ describe('Check', () => {
 
   it('gives the focus to its field once her profile is read: she came to look up a product (SCRUM-56)', async () => {
     await saveProfile(profileOf());
-    await openCheckFromHome();
-    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    const { user, home } = await openStartFromAbout();
+    await user.click(home);
+    await screen.findByRole('heading', { level: 1, name: START });
     await waitFor(() => {
       expect(field()).toHaveFocus();
-    });
-  });
-
-  it('opens the profile screen first when there is no profile, then comes back to the check', async () => {
-    const { user, probe } = await openCheckFromHome();
-
-    expect(await screen.findByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
-    await user.click(
-      within(screen.getByRole('group', { name: /^Enceinte/ })).getByRole('radio', { name: 'Oui' }),
-    );
-    await user.click(
-      within(screen.getByRole('group', { name: 'Terme de la grossesse' })).getByRole('radio', {
-        name: 'Je ne sais pas',
-      }),
-    );
-    await user.click(
-      within(screen.getByRole('group', { name: /^Allaite/ })).getByRole('radio', { name: 'Non' }),
-    );
-    await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    const [saved] = await listProfiles();
-    await waitFor(() => {
-      expect(probe.current().profileId).toBe(saved?.id);
     });
   });
 
@@ -348,7 +402,7 @@ describe('Check', () => {
 
   it('asks her in her own words in woman mode, and "the baby is born" opens her profile', async () => {
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-07-01' } }));
-    const { user } = await openCheckFromHome();
+    const { user } = await openStart();
 
     expect(
       await screen.findByRole('heading', {
@@ -402,7 +456,7 @@ describe('Check', () => {
 
   it('lists each item added with its substances and units, and removes one', async () => {
     await saveProfile(profileOf());
-    const { user, probe } = await openCheckFromHome();
+    const { user, probe } = await openStart();
     await addThrough(user, 'paracetamol 500');
     await addThrough(user, 'kinkeliba');
 
@@ -438,7 +492,7 @@ describe('Check', () => {
 
   it('says what was just added, and puts a removed item back at its place', async () => {
     await saveProfile(profileOf());
-    const { user, probe } = await openCheckFromHome();
+    const { user, probe } = await openStart();
     await addThrough(user, 'paracetamol 500');
     const status = () => changeLine();
     await waitFor(() => {
@@ -466,38 +520,198 @@ describe('Check', () => {
     expect(screen.queryByRole('button', { name: 'Remettre dans la liste' })).toBeNull();
   });
 
-  it('says an added item once: not again when Home opens the check again', async () => {
+  it('says an added item once: not again when she comes back to her check', async () => {
     await saveProfile(profileOf());
-    const { user } = await openCheckFromHome();
+    const { user } = await openStart();
     await addThrough(user, 'kinkeliba');
     await screen.findByText('Kinkéliba est ajouté à la liste.');
 
+    await user.click(screen.getByRole('link', { name: 'Réglages' }));
+    await screen.findByRole('heading', { level: 1, name: 'Réglages' });
     await user.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Carnet' }));
-    await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
 
+    // Her list is kept for her profile; what was added is not said again.
     expect(await screen.findByText('Kinkéliba')).toBeVisible();
     expect(screen.queryByText('Kinkéliba est ajouté à la liste.')).toBeNull();
   });
 
-  it('keeps the check when Home opens it again for the same profile', async () => {
+  it('is one history entry: adding items leaves none, Back leaves the check', async () => {
     await saveProfile(profileOf());
-    const { user } = await openCheckFromHome();
+    const { user, home } = await openStartFromAbout();
+    await user.click(home);
+    await screen.findByRole('heading', { level: 1, name: START });
+    const entries = window.history.length;
     await addThrough(user, 'kinkeliba');
-
-    await user.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Carnet' }));
-    await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
-
-    expect(await screen.findByText('Kinkéliba')).toBeVisible();
-  });
-
-  it('goes back to Home, not to the search, after an item is added', async () => {
-    await saveProfile(profileOf());
-    const { user } = await openCheckFromHome();
-    await addThrough(user, 'kinkeliba');
+    await addThrough(user, 'paracetamol 500');
+    expect(window.history.length).toBe(entries);
 
     window.history.back();
 
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: 'À propos' })).toBeVisible();
+  });
+});
+
+// What Home said in woman mode is on her check, her start (SCRUM-56, S4).
+describe('Check: her start in woman mode', () => {
+  it('shows the app name, the danger signs shortcut and the closing line, and no primary action', async () => {
+    await saveProfile(profileOf());
+    await openStart();
+
+    const banner = await screen.findByRole('banner');
+    expect(within(banner).getByRole('link', { name: 'Carnet' })).toBeVisible();
+    expect(within(banner).getByRole('link', { name: 'Signes de danger' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(document.querySelectorAll('.button--primary')).toHaveLength(0);
+    expect(screen.getByText('Cet outil ne remplace pas un soignant.')).toBeVisible();
+  });
+
+  it('says when the knowledge base is out of date, above the field, and nothing while it is not', async () => {
+    await saveProfile(profileOf());
+    const fresh = await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf({ ...pack, date: '2026-11-01' }),
+    });
+    await screen.findByRole('searchbox', { name: FIELD });
+    expect(screen.queryByText(/^Base de connaissances ancienne/)).toBeNull();
+    fresh.unmount();
+
+    // More than 90 days after the pack date.
+    await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf({ ...pack, date: '2026-07-01' }),
+    });
+    const stale = await screen.findByText(
+      'Base de connaissances ancienne : plus de 90 jours. Faites-la mettre à jour au poste de santé.',
+    );
+    expect(stale).toBeVisible();
+    expect(stale.compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('says at its end whether the phone opens the app without the Internet, then its links', async () => {
+    await saveProfile(profileOf());
+    await openStart();
+    await screen.findByRole('heading', { level: 1, name: START });
+
+    // The test browser has no service worker: the check says so, and what to do.
+    const line = document.querySelector('main .offline-ready');
+    expect(line).toHaveAttribute('role', 'status');
+    expect(line).toHaveTextContent(
+      "Ce navigateur ne peut pas garder l'application pour l'ouvrir sans Internet. Ouvrez-la dans Chrome.",
+    );
+    expect(field().compareDocumentPosition(line as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    const settings = screen.getByRole('link', { name: 'Réglages' });
+    expect(
+      (line as Node).compareDocumentPosition(settings) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('links to her profile, the settings, the knowledge base status and the about screen', async () => {
+    await saveProfile(profileOf());
+    await openStart();
+    await screen.findByRole('heading', { level: 1, name: START });
+
+    const targets = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
+    expect(targets.sort()).toEqual([
+      '#/',
+      '#/about',
+      '#/danger',
+      '#/profile',
+      '#/profile',
+      '#/settings',
+      '#/status',
+    ]);
+    // "Modifier" in the line of her term, "Mon profil" with the quiet links at the end.
+    const edit = screen.getByRole('link', { name: 'Modifier' });
+    expect(document.querySelector('.check__profile')).toContainElement(edit);
+    expect(screen.getByRole('link', { name: 'Mon profil' })).toHaveClass('button--quiet');
+  });
+
+  it('is the list of profiles in accompanied mode', async () => {
+    await renderApp({ settings: accompanied, hash: '#/', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Mon profil' })).toBeNull();
+  });
+
+  it('says once that her profile was saved, and not again after a reload', async () => {
+    await saveProfile(profileOf({ pseudonym: 'Moi', self: true }));
+    // As the profile screen leaves it, set before anything renders.
+    const { unmount } = await renderApp({
+      settings: woman,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      entryState: inSession({ profileSaved: 'Moi' }),
+    });
+
+    expect(await screen.findByText('Profil enregistré : Moi.')).toBeVisible();
+    // The check takes the note off the history entry in an effect: wait for it, not for the clock.
+    await waitFor(() => {
+      expect(sessionState()['profileSaved']).toBeUndefined();
+    });
+
+    unmount();
+    await renderApp({ settings: woman, hash: '#/', packLoader: loaderOf(pack) });
+    expect(await screen.findByRole('searchbox', { name: FIELD })).toBeVisible();
+    expect(screen.queryByText(/^Profil enregistré/)).toBeNull();
+  });
+
+  it('says so when the knowledge base could not be loaded', async () => {
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/', packLoader: noPack });
+
+    expect(
+      await screen.findByText(
+        "Les informations sur les produits ne sont pas encore sur ce téléphone. Ouvrez l'application une fois avec Internet.",
+      ),
+    ).toBeVisible();
+  });
+
+  it('says nothing about the knowledge base while it is still loading', async () => {
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/', packLoader: pendingPack });
+
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(screen.queryByText(/Les informations sur les produits/)).toBeNull();
+  });
+
+  it('opens nothing on a code the phone could not keep, and says so', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    breakIndexedDB('SecurityError');
+    const user = userEvent.setup();
+    await renderApp();
+
+    await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
+    await makeCode(user);
+
+    // A code storage did not keep opens nothing: the welcome asks again, and says why.
+    await waitFor(() => {
+      expect(screen.getByLabelText('Code')).toHaveAccessibleDescription(
+        /Le code n'a pas pu être enregistré sur ce téléphone\. Essayez encore\.$/,
+      );
+    });
+    expect(screen.queryByRole('heading', { level: 1, name: START })).toBeNull();
+  });
+
+  it('says nothing about settings when they are stored', async () => {
+    await saveProfile(profileOf());
+    await openStart();
+
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(screen.queryByText(/n'a pas pu garder vos réglages/)).toBeNull();
+  });
+
+  it('shows the offline badge when the phone is offline', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await saveProfile(profileOf());
+    await openStart();
+
+    expect(within(await screen.findByRole('banner')).getByText('Hors ligne')).toBeVisible();
   });
 });
 
@@ -507,12 +721,12 @@ async function openCheck(settings: Settings = woman, options: { voice?: VoiceSer
   const probe = probeCheck();
   await renderApp({
     settings,
-    hash: '#/check',
+    hash: '#/',
     packLoader: loaderOf(pack),
     children: probe.element,
     ...options,
   });
-  await screen.findByRole('heading', { level: 1, name: /^Ce qu/ });
+  await screen.findByRole('heading', { level: 1, name: START });
   return { user: userEvent.setup(), probe };
 }
 
@@ -547,7 +761,7 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
       /propositions, la première : Ibuprofène \(générique\)\. Choisissez celui qui correspond\.$/,
     );
     // The address never says what is looked up.
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
   });
 
   it('adds nothing from what is typed alone', async () => {
@@ -576,7 +790,7 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
       'Ibuprofène (générique)',
     );
     // No screen and no history entry for it.
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(window.history.length).toBe(length);
   });
 
@@ -794,7 +1008,7 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'poudre du marché' } },
     ]);
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(screen.getByText('« poudre du marché »')).toHaveClass('typed');
     expect(field()).toHaveValue('');
   });
@@ -815,10 +1029,8 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
     expect(probe.current().items).toEqual([]);
     await user.click(screen.getByRole('button', { name: /^Non, aucun de ces/ }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toEqual([{ ref: { kind: 'unrecognised', text: 'advill' } }]);
     expect(probe.current().declinedOf({ ref: { kind: 'unrecognised', text: 'advill' } })).toBe(
       true,
@@ -836,9 +1048,7 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
 
     window.history.back();
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(field()).toHaveValue('advill');
   });
 });
@@ -899,14 +1109,14 @@ describe('Check: saying a name on the check screen (SCRUM-56, S12)', () => {
 describe('Check to result', () => {
   it('shows the level the engine gives for the confirmed items', async () => {
     await saveProfile(profileOf());
-    const { user } = await openCheckFromHome();
+    const { user } = await openStart();
     await addThrough(user, 'kinkeliba');
     // The danger signs present now come first, on the check (SCRUM-56, S13).
     await user.click(screen.getByRole('button', { name: 'Non, aucun de ces signes' }));
 
     // On the check itself, under the answer (SCRUM-56, S15).
     expect(await screen.findByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     // Kinkeliba has no rule and evidence 0: we do not know, never reassurance.
     expect(await screen.findByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toHaveClass(
       'level--unknown',

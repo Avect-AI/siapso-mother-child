@@ -23,6 +23,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const NBSP = ' ';
 const LOOKALIKE = `Ce nom ressemble à${NBSP}:`;
 let pack: Pack;
@@ -215,9 +217,7 @@ describe('Search', () => {
     await user.type(field, 'feuilles du marché');
     await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'feuilles du marché' } },
     ]);
@@ -256,9 +256,7 @@ describe('Search', () => {
     await user.type(field, '  poudre du marché ');
     await user.click(screen.getByRole('button', { name: 'Je ne trouve pas ce produit' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'poudre du marché' } },
     ]);
@@ -435,9 +433,7 @@ describe('Search', () => {
       "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
     );
     await user.click(none);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'huile de ricin' } },
     ]);
@@ -469,9 +465,7 @@ describe('Search', () => {
     expect(probe.current().items).toEqual([]);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'product', id: 'misoprostol-generic' } },
     ]);
@@ -481,7 +475,7 @@ describe('Search', () => {
   it('asks "Ce nom ressemble à :" at once when the check opened it for a name it does not find (SCRUM-56)', async () => {
     await saveProfile(profileOf());
     await renderApp({ settings: woman, hash: '#/check', packLoader: loaderOf(pack) });
-    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    await screen.findByRole('heading', { level: 1, name: START });
     act(() => {
       navigate('/search/product', {
         state: inSession({ stepsToCheck: 1, query: 'huile de ricin', notFound: true }),
@@ -544,9 +538,7 @@ describe('Search', () => {
     await user.type(screen.getByRole('searchbox'), 'doliprane');
     await user.click(screen.getByRole('button', { name: 'Je ne trouve pas ce produit' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'unrecognised', text: 'doliprane' } }]);
   });
 });
@@ -563,10 +555,8 @@ describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', ()
 
     await user.click(candidates()[0] as HTMLElement);
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toHaveLength(1);
     expect(probe.current().items[0]?.ref).toMatchObject({ kind: 'product' });
     expect(await screen.findByText(/est ajouté à la liste\.$/)).toBeVisible();
@@ -587,11 +577,9 @@ describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', ()
       row.click();
     });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(go).toHaveBeenCalledTimes(1);
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toHaveLength(1);
   });
 

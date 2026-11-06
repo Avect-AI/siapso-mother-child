@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { herCheckThenProfiles, onboard, unlock } from './support.js';
+import { expectStart, herCheckThenProfiles, onboard, unlock } from './support.js';
 
 /**
  * Taps the way a thumb does on the mobile project (clicks on desktop) and
@@ -38,13 +38,13 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed field, then edits it', async ({
+test('a woman gives "26 weeks, no situation" on her first check in at most 7 taps and one typed field, then edits it', async ({
   page,
 }, testInfo) => {
   await onboard(page, 'woman');
   const counter = stepCounter(testInfo);
 
-  await counter.tap(page.getByRole('link', { name: 'Mon profil' }));
+  // Her first check asks about her (SCRUM-56, S4 and 8.3): no screen to open first.
   await counter.tap(answer(page, /^Enceinte/, 'Oui'));
   await counter.tap(answer(page, 'Terme de la grossesse', 'En semaines'));
   await counter.type(page.getByRole('textbox', { name: 'Nombre de semaines' }), '26');
@@ -54,7 +54,7 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
   await counter.tap(page.getByRole('button', { name: 'Enregistrer' }));
 
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
-  expect(counter.steps.taps).toBeLessThanOrEqual(8);
+  expect(counter.steps.taps).toBeLessThanOrEqual(7);
   expect(counter.steps.typedFields).toBe(1);
 
   // Edit: the saved answers come back, a change is kept across a reload. The
@@ -74,7 +74,7 @@ test('a woman gives "26 weeks, no situation" in at most 8 taps and one typed fie
 
   await page.reload();
   await unlock(page);
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
   await expect(page.getByText(/^Profil enregistré/)).toBeHidden();
   await page.getByRole('link', { name: 'Mon profil' }).click();
   await expect(weeks).toHaveValue('27');
@@ -159,7 +159,7 @@ test('the profile screen names what is missing, in words next to each question',
   page,
 }) => {
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
+  // The questions about her, on her first check (SCRUM-56, 8.3).
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   await expect(page.getByRole('radio', { name: 'Oui' }).first()).toBeFocused();

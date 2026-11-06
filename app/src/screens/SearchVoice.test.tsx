@@ -22,6 +22,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const NBSP = ' ';
 let pack: Pack;
 
@@ -155,9 +157,7 @@ describe('Search: saying a name', () => {
     expect(probe.current().items).toEqual([]);
 
     await user.click(await screen.findByRole('button', { name: "Oui, c'est ce remède" }));
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
   });
 
@@ -371,9 +371,7 @@ describe('Search: saying a name', () => {
     // A lookalike first, as for a typed name; otherwise added at once.
     const none = screen.queryByRole('button', { name: /^Non, aucun de ces/ });
     if (none !== null) await user.click(none);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'sirop du marché' } },
     ]);

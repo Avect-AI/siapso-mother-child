@@ -22,6 +22,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const NBSP = ' ';
 const PRODUCT_TITLE = `Est-ce bien ce produit${NBSP}?`;
 const STRENGTH = `Quel dosage est écrit sur la boîte${NBSP}?`;
@@ -65,7 +67,7 @@ async function giveCount(user: ReturnType<typeof userEvent.setup>, n: number) {
 }
 
 async function backOnCheck() {
-  return screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+  return screen.findByRole('heading', { level: 1, name: START });
 }
 
 const ASPIRIN: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
@@ -115,7 +117,7 @@ describe('Confirm: a remedy', () => {
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
     expect(screen.getByText('Moringa')).toBeVisible();
     // Back to the check entry itself: no confirm or search entry stacked after it.
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
   });
 
   it('goes back to the check once, however fast "yes" is pressed twice', async () => {
@@ -129,8 +131,8 @@ describe('Confirm: a remedy', () => {
     expect(await backOnCheck()).toBeVisible();
     await new Promise((resolve) => setTimeout(resolve, 50));
     // Still on the check: a second way back would have gone past it.
-    expect(window.location.hash).toBe('#/check');
-    expect(screen.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+    expect(screen.getByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
   });
 
@@ -885,9 +887,7 @@ describe('Confirm: opened directly', () => {
       entryState: { id: 'efavirenz-generic', visit: 'a visit before', epoch: 'an epoch before' },
     });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(window.location.href).not.toContain('efavirenz');
     expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
   });

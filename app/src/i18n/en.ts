@@ -98,9 +98,7 @@ export const en: Dictionary = {
     reminders: 'Reminders: tap to show them',
   },
   home: {
-    title: 'A medicine or a remedy?',
     lead: 'Find out who to show it to, and when.',
-    check: 'Look up a product',
     packUnavailable:
       'The product information is not on this phone yet. Open the app once with an internet connection.',
     closing: 'This tool does not take the place of a health worker.',
@@ -303,10 +301,12 @@ export const en: Dictionary = {
     situationsShort: 'Situations',
     situationsNone: 'Situations: none',
     situationsList: 'Situations: {names}',
-    titleWoman: 'What you are taking',
+    titleWoman: 'A medicine or a remedy?',
     titleAccompanied: 'What she is taking',
     loading: 'Loading.',
     profile: 'Profile: {name}',
+    edit: 'Edit',
+    aboutTitle: 'About you',
     listLabel: 'Products added',
     empty: 'Nothing is added yet. Add at least one product to see the result.',
     remove: 'Remove',

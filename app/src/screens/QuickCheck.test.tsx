@@ -244,9 +244,9 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       window.location.hash = '#/check';
     });
-    // Her own profile, never the passer-by's answers.
+    // Her own check, never the passer-by's answers.
     expect(
-      await screen.findByRole('heading', { level: 1, name: /^(Ce que vous prenez|Mon profil)$/ }),
+      await screen.findByRole('heading', { level: 1, name: /^Un médicament ou un remède/ }),
     ).toBeVisible();
     expect(document.body.textContent).not.toMatch(/Femme de passage|Environ 24 semaines/);
   });

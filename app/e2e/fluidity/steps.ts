@@ -30,10 +30,9 @@ async function fillPregnant(page: Page): Promise<void> {
   await page.getByText('Aucune de ces situations').click();
 }
 
-/** Woman mode, her profile saved: ends on her check. */
+/** Woman mode, her profile saved on her first check (SCRUM-56, S4): ends on her check. */
 export async function womanWithProfile(page: Page): Promise<void> {
   await onboard(page, 'woman');
-  await button(page, 'Regarder un produit').click();
   await fillPregnant(page);
   await button(page, 'Enregistrer').click();
   await checkField(page).waitFor();

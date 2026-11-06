@@ -48,7 +48,10 @@ function stored(page: Page, key: string): Promise<unknown> {
   );
 }
 
-/** The profile screen, filled in the common way: pregnant, 20 weeks, no situation. */
+/**
+ * Her answers, on her first check (SCRUM-56, 8.3) or on the profile screen, in
+ * the common way: pregnant, 20 weeks, no situation; then saved.
+ */
 async function fillProfile(page: Page) {
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
@@ -58,6 +61,20 @@ async function fillProfile(page: Page) {
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
+}
+
+/**
+ * Her profile under `pseudonym`: her answers on her first check (its
+ * pseudonym is the one offered), then the name on her profile screen.
+ */
+async function herProfileNamed(page: Page, pseudonym: string) {
+  await fillProfile(page);
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await page.getByRole('textbox', { name: 'Surnom' }).fill(pseudonym);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(
+    page.getByText(new RegExp(`^Profil enregistré\\s:\\s${pseudonym}\\.$`)),
+  ).toBeVisible();
 }
 
 /** Every text of the page, to look for what must not be there. */
@@ -90,7 +107,10 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
     /Les deux codes ne sont pas les mêmes/,
   );
   await makeCode(page);
+  // Her start is her check, asking about her first (SCRUM-56, S4 and 8.3).
   await expectStart(page, 'woman');
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toHaveCount(0);
   await expect(page.getByRole('banner').getByRole('button', { name: 'Quitter' })).toBeVisible();
 
   // Only the verifier is kept: the HKDF check of PBKDF2 at 600 000
@@ -106,10 +126,7 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
   });
 
   // Her profile, then a reload: locked.
-  await page.getByRole('link', { name: 'Mon profil' }).click();
-  await page.getByRole('textbox', { name: 'Surnom' }).fill('Aminata');
-  await fillProfile(page);
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await herProfileNamed(page, 'Aminata');
   await page.reload();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
@@ -207,6 +224,7 @@ test('locks after two minutes without a touch, and gives the same screen back', 
 }) => {
   await page.clock.install();
   await onboard(page, 'woman');
+  await fillProfile(page);
   await page.getByRole('link', { name: 'Mon profil' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
 
@@ -224,9 +242,8 @@ test('who to call from a fever result: once locked, and after a reload, no instr
 }) => {
   await page.clock.install();
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
+  // Her answers on her first check (SCRUM-56, 8.3).
   await fillProfile(page);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   // The signs present now, on the check (SCRUM-56, S13).
@@ -257,16 +274,16 @@ test('a product never shows in the address, even after an auto-lock and a reload
 }) => {
   await page.clock.install();
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
+  // Her answers on her first check (SCRUM-56, 8.3).
   await fillProfile(page);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('efavirenz');
   await expect(page.locator('.candidate').first()).toBeVisible();
   // Enter opens the question of the best row (a tap might add it at once), on the check (SCRUM-56).
   await page.getByRole('searchbox').press('Enter');
   await expect(page.getByRole('button', { name: "Oui, c'est ce produit" })).toBeVisible();
   expect(page.url()).not.toMatch(/favirenz/i);
-  expect(new URL(page.url()).hash).toBe('#/check');
+  // Her check, her start (SCRUM-56, S4): the start address, nothing after it.
+  expect(new URL(page.url()).hash).toMatch(/^(#\/)?$/);
   expect(await page.title()).not.toMatch(/favirenz/i);
 
   await page.clock.fastForward('02:01');
@@ -284,9 +301,7 @@ test('a forgotten code erases the profiles after EFFACER and a last yes, then th
   page,
 }) => {
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
-  await page.getByRole('textbox', { name: 'Surnom' }).fill('Aminata');
-  await fillProfile(page);
+  await herProfileNamed(page, 'Aminata');
   await page.reload();
 
   await page.getByRole('button', { name: "J'ai oublié le code" }).click();
@@ -304,14 +319,13 @@ test('a forgotten code erases the profiles after EFFACER and a last yes, then th
   await expectWelcome(page);
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
-  await page.getByRole('link', { name: 'Mon profil' }).click();
-  await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+  // Her check asks about her again: no profile left.
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
   expect(await pageText(page)).not.toContain('Aminata');
 });
 
 test('changing the mode in the settings needs the code and deletes nothing', async ({ page }) => {
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await fillProfile(page);
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 

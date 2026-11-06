@@ -609,10 +609,8 @@ describe('Who to call, from a result', () => {
       for (const item of items) check.add(item);
       check.setSigns(signs);
     });
-    // The result is on the check, under the answer (SCRUM-56, S15).
-    act(() => {
-      window.location.hash = '#/check';
-    });
+    // The result is on the check, under the answer (SCRUM-56, S15): her start,
+    // on show already in woman mode (S4).
     await screen.findByRole('heading', { level: 2, name: 'Résultat' });
     return view;
   }

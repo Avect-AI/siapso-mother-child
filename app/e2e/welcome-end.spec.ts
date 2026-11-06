@@ -3,7 +3,7 @@
 // welcome ended. The code made then still opens the app, which asks for the
 // mode once, then works as usual. The code here is made up.
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock } from './support.js';
+import { expectStart, onboard, unlock } from './support.js';
 
 /** Writes the settings straight into the app's IndexedDB, as an app closed half-way leaves them. */
 function leaveSettings(page: Page, settings: Record<string, unknown>): Promise<void> {
@@ -59,12 +59,12 @@ test('a welcome cut short after the code asks for the code, then the mode, then 
   await unlock(page);
   await expect(page.getByRole('heading', { name: /^Qui utilise l'application/ })).toBeVisible();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
   // The screen follows the choice at once; the phone keeps it just after.
   await expect.poll(() => storedSettings(page)).toMatchObject({ mode: 'woman', onboarded: true });
 
   // Kept: the next start is the usual one.
   await page.reload();
   await unlock(page);
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
 });

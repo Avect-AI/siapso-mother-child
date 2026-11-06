@@ -188,14 +188,12 @@ async function startWithProfileHere(page: Page) {
   await expectWelcome(page);
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   await profileAndCheck(page);
 }
 
-/** From Home: her profile, then the check. */
+/** Her first check (SCRUM-56, S4 and 8.3): her answers on it, then its field. */
 async function profileAndCheck(page: Page) {
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
   await page
     .getByRole('group', { name: /^Enceinte/ })
     .getByText('Oui', { exact: true })
@@ -210,7 +208,9 @@ async function profileAndCheck(page: Page) {
     .click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(
+    page.getByRole('searchbox', { name: 'Nom du médicament ou du remède' }),
+  ).toBeVisible();
 }
 
 const mic = (page: Page) => page.getByRole('button', { name: 'Dire le nom' });

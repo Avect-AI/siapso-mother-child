@@ -11,6 +11,8 @@ import { loaderOf, noPack, pendingPack, renderApp } from '../test/render-app.js'
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const english: Settings = { ...woman, lang: 'en' };
 
 let real: Pack;
@@ -211,7 +213,7 @@ describe('Status', () => {
     expect(document.querySelectorAll('.button--primary')).toHaveLength(1);
     expect(screen.getByRole('link', { name: 'À propos' })).toHaveAttribute('href', '#/about');
     await user.click(screen.getByRole('button', { name: "Revenir à l'accueil" }));
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
   });
 
   it('says whether this phone opens the app without the Internet, pack or not', async () => {

@@ -8,6 +8,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import {
   addFirstCandidate,
+  CHECK_TITLE,
   expectStart,
   herCheckThenProfiles,
   onboard,
@@ -202,11 +203,10 @@ test('a midwife finds a woman among many, with "Ajouter un profil" at the top', 
 test('a long list of strengths keeps the one typed and "yes" in the first screen', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answerPregnant(page, '20');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('Doliprane 1000 mg');
   await page.locator('.candidate').first().click();
 
@@ -221,7 +221,7 @@ test('a long list of strengths keeps the one typed and "yes" in the first screen
   await question.getByRole('radio').last().scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: "Oui, c'est ce produit" })).toBeInViewport();
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 });
 
 for (const { width, height } of [
@@ -235,10 +235,8 @@ for (const { width, height } of [
       page,
     }) => {
       await onboard(page, 'woman');
-      await page.getByRole('link', { name: 'Mon profil' }).click();
       await answerPregnant(page, '20');
       await page.getByRole('button', { name: 'Enregistrer' }).click();
-      await page.getByRole('button', { name: 'Regarder un produit' }).click();
       await page.getByRole('searchbox').fill('doliprane');
       await page.locator('.candidate').first().click();
       // A daily count: the strength is then asked (SCRUM-56).

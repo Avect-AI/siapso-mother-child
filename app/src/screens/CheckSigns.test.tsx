@@ -24,6 +24,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
 const KINKELIBA: CheckedItem = { ref: { kind: 'plant', id: 'kinkeliba' } };
 const WOMAN_TITLE = 'Avez-vous un de ces signes maintenant ?';
@@ -59,7 +61,11 @@ async function question(title: string = WOMAN_TITLE): Promise<HTMLElement> {
   return section;
 }
 
-/** The check of the stored profile with kinkeliba listed, as from Home or the list of profiles. */
+/**
+ * The check of the stored profile with kinkeliba listed: in woman mode her
+ * start, opened from the about screen (so Back leaves it); in accompanied mode
+ * from the list of profiles.
+ */
 async function openCheckWithItem({
   settings = woman,
   profile = profileOf(),
@@ -74,9 +80,10 @@ async function openCheckWithItem({
 } = {}) {
   await saveProfile(profile);
   const probe = probeCheck();
+  const woman = settings.mode === 'woman';
   await renderApp({
     settings,
-    hash: '#/',
+    hash: woman ? '#/about' : '#/',
     packLoader,
     children: (
       <>
@@ -90,9 +97,9 @@ async function openCheckWithItem({
     probe.current().start(profile.id);
   });
   act(() => {
-    window.location.hash = '#/check';
+    window.location.hash = woman ? '#/' : '#/check';
   });
-  await screen.findByRole('heading', { level: 1, name: /^Ce qu/ });
+  await screen.findByRole('heading', { level: 1, name: woman ? START : /^Ce qu/ });
   await waitFor(() => {
     expect(probe.current().profileId).toBe(profile.id);
   });
@@ -108,11 +115,11 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     const probe = probeCheck();
     await renderApp({
       settings: woman,
-      hash: '#/check',
+      hash: '#/',
       packLoader: loaderOf(pack),
       children: probe.element,
     });
-    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    await screen.findByRole('heading', { level: 1, name: START });
     // Nothing listed: no question, no result.
     expect(screen.queryByRole('heading', { level: 2, name: WOMAN_TITLE })).toBeNull();
     act(() => {
@@ -149,7 +156,7 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     // The result under the answer, on the check itself (SCRUM-56, S15).
     const result = await screen.findByRole('heading', { level: 2, name: 'Résultat' });
     expect(result).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(probe.current()).toMatchObject({ signs: [], signsGiven: true });
     expect(screen.queryByRole('alert')).toBeNull();
     // The answer said in a line in place of the question, with "Changer" (S14).
@@ -266,7 +273,7 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     const fever = within(asked).getByRole('checkbox', { name: label('fever') });
     expect(fever).toHaveAttribute('aria-invalid', 'true');
     expect(within(asked).getAllByRole('checkbox')[0]).toHaveFocus();
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().signsGiven).toBe(false);
   });
 
@@ -293,7 +300,7 @@ describe('Danger signs now, on the check before the result (S13)', () => {
   });
 
   it('forgets the answer when the check is left by Back: asked again, nothing chosen (S14)', async () => {
-    // The check opened from Home: Back goes Home, Forward to the check again.
+    // Her check opened from the about screen: Back goes there, Forward to the check again.
     const { user, probe } = await openCheckWithItem();
     await user.click(
       within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
@@ -302,7 +309,7 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     expect(probe.current().signsGiven).toBe(true);
 
     window.history.back();
-    await screen.findByRole('button', { name: 'Regarder un produit' });
+    await screen.findByRole('heading', { level: 1, name: 'À propos' });
     await waitFor(() => {
       expect(probe.current().signsGiven).toBe(false);
     });
@@ -642,8 +649,11 @@ describe('Danger signs now, on the check before the result (S13)', () => {
       window.location.hash = '#/result';
     });
 
+    // Her check, her start in woman mode (SCRUM-56, S4), shown again at its address.
+    await waitFor(() => {
+      expect(window.location.hash).toBe('#/');
+    });
     expect(await question()).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
     expect(await listHistory('p1')).toEqual([]);
   });
 
@@ -651,10 +661,8 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     await saveProfile(profileOf());
     await renderApp({ settings: woman, hash: '#/signs', packLoader: loaderOf(pack) });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
   });
 
   it('says the list is missing without a pack, and lets the result say what it cannot do', async () => {

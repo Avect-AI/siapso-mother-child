@@ -94,9 +94,11 @@ describe('Unlock', () => {
     );
 
     await enterCode(user, TEST_CODE);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Un médicament ou un remède\u00a0?' }),
-    ).toHaveFocus();
+    expect(await screen.findByRole('heading', { level: 1, name: HOME })).toBeVisible();
+    // Her check, no profile yet: the questions about her take the focus (SCRUM-56, 8.3).
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'À propos de vous' })).toHaveFocus();
+    });
     expect(
       within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }),
     ).toBeVisible();
@@ -405,10 +407,9 @@ describe('Unlock', () => {
     expect(window.location.hash).toBe('#/unlock');
     await enterCode(user);
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    // Her check is her start in woman mode: at its one address (SCRUM-56, S4).
+    expect(await screen.findByRole('heading', { level: 1, name: HOME })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
   });
 
   it('locks a product screen into a neutral address, holding the product in memory only', async () => {

@@ -4,7 +4,13 @@
 // one profile can be deleted, and the danger signs now are asked afresh.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addFirstCandidate, herCheckThenProfiles, onboard, unlock } from './support.js';
+import {
+  addFirstCandidate,
+  CHECK_TITLE,
+  herCheckThenProfiles,
+  onboard,
+  unlock,
+} from './support.js';
 
 const DAY_MS = 86_400_000;
 
@@ -41,7 +47,10 @@ function storedAll(page: Page, store: 'profiles' | 'history'): Promise<unknown[]
   );
 }
 
-/** The profile screen filled: a pseudonym, pregnant at `weeks` weeks, no situation; then saved. */
+/**
+ * Her answers given (on her first check in woman mode, SCRUM-56, 8.3, or on the
+ * profile screen): a pseudonym, pregnant at `weeks` weeks, no situation; then saved.
+ */
 async function pregnantProfile(page: Page, weeks: number, pseudonym?: string) {
   if (pseudonym !== undefined) await page.getByRole('textbox', { name: 'Surnom' }).fill(pseudonym);
   await answer(page, /^Enceinte/, 'Oui').click();
@@ -63,14 +72,13 @@ async function daysLater(page: Page, days: number) {
 test('an outdated term asks whether the baby is born before any check, then updates the profile', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await pregnantProfile(page, 30);
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 
   // 100 days later she has given birth: 30 weeks then is past 42 now.
   await daysLater(page, 100);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
   await expect(
     page.getByRole('heading', {
@@ -102,7 +110,7 @@ test('an outdated term asks whether the baby is born before any check, then upda
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   // Back on her check, as a breastfeeding mother now.
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
   await expect(page.getByText('Allaite, bébé de 2 semaines')).toBeVisible();
   // Kept sealed: one record, nothing readable in it.
   const stored = await storedAll(page, 'profiles');
@@ -207,13 +215,12 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
 });
 
 test('an unknown term said 300 days ago asks whether the baby is born first', async ({ page }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await unknownTermProfile(page);
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 
   await daysLater(page, 300);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
   await expect(
     page.getByRole('heading', {
@@ -227,8 +234,8 @@ test('an unknown term said 300 days ago asks whether the baby is born first', as
 test('a last period with the phone date set back is read as unknown, and the result says why', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'Date des dernières règles').click();
   const lmp = page.getByLabel('Premier jour des dernières règles');
@@ -246,7 +253,6 @@ test('a last period with the phone date set back is read as unknown, and the res
 
   // The phone's date set 30 days back: before the day the profile was saved.
   await daysLater(page, -30);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
   await addFirstCandidate(page);
   // The real date is later: the baby may be born, its signs are asked too.
@@ -266,8 +272,8 @@ test('a last period with the phone date set back is read as unknown, and the res
 test('the month field keeps "34", says it looks like weeks, and takes it as weeks in one tap', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En mois').click();
   const months = page.getByRole('textbox', { name: /^Dans quel mois de grossesse/ });
@@ -365,7 +371,6 @@ test('the danger signs answer is kept within one check and never stale (SCRUM-56
   page,
 }) => {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await pregnantProfile(page, 28);
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
@@ -406,7 +411,6 @@ test('the danger signs answer is kept within one check and never stale (SCRUM-56
   const when = answer(page, /^Ce terme date de quand/, "Aujourd'hui");
   if ((await when.count()) > 0) await when.click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await expect(none).toBeVisible();
   await expect(result).toHaveCount(0);
   // The list is kept; the term read again.
@@ -421,7 +425,6 @@ test('her term read again mid-check: past 42 weeks, the page shown again asks wh
   // Just before midnight, 42 weeks given today.
   await page.clock.setFixedTime(new Date(2026, 10, 4, 23, 59, 30));
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await pregnantProfile(page, 42);
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);

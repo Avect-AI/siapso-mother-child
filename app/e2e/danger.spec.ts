@@ -104,28 +104,29 @@ async function openDangerAndBack(page: Page, from: RegExp | string) {
   await expect(page.getByRole('heading', { level: 1, name: from })).toBeVisible();
 }
 
-test('offline: danger signs from Home, Check and Result, then who to call', async ({ page }) => {
+test('offline: danger signs from her start, her check and the result, then who to call', async ({
+  page,
+}) => {
   const warnings = referralWarnings(page);
   await onboardOffline(page, 'woman');
 
-  // From Home.
+  // From her start, her check with the questions about her (SCRUM-56, S4).
   await openDangerAndBack(page, 'Un médicament ou un remède ?');
 
-  // The profile, then the check, offline.
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+  // Her answers, then a product, offline.
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('14');
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('searchbox')).toBeFocused();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
 
   // From Check.
-  await openDangerAndBack(page, 'Ce que vous prenez');
+  await openDangerAndBack(page, 'Un médicament ou un remède ?');
 
   // The signs present now on the check (SCRUM-56, S13): in words, then "no" or "yes"; a fever now.
   const asked = page.getByRole('heading', {
@@ -154,7 +155,7 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
 
   // From the result, on the check: Back comes to the check, which was left, so the
   // signs are asked again (SCRUM-56, S14); the fever answered again.
-  await openDangerAndBack(page, 'Ce que vous prenez');
+  await openDangerAndBack(page, 'Un médicament ou un remède ?');
   await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Oui, au moins un' }).click();
   await question.getByText('Fièvre', { exact: true }).click();
@@ -268,10 +269,9 @@ test.describe('on a small phone (360 x 560), a call is in the first screen', () 
     });
   }
 
-  /** Home, her profile, a remedy, a fever now, the result, then "Voir qui appeler". */
+  /** Her start: her answers, a remedy, a fever now, the result, then "Voir qui appeler". */
   async function fromAFeverResultToCall(page: Page) {
     await page.goto('/#/');
-    await page.getByRole('button', { name: 'Regarder un produit' }).click();
     await answer(page, /^Enceinte/, 'Oui').click();
     await answer(page, 'Terme de la grossesse', 'En semaines').click();
     await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('14');

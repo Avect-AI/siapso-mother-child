@@ -9,6 +9,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   addFirstCandidate,
   CODE,
+  expectStart,
   expectWelcome,
   seedBeforeUpdate,
   storedCodeLength,
@@ -294,7 +295,9 @@ test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digi
   await expect(page.getByRole('status').filter({ hasText: 'Ouverture en cours.' })).toHaveCount(0);
   await expect(title).toBeVisible();
   await page.getByRole('button', { name: 'Ouvrir' }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible({
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Un médicament ou un remède/ }),
+  ).toBeVisible({
     timeout: 20_000,
   });
   // Kept with the right code, in the transaction that made the verifier again.
@@ -305,5 +308,5 @@ test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digi
   await expect(title).toBeVisible();
   const keypad = page.getByRole('group', { name: 'Clavier du code' });
   for (const digit of CODE) await keypad.getByRole('button', { name: digit, exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
 });

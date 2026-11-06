@@ -30,17 +30,19 @@ import {
 // product added in one tap, P6 the search on the check screen (no add button,
 // no search or confirm screen per product), P7 the danger signs asked on the
 // check ("Non, aucun de ces signes" in one tap), P8 the result on the check
-// (no result screen). The danger journeys (J5) never take more taps.
+// (no result screen), P9 the woman's start on her check (no Home, her first
+// answers on it). The danger journeys (J5) never take more taps.
 //
 // One scroll was traded for two taps and a screen at P7: the signs of her
 // groups are written in full right above "Non, aucun de ces signes" (the
 // safety rule of the spec, S13), which puts that answer under the fold of a
 // 360 x 800 phone once a product is listed (the target of spec section 8.11
-// is not met there; the PR says so).
+// is not met there; the PR says so). Her first answers are saved by an
+// explicit "Enregistrer" on her check (P9): one tap above the target of J1.
 const BUDGETS: Record<string, Budget> = {
-  j1: { taps: 8, keys: 20, screens: 4, scrolls: 4 }, // baseline 17 / 20 / 12 / 3
-  j2a: { taps: 3, keys: 14, screens: 3, scrolls: 1 }, // baseline 8 / 14 / 8 / 0
-  j2b: { taps: 5, keys: 25, screens: 3, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
+  j1: { taps: 7, keys: 20, screens: 2, scrolls: 4 }, // baseline 17 / 20 / 12 / 3
+  j2a: { taps: 2, keys: 14, screens: 2, scrolls: 1 }, // baseline 8 / 14 / 8 / 0
+  j2b: { taps: 4, keys: 25, screens: 2, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
   j3a: { taps: 3, keys: 14, screens: 3, scrolls: 1 }, // baseline 8 / 14 / 8 / 0
   j3b: { taps: 9, keys: 22, screens: 4, scrolls: 4 }, // baseline 17 / 22 / 10 / 4
   j4: { taps: 7, keys: 16, screens: 4, scrolls: 4 }, // baseline 15 / 16 / 9 / 4
@@ -87,8 +89,10 @@ journey('j1', 'first use, woman mode, ibuprofen', async (page, j) => {
   // The language of the phone: nothing to choose. Mode and code on one screen.
   await j.tap(button(page, /^Je suis enceinte/), 'mode woman');
   await j.keypad(CODE, 'code typed');
-  await j.keypad(CODE, 'code again', { then: button(page, 'Regarder un produit') });
-  await j.tap(button(page, 'Regarder un produit'), 'regarder un produit');
+  // Her check opens with the questions about her (SCRUM-56, S4 and 8.3).
+  await j.keypad(CODE, 'code again', {
+    then: page.getByRole('region', { name: 'À propos de vous' }),
+  });
   await pregnantAnswers(j);
   await j.tap(button(page, 'Enregistrer'), 'enregistrer profil', {
     then: checkField(page),
@@ -101,10 +105,9 @@ journey('j2a', 'returning woman, one product', async (page, j) => {
   await womanWithProfile(page);
   await openAgain(page);
   await j.begin('code screen');
+  // Her check is her start (SCRUM-56, S4).
   await unlock(j);
-  await j.tap(button(page, 'Regarder un produit'), 'regarder un produit', {
-    then: checkField(page),
-  });
+  await checkField(page).waitFor();
   await addProduct(j, 'ibuprofene');
   await toResult(j);
 });
@@ -113,10 +116,9 @@ journey('j2b', 'returning woman, two products', async (page, j) => {
   await womanWithProfile(page);
   await openAgain(page);
   await j.begin('code screen');
+  // Her check is her start (SCRUM-56, S4).
   await unlock(j);
-  await j.tap(button(page, 'Regarder un produit'), 'regarder un produit', {
-    then: checkField(page),
-  });
+  await checkField(page).waitFor();
   await addProduct(j, 'ibuprofene');
   await addProduct(j, 'paracetamol');
   await toResult(j);
@@ -186,10 +188,9 @@ journey('j5a', 'danger from the locked phone, to a call', async (page, j) => {
 });
 
 journey('j5b', 'danger from the start, one sign ticked, to a call', async (page, j) => {
+  // Her start is her check (SCRUM-56, S4).
   await womanWithProfile(page);
-  await page.getByRole('banner').getByRole('link').first().click();
-  await button(page, 'Regarder un produit').waitFor();
-  await j.begin('home');
+  await j.begin('start');
   await j.tap(band(page), 'band signes de danger');
   await j.tap(page.getByText('Saignement par le vagin', { exact: true }), 'saignement');
   await j.tap(button(page, "C'est grave maintenant"), 'cest grave maintenant');

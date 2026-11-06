@@ -124,11 +124,10 @@ export const fr = {
     // button says what it holds, never a secret.
     reminders: 'Rappels : touchez pour les afficher',
   },
+  // Around the check in woman mode, her start (SCRUM-56, S4).
   home: {
-    title: 'Un médicament ou un remède ?',
-    lead: 'Sachez à qui le montrer, et quand.',
     // Never "vérifier": the tool flags and refers, it does not verify.
-    check: 'Regarder un produit',
+    lead: 'Sachez à qui le montrer, et quand.',
     packUnavailable:
       "Les informations sur les produits ne sont pas encore sur ce téléphone. Ouvrez l'application une fois avec Internet.",
     closing: 'Cet outil ne remplace pas un soignant.',
@@ -365,12 +364,16 @@ export const fr = {
     situationsShort: 'Situations',
     situationsNone: 'Situations : aucune',
     situationsList: 'Situations : {names}',
-    // Woman mode: what she takes herself; accompanied mode: what the woman takes.
-    titleWoman: 'Ce que vous prenez',
+    // Woman mode: her start, what she came for (SCRUM-56, S4); accompanied mode: what the woman takes.
+    titleWoman: 'Un médicament ou un remède ?',
     titleAccompanied: "Ce qu'elle prend",
     // Said only when the profile takes a moment to read.
     loading: 'Chargement en cours.',
     profile: 'Profil : {name}',
+    // Woman mode, in the line of her term: her profile, to change her answers.
+    edit: 'Modifier',
+    // Her first check in woman mode: her answers, kept as her profile (SCRUM-56, 8.3).
+    aboutTitle: 'À propos de vous',
     listLabel: 'Produits ajoutés',
     empty: "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
     // Taken off the list being looked at, never off the treatment.

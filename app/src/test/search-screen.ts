@@ -13,7 +13,8 @@ export type SearchList = 'Ajouter un médicament' | 'Ajouter un remède';
 
 /** Opens the search screen of `list` from the check on show; resolves with its field. */
 export async function openSearchScreen(list: SearchList): Promise<HTMLElement> {
-  await screen.findByRole('heading', { level: 1, name: /^Ce qu/ });
+  // Her check: her start in woman mode, "Ce qu'elle prend" in accompanied mode.
+  await screen.findByRole('heading', { level: 1, name: /^(Ce qu|Un médicament ou un remède)/ });
   act(() => {
     navigate(list === 'Ajouter un remède' ? '/search/plant' : '/search/product', {
       state: inSession({ stepsToCheck: 1 }),

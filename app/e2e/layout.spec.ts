@@ -4,7 +4,15 @@
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { addOnCheck, CODE, expectWelcome, onboard, unlock } from './support.js';
+import {
+  aboutHer,
+  addOnCheck,
+  CHECK_TITLE,
+  CODE,
+  expectWelcome,
+  onboard,
+  unlock,
+} from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -164,22 +172,15 @@ function bandRows(page: Page): Promise<number> {
   });
 }
 
-/** Her profile, pregnant at `weeks` weeks, from Home; ends on the check. */
+/** Her answers on her first check, pregnant at `weeks` weeks (SCRUM-56, 8.3); ends on the check. */
 async function pregnantAt(page: Page, weeks: number) {
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await answer(page, /^Enceinte/, 'Oui').click();
-  await answer(page, 'Terme de la grossesse', 'En semaines').click();
-  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
-  await answer(page, /^Allaite/, 'Non').click();
-  await page.getByText('Aucune de ces situations').click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await aboutHer(page, weeks);
 }
 
 /** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56). */
 async function add(page: Page, query: string) {
   await addOnCheck(page, query);
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 test.describe('on a small phone (320 x 640)', () => {
@@ -216,7 +217,7 @@ test.describe('on a small phone (320 x 640)', () => {
     await expectWithin(page, heading, keypad);
     await tapCode(page);
     await tapCode(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 
     // The code asked again: its 4th digit tries it (SCRUM-56), a wrong code said,
     // and "Ouvrir" still in the first screen for a keyboard.
@@ -237,7 +238,7 @@ test.describe('on a small phone (320 x 640)', () => {
     expect(action.bottom).toBeLessThanOrEqual(640);
     await expectNoSeriousViolation(page);
     await tapCode(page, CODE.slice(3));
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
   });
 
   test('the band keeps to two rows, offline too, the danger shortcut always in its place', async ({
@@ -293,7 +294,7 @@ test.describe('on a desktop (1280 x 800)', () => {
   }) => {
     await expectShortcutInOnePlace(page, context);
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     expect(await bandRows(page)).toBe(1);
     await context.setOffline(true);
     await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
@@ -339,7 +340,7 @@ test.describe('at the one-row breakpoint', () => {
   }) => {
     await expectShortcutInOnePlace(page, context);
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
     expect(await bandRows(page)).toBe(1);
@@ -428,7 +429,7 @@ test.describe('on a small phone (320 x 640) with text at 200 percent', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await largeText(page);
     const band = page.getByRole('banner');
     for (const control of [
@@ -507,22 +508,15 @@ test.describe('on a 360 px phone', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Profiles' })).toBeVisible();
   });
 
-  test('the check never shows before the profile screen it opens', async ({ page }) => {
+  test('her first check asks about her first, its questions focused, no search before them', async ({
+    page,
+  }) => {
     await onboard(page, 'woman');
-    await page.evaluate(() => {
-      const seen: string[] = [];
-      (window as unknown as { seenHeadings: string[] }).seenHeadings = seen;
-      new MutationObserver(() => {
-        const text = document.querySelector('main h1')?.textContent;
-        if (text !== undefined && seen.at(-1) !== text) seen.push(text);
-      }).observe(document.body, { childList: true, subtree: true, characterData: true });
-    });
-    await page.getByRole('button', { name: 'Regarder un produit' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeFocused();
-    const seen = await page.evaluate(
-      () => (window as unknown as { seenHeadings: string[] }).seenHeadings,
-    );
-    expect(seen).not.toContain('Ce que vous prenez');
+    // Her start is her check (SCRUM-56, S4); her answers come before any product (8.3).
+    const about = page.getByRole('region', { name: 'À propos de vous' });
+    await expect(about.getByRole('heading', { level: 2 })).toBeFocused();
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    await expectNoSeriousViolation(page);
   });
 
   test('"Voir tous les signes" takes the focus to the first sign it shows', async ({ page }) => {

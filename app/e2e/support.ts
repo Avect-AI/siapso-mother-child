@@ -17,7 +17,8 @@ const WORDS = {
     again: 'Tapez-le encore',
     open: 'Ouvrir',
     unlockTitle: 'Entrez votre code',
-    home: 'Regarder un produit',
+    // Her check, her start in woman mode (SCRUM-56, S4).
+    home: /^Un médicament ou un remède/,
     profiles: 'Profils',
   },
   en: {
@@ -29,7 +30,7 @@ const WORDS = {
     again: 'Type it again',
     open: 'Open',
     unlockTitle: 'Enter your code',
-    home: 'Look up a product',
+    home: /^A medicine or a remedy/,
     profiles: 'Profiles',
   },
 } as const;
@@ -57,11 +58,11 @@ export async function makeCode(page: Page, code: string = CODE, lang: Lang = 'fr
   await page.getByLabel(words.again, { exact: true }).fill(code);
 }
 
-/** Waits for the start of a mode once open: Home in woman mode, the profiles in accompanied mode. */
+/** Waits for the start of a mode once open: her check in woman mode, the profiles in accompanied mode. */
 export async function expectStart(page: Page, mode: Mode, lang: Lang = 'fr') {
   const words = WORDS[lang];
   await (mode === 'woman'
-    ? expect(page.getByRole('button', { name: words.home })).toBeVisible()
+    ? expect(page.getByRole('heading', { level: 1, name: words.home })).toBeVisible()
     : expect(page.getByRole('heading', { level: 1, name: words.profiles })).toBeVisible());
 }
 
@@ -89,6 +90,34 @@ export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: s
   await expectStart(page, mode, lang);
 }
 
+/** The check's heading: her start in woman mode (SCRUM-56, S4), "Ce qu'elle prend" in accompanied mode. */
+export const CHECK_TITLE = /^(Un médicament ou un remède|Ce qu'elle prend)/;
+
+/**
+ * Her answers on her first check in woman mode (SCRUM-56, 8.3): pregnant at
+ * `weeks` weeks given today, not breastfeeding, `situation` (none by default),
+ * saved as her profile; ends on her check, its field ready.
+ */
+export async function aboutHer(
+  page: Page,
+  weeks: number,
+  situation: string = 'Aucune de ces situations',
+) {
+  const about = page.getByRole('region', { name: 'À propos de vous' });
+  await about
+    .getByRole('group', { name: /^Enceinte/ })
+    .getByText('Oui', { exact: true })
+    .click();
+  await about.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
+  await about
+    .getByRole('group', { name: /^Allaite/ })
+    .getByText('Non', { exact: true })
+    .click();
+  await about.getByText(situation, { exact: true }).click();
+  await about.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(checkField(page)).toBeFocused();
+}
+
 /** The one field of the check (SCRUM-56, S12): medicines and remedies together. */
 export const CHECK_FIELD = 'Nom du médicament ou du remède';
 
@@ -112,7 +141,7 @@ export async function addFirstCandidate(page: Page) {
     .toBe(true);
   if (await yes.isVisible()) await yes.click();
   await expect(field).toHaveValue('');
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 /** Types `query` in the check's field, then adds its first candidate (addFirstCandidate). */
