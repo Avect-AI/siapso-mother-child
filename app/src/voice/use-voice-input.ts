@@ -7,7 +7,12 @@
 // confirmed. Nothing is ever added to the check from here.
 import type { Recorder, SpeechClient } from '@siapso/speech';
 import { useEffect, useReducer, useRef } from 'react';
-import { MAX_RECORDING_SECONDS, voiceContextFor, type VoiceLang } from '../config/voice.js';
+import {
+  MAX_RECORDING_SECONDS,
+  VOICE_NAME_CLUSTERS,
+  voiceContextFor,
+  type VoiceLang,
+} from '../config/voice.js';
 import {
   IDLE,
   cleanTranscript,
@@ -130,7 +135,7 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
       });
       if (mine !== attempt.current) return;
       // The names given, repeated in their order: an echo, nothing heard.
-      const echo = context !== undefined && isPromptEcho(text, context);
+      const echo = context !== undefined && isPromptEcho(text, context, VOICE_NAME_CLUSTERS);
       const heard = echo ? '' : cleanTranscript(text, latest.current.maxLength);
       const candidates = heard === '' ? 0 : latest.current.countCandidates(heard);
       endUse();

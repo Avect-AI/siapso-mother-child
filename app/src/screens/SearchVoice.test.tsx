@@ -290,8 +290,9 @@ describe('Search: saying a name', () => {
   it('reads as nothing heard a transcript that repeats the names given', async () => {
     const { user, field } = await openSearch('Ajouter un médicament', {
       installed: ['fr'],
-      // The first four names given, as the decoder writes them again.
-      transcript: `${VOICE_NAMES_PROMPT.split(', ').slice(0, 4).join(', ')}.`,
+      // The first six names given, as the decoder writes them again (more
+      // than one cluster of names said together).
+      transcript: `${VOICE_NAMES_PROMPT.split(', ').slice(0, 6).join(', ')}.`,
     });
     await user.click(mic());
     await screen.findByText("J'écoute en français.");

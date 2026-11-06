@@ -4,7 +4,7 @@
 // one is transcribed without the names, and a transcript that repeats them is
 // read as nothing heard.
 import { describe, expect, it } from 'vitest';
-import { VOICE_NAMES_PROMPT } from '../config/voice.js';
+import { VOICE_NAME_CLUSTERS, VOICE_NAMES_PROMPT } from '../config/voice.js';
 import {
   isPromptEcho,
   loudestRms,
@@ -102,26 +102,65 @@ describe('isPromptEcho', () => {
     }
   });
 
-  // Round 2 of the review of #68: with the names given now, the lists women
-  // say most pass the guard, except those said in the very order of the
-  // prompt (a known cost, docs/voice.md: the orders that keep them apart
-  // wrote fewer names right and were not adopted).
-  it('lets through, with the names given, the lists women say most, unless in the prompt order', () => {
-    expect(isPromptEcho(VOICE_NAMES_PROMPT, VOICE_NAMES_PROMPT)).toBe(true);
+  // Round 2 of the review of #68: names said together in a clinic.
+  it('lets through a run that is some names of one cluster, never a longer one', () => {
+    const clusters = [
+      ['fer', 'acide folique', 'SP'],
+      ['Doliprane', 'paracétamol', 'Efferalgan'],
+    ];
     for (const sentence of [
+      'fer, acide folique, SP',
+      'fer acide folique SP',
+      'Doliprane, paracétamol, Efferalgan',
+    ]) {
+      expect(isPromptEcho(sentence, PROMPT), sentence).toBe(true);
+      expect(isPromptEcho(sentence, PROMPT, clusters), sentence).toBe(false);
+    }
+    for (const sentence of [
+      // The cluster and the next name of the prompt, or the one before it.
+      'fer, acide folique, SP, Fansidar',
+      'codéine, fer, acide folique, SP',
+      'Doliprane, paracétamol, Efferalgan, Dafalgan',
+      // Part of a cluster with another name of the prompt.
+      'codéine, fer, acide folique',
+      // Its list going on, with a comma at the end.
+      'fer, acide folique, SP,',
+      PROMPT,
+    ]) {
+      expect(isPromptEcho(sentence, PROMPT, clusters), sentence).toBe(true);
+    }
+  });
+
+  // With the names given now and their clusters, the lists women say most
+  // pass the guard, in any order (docs/voice.md).
+  it('lets through, with the names given, the lists women say most', () => {
+    expect(isPromptEcho(VOICE_NAMES_PROMPT, VOICE_NAMES_PROMPT, VOICE_NAME_CLUSTERS)).toBe(true);
+    for (const sentence of [
+      'fer, acide folique, SP',
+      'fer acide folique SP',
       'fer et acide folique',
       'SP, fer, acide folique',
       'acide folique, fer, SP',
       'je prends du fer, de l’acide folique et la SP',
+      'Doliprane, paracétamol, Efferalgan, Dafalgan',
       'paracétamol, Doliprane, Dafalgan',
+      'Nivaquine, Coartem',
+      'SP, Fansidar',
       'Coartem, SP, Nivaquine',
       'Advil, ibuprofène',
       'moringa, kinkéliba, bissap',
     ]) {
-      expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT), sentence).toBe(false);
+      expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT, VOICE_NAME_CLUSTERS), sentence).toBe(false);
     }
-    for (const sentence of ['fer, acide folique, SP', 'Doliprane, paracétamol, Efferalgan']) {
-      expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT), sentence).toBe(true);
+    for (const sentence of [
+      'fer, acide folique, SP, Fansidar',
+      'codéine, fer, acide folique, SP',
+      'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine',
+      'Nivaquine, Coartem, Advil',
+      'kinkéliba, moringa, bissap',
+      'Cytotec,',
+    ]) {
+      expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT, VOICE_NAME_CLUSTERS), sentence).toBe(true);
     }
   });
 });

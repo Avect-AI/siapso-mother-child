@@ -45,6 +45,21 @@ export const VOICE_NAMES_PROMPT =
   'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
 
 /**
+ * Names of the prompt said together in a clinic (round 2 of the review of
+ * #68): a run of the prompt that is, whole names only, some names of one of
+ * these is not read as the decoder writing the prompt again. The antenatal
+ * trio (fer, acide folique, SP, in any order or two of them), paracetamol
+ * with its brands, and the antimalarials said together (Nivaquine then
+ * Coartem; SP, also called Fansidar).
+ */
+export const VOICE_NAME_CLUSTERS: readonly (readonly string[])[] = [
+  ['fer', 'acide folique', 'SP'],
+  ['paracétamol', 'Doliprane', 'Efferalgan', 'Dafalgan'],
+  ['Nivaquine', 'Coartem'],
+  ['SP', 'Fansidar'],
+];
+
+/**
  * The words the decoder is given for a language, or undefined: the names, for
  * French only (the Wolof model was trained with no prompt), when `on`.
  */

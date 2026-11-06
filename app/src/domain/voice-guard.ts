@@ -90,14 +90,21 @@ const wordsOf = (text: string): string[] => normalize(text).split(' ').filter(Bo
 
 /**
  * Whether a transcript repeats the names given to the decoder (`prompt`, names
- * separated by commas): 3 names or more that follow each other in the prompt,
- * said one after the other with no other word between ("Doliprane,
- * paracétamol, Efferalgan"), 4 words or more of the prompt in its order, or
- * words of the prompt only that end with a comma, as its list goes on
- * ("Cytotec,"). Names said as a sentence says them ("du coartem, de
- * l'advil"), or a name said alone ("Cytotec."), are not.
+ * separated by commas): words of the prompt only that end with a comma, as
+ * its list goes on ("Cytotec,"), or a run of the prompt said in its order
+ * with no other word between, of 3 names or more ("Doliprane, paracétamol,
+ * Efferalgan") or of 4 words or more. Names said as a sentence says them
+ * ("du coartem, de l'advil"), or a name said alone ("Cytotec."), are not.
+ * Round 2 of the review of #68: nor is a run that is, whole names only, some
+ * names of one of `clusters`, names said together in a clinic ("fer, acide
+ * folique, SP"); a longer run, or one that holds other names of the prompt,
+ * still is ("fer, acide folique, SP, Fansidar").
  */
-export function isPromptEcho(transcript: string, prompt: string): boolean {
+export function isPromptEcho(
+  transcript: string,
+  prompt: string,
+  clusters: readonly (readonly string[])[] = [],
+): boolean {
   const heard = wordsOf(transcript);
   if (heard.length === 0) return false;
   const promptWords = wordsOf(prompt);
@@ -105,9 +112,23 @@ export function isPromptEcho(transcript: string, prompt: string): boolean {
   // ("Cytotec,", heard so over noise); a name said alone ends otherwise.
   const ofPrompt = new Set(promptWords);
   if (/,\s*$/u.test(transcript) && heard.every((word) => ofPrompt.has(word))) return true;
-  // A run of words of the prompt, in its order.
+  // The names of the prompt, and which name each word of it belongs to.
+  const names = prompt
+    .split(/[,.]/u)
+    .map((name) => wordsOf(name).join(' '))
+    .filter((name) => name !== '');
+  const nameOfWord: number[] = [];
+  const nameStarts = new Set<number>();
+  names.forEach((name, index) => {
+    nameStarts.add(nameOfWord.length);
+    for (let word = 0; word < name.split(' ').length; word += 1) nameOfWord.push(index);
+  });
+  nameStarts.add(nameOfWord.length);
+  const groups = clusters.map((cluster) => new Set(cluster.map((name) => wordsOf(name).join(' '))));
+  // Each run of words of the prompt, in its order, as long as it goes.
   for (let start = 0; start < heard.length; start += 1) {
     for (let from = 0; from < promptWords.length; from += 1) {
+      if (start > 0 && from > 0 && heard[start - 1] === promptWords[from - 1]) continue;
       let length = 0;
       while (
         start + length < heard.length &&
@@ -116,30 +137,13 @@ export function isPromptEcho(transcript: string, prompt: string): boolean {
       ) {
         length += 1;
       }
-      if (length >= ECHO_WORDS) return true;
-    }
-  }
-  // Names that follow each other in the prompt, one after the other.
-  const names = prompt
-    .split(/[,.]/u)
-    .map(wordsOf)
-    .filter((words) => words.length > 0);
-  const nameAt = (at: number, index: number): number | undefined => {
-    const words = names[index];
-    if (words === undefined) return undefined;
-    return words.every((word, offset) => heard[at + offset] === word)
-      ? at + words.length
-      : undefined;
-  };
-  for (let start = 0; start < heard.length; start += 1) {
-    for (let first = 0; first < names.length; first += 1) {
-      let at = start;
-      let count = 0;
-      for (let next = nameAt(at, first); next !== undefined; next = nameAt(at, first + count)) {
-        count += 1;
-        at = next;
-      }
-      if (count >= ECHO_NAMES) return true;
+      if (length === 0) continue;
+      const whole = nameStarts.has(from) && nameStarts.has(from + length);
+      const said = new Set(nameOfWord.slice(from, from + length).map((index) => names[index]));
+      if (length < ECHO_WORDS && !(whole && said.size >= ECHO_NAMES)) continue;
+      const cluster =
+        whole && groups.some((group) => [...said].every((name) => group.has(name ?? '')));
+      if (!cluster) return true;
     }
   }
   return false;
