@@ -3,10 +3,12 @@ import {
   ageMarkersOf,
   formWords,
   isFormWord,
+  isPosologyWord,
   isSaltWord,
   lightCleaned,
   normalize,
   plainText,
+  POSOLOGY_WORDS,
   splitAgeWords,
   withoutStopWords,
 } from './normalize.js';
@@ -103,6 +105,11 @@ export interface CompiledName {
    * sounds is not this name ("raisin" and "ricin").
    */
   light: string;
+  /**
+   * The words that name nothing alone in the index (descriptionWordsOf): none
+   * of them is a word of `words`, matched alone.
+   */
+  described: ReadonlySet<string>;
 }
 
 /** What scoring reads of a name (scoreName): the name as matched, or as lightly spelt. */
@@ -129,6 +136,7 @@ export function lightNameOf(name: CompiledName): Scorable {
         parts.length > 1
           ? parts
               .filter((part) => part.length >= MIN_ABBREVIATION_LENGTH)
+              .filter((part) => !name.described.has(normalize(part)))
               .map((part) => ({ norm: part, tri: trigrams(part) }))
           : [],
       // A name inside a longer text is not read for a short query.
@@ -142,7 +150,23 @@ export function lightNameOf(name: CompiledName): Scorable {
 /** A word this short before a brand is a prefix joined to it ("Néo-Codion", "BI PROFENID"). */
 const PREFIX_LENGTH = 3;
 
-/** The words that lead a name (CompiledName.leading); `cleaned` cleans a text as names are. */
+/**
+ * A product name as the BDPM writes it, "name strength, description of the
+ * form": the part before its first comma, and the description after it
+ * ("gélule à libération prolongée (UNE PRISE QUOTIDIENNE)"), empty without one.
+ */
+function headAndDescription(text: string): { head: string; description: string } {
+  const at = text.indexOf(', ');
+  return at < 0
+    ? { head: text, description: '' }
+    : { head: text.slice(0, at), description: text.slice(at + 2) };
+}
+
+/**
+ * The words that lead a name (CompiledName.leading), read before the
+ * description of its form; `cleaned` cleans a text as names are. A word of how
+ * a medicine is taken never leads ("SANS SUCRE").
+ */
 function leadingWordsOf(
   text: string,
   cleaned: (text: string) => string,
@@ -150,10 +174,10 @@ function leadingWordsOf(
   substanceWords: number,
 ): Set<string> {
   const leading = new Set<string>();
-  for (const part of text.split(/[()]/)) {
+  for (const part of headAndDescription(text).head.split(/[()]/)) {
     const words = cleaned(part)
       .split(' ')
-      .filter((word) => word !== '');
+      .filter((word) => word !== '' && !isPosologyWord(word));
     const [first] = words;
     if (first === undefined) continue;
     leading.add(first);
@@ -173,6 +197,28 @@ function leadingWordsOf(
     if (brand !== undefined) leading.add(brand);
   }
   return leading;
+}
+
+/**
+ * The words that name nothing alone (normalised, as matched): the words of
+ * how a medicine is taken (POSOLOGY_WORDS) and the words of the description
+ * of the form of every product name (after its first comma: "gélule à
+ * libération prolongée (UNE PRISE QUOTIDIENNE)", "mousse pour application
+ * cutanée"), but a word that leads a name of its own.
+ */
+function descriptionWordsOf(
+  names: readonly CompiledName[],
+  cleaned: (text: string) => string,
+): Set<string> {
+  const leads = new Set(names.flatMap((name) => [...name.leading]));
+  const words = new Set(POSOLOGY_WORDS.map(normalize));
+  for (const name of names) {
+    if (name.entry.kind !== 'product') continue;
+    for (const word of cleaned(headAndDescription(name.text).description).split(' ')) {
+      if (word !== '' && !leads.has(word)) words.add(word);
+    }
+  }
+  return words;
 }
 
 /** A name needs a word of this many letters or more to be found inside a longer text. */
@@ -391,12 +437,24 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         // Once every substance name is known (below).
         leading: new Set<string>(),
         light: lightCleaned(name.text, keepSalts),
+        // Once every name is known (below).
+        described: new Set<string>(),
       });
     }
   }
   const cleanedPart = (part: string) => splitAgeWords(clean(part)).text;
   for (const name of names) {
     name.leading = leadingWordsOf(name.text, cleanedPart, substances, substanceWords);
+  }
+  // A word of how a medicine is taken or of the description of a form names
+  // nothing alone: no word of a name is matched alone through it (a whole
+  // name still holds it, "fervex sans sucre").
+  const described = descriptionWordsOf(names, cleanedPart);
+  for (const name of names) {
+    name.described = described;
+    if (name.words.some((word) => described.has(word.norm))) {
+      name.words = name.words.filter((word) => !described.has(word.norm));
+    }
   }
   const brands = brandsOf(entries, cleanedPart);
   const index: ResolverIndex = Object.freeze({ size: entries.length });

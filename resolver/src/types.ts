@@ -60,10 +60,11 @@ export interface Candidate {
   /**
    * For a `word` match, why the word alone may name none of the products:
    * `shared` when the names of several families have it (a laboratory,
-   * "biogaran"; "gastro" of "gastro-résistant"), `inner` when it leads no name
-   * of the product, coming after its brand word (a qualifier, "chrono" of
-   * "DEPAKINE CHRONO", "emulgel" of "VOLTARENE EMULGEL"; a word of a
-   * description, "cutanée"). A word after only substance names or a short
+   * "biogaran"), `inner` when it leads no name of the product, coming after
+   * its brand word (a qualifier, "chrono" of "DEPAKINE CHRONO", "emulgel" of
+   * "VOLTARENE EMULGEL"). A word of how a medicine is taken or of the
+   * description of a form ("prise", "cutanée") is never matched alone at all
+   * (descriptionWordsOf). A word after only substance names or a short
    * prefix is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of
    * "Néo-Codion", "profenid" of "BI PROFENID LP"), each word of a substance
    * name of several words names it ("méfénamique" of "Acide méfénamique"), and

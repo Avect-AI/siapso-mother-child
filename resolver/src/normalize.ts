@@ -395,6 +395,76 @@ export function isSaltWord(word: string): boolean {
   return SALT_SET.has(word);
 }
 
+/**
+ * Words of how a medicine is taken, and of the description of a form, that a
+ * product name may hold ("(UNE PRISE QUOTIDIENNE)", "SANS SUCRE", "L.P."):
+ * they name no product alone, whatever the folding (review of SCRUM-51:
+ * "prise", and "price" misread for it, reached MONOCRIXO L.P.). They stay in
+ * the name as a whole; the index adds to them the words of the description of
+ * every product name (descriptionWords). Compared after normalize.
+ */
+export const POSOLOGY_WORDS: readonly string[] = [
+  'prise',
+  'prises',
+  'quotidien',
+  'quotidienne',
+  'quotidiens',
+  'quotidiennes',
+  'unique',
+  'uniques',
+  'jour',
+  'jours',
+  'journalier',
+  'journalière',
+  'journaliers',
+  'journalières',
+  'matin',
+  'matins',
+  'midi',
+  'soir',
+  'soirs',
+  'nuit',
+  'nuits',
+  'fois',
+  'par',
+  'semaine',
+  'semaines',
+  'heure',
+  'heures',
+  'sans',
+  'sucre',
+  'sucres',
+  'libération',
+  'prolongée',
+  'prolongé',
+  'modifiée',
+  'modifié',
+  'immédiate',
+  'retard',
+  'lm',
+  'daily',
+  'day',
+  'days',
+  'once',
+  'twice',
+  'morning',
+  'evening',
+  'night',
+  'sugar',
+  'free',
+  'release',
+  'prolonged',
+  'extended',
+  'modified',
+];
+
+const POSOLOGY_SET: ReadonlySet<string> = new Set(POSOLOGY_WORDS.map(normalize));
+
+/** Whether a normalised word is a word of how a medicine is taken (POSOLOGY_WORDS). */
+export function isPosologyWord(word: string): boolean {
+  return POSOLOGY_SET.has(word);
+}
+
 /** The indexes of the words kept, without the linking words left at either end. */
 function trimmed(words: readonly string[], kept: readonly boolean[]): number[] {
   const left = words.flatMap((_, index) => (kept[index] === true ? [index] : []));

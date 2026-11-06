@@ -7,6 +7,7 @@ import { contextFromProfile } from './context.js';
 import {
   cappedEvaluation,
   evaluateWithPossibleMatches,
+  strengthOf,
   withPossibleMatches,
 } from './possible-matches.js';
 import { productFamilyOf, searchIndexOf } from './search-index.js';
@@ -18,6 +19,26 @@ beforeAll(async () => {
 });
 
 const typed = (text: string): CheckedItem => ({ ref: { kind: 'unrecognised', text } });
+
+// Review of SCRUM-51 (prescription reading, SCRUM-57): a posology line, or one
+// of its words read by a camera or said ("price" for "prise"), names no product.
+describe('a word of how a medicine is taken', () => {
+  it.each([
+    'prise',
+    'price',
+    'une prise par jour',
+    '1 cp en prise unique',
+    '1 ap en price unique',
+    'quotidienne',
+    'sans sucre',
+  ])('is never a strong or very strong resemblance: %s', (text) => {
+    for (const candidate of search(searchIndexOf(pack), text, { limit: 10 })) {
+      expect(strengthOf(candidate), `${text}: ${candidate.id}`).toBe('weak');
+    }
+    const net = withPossibleMatches(pack, [typed(text)]);
+    expect([...net.possible.values()].filter((p) => p.strength !== 'weak')).toEqual([]);
+  });
+});
 
 describe('withPossibleMatches after "Non, aucun de ces produits"', () => {
   const declined = () => true;

@@ -289,7 +289,7 @@ function cleanQuery(query: string, compiled: CompiledIndex): CleanQuery {
  */
 const SHORT_FOLDED_LENGTH = 6;
 
-/** The kinds of match that a short query must also reach as written. */
+/** The kinds of match also scored as written: a short query must reach them so, any keeps the better score. */
 const CHECKED_AS_WRITTEN: ReadonlySet<MatchKind> = new Set([
   'prefix',
   'near',
@@ -494,9 +494,12 @@ export function search(
   // A brand named implies its substances ("Advil codéine": ibuprofen and
   // codeine): a product lacking one ranks after the ones that hold them all.
   const required = new Set([...named, ...mentions.implied]);
-  // A short query reaches a name it does not equal only as written too.
-  const asWritten =
-    compactQuery.length <= SHORT_FOLDED_LENGTH ? scoredAsWritten(text, compiled) : undefined;
+  // A name it does not equal is scored as written too: a short query reaches it
+  // only if it does so as written, and any query keeps the better of both (one
+  // l misread as an i, "amoxiciine", is one letter from "amoxicilline" as
+  // written, two once read as it sounds).
+  const asWritten = scoredAsWritten(text, compiled);
+  const short = compactQuery.length <= SHORT_FOLDED_LENGTH;
 
   const bestById = new Map<string, Match>();
   // The products one of whose names starts with the query as a whole word.
@@ -505,13 +508,13 @@ export function search(
     if (kinds && !kinds.includes(name.entry.kind)) continue;
     const missing = missingFrom(name.entry, required);
     let { score: raw, kind } = scoreName(name, scored, minScore);
-    if (
-      asWritten !== undefined &&
-      raw >= minScore &&
-      CHECKED_AS_WRITTEN.has(kind) &&
-      scoreName(lightNameOf(name), asWritten, minScore).score < minScore
-    ) {
-      raw = 0;
+    if (raw > 0 && CHECKED_AS_WRITTEN.has(kind)) {
+      const written = scoreName(lightNameOf(name), asWritten, minScore);
+      if (short && written.score < minScore) raw = 0;
+      else if (written.score > raw && CHECKED_AS_WRITTEN.has(written.kind)) {
+        raw = written.score;
+        kind = written.kind;
+      }
     }
     if (kind === 'word' && name.leading.has(normalized)) leading.add(name.entry.id);
     if (onlySubstances && name.substance !== undefined && missing === 0) {
