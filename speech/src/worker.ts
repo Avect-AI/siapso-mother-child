@@ -16,6 +16,7 @@ import {
   type AutomaticSpeechRecognitionPipeline,
   type ProgressInfo,
 } from '@huggingface/transformers';
+import { decoderInputWithContext, generatedTokens } from './context-prompt.js';
 import type { WorkerRequest, WorkerResponse } from './protocol.js';
 import {
   applyRuntimeSettings,
@@ -127,13 +128,65 @@ async function load(request: Extract<WorkerRequest, { type: 'load' }>): Promise<
 async function transcribe(request: Extract<WorkerRequest, { type: 'transcribe' }>): Promise<void> {
   if (transcriber === undefined) throw new Error('The speech model is not loaded.');
   const started = performance.now();
-  const output: unknown = await transcriber(request.samples, {
-    // The prompt of the language: for Wolof, <|startoftranscript|> alone, as in training.
-    decoder_input_ids: request.prompt,
+  const text =
+    request.context === undefined
+      ? textOf(
+          await transcriber(request.samples, {
+            // The prompt of the language: for Wolof, <|startoftranscript|> alone, as in training.
+            decoder_input_ids: request.prompt,
+            max_new_tokens: MAX_NEW_TOKENS,
+          }),
+        )
+      : await withContext(transcriber, request.samples, request.prompt, request.context);
+  const ms = Math.round(performance.now() - started);
+  post({ type: 'result', id: request.id, text, ms });
+}
+
+/** What withContext uses of the pipeline: its tokenizer, feature extractor and model. */
+interface PipelineParts {
+  tokenizer: {
+    encode(text: string, options: { add_special_tokens: boolean }): ArrayLike<number>;
+    decode(ids: number[], options: { skip_special_tokens: boolean }): string;
+  };
+  processor: (samples: Float32Array) => Promise<{ input_features: unknown }>;
+  model: {
+    generate(options: {
+      inputs: unknown;
+      decoder_input_ids: number[];
+      max_new_tokens: number;
+    }): Promise<{ tolist(): (number | bigint)[][] }>;
+  };
+}
+
+/**
+ * The text heard with words given to the decoder as said before the speech
+ * (context-prompt.ts): Transformers.js 4.3.1 has no `prompt_ids` option, and
+ * its pipeline would write these words in the text heard, so the decoder
+ * input is built here and only the tokens generated after it are decoded.
+ */
+async function withContext(
+  pipe: AutomaticSpeechRecognitionPipeline,
+  samples: Float32Array,
+  prompt: number[],
+  context: string,
+): Promise<string> {
+  const parts = pipe as unknown as PipelineParts;
+  const [startOfPrev, ...more] = Array.from(
+    parts.tokenizer.encode('<|startofprev|>', { add_special_tokens: false }),
+  );
+  if (startOfPrev === undefined || more.length > 0) {
+    throw new Error('This model has no <|startofprev|> token.');
+  }
+  const words = Array.from(parts.tokenizer.encode(` ${context}`, { add_special_tokens: false }));
+  const input = decoderInputWithContext(prompt, words, startOfPrev);
+  const { input_features } = await parts.processor(samples);
+  const output = await parts.model.generate({
+    inputs: input_features,
+    decoder_input_ids: input,
     max_new_tokens: MAX_NEW_TOKENS,
   });
-  const ms = Math.round(performance.now() - started);
-  post({ type: 'result', id: request.id, text: textOf(output), ms });
+  const tokens = generatedTokens(output.tolist()[0] ?? [], input.length);
+  return parts.tokenizer.decode(tokens, { skip_special_tokens: true }).trim();
 }
 
 function textOf(output: unknown): string {

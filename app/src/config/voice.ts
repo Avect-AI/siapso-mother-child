@@ -26,6 +26,32 @@ export const VOICE_PACK_OPTIONS: readonly VoicePackOption[] = [
 /** A recording ends by itself after this many seconds (MAX_RECORDING_MS of @siapso/speech). */
 export const MAX_RECORDING_SECONDS = 8;
 
+/**
+ * The names of the base given to the French decoder as said before the speech
+ * (Whisper's previous text, SCRUM-61): the most common names of the sentence
+ * evaluation and the common brands of the registry, 87 tokens. Measured on
+ * 2026-11-06 (docs/voice.md): far more names written right (75 of 88 products
+ * ticked instead of 50, on 80 sentences of three Windows voices), the FLEURS
+ * word error rate unchanged (30.0 % against 30.3 %), 6 to 13 % more time; but
+ * "kinkéliba" was then heard as "quinine qu'il y va" three times, a medicine in
+ * place of a remedy. Off until real voices are measured with it (SCRUM-32).
+ */
+export const VOICE_NAMES_PROMPT_ON = false;
+
+export const VOICE_NAMES_PROMPT =
+  'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, quinine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
+
+/**
+ * The words the decoder is given for a language, or undefined: the names, for
+ * French only (the Wolof model was trained with no prompt), when `on`.
+ */
+export function voiceContextFor(
+  language: string | undefined,
+  on: boolean = VOICE_NAMES_PROMPT_ON,
+): string | undefined {
+  return on && language === 'fr' ? VOICE_NAMES_PROMPT : undefined;
+}
+
 /** A size in whole megabytes (10^6 bytes), as a phone shows it; at least 1 for any data. */
 export function megabytes(bytes: number): number {
   if (bytes <= 0) return 0;

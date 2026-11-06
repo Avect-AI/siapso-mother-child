@@ -24,6 +24,12 @@ export interface SpeechClientOptions {
 export interface TranscribeOptions {
   /** One of the pack languages (`info.languages`); the first one when absent. */
   language?: string;
+  /**
+   * Words the decoder is given as said before the speech (Whisper's previous
+   * text), never part of the text heard: the names of the base, so that a name
+   * heard is written as the name (context-prompt.ts, SCRUM-61).
+   */
+  context?: string;
 }
 
 export interface Transcription {
@@ -258,6 +264,7 @@ export function createSpeechClient(
   async function run(
     samples: Float32Array,
     prompt: number[],
+    context: string | undefined,
     askedAt: number,
   ): Promise<Transcription> {
     await load();
@@ -266,7 +273,13 @@ export function createSpeechClient(
     }
     const answer = await request(
       'transcribe',
-      { type: 'transcribe', id: nextId++, samples, prompt: [...prompt] },
+      {
+        type: 'transcribe',
+        id: nextId++,
+        samples,
+        prompt: [...prompt],
+        ...(context === undefined ? {} : { context }),
+      },
       [samples.buffer],
     );
     if (answer.type !== 'result') {
@@ -290,7 +303,7 @@ export function createSpeechClient(
         );
       }
       const askedAt = cancels;
-      const next = queue.then(() => run(samples, prompt, askedAt));
+      const next = queue.then(() => run(samples, prompt, transcribeOptions.context, askedAt));
       queue = next.catch(() => undefined);
       return next;
     },

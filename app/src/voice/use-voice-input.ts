@@ -7,7 +7,7 @@
 // confirmed. Nothing is ever added to the check from here.
 import type { Recorder, SpeechClient } from '@siapso/speech';
 import { useEffect, useReducer, useRef } from 'react';
-import { MAX_RECORDING_SECONDS, type VoiceLang } from '../config/voice.js';
+import { MAX_RECORDING_SECONDS, voiceContextFor, type VoiceLang } from '../config/voice.js';
 import {
   IDLE,
   cleanTranscript,
@@ -113,7 +113,11 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
       return;
     }
     try {
-      const { text } = await client.transcribe(samples, language === undefined ? {} : { language });
+      const context = voiceContextFor(language);
+      const { text } = await client.transcribe(samples, {
+        ...(language === undefined ? {} : { language }),
+        ...(context === undefined ? {} : { context }),
+      });
       if (mine !== attempt.current) return;
       const heard = cleanTranscript(text, latest.current.maxLength);
       const candidates = heard === '' ? 0 : latest.current.countCandidates(heard);
