@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, type Mode } from './support.js';
+import { addFirstCandidate, onboard, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -33,13 +33,8 @@ async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  if (mode === 'accompanied') {
-    await page
-      .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
-      .getByRole('button', { name: /^Femme 1 / })
-      .click();
-  }
+  // Saved, her check opens, a new profile in accompanied mode included (SCRUM-56).
+  await page.getByRole('button', { name: /^Enregistrer/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }
 
@@ -57,8 +52,7 @@ async function seeResult(page: Page) {
 async function add(page: Page, list: 'Ajouter un médicament' | 'Ajouter un remède', query: string) {
   await page.getByRole('button', { name: list }).click();
   await page.getByRole('searchbox').fill(query);
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: /^Oui, c'est ce/ }).click();
+  await addFirstCandidate(page);
   // "Ce que vous prenez" in woman mode, "Ce qu'elle prend" in accompanied mode.
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }

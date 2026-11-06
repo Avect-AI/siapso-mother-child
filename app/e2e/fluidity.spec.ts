@@ -7,7 +7,7 @@
 // The budgets start at the measured baseline of 2026-11-05 (spec section
 // 4.1) and only go down: a change that adds a step to a journey says so here.
 import { expect, test, type Page } from '@playwright/test';
-import { CODE } from './support.js';
+import { addFirstCandidate, CODE } from './support.js';
 import { Journey, overBudget, report, resultFacts, type Budget } from './fluidity/meter.js';
 import {
   addProduct,
@@ -21,23 +21,24 @@ import {
 } from './fluidity/steps.js';
 
 /** taps / keys / screens / scrolls each journey may take at most. */
+// SCRUM-56, from the baseline of 2026-11-05 (spec section 4.1): P1 the welcome
+// in one screen, P2 the code opening at its length (no "Ouvrir"), P3 lighter
+// profile answers (weeks by default, a new profile opens her check, "Aujourd'hui"
+// for a passer-by), P4 the strength asked only when a rule reads it, P5 a
+// product added in one tap. The danger journeys (J5) never take more.
 const BUDGETS: Record<string, Budget> = {
-  // SCRUM-56 P1, the welcome in one screen: 17 taps and 12 screens before;
-  // P3, lighter profile answers: 14 taps before.
-  j1: { taps: 12, keys: 20, screens: 9, scrolls: 3 },
-  // SCRUM-56 P2, the code opens at its length: one tap less ("Ouvrir") at each opening.
-  j2a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
-  j2b: { taps: 11, keys: 25, screens: 11, scrolls: 1 },
-  j3a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
-  // P3: a new profile opens her check, weeks by default, "Aujourd'hui" for a passer-by.
-  j3b: { taps: 13, keys: 22, screens: 9, scrolls: 3 },
-  j4: { taps: 11, keys: 16, screens: 9, scrolls: 3 },
+  j1: { taps: 11, keys: 20, screens: 8, scrolls: 3 }, // baseline 17 / 20 / 12 / 3
+  j2a: { taps: 6, keys: 14, screens: 7, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
+  j2b: { taps: 9, keys: 25, screens: 10, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
+  j3a: { taps: 6, keys: 14, screens: 7, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
+  j3b: { taps: 12, keys: 22, screens: 8, scrolls: 3 }, // baseline 17 / 22 / 10 / 4
+  j4: { taps: 10, keys: 16, screens: 8, scrolls: 3 }, // baseline 15 / 16 / 9 / 4
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
   j5c: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
-  j6a: { taps: 4, keys: 9, screens: 4, scrolls: 1 },
+  j6a: { taps: 3, keys: 9, screens: 4, scrolls: 0 }, // baseline 4 / 9 / 4 / 1
   j6b: { taps: 3, keys: 14, screens: 4, scrolls: 0 },
-  j6c: { taps: 4, keys: 11, screens: 4, scrolls: 1 },
+  j6c: { taps: 3, keys: 11, screens: 4, scrolls: 0 }, // baseline 4 / 11 / 4 / 1
 };
 
 // The study's conditions (spec section 3.1): a 360 x 800 touch phone, in French.
@@ -187,8 +188,7 @@ journey('j5c', 'danger sign ticked during a check, to a call', async (page, j) =
   await womanWithProfile(page);
   await button(page, 'Ajouter un médicament').click();
   await page.getByRole('searchbox').fill('ibuprofene');
-  await page.locator('.candidate').first().click();
-  await button(page, /^Oui, c'est ce/).click();
+  await addFirstCandidate(page);
   await button(page, 'Voir le résultat').click();
   await page.getByText('Aucun de ces signes', { exact: true }).waitFor();
   await j.begin('signs now');

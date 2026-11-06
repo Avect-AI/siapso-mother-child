@@ -344,6 +344,7 @@ export const en: Dictionary = {
     otherNameLang: 'Other name: {name} ({lang})',
     localName: 'Local name: {name} ({lang})',
     boxName: 'Name on the box: {name}',
+    addAtOnce: 'Add',
     notFound: "I can't find this product",
     notFoundPlant: "I can't find this remedy",
     notFoundHint: 'It will be added as written, as a product not recognised.',

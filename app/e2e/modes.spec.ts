@@ -5,6 +5,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import {
+  addFirstCandidate,
   CODE,
   expectStart,
   expectWelcome,
@@ -144,8 +145,7 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -230,8 +230,7 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Fièvre', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -264,7 +263,9 @@ test('a product never shows in the address, even after an auto-lock and a reload
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('efavirenz');
-  await page.locator('.candidate').first().click();
+  await expect(page.locator('.candidate').first()).toBeVisible();
+  // Enter opens the confirm screen of the best candidate (a tap might add it at once).
+  await page.getByRole('searchbox').press('Enter');
   await expect(page.getByRole('button', { name: "Oui, c'est ce produit" })).toBeVisible();
   expect(page.url()).not.toMatch(/favirenz/i);
   expect(new URL(page.url()).hash).toBe('#/confirm/product');

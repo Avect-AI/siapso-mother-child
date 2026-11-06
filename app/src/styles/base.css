@@ -2590,6 +2590,16 @@ html:has(.sticky-action:not(.sticky-action--off)) {
   color: var(--color-primary);
 }
 
+/* A row a tap adds at once (SCRUM-56): it says so in words where another row has its chevron. */
+.candidate__add {
+  flex: none;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-heading);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
 .candidate__name {
   font-weight: var(--font-weight-heading);
   line-height: var(--line-height-tight);

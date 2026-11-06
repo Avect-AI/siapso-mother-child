@@ -415,6 +415,8 @@ export const fr = {
     localName: 'Nom local : {name} ({lang})',
     // The brand a candidate was found by, when its name shown does not say it ("cytotek").
     boxName: 'Nom sur la boîte : {name}',
+    // The end of a row a tap adds at once (SCRUM-56), where a row that opens a screen has its chevron.
+    addAtOnce: 'Ajouter',
     notFound: 'Je ne trouve pas ce produit',
     notFoundPlant: 'Je ne trouve pas ce remède',
     notFoundHint: "Il sera ajouté tel qu'il est écrit, comme produit non reconnu.",

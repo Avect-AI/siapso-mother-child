@@ -90,6 +90,20 @@ export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: s
 }
 
 /**
+ * Adds the first candidate of the search: a tap adds it at once when nothing
+ * is to ask (SCRUM-56, S11), otherwise "Oui" on its confirm screen; ends on
+ * the check.
+ */
+export async function addFirstCandidate(page: Page) {
+  await page.locator('.candidate').first().click();
+  const yes = page.getByRole('button', { name: /^Oui, c'est ce/ });
+  const check = page.getByRole('heading', { level: 1, name: /^Ce qu/ });
+  await expect(yes.or(check)).toBeVisible();
+  if (await yes.isVisible()) await yes.click();
+  await expect(check).toBeVisible();
+}
+
+/**
  * A new profile saved in accompanied mode opens her check (SCRUM-56, S8):
  * her check named, then Back to the list of profiles.
  */

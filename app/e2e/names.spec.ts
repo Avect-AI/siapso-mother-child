@@ -121,11 +121,11 @@ test('a brand typed for a generic keeps the name typed, up to the result', async
   await pregnantAt(page, 10, 'Aucune de ces situations');
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.keyboard.type('cytotec');
-  await page.locator('.candidate').first().click();
-  await expect(page.locator('.confirm__product')).toContainText(
-    `Vous avez écrit${NBSP}: «${NBSP}cytotec${NBSP}»`,
+  // Its row says the name on the box; a brand found whole is added by the tap (SCRUM-56).
+  await expect(page.locator('.candidate').first()).toContainText(
+    `Nom sur la boîte${NBSP}: Cytotec`,
   );
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await page.locator('.candidate').first().click();
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText(
     `Vous avez écrit${NBSP}: «${NBSP}cytotec${NBSP}»`,
   );

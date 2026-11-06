@@ -56,7 +56,9 @@ async function addThrough(
   await user.click(await screen.findByRole('button', { name: list }));
   await user.type(await screen.findByRole('searchbox'), query);
   const candidates = await screen.findByRole('list');
-  await user.click(within(candidates).getAllByRole('button')[0] as HTMLElement);
+  // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).
+  expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+  await user.keyboard('{Enter}');
   await user.click(await screen.findByRole('button', { name: /^Oui, c'est ce/ }));
   await screen.findByRole('button', { name: 'Voir le résultat' });
 }

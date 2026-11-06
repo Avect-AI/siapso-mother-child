@@ -4,7 +4,7 @@
 // one profile can be deleted, and the danger signs now are asked afresh.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { herCheckThenProfiles, onboard, unlock } from './support.js';
+import { addFirstCandidate, herCheckThenProfiles, onboard, unlock } from './support.js';
 
 const DAY_MS = 86_400_000;
 
@@ -175,8 +175,7 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('codeine');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
   // The signs after the birth and of the baby are asked up front, with the pregnancy's.
@@ -252,8 +251,7 @@ test('a last period with the phone date set back is read as unknown, and the res
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   // The real date is later: the baby may be born, its signs are asked too.
   await expect(page.getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
@@ -346,8 +344,7 @@ test('one profile is deleted with its history after a last yes; the others stay'
   await list.getByRole('button', { name: /^Awa/ }).click();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -379,8 +376,7 @@ test('the danger signs now start unticked at each check, and a sign ticked after
   await pregnantProfile(page, 28);
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
 
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();

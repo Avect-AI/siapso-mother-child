@@ -7,6 +7,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import {
+  addFirstCandidate,
   CODE,
   expectWelcome,
   seedBeforeUpdate,
@@ -149,12 +150,15 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   // Nothing of them is readable anywhere in storage.
   const dump = await dumpStorage(page);
   const everything = JSON.stringify(dump);
-  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT, old.givenOn, old.lmp]) {
+  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT]) {
     expect(everything, clear).not.toContain(clear);
   }
-  // Their situations and terms either, outside the knowledge pack (which names every situation).
+  // Their situations, terms and dates either, outside the knowledge pack (which
+  // names every situation, and dates its sources: one may be the day of her term).
   const theirs = JSON.stringify([personal(dump), dump.local, dump.session]);
   for (const clear of [
+    old.givenOn,
+    old.lmp,
     'hiv-cotrimoxazole',
     'sickle-cell',
     '"weeks"',
@@ -187,8 +191,7 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
