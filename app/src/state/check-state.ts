@@ -142,6 +142,11 @@ export interface AddOptions {
    * the name was typed.
    */
   said?: boolean;
+  /**
+   * The listed item this one takes the place of: she said it is the same box,
+   * read another way (a dose range dropped for the more cautious reading).
+   */
+  replacing?: CheckedItem;
 }
 
 /**
@@ -242,12 +247,17 @@ function unknownStrength(item: CheckedItem): boolean {
 }
 
 /**
- * What an item is, for "never twice": the product, plant or text; for a
- * product whose strength is unknown, its family (another key than any known
- * strength, so it never takes a known strength's place).
+ * What an item is, for "never twice": the product, plant or text, with its
+ * dose range ("100 mg ou moins" is another box than one read above it, so
+ * neither takes the other's place); for a product whose strength is unknown,
+ * its family (another key than any known strength, so it never takes a known
+ * strength's place).
  */
 function identity(item: CheckedItem, families: CheckData['families']): string {
-  if (!unknownStrength(item) || item.ref.kind !== 'product') return refKey(item.ref);
+  if (!unknownStrength(item) || item.ref.kind !== 'product') {
+    const atMost = item.strengthAtMostMg;
+    return atMost === undefined ? refKey(item.ref) : `${refKey(item.ref)}@${String(atMost)}`;
+  }
   const family = families[item.ref.id];
   return family === undefined ? `unknown:${refKey(item.ref)}` : `unknown-family:${family}`;
 }
@@ -265,7 +275,10 @@ function sameItem(a: CheckedItem, b: CheckedItem): boolean {
 /** The index of an item of unknown strength that a known strength of the same product or family replaces. */
 function unknownToReplace(state: CheckData, item: CheckedItem): number {
   const ref = item.ref;
-  if (unknownStrength(item) || ref.kind !== 'product') return -1;
+  // A dose range never takes the place of a box read as not known: it would read lower.
+  if (unknownStrength(item) || ref.kind !== 'product' || item.strengthAtMostMg !== undefined) {
+    return -1;
+  }
   const family = state.families[ref.id];
   return state.items.findIndex(
     (listed) =>
@@ -303,6 +316,19 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
     options.said === true ? { ...base.said, [key]: true as const } : without(base.said, key);
   const state = { ...base, lists, families, written, declined, said };
   const same = identity(item, families);
+  const replacing = options.replacing;
+  const replaced =
+    replacing === undefined ? -1 : state.items.findIndex((listed) => sameItem(listed, replacing));
+  if (replaced >= 0) {
+    // Listed already as it is now read: the one replaced goes, never twice.
+    const elsewhere = state.items.some(
+      (listed, i) => i !== replaced && identity(listed, families) === same,
+    );
+    const items = elsewhere
+      ? state.items.filter((_, i) => i !== replaced)
+      : state.items.map((listed, i) => (i === replaced ? item : listed));
+    return { ...state, items, changed: { kind: 'updated', item } };
+  }
   let index = state.items.findIndex((listed) => identity(listed, families) === same);
   if (index < 0 && options.anotherBox !== true) index = unknownToReplace(state, item);
   if (index < 0) {

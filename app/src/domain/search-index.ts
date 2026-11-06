@@ -634,10 +634,24 @@ export function doseRangeOf(
   candidate: ConfirmCandidate,
   productId: string,
 ): number | undefined {
-  const product = candidate.kind === 'product' ? productOf(pack, productId) : undefined;
-  const unknown = product?.components.filter((c) => c.strengthMg === undefined) ?? [];
-  const [only] = unknown;
-  if (only === undefined || unknown.length > 1) return undefined;
+  if (candidate.kind !== 'product') return undefined;
+  return rangeOf(pack, productId, [candidate.id, ...candidate.variants]);
+}
+
+/**
+ * The dose range of a listed product (doseRangeOf), its family read from the
+ * pack: the threshold in mg, or undefined.
+ */
+export function productDoseRangeOf(pack: Pack, productId: string): number | undefined {
+  const family = productFamilyOf(pack, productId);
+  const members = family === undefined ? undefined : indexedOf(pack).members.get(family);
+  return rangeOf(pack, productId, members ?? [productId]);
+}
+
+function rangeOf(pack: Pack, productId: string, memberIds: readonly string[]): number | undefined {
+  const unknown = productOf(pack, productId)?.components.filter((c) => c.strengthMg === undefined);
+  const [only] = unknown ?? [];
+  if (only === undefined || (unknown?.length ?? 0) > 1) return undefined;
   const thresholds = pack.rules.flatMap(({ when: { subject, strengthAboveMg } }) =>
     strengthAboveMg !== undefined &&
     subject !== undefined &&
@@ -648,7 +662,7 @@ export function doseRangeOf(
   );
   if (thresholds.length === 0) return undefined;
   const threshold = Math.min(...thresholds);
-  const offered = [candidate.id, ...candidate.variants].some((id) =>
+  const offered = memberIds.some((id) =>
     productOf(pack, id)?.components.some(
       (c) =>
         c.substance === only.substance && c.strengthMg !== undefined && c.strengthMg <= threshold,

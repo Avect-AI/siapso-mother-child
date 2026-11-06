@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, Pack, Product } from '@siapso/engine';
-import { normalize, type EntryKind } from '@siapso/resolver';
+import { normalize, parseStrength, type EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
+import { bandedName, doseBandLine, doseBandOf, lowDoseTyped } from '../domain/dose-band.js';
 import { joinNames } from '../domain/result-view.js';
 import {
   boxNameOf,
@@ -13,6 +14,7 @@ import {
   localNameOf,
   missingSubstancesOf,
   needsUnitsPerDay,
+  productDoseRangeOf,
   productFamilyOf,
   strengthChoiceOf,
   strengthNotFoundOf,
@@ -212,12 +214,17 @@ interface Listed {
  *   more information, never less) or another one (listed apart)?
  * - ask: "I do not know" while the family is listed with known strengths: is
  *   it the same box (keep that product and its strength) or another one?
+ * - askBand: a box whose dose is asked by a range (generic aspirin) while the
+ *   same product is listed read another way ("Plus de 100 mg", "100 mg ou
+ *   moins", "Je ne sais pas"): is it the same box (the more cautious reading
+ *   is kept: no range) or another one (listed apart, each read as said)?
  */
 type Plan =
   | { kind: 'new' }
   | ({ kind: 'listed' } & Listed)
   | ({ kind: 'askReplace' } & Listed)
-  | { kind: 'ask'; known: Listed[] };
+  | { kind: 'ask'; known: Listed[] }
+  | { kind: 'askBand'; others: Listed[] };
 
 function planOf(
   pack: Pack,
@@ -234,19 +241,27 @@ function planOf(
     ({ item }) =>
       item.ref.kind === 'product' && productFamilyOf(pack, item.ref.id) === candidate.family,
   );
+  if (productDoseRangeOf(pack, chosen.id) !== undefined) {
+    const sameBox = family.filter(
+      ({ item }) => item.ref.kind === 'product' && item.ref.id === chosen.id,
+    );
+    const asSaid = sameBox.find(
+      ({ item }) =>
+        (item.strengthUnknown === true) === chosen.strengthUnknown &&
+        item.strengthAtMostMg === chosen.atMostMg,
+    );
+    if (asSaid) return { kind: 'listed', ...asSaid };
+    if (sameBox.length > 0) return { kind: 'askBand', others: sameBox };
+  }
   const unknown = family.find(({ item }) => item.strengthUnknown === true);
   if (chosen.strengthUnknown) {
     if (unknown) return { kind: 'listed', ...unknown };
     const known = family.filter(({ item }) => item.strengthUnknown !== true);
     return known.length > 0 ? { kind: 'ask', known } : { kind: 'new' };
   }
-  // The same box with another dose range is written again: never kept at the one listed.
   const same = family.find(
     ({ item }) =>
-      item.strengthUnknown !== true &&
-      item.ref.kind === 'product' &&
-      item.ref.id === chosen.id &&
-      item.strengthAtMostMg === chosen.atMostMg,
+      item.strengthUnknown !== true && item.ref.kind === 'product' && item.ref.id === chosen.id,
   );
   if (same) return { kind: 'listed', ...same };
   return unknown ? { kind: 'askReplace', ...unknown } : { kind: 'new' };
@@ -274,12 +289,14 @@ function ConfirmForm({
   // A strength typed that no box of the family has ("clamoxyl 3g"): said, and the question asked.
   const [notFound] = useState(() => strengthNotFoundOf(pack, candidate, query));
   // A box with no strength that a threshold reads (generic aspirin): its dose
-  // is asked by a range, the one of a strength typed chosen as a strength is.
+  // is asked by a range, "100 mg ou moins" chosen at first only from a typed
+  // "50 mg" to the threshold (never from the voice, never without "mg").
   const [startRange] = useState(() => doseRangeOf(pack, candidate, candidate.id));
-  const [band, setBand] = useState<string | null>(() => {
-    if (startRange === undefined || notFound === undefined) return null;
-    return notFound <= startRange ? AT_MOST : ABOVE;
-  });
+  const [band, setBand] = useState<string | null>(() =>
+    startRange !== undefined && lowDoseTyped(query, entry.heard === true, startRange)
+      ? AT_MOST
+      : null,
+  );
   // Nothing chosen for her, generic or brand, unless she typed the strength or the form.
   const [selected, setSelected] = useState<string | null>(() =>
     choice?.preselected === 'candidate' ? candidate.id : null,
@@ -349,6 +366,14 @@ function ConfirmForm({
   if (plan?.kind === 'ask' && sameBox !== null && sameBox !== OTHER_BOX) {
     target = plan.known.find((known) => String(known.index) === sameBox) ?? null;
   }
+  // The same box read two ways: the listed one kept when it has no range, or
+  // its range dropped for the answer given now (the more cautious reading).
+  let dropsRange: Listed | null = null;
+  if (plan?.kind === 'askBand' && sameBox !== null && sameBox !== OTHER_BOX) {
+    const same = plan.others.find((other) => String(other.index) === sameBox) ?? null;
+    if (same?.item.strengthAtMostMg === undefined) target = same;
+    else dropsRange = same;
+  }
   const writes: CheckedItem | null =
     chosen === null
       ? null
@@ -359,14 +384,27 @@ function ConfirmForm({
             ...(chosen.strengthUnknown ? { strengthUnknown: true } : {}),
             ...(chosen.atMostMg === undefined ? {} : { strengthAtMostMg: chosen.atMostMg }),
           };
-  const waitsForSameBox = (plan?.kind === 'ask' || plan?.kind === 'askReplace') && sameBox === null;
+  const waitsForSameBox =
+    (plan?.kind === 'ask' || plan?.kind === 'askReplace' || plan?.kind === 'askBand') &&
+    sameBox === null;
   // The box listed with its strength unknown, when she said this one is the same box.
   const replaced =
     plan?.kind === 'askReplace' && sameBox !== null && sameBox !== OTHER_BOX ? plan : null;
-  const anotherBox = plan?.kind === 'askReplace' && sameBox === OTHER_BOX;
+  const anotherBox =
+    (plan?.kind === 'askReplace' || plan?.kind === 'askBand') && sameBox === OTHER_BOX;
 
-  const nameOf = (item: CheckedItem) =>
-    displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
+  // A box is named with the range it is read in, where she decides ("plus de 100 mg").
+  const nameOf = (item: CheckedItem) => {
+    const name = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
+    const ranged =
+      item.ref.kind === 'product' && productDoseRangeOf(pack, item.ref.id) !== undefined;
+    if (ranged && item.strengthUnknown === true) return t('check.nameUnknown', { name });
+    return bandedName(pack, item, name, lang, t);
+  };
+  // The range of the box "yes" is about: "100 mg ou moins", "Plus de 100 mg".
+  const shownBand = writes === null ? undefined : doseBandOf(pack, writes);
+  // A number read in the text the box was found by, shown beside its dose question.
+  const readNumber = parseStrength(query).strengthMg !== undefined;
   const shown =
     chosen === null
       ? candidateDisplayOf(pack, candidate, query, lang)
@@ -400,7 +438,7 @@ function ConfirmForm({
   else if (replaced !== null) unitsKey = `replaces:${String(replaced.index)}:${chosen?.id ?? ''}`;
   else if (chosen !== null) unitsKey = `new:${chosen.id}:${String(chosen.strengthUnknown)}`;
   // A box taking the place of the one listed without strength starts from its count.
-  const startsFrom = target?.item ?? replaced?.item;
+  const startsFrom = target?.item ?? replaced?.item ?? dropsRange?.item;
   const unitsText =
     unitsTyped[unitsKey] ??
     (startsFrom?.unitsPerDay === undefined ? '' : String(startsFrom.unitsPerDay));
@@ -424,7 +462,9 @@ function ConfirmForm({
 
   // What "yes" does, said where it is decided.
   let readback = '';
-  if (target !== null) readback = t('confirm.alreadyNamed', { name: nameOf(target.item) });
+  if (plan?.kind === 'askBand' && (target !== null || dropsRange !== null) && writes !== null) {
+    readback = t('confirm.sameBoxCautious', { name: nameOf(writes) });
+  } else if (target !== null) readback = t('confirm.alreadyNamed', { name: nameOf(target.item) });
   else if (replaced !== null)
     readback = t('confirm.takesPlace', { name: nameOf(replaced.item), product: shown.name });
   else if (chosen !== null && choice !== null && !waitsForSameBox) {
@@ -478,6 +518,7 @@ function ConfirmForm({
     check.add(item, {
       ...(family === undefined ? {} : { family }),
       ...(anotherBox ? { anotherBox: true } : {}),
+      ...(dropsRange === null ? {} : { replacing: dropsRange.item }),
       ...(written === undefined ? {} : { written }),
       ...(written !== undefined && said ? { said: true } : {}),
     });
@@ -528,9 +569,10 @@ function ConfirmForm({
         onChange={onSameBox}
       />
     );
-  } else if (plan?.kind === 'ask') {
-    const [only] = plan.known;
-    const single = plan.known.length === 1 && only !== undefined;
+  } else if (plan?.kind === 'ask' || plan?.kind === 'askBand') {
+    const listedBoxes = plan.kind === 'ask' ? plan.known : plan.others;
+    const [only] = listedBoxes;
+    const single = listedBoxes.length === 1 && only !== undefined;
     sameBoxQuestion = (
       <RadioGroup
         question
@@ -539,7 +581,7 @@ function ConfirmForm({
         }
         error={sameBoxError}
         options={[
-          ...plan.known.map((known) => ({
+          ...listedBoxes.map((known) => ({
             value: String(known.index),
             label: single
               ? t('confirm.sameBoxYes')
@@ -613,10 +655,8 @@ function ConfirmForm({
         {chosen?.strengthUnknown === true ? (
           <p className="confirm__detail">{t('check.strengthUnknown')}</p>
         ) : null}
-        {chosen?.atMostMg === undefined ? null : (
-          <p className="confirm__detail">
-            {t('check.strengthAtMost', { strength: strengthText(chosen.atMostMg, lang) })}
-          </p>
+        {shownBand === undefined ? null : (
+          <p className="confirm__detail">{doseBandLine(t, shownBand, lang)}</p>
         )}
         {local === undefined ? null : (
           <p className="meta">
@@ -677,6 +717,11 @@ function ConfirmForm({
         </Button>
       ) : null}
 
+      {range === undefined || !readNumber ? null : (
+        <p className="meta confirm__read">
+          <Typed text={query} label="shown" said={said} />
+        </p>
+      )}
       {range === undefined ? null : (
         <RadioGroup
           question
@@ -690,7 +735,7 @@ function ConfirmForm({
             },
             {
               value: ABOVE,
-              label: t('confirm.strengthAbove', { strength: strengthText(range, lang) }),
+              label: t('check.strengthAbove', { strength: strengthText(range, lang) }),
             },
             // "I do not know" reads as above it, as a box of unknown strength does.
             { value: DONT_KNOW, label: t('confirm.dontKnow'), apart: true },

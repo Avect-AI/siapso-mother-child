@@ -327,6 +327,10 @@ export const en: Dictionary = {
     notRecognisedPlant: 'Remedy not recognised',
     strengthUnknown: 'Strength not stated',
     strengthAtMost: '{strength} or less',
+    strengthAbove: 'More than {strength}',
+    nameAtMost: '{name}, {strength} or less',
+    nameAbove: '{name}, more than {strength}',
+    nameUnknown: '{name}, strength not stated',
     writtenAs: 'You wrote: {text}',
   },
   search: {
@@ -384,7 +388,6 @@ export const en: Dictionary = {
     strength: 'Which strength is written on the box?',
     strengthHint: 'On the box or the blister strip: the number followed by mg or g.',
     dontKnow: "I don't know",
-    strengthAbove: 'More than {strength}',
     showAllStrengths: 'See every strength ({count})',
     chooseStrength: 'Choose a strength, or "I don\'t know".',
     // The answers are forms only (a coated tablet, a syrup): the question asks the form.
@@ -416,6 +419,7 @@ export const en: Dictionary = {
     sameBoxYesNamed: 'Yes, the same as {name}',
     sameBoxNo: 'No, another box',
     sameBoxError: 'Say whether it is the same box.',
+    sameBoxCautious: 'For the same box, the more cautious answer is kept: {name}.',
     takesPlace: '{name}, strength not stated, becomes {product} in the list.',
     missing: 'This product is not on this phone. Search again.',
     missingSubstances: '{substances}: not in this product. Compare with the name on the box.',

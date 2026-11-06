@@ -705,6 +705,9 @@ export function Result() {
                 kind: item.ref.kind,
                 id: item.ref.id,
                 ...(item.strengthUnknown === true ? { strengthUnknown: true } : {}),
+                ...(item.strengthAtMostMg === undefined
+                  ? {}
+                  : { strengthAtMostMg: item.strengthAtMostMg }),
               },
             ];
           });

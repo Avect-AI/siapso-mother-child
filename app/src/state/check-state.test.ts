@@ -236,21 +236,46 @@ describe('useCheckStore', () => {
     expect(result.current.changed?.kind).toBe('added');
   });
 
-  it('updates a box whose dose range changes, and says it is there when it does not', () => {
+  it('lists two boxes of one product with two dose ranges apart, never one in place of the other', () => {
     const { result } = renderHook(() => useCheckStore());
     const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
-    act(() => {
-      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
-    });
-    act(() => {
-      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
-    });
-    expect(result.current.changed?.kind).toBe('already');
-    // "Plus de 100 mg" this time: never kept as "100 mg ou moins".
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
     act(() => {
       result.current.add(aspirin);
     });
-    expect(result.current.items).toEqual([aspirin]);
+    act(() => {
+      result.current.add(low);
+    });
+    // "Plus de 100 mg" then "100 mg ou moins": two boxes, the first still read above 100 mg.
+    expect(result.current.items).toEqual([aspirin, low]);
+    expect(result.current.changed?.kind).toBe('added');
+    act(() => {
+      result.current.add(low);
+    });
+    expect(result.current.changed?.kind).toBe('already');
+    expect(result.current.items).toHaveLength(2);
+
+    // Nor in the place of the same box read as not known ("Je ne sais pas").
+    const { result: other } = renderHook(() => useCheckStore());
+    act(() => {
+      other.current.add({ ...aspirin, strengthUnknown: true }, { family: 'substances:aspirin' });
+      other.current.add(low, { family: 'substances:aspirin' });
+    });
+    expect(other.current.items).toEqual([{ ...aspirin, strengthUnknown: true }, low]);
+  });
+
+  it('puts an item in the place of the one it replaces, when she said it is the same box', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
+    act(() => {
+      result.current.add(low);
+      result.current.add(moringa);
+    });
+    act(() => {
+      result.current.add(aspirin, { replacing: low });
+    });
+    expect(result.current.items).toEqual([aspirin, moringa]);
     expect(result.current.changed?.kind).toBe('updated');
   });
 

@@ -393,8 +393,14 @@ export const fr = {
     // The strength is not given: "Je ne sais pas", or not asked since no rule
     // reads it (SCRUM-56). The clinical committee decides the words (Q-C3).
     strengthUnknown: 'Dosage non précisé',
-    // The dose answered by a range, for a box with no strength in the base (generic aspirin).
+    // The dose answered by a range, for a box with no strength in the base (generic aspirin):
+    // on a line of its own, then after the name in a sentence or on a card.
     strengthAtMost: '{strength} ou moins',
+    strengthAbove: 'Plus de {strength}',
+    nameAtMost: '{name}, {strength} ou moins',
+    nameAbove: '{name}, plus de {strength}',
+    // "Je ne sais pas" to that dose, in the same-box question.
+    nameUnknown: '{name}, dosage non précisé',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },
@@ -466,9 +472,6 @@ export const fr = {
     strength: 'Quel dosage est écrit sur la boîte ?',
     strengthHint: 'Sur la boîte ou sur la plaquette : le nombre suivi de mg ou de g.',
     dontKnow: 'Je ne sais pas',
-    // The dose of a box with no strength in the base, asked by a range (generic
-    // aspirin): "{strength} ou moins" (check.strengthAtMost), this, or "Je ne sais pas".
-    strengthAbove: 'Plus de {strength}',
     // A long list shows the strength typed first: the others on demand.
     showAllStrengths: 'Voir tous les dosages ({count})',
     chooseStrength: 'Choisissez un dosage, ou « Je ne sais pas ».',
@@ -503,6 +506,8 @@ export const fr = {
     sameBoxYesNamed: 'Oui, la même que {name}',
     sameBoxNo: 'Non, une autre boîte',
     sameBoxError: "Dites si c'est la même boîte.",
+    // The same box answered with two dose ranges (generic aspirin): the more cautious reading stays.
+    sameBoxCautious: 'Pour la même boîte, la réponse la plus prudente est gardée : {name}.',
     // A known strength chosen while the family is listed without one, and she said it is the same box.
     takesPlace: '{name}, dosage non précisé, devient {product} dans la liste.',
     missing: "Ce produit n'est pas sur ce téléphone. Cherchez encore.",

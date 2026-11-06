@@ -67,6 +67,28 @@ async function backOnCheck() {
   return screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
 }
 
+const ASPIRIN: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+const ASPIRIN_CARD = 'aspirin-analgesic-dose-pregnancy';
+
+/** From the check, adds generic aspirin again with a dose answered. */
+async function addAspirin(user: ReturnType<typeof userEvent.setup>, answer: string) {
+  await user.click(screen.getByRole('button', { name: 'Ajouter un médicament' }));
+  await user.type(await screen.findByRole('searchbox'), 'aspirine');
+  await screen.findByRole('list');
+  await user.keyboard('{Enter}');
+  await user.click(await screen.findByRole('radio', { name: answer }));
+}
+
+/** The cards of a check at 24 weeks. */
+function cardsAt24(items: readonly CheckedItem[]): (string | undefined)[] {
+  return evaluate(pack, {
+    pregnancy: { weeksMin: 24, weeksMax: 24, precision: 'exact' },
+    conditions: [],
+    items: [...items],
+    signs: [],
+  }).findings.map((f) => f.ruleId);
+}
+
 describe('Confirm: a remedy', () => {
   it('shows its name, Latin name and the local name it was found by, and adds it only on yes', async () => {
     const { user, probe } = await confirmFirst('Ajouter un remède', 'nebeday');
@@ -334,12 +356,107 @@ describe('Confirm: the strength on the box', () => {
     expect(product()).toHaveTextContent(/Dosage non précisé$/);
   });
 
-  it('chooses the range of the strength typed with the name of generic aspirin (aspirine 75 mg)', async () => {
+  it('chooses the range of a strength typed in mg with the name of generic aspirin (aspirine 75 mg)', async () => {
     await confirmFirst('Ajouter un médicament', 'aspirine 75 mg');
 
     expect(screen.getByRole('radio', { name: `100${NBSP}mg ou moins` })).toBeChecked();
-    // The number typed is read, not dropped: nothing says no box is known at it.
+    // The number read is shown beside the question, never dropped.
+    expect(document.querySelector('.confirm__read')).toHaveTextContent(
+      'Vous avez écrit : « aspirine 75 mg »',
+    );
     expect(screen.queryByText(/Aucune boîte de ce produit/)).toBeNull();
+  });
+
+  it('chooses nothing from a number without "mg" (aspirine 0,5), and shows the number read', async () => {
+    await confirmFirst('Ajouter un médicament', 'aspirine 0,5');
+
+    const question = screen.getByRole('group', { name: STRENGTH });
+    expect(
+      within(question)
+        .getAllByRole('radio')
+        .every((answer) => !(answer as HTMLInputElement).checked),
+    ).toBe(true);
+    expect(document.querySelector('.confirm__read')).toHaveTextContent(
+      'Vous avez écrit : « aspirine 0,5 »',
+    );
+  });
+
+  it('asks whether a second generic aspirin is the same box, named with its range, and keeps both when not', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'aspirine');
+    await user.click(screen.getByRole('radio', { name: `Plus de 100${NBSP}mg` }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    await backOnCheck();
+    await addAspirin(user, `100${NBSP}mg ou moins`);
+
+    const sameBox = screen.getByRole('group', {
+      name: `Est-ce la même boîte qu'Aspirine (générique), plus de 100${NBSP}mg${NBSP}?`,
+    });
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(within(sameBox).getByText("Dites si c'est la même boîte.")).toBeVisible();
+    expect(probe.current().items).toHaveLength(1);
+
+    await user.click(within(sameBox).getByRole('radio', { name: 'Non, une autre boîte' }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([ASPIRIN, { ...ASPIRIN, strengthAtMostMg: 100 }]);
+    // The box read above 100 mg still gives its card.
+    expect(cardsAt24(probe.current().items)).toContain(ASPIRIN_CARD);
+    const rows = within(screen.getByRole('list', { name: 'Produits ajoutés' })).getAllByRole(
+      'listitem',
+    );
+    expect(rows[0]).toHaveTextContent('Plus de 100 mg');
+    expect(rows[1]).toHaveTextContent('100 mg ou moins');
+  });
+
+  it('keeps the more cautious reading of the same box: "Plus de 100 mg", then "100 mg ou moins"', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'aspirine');
+    await user.click(screen.getByRole('radio', { name: `Plus de 100${NBSP}mg` }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    await backOnCheck();
+    await addAspirin(user, `100${NBSP}mg ou moins`);
+
+    await user.click(screen.getByRole('radio', { name: 'Oui, la même' }));
+    expect(document.querySelector('.confirm__adding')).toHaveTextContent(
+      'Pour la même boîte, la réponse la plus prudente est gardée : Aspirine (générique), plus de 100 mg.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Revenir à la liste' }));
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([ASPIRIN]);
+    expect(cardsAt24(probe.current().items)).toContain(ASPIRIN_CARD);
+  });
+
+  it('keeps the more cautious reading of the same box: "100 mg ou moins", then "Plus de 100 mg"', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'aspirine');
+    await user.click(screen.getByRole('radio', { name: `100${NBSP}mg ou moins` }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    await backOnCheck();
+    expect(cardsAt24(probe.current().items)).not.toContain(ASPIRIN_CARD);
+    await addAspirin(user, `Plus de 100${NBSP}mg`);
+
+    expect(
+      screen.getByRole('group', {
+        name: `Est-ce la même boîte qu'Aspirine (générique), 100${NBSP}mg ou moins${NBSP}?`,
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('radio', { name: 'Oui, la même' }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([ASPIRIN]);
+    expect(cardsAt24(probe.current().items)).toContain(ASPIRIN_CARD);
+  });
+
+  it('keeps both boxes, "100 mg ou moins" then "Plus de 100 mg", when it is another box', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'aspirine');
+    await user.click(screen.getByRole('radio', { name: `100${NBSP}mg ou moins` }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    await backOnCheck();
+    await addAspirin(user, `Plus de 100${NBSP}mg`);
+    await user.click(screen.getByRole('radio', { name: 'Non, une autre boîte' }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([{ ...ASPIRIN, strengthAtMostMg: 100 }, ASPIRIN]);
+    expect(cardsAt24(probe.current().items)).toContain(ASPIRIN_CARD);
   });
 
   it('keeps the brand with its strength unknown and the count when she does not know it', async () => {

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
-import type { Lang } from '@siapso/engine';
+import type { CheckedItem, Lang } from '@siapso/engine';
 import { useEffect, useId, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { EMERGENCY_NUMBERS } from '../config/emergency.js';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
 import { dialNameOf, phoneGroups, telHref } from '../domain/contacts.js';
+import { bandedName } from '../domain/dose-band.js';
 import { keepUnits, type InstructionSource } from '../domain/result-view.js';
 import { displayOf } from '../domain/search-index.js';
 import type { EmergencyNumber, ReferralContact } from '../domain/types.js';
@@ -29,6 +30,8 @@ interface DangerProduct {
   kind: 'product' | 'plant';
   id: string;
   strengthUnknown?: true;
+  /** The dose range said ("100 mg ou moins"), named with the product. */
+  strengthAtMostMg?: number;
 }
 
 /**
@@ -71,10 +74,23 @@ function productsOf(value: unknown): DangerProduct[] {
   const products: DangerProduct[] = [];
   for (const entry of value as unknown[]) {
     if (typeof entry !== 'object' || entry === null) continue;
-    const { kind, id, strengthUnknown } = entry as Record<string, unknown>;
+    const { kind, id, strengthUnknown, strengthAtMostMg } = entry as Record<string, unknown>;
     if ((kind !== 'product' && kind !== 'plant') || typeof id !== 'string' || id === '') continue;
-    if (products.some((p) => p.kind === kind && p.id === id)) continue;
-    products.push(strengthUnknown === true ? { kind, id, strengthUnknown: true } : { kind, id });
+    const atMost =
+      typeof strengthAtMostMg === 'number' &&
+      Number.isFinite(strengthAtMostMg) &&
+      strengthAtMostMg > 0
+        ? strengthAtMostMg
+        : undefined;
+    if (products.some((p) => p.kind === kind && p.id === id && p.strengthAtMostMg === atMost)) {
+      continue;
+    }
+    products.push({
+      kind,
+      id,
+      ...(strengthUnknown === true ? { strengthUnknown: true as const } : {}),
+      ...(atMost === undefined ? {} : { strengthAtMostMg: atMost }),
+    });
   }
   return products;
 }
@@ -263,9 +279,18 @@ export function Referral() {
   const products =
     pack === null
       ? []
-      : shown.products.map(({ kind, id, strengthUnknown }) =>
-          keepUnits(displayOf(pack, { kind, id }, lang, strengthUnknown === true).name),
-        );
+      : shown.products.map((product) => {
+          const item: CheckedItem = {
+            ref: { kind: product.kind, id: product.id },
+            ...(product.strengthUnknown === true ? { strengthUnknown: true } : {}),
+            ...(product.strengthAtMostMg === undefined
+              ? {}
+              : { strengthAtMostMg: product.strengthAtMostMg }),
+          };
+          const name = displayOf(pack, item.ref, lang, product.strengthUnknown === true).name;
+          // A box whose dose is asked by a range says it, as on the result.
+          return keepUnits(bandedName(pack, item, name, lang, t));
+        });
   // A danger from a product, no sign ticked: never called a danger sign.
   const levelLabel =
     shown.productDanger && labels.length === 0 ? t('result.dangerProductLevel') : t('level.danger');

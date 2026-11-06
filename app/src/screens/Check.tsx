@@ -6,7 +6,8 @@ import { latestHistoryAt } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { profileSummary } from '../domain/profile-summary.js';
-import { displayOf, strengthText, type ItemDisplay } from '../domain/search-index.js';
+import { bandedName, doseBandLine, doseBandOf } from '../domain/dose-band.js';
+import { displayOf, type ItemDisplay } from '../domain/search-index.js';
 import { joinNames } from '../domain/result-view.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
@@ -46,6 +47,8 @@ export function profilePathFor(mode: Mode): string {
 function Item({
   item,
   shown,
+  band,
+  named,
   list,
   written,
   said,
@@ -53,6 +56,10 @@ function Item({
 }: {
   item: CheckedItem;
   shown: ItemDisplay;
+  /** The dose range it is read in ("100 mg ou moins", "Plus de 100 mg"), when its dose is asked so. */
+  band: string | undefined;
+  /** Its name with that range, for the remove button: two boxes of one product told apart. */
+  named: string;
   /** The list an unrecognised text was typed in. */
   list: 'product' | 'plant' | undefined;
   /** The name she typed, when the item is shown under another name. */
@@ -62,9 +69,7 @@ function Item({
   onRemove: () => void;
 }) {
   const t = useT();
-  const lang = useLang();
   const units = item.unitsPerDay;
-  const atMost = item.strengthAtMostMg;
   return (
     <li className="check__item">
       <div className="check__item-text">
@@ -85,11 +90,7 @@ function Item({
         {item.strengthUnknown === true ? (
           <p className="meta">{t('check.strengthUnknown')}</p>
         ) : null}
-        {atMost === undefined ? null : (
-          <p className="meta">
-            {t('check.strengthAtMost', { strength: strengthText(atMost, lang) })}
-          </p>
-        )}
+        {band === undefined ? null : <p className="meta">{band}</p>}
         {/* Last in the product block, as on the confirm screen. */}
         {written === undefined ? null : (
           <p className="meta">
@@ -105,7 +106,7 @@ function Item({
       <Button
         variant="quiet"
         className="check__remove"
-        aria-label={t('check.removeNamed', { name: shown.name })}
+        aria-label={t('check.removeNamed', { name: named })}
         onClick={onRemove}
       >
         {t('check.remove')}
@@ -282,11 +283,18 @@ export function Check() {
     pack === null
       ? { name: item.ref.kind === 'unrecognised' ? item.ref.text : item.ref.id, detail: undefined }
       : displayOf(pack, item.ref, lang, item.strengthUnknown === true);
+  // A box whose dose is asked by a range is named with it: "Aspirine (générique), plus de 100 mg".
+  const namedOf = (item: CheckedItem): string =>
+    pack === null ? shownOf(item).name : bandedName(pack, item, shownOf(item).name, lang, t);
+  const bandOf = (item: CheckedItem): string | undefined => {
+    const band = pack === null ? undefined : doseBandOf(pack, item);
+    return band === undefined ? undefined : doseBandLine(t, band, lang);
+  };
   // In a sentence of the app ("... est ajouté à la liste."), a name she typed is quoted.
   const saidOf = (item: CheckedItem): string =>
     item.ref.kind === 'unrecognised'
       ? t('result.quoted', { text: shownOf(item).name })
-      : shownOf(item).name;
+      : namedOf(item);
 
   const openSearch = (kind: 'product' | 'plant') => {
     // One entry after this one: adding an item comes back here (check-flow.ts).
@@ -363,6 +371,8 @@ export function Check() {
                 key={`${String(index)}:${item.ref.kind}:${'id' in item.ref ? item.ref.id : item.ref.text}`}
                 item={item}
                 shown={shown}
+                band={bandOf(item)}
+                named={namedOf(item)}
                 list={check.listOf(item)}
                 written={check.writtenOf(item)}
                 said={check.saidOf(item)}

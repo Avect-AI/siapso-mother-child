@@ -243,6 +243,17 @@ describe('buildResultView: orientation', () => {
     expect(fever.headline).toBe(pack.messages.fr['danger-sign-fever']?.orientation);
   });
 
+  it('names generic aspirin with the dose range it is read in, so the card says why (SCRUM-56)', () => {
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const above = viewOf(contextOf({ pregnancy: weeks(30), items: [aspirin] }), 'accompanied');
+    expect(onlyFinding(above).names).toEqual(['Aspirine (générique), plus de 100 mg']);
+    const low = viewOf(
+      contextOf({ pregnancy: weeks(30), items: [{ ...aspirin, strengthAtMostMg: 100 }] }),
+      'accompanied',
+    );
+    expect(onlyFinding(low).names).toEqual(['Aspirine (générique), 100 mg ou moins']);
+  });
+
   it('says the unknown default in full, without a sentence the message already said', () => {
     // Kinkeliba's risk already says that nobody knows whether it can harm: only who and when.
     const plant = onlyFinding(
