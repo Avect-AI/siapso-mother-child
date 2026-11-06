@@ -34,7 +34,9 @@ export const MAX_RECORDING_SECONDS = 8;
  * ticked instead of 50, on 80 sentences of three Windows voices), the FLEURS
  * word error rate unchanged (30.0 % against 30.3 %), 6 to 13 % more time; but
  * "kinkéliba" was then heard as "quinine qu'il y va" three times, a medicine in
- * place of a remedy. Off until real voices are measured with it (SCRUM-32).
+ * place of a remedy (offered to confirm, never ticked: the clause guard of the
+ * resolver), and a prompt adding the remedies that sound like medicines did
+ * not remove it. Off until real voices are measured with it (SCRUM-32).
  */
 export const VOICE_NAMES_PROMPT_ON = false;
 
