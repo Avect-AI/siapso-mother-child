@@ -121,3 +121,46 @@ test('reads a synthetic prescription offline: nothing ticked, each product confi
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText(/Doliprane/i);
   await expect(page.getByRole('heading', { level: 2, name: /signes maintenant/ })).toBeVisible();
 });
+
+/** The prescription photographed at an angle on a table, as a phone's JPEG (as the OCR bench does). */
+async function photoOf(browser: Browser, scan: Buffer): Promise<Buffer> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 1700 } });
+  await page.setContent(
+    `<!doctype html><html><body style="margin:0;background:#8a7a66;perspective:1600px">` +
+      `<div style="padding:90px"><img src="data:image/png;base64,${scan.toString('base64')}" ` +
+      `style="width:1080px;transform:rotateX(6deg) rotateY(3deg) rotateZ(3deg)"></div></body></html>`,
+  );
+  const jpeg = await page.screenshot({ type: 'jpeg', quality: 75 });
+  await page.close();
+  return jpeg;
+}
+
+test('reads a photo taken with the camera button, at an angle, offline', async ({
+  page,
+  context,
+  browser,
+}) => {
+  const photo = await photoOf(browser, await scanOf(browser));
+  await startWithProfile(page);
+  await page.getByRole('button', { name: /^Lire une ordonnance/ }).click();
+  await page.getByRole('button', { name: 'Installer le pack' }).click();
+  await expect(page.getByRole('button', { name: 'Prendre une photo' })).toBeVisible({
+    timeout: 120_000,
+  });
+  await context.setOffline(true);
+
+  // The camera button opens the phone's camera: its input asks for the back camera.
+  const camera = page.getByTestId('prescription-photo');
+  await expect(camera).toHaveAttribute('capture', 'environment');
+  await expect(camera).toHaveAttribute('accept', 'image/*');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Prendre une photo' }).click();
+  await (await chooser).setFiles({ name: 'photo.jpg', mimeType: 'image/jpeg', buffer: photo });
+
+  await expect(
+    page.getByRole('heading', { level: 2, name: "Produits lus sur l'ordonnance" }),
+  ).toBeVisible({ timeout: 120_000 });
+  await expect(page.getByRole('checkbox', { name: /Doliprane/ })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Amoxicilline/i })).not.toBeChecked();
+  await expect(page.getByText(/Awa Diop/)).toHaveCount(0);
+});
