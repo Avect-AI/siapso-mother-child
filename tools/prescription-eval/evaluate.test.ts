@@ -27,7 +27,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 let pack: Pack;
 beforeAll(async () => {
   pack = buildPack(await loadContent(ROOT));
-});
+}, 60_000);
 
 const rx = (patch: Partial<TruthRx> = {}): TruthRx => ({
   id: 'rx01',
@@ -330,7 +330,8 @@ describe('failures', () => {
   });
 });
 
-describe('main', () => {
+// Each run builds the pack from the repository: a few seconds, longer on a busy machine.
+describe('main', { timeout: 60_000 }, () => {
   let dir: string;
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });
