@@ -378,14 +378,16 @@ passes_when_every_step_passes() {
   args=''
   printf '%s\n' 'Build and test' 'End-to-end' >"$FAKE/actions-failed"
 }
-skips_the_server_image_and_runs_one_worker() { args='--skip-docker --workers 1 --only build-and-test,end-to-end'; }
+skips_the_server_image_and_runs_one_worker() {
+  args='--skip-docker --workers 1 --test-timeout 45000 --only build-and-test,end-to-end'
+}
 refuses_without_docker() {
   args=''
   : >"$FAKE/no-docker"
 }
 fails_a_job_at_its_first_failed_step() {
   args='--skip-docker --only build-and-test,end-to-end'
-  printf '%s\n' 'pnpm lint' 'pnpm e2e --workers=2' >"$FAKE/fail"
+  printf '%s\n' 'pnpm lint' 'pnpm e2e --workers=2 --timeout=60000' >"$FAKE/fail"
 }
 fails_dco_for_a_commit_not_signed_off() {
   args='--only developer-certificate-of-origin'
@@ -424,6 +426,7 @@ skips_dco_for_dependabot() {
   pr_message='Bump a dependency'
 }
 refuses_an_unknown_job() { args='--only lint'; }
+refuses_a_test_timeout_shorter_than_the_repository_sets() { args='--skip-docker --test-timeout 10000'; }
 refuses_when_the_end_to_end_port_is_taken() {
   args='--only end-to-end'
   echo 1 >"$FAKE/port-taken-from"
@@ -476,6 +479,7 @@ scenario refuses refuses_an_unknown_workflow_step 'run: pnpm extra-check'
 scenario refuses refuses_a_temporary_folder_in_onedrive 'OneDrive'
 scenario refuses refuses_a_bad_workers_value 'Usage'
 scenario refuses refuses_an_unknown_job 'Usage'
+scenario refuses refuses_a_test_timeout_shorter_than_the_repository_sets 'at least 30000'
 scenario refuses refuses_when_the_end_to_end_port_is_taken 'http://localhost:4173 already answers'
 scenario fails leaves_the_end_to_end_job_when_its_port_is_taken_later 'http://localhost:4173 already answers'
 scenario passes downloads_the_node_nvmrc_names 'Downloading node-v'
@@ -510,13 +514,14 @@ fi
 for step in 'pnpm install --frozen-lockfile' 'shellcheck tools/github/merge-pr.sh tools/github/merge-pr.test.sh' \
   'shellcheck tools/ci/local-ci.sh tools/ci/local-ci.test.sh' \
   'shellcheck tools/release/audit.sh tools/release/audit.test.sh' 'pnpm lint' 'pnpm format:check' \
-  'pnpm typecheck' 'pnpm test:coverage' 'pnpm knowledge:check' 'pnpm eval:resolver' 'pnpm build' \
+  'pnpm typecheck' 'pnpm test:coverage --testTimeout=30000 --hookTimeout=60000' \
+  'pnpm knowledge:check' 'pnpm eval:resolver' 'pnpm build' \
   'pnpm budget:app' 'docker build -f server/Dockerfile -t siapso-server:ci .' \
-  'node tools/ci/check-playwright-image.mjs' 'pnpm knowledge:build' 'pnpm e2e --workers=2'; do
+  'node tools/ci/check-playwright-image.mjs' 'pnpm knowledge:build' 'pnpm e2e --workers=2 --timeout=60000'; do
   if ! called "$s" "$step"; then fail "$s: runs \"$step\""; fi
 done
 if ! grep -q '^reuse .*lint \[' "$work/$s/fake/calls"; then fail "$s: runs reuse lint"; fi
-if ! grep -q '^pnpm test:coverage \[.*\[vitest workers=2\]$' "$work/$s/fake/calls"; then
+if ! grep -q '^pnpm test:coverage --testTimeout=30000 --hookTimeout=60000 \[.*\[vitest workers=2\]$' "$work/$s/fake/calls"; then
   fail "$s: runs the unit tests with at most 2 Vitest workers"
 fi
 if ! grep -q '^node tools/ci/check-playwright-image.mjs --browsers .*browsers \[' "$work/$s/fake/calls"; then
@@ -556,7 +561,12 @@ case "$(description_of "$s" 'Build and test')" in
 esac
 if grep -q '^docker build' "$work/$s/fake/calls"; then fail "$s: builds no server image"; fi
 if ! called "$s" 'pnpm budget:app'; then fail "$s: runs every other step"; fi
-if ! called "$s" 'pnpm e2e --workers=1'; then fail "$s: runs the end-to-end tests with --workers=1"; fi
+if ! called "$s" 'pnpm test:coverage --testTimeout=45000 --hookTimeout=90000'; then
+  fail "$s: gives the unit tests the test timeout asked, and their hooks twice it"
+fi
+if ! called "$s" 'pnpm e2e --workers=1 --timeout=90000'; then
+  fail "$s: runs the end-to-end tests with --workers=1 and twice the test timeout"
+fi
 
 # A job stops at its first failed step and posts failure, naming that step;
 # the report of failed end-to-end tests stays with the logs.
@@ -583,13 +593,30 @@ expect_status passes_a_fork_without_a_jira_reference 'Text hygiene' success
 s=leaves_the_end_to_end_job_when_its_port_is_taken_later
 expect_status "$s" 'Build and test' success
 expect_status "$s" 'End-to-end' none
-if called "$s" 'pnpm e2e --workers=2'; then fail "$s: does not run the end-to-end tests"; fi
+if grep -q '^pnpm e2e ' "$work/$s/fake/calls"; then fail "$s: does not run the end-to-end tests"; fi
 
 # Dependabot: the commit message is not checked and the Developer
 # Certificate of Origin job is skipped, without a status, as in hygiene.yml.
 s=skips_dco_for_dependabot
 expect_status "$s" 'Developer Certificate of Origin' none
 expect_status "$s" 'Text hygiene' success
+
+# A time limit on the command line replaces the one a configuration sets, so
+# the local limits (30 s for a unit test, 60 s for a hook and for an
+# end-to-end test) must be at least every limit this repository sets.
+total=$((total + 1))
+longest() {
+  sed -n "s/^$1: *\([0-9_]*\).*/\1/p" | tr -d _ | sort -n | tail -n 1
+}
+vitest_configs="$(git -C "$root" ls-files '*vitest.config.*')"
+tests_limit="$(cd "$root" && printf '%s\n' "$vitest_configs" | xargs cat | longest ' *testTimeout')"
+hooks_limit="$(cd "$root" && printf '%s\n' "$vitest_configs" | xargs cat | longest ' *hookTimeout')"
+e2e_limit="$(longest '  timeout' <"$root/app/playwright.config.ts")"
+if [ "${tests_limit:-0}" -le 30000 ] && [ "${hooks_limit:-0}" -le 60000 ] && [ "${e2e_limit:-0}" -le 60000 ]; then
+  echo 'ok: the local time limits are at least those of the repository'
+else
+  fail "a configuration sets a longer limit (tests ${tests_limit:-none}, hooks ${hooks_limit:-none}, end-to-end ${e2e_limit:-none}): raise the defaults of --test-timeout"
+fi
 
 # The steps the script knows are the steps of the workflows of this
 # repository; a step added, removed or renamed in either file is reported.

@@ -27,6 +27,7 @@ GitHub Actions refuses to start jobs on this account for now ("recent account pa
 sh tools/ci/local-ci.sh <number>                 # every step, the server image included
 sh tools/ci/local-ci.sh <number> --skip-docker   # without Docker: the server image is not built
 sh tools/ci/local-ci.sh <number> --workers 1     # fewer browsers at once (default 2)
+sh tools/ci/local-ci.sh <number> --test-timeout 60000   # longer time limits on a slow or loaded machine
 sh tools/ci/local-ci.sh <number> --only end-to-end   # one job again, once the cause of its failure is known
 sh tools/github/merge-pr.sh <number>
 ```
@@ -51,6 +52,8 @@ The first run installs the pinned `reuse` with pip into the cache. Behind an ant
 then, in Git Bash, `export PIP_CERT="$LOCALAPPDATA\\system-roots.pem"` before the script. Once `reuse` is in the cache, pip is not needed again until `tools/reuse/requirements.txt` changes.
 
 Differences with GitHub Actions: no Ubuntu runner and no Playwright image, so the tests run on the maintainer's system, with the browsers Playwright installed there (the image check reads that folder instead); the fetch of `origin/main` is not shallow, since the worktree shares the maintainer's clone; on Windows, REUSE lint runs on a `git archive` export of the commit, away from long `node_modules` paths; Vitest runs at most 2 workers (one per core, its default, made the 5 and 10 second limits of the unit tests fail on a machine short of memory; `VITEST_MAX_WORKERS` changes it); the Playwright report of a failed run is kept with the logs instead of being uploaded.
+
+Longer time limits, a local accommodation for a slow or loaded machine: `pnpm test:coverage` gets `--testTimeout=30000 --hookTimeout=60000` (Vitest's own limits are 5 and 10 seconds) and `pnpm e2e` gets `--timeout=60000` (Playwright's own is 30 seconds). A limit only measures speed: a test that passes with it asserts exactly what it asserts on GitHub Actions. `--test-timeout <ms>` changes the unit test limit, and the hooks and the end-to-end tests get twice it. It is at least 30000: a limit on the command line replaces the one a configuration sets, and `server/vitest.config.ts` sets 30 seconds for a test and 60 for a hook (the test of the script fails if a configuration sets a longer one). A test that sets its own limit in its code keeps it, as the merge guard tests of `app/src/result-wording.test.ts` keep their 60 seconds.
 
 GitHub still records each job it refuses to start as a failed check of the commit, under the same name as the local status (its annotation says "The job was not started because recent account payments have failed..."), and `merge-pr.sh` refuses a pull request with a failed check. While Actions is unavailable, a maintainer therefore disables the two workflows, so that new commits only get the local statuses:
 

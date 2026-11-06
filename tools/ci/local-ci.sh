@@ -29,8 +29,10 @@
 #   Windows (node_modules paths are too long there); the end-to-end tests run
 #   with the browsers Playwright installed on this machine, not in the
 #   Playwright image, with --workers=2 by default; Vitest runs at most 2
-#   workers (VITEST_MAX_WORKERS); the report of a failed end-to-end run is
-#   kept with the logs instead of being uploaded.
+#   workers (VITEST_MAX_WORKERS); the time limits of a test are longer (see
+#   --test-timeout), an accommodation for a slow or loaded machine: they only
+#   measure speed, what the tests assert does not change; the report of a
+#   failed end-to-end run is kept with the logs instead of being uploaded.
 # - A status is posted on the head commit only after its job ran: success when
 #   every step passed, failure otherwise (the first failed step is named).
 #   Its description says "Local run on <host>, <UTC time> (GitHub Actions
@@ -39,11 +41,16 @@
 #   for Dependabot: no status is posted for it then.
 # - The logs of each job, and a summary, go to a folder printed at the end.
 #
-# Usage: sh tools/ci/local-ci.sh <pr-number> [--skip-docker] [--workers N] [--only JOBS]
+# Usage: sh tools/ci/local-ci.sh <pr-number> [--skip-docker] [--workers N]
+#                                [--test-timeout MS] [--only JOBS]
 #   --skip-docker  do not build the server image, the last step of Build and
 #                  test: the step is reported as skipped, and the status is
 #                  success only if every other step passed
 #   --workers N    Playwright workers for the end-to-end tests (default 2)
+#   --test-timeout MS
+#                  time limit of a unit test (default and minimum 30000, the
+#                  longest one a configuration of the repository sets); their
+#                  hooks and the end-to-end tests get twice it
 #   --only JOBS    run (and post the status of) these jobs only, separated by
 #                  commas, among text-hygiene, developer-certificate-of-origin,
 #                  build-and-test and end-to-end: to run again a job that
@@ -105,7 +112,7 @@ known_steps() {
   step "$job" 'run: pnpm lint' run
   step "$job" 'run: pnpm format:check' run
   step "$job" 'run: pnpm typecheck' run
-  step "$job" 'run: pnpm test:coverage' run
+  step "$job" 'run: pnpm test:coverage' test_coverage
   step "$job" 'Fetch origin/main for the minimum safe version check' fetch_main
   step "$job" 'run: pnpm knowledge:check' run
   step "$job" 'run: pnpm eval:resolver' run
@@ -320,6 +327,13 @@ step_audit() {
 
 # Not shallow, unlike CI: the worktree shares the refs and objects of the
 # clone it was made from, which a --depth fetch would make shallow.
+# With longer time limits (--test-timeout): a command line limit replaces the
+# one of a configuration, and a test that sets its own in the code keeps it.
+step_test_coverage() {
+  echo "+ pnpm test:coverage --testTimeout=$LCI_TEST_TIMEOUT --hookTimeout=$LCI_HOOK_TIMEOUT"
+  pnpm test:coverage --testTimeout="$LCI_TEST_TIMEOUT" --hookTimeout="$LCI_HOOK_TIMEOUT"
+}
+
 step_fetch_main() {
   git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 }
@@ -365,8 +379,8 @@ step_browsers() {
 }
 
 step_e2e() {
-  echo "+ pnpm e2e --workers=$LCI_WORKERS"
-  pnpm e2e --workers="$LCI_WORKERS"
+  echo "+ pnpm e2e --workers=$LCI_WORKERS --timeout=$LCI_E2E_TIMEOUT"
+  pnpm e2e --workers="$LCI_WORKERS" --timeout="$LCI_E2E_TIMEOUT"
 }
 
 # In place of the upload: the report stays with the logs.
@@ -455,6 +469,11 @@ JOBS='text-hygiene developer-certificate-of-origin build-and-test end-to-end'
 PR=''
 SKIP_DOCKER=no
 WORKERS=2
+# The longest time limit of a unit test a configuration of this repository
+# sets (server/vitest.config.ts; its hooks get 60 s): a shorter one on the
+# command line would replace it. tools/ci/local-ci.test.sh checks it.
+MIN_TEST_TIMEOUT=30000
+TEST_TIMEOUT="$MIN_TEST_TIMEOUT"
 ONLY="$(printf '%s' "$JOBS" | tr ' ' ',')"
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -465,6 +484,12 @@ while [ $# -gt 0 ]; do
       shift 2
       ;;
     --workers=*) WORKERS="${1#--workers=}"; shift ;;
+    --test-timeout)
+      [ $# -ge 2 ] || usage
+      TEST_TIMEOUT="$2"
+      shift 2
+      ;;
+    --test-timeout=*) TEST_TIMEOUT="${1#--test-timeout=}"; shift ;;
     --only)
       [ $# -ge 2 ] || usage
       ONLY="$2"
@@ -485,6 +510,11 @@ while [ $# -gt 0 ]; do
 done
 case "$PR" in '' | *[!0-9]*) usage ;; esac
 case "$WORKERS" in '' | *[!0-9]* | 0) usage ;; esac
+case "$TEST_TIMEOUT" in '' | *[!0-9]*) usage ;; esac
+if [ "$TEST_TIMEOUT" -lt "$MIN_TEST_TIMEOUT" ]; then
+  echo "local-ci: --test-timeout must be at least $MIN_TEST_TIMEOUT (ms): a shorter limit would replace a longer one of the repository" >&2
+  usage
+fi
 for wanted in $(printf '%s' "$ONLY" | tr ',' ' '); do
   case " $JOBS " in
     *" $wanted "*) ;;
@@ -737,7 +767,10 @@ if selected end-to-end; then
     refuse "$E2E_URL already answers: another server holds the port of the end-to-end tests," \
       'which CI never reuses. Stop it, or leave that job out with --only.'
   fi
-  TOOLS="$TOOLS, Playwright workers: $WORKERS"
+  TOOLS="$TOOLS, Playwright workers: $WORKERS, end-to-end test limit: $((TEST_TIMEOUT * 2)) ms"
+fi
+if selected build-and-test; then
+  TOOLS="$TOOLS, Vitest workers: $VITEST_MAX_WORKERS, unit test limit: $TEST_TIMEOUT ms (hooks $((TEST_TIMEOUT * 2)) ms)"
 fi
 if selected build-and-test && [ "$SKIP_DOCKER" = yes ]; then TOOLS="$TOOLS, --skip-docker"; fi
 
@@ -757,13 +790,16 @@ LCI_BRANCH="$BRANCH"
 LCI_CROSS="$CROSS"
 LCI_DEPENDABOT="$DEPENDABOT"
 LCI_WORKERS="$WORKERS"
+LCI_TEST_TIMEOUT="$TEST_TIMEOUT"
+LCI_HOOK_TIMEOUT=$((TEST_TIMEOUT * 2))
+LCI_E2E_TIMEOUT=$((TEST_TIMEOUT * 2))
 LCI_SKIP_DOCKER="$SKIP_DOCKER"
 LCI_LOGS="$LOGS"
 LCI_CACHE="$CACHE"
 LCI_BROWSERS=''
 if [ -n "$BROWSERS" ]; then LCI_BROWSERS="$(native_path "$BROWSERS")"; fi
 export LCI_SHA LCI_BASE_SHA LCI_TITLE LCI_BODY LCI_BRANCH LCI_CROSS LCI_DEPENDABOT LCI_WORKERS \
-  LCI_SKIP_DOCKER LCI_LOGS LCI_CACHE LCI_BROWSERS
+  LCI_TEST_TIMEOUT LCI_HOOK_TIMEOUT LCI_E2E_TIMEOUT LCI_SKIP_DOCKER LCI_LOGS LCI_CACHE LCI_BROWSERS
 
 echo "Local CI of pull request $PR at $SHA ($BRANCH, base $BASE_REF at $BASE_SHA)"
 echo "$TOOLS"
