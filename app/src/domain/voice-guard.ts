@@ -2,8 +2,8 @@
 // The names given to the French decoder (config/voice.ts) may come back on
 // their own when nobody speaks: Whisper writes its previous text again over
 // silence or noise (review of #68). A recording too quiet is not transcribed
-// (nothing heard), a faint one is transcribed without the names, and a
-// transcript that repeats the names in their order is read as nothing heard.
+// (nothing heard), a faint or steady one is transcribed without the names, and
+// a transcript that repeats the names in their order is read as nothing heard.
 import { normalize } from '@siapso/resolver';
 
 /** The sample rate of a recording (SPEECH_SAMPLE_RATE of @siapso/speech). */
@@ -12,29 +12,50 @@ const SAMPLE_RATE = 16_000;
 const WINDOW_SECONDS = 0.1;
 
 /**
- * Below this loudness (RMS of the loudest tenth of a second, about -50 dBFS)
- * a recording holds no speech: nothing is heard, and it is not transcribed.
+ * Below this loudness (RMS of the loudest tenth of a second, -60 dBFS) a
+ * recording holds no speech: nothing is heard, and it is not transcribed.
  * Measured on 2026-11-06 (docs/voice.md): the 80 synthetic clips of the audio
- * check are at 0.11 or more (-19 dBFS), white noise of -60 dBFS at 0.001. To
- * measure again with real voices and phones (SCRUM-32).
+ * check are at 0.11 or more (-19 dBFS), the 100 French FLEURS recordings (real
+ * voices) at 0.0021 or more, white noise of -60 dBFS at 0.001. To measure
+ * again with real voices and phones (SCRUM-32).
  */
-export const VOICE_SILENT_RMS = 0.003;
+export const VOICE_SILENT_RMS = 0.001;
 
-/** Below this loudness (about -40 dBFS) the decoder is not given the names. */
+/**
+ * Below this loudness (-40 dBFS) the decoder is not given the names: 3 of the
+ * 100 FLEURS recordings are, transcribed as before.
+ */
 export const VOICE_CONTEXT_MIN_RMS = 0.01;
+
+/**
+ * Under this ratio of the loudest window to the quietest tenth of the windows
+ * a recording is a steady sound, with no word that starts or ends in it: it
+ * is transcribed without the names. Measured on 2026-11-06 (docs/voice.md):
+ * white and pink noise at 1.04 to 1.73 (heard as "Cytotec," with the names
+ * given), the 100 FLEURS recordings at 15.7 or more, the 80 synthetic clips
+ * over white or pink noise of -30 dBFS at 3.8 or more, over white noise of
+ * -20 dBFS at 1.5 to 2.1 (then transcribed without the names).
+ */
+export const VOICE_STEADY_RATIO = 2;
+
+/** The RMS of each window of a tenth of a second, windows overlapping by half (the whole recording when shorter). */
+function windowRms(samples: Float32Array, sampleRate: number): number[] {
+  if (samples.length === 0) return [];
+  const size = Math.max(1, Math.round(sampleRate * WINDOW_SECONDS));
+  if (samples.length <= size) {
+    return [Math.sqrt(sumOfSquares(samples, 0, samples.length) / samples.length)];
+  }
+  const step = Math.max(1, Math.round(size / 2));
+  const values: number[] = [];
+  for (let start = 0; start + size <= samples.length; start += step) {
+    values.push(Math.sqrt(sumOfSquares(samples, start, start + size) / size));
+  }
+  return values;
+}
 
 /** The RMS of the loudest window of a tenth of a second (of the whole recording when shorter). */
 export function loudestRms(samples: Float32Array, sampleRate: number = SAMPLE_RATE): number {
-  if (samples.length === 0) return 0;
-  const size = Math.max(1, Math.round(sampleRate * WINDOW_SECONDS));
-  if (samples.length <= size)
-    return Math.sqrt(sumOfSquares(samples, 0, samples.length) / samples.length);
-  const step = Math.max(1, Math.round(size / 2));
-  let loudest = 0;
-  for (let start = 0; start + size <= samples.length; start += step) {
-    loudest = Math.max(loudest, sumOfSquares(samples, start, start + size));
-  }
-  return Math.sqrt(loudest / size);
+  return Math.max(0, ...windowRms(samples, sampleRate));
 }
 
 function sumOfSquares(samples: Float32Array, from: number, to: number): number {
@@ -46,11 +67,18 @@ function sumOfSquares(samples: Float32Array, from: number, to: number): number {
   return sum;
 }
 
-/** What a recording holds, by its loudness: no speech, faint speech, or speech. */
-export function voiceGate(samples: Float32Array): 'silent' | 'faint' | 'speech' {
-  const loudness = loudestRms(samples);
+/**
+ * What a recording holds, by its loudness: no speech (`silent`: not
+ * transcribed), faint speech or a steady sound (`plain`: transcribed without
+ * the names), or speech.
+ */
+export function voiceGate(samples: Float32Array): 'silent' | 'plain' | 'speech' {
+  const windows = windowRms(samples, SAMPLE_RATE);
+  const loudness = Math.max(0, ...windows);
   if (loudness < VOICE_SILENT_RMS) return 'silent';
-  return loudness < VOICE_CONTEXT_MIN_RMS ? 'faint' : 'speech';
+  if (loudness < VOICE_CONTEXT_MIN_RMS) return 'plain';
+  const quiet = [...windows].sort((a, b) => a - b)[Math.floor(windows.length / 10)] ?? 0;
+  return loudness < VOICE_STEADY_RATIO * quiet ? 'plain' : 'speech';
 }
 
 /** Three names of the prompt said one after the other as in the prompt: its echo. */
@@ -64,13 +92,19 @@ const wordsOf = (text: string): string[] => normalize(text).split(' ').filter(Bo
  * Whether a transcript repeats the names given to the decoder (`prompt`, names
  * separated by commas): 3 names or more that follow each other in the prompt,
  * said one after the other with no other word between ("Doliprane,
- * paracétamol, Efferalgan"), or 4 words or more of the prompt in its order.
- * Names said as a sentence says them ("du coartem, de l'advil") are not.
+ * paracétamol, Efferalgan"), 4 words or more of the prompt in its order, or
+ * words of the prompt only that end with a comma, as its list goes on
+ * ("Cytotec,"). Names said as a sentence says them ("du coartem, de
+ * l'advil"), or a name said alone ("Cytotec."), are not.
  */
 export function isPromptEcho(transcript: string, prompt: string): boolean {
   const heard = wordsOf(transcript);
   if (heard.length === 0) return false;
   const promptWords = wordsOf(prompt);
+  // The list of the prompt going on: words of it only, ending with a comma
+  // ("Cytotec,", heard so over noise); a name said alone ends otherwise.
+  const ofPrompt = new Set(promptWords);
+  if (/,\s*$/u.test(transcript) && heard.every((word) => ofPrompt.has(word))) return true;
   // A run of words of the prompt, in its order.
   for (let start = 0; start < heard.length; start += 1) {
     for (let from = 0; from < promptWords.length; from += 1) {

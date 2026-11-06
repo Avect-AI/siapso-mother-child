@@ -10,6 +10,7 @@ import {
   loudestRms,
   VOICE_CONTEXT_MIN_RMS,
   VOICE_SILENT_RMS,
+  VOICE_STEADY_RATIO,
   voiceGate,
 } from './voice-guard.js';
 
@@ -38,12 +39,31 @@ describe('loudestRms', () => {
 describe('voiceGate', () => {
   it('skips a recording too quiet, and gives the names only to one loud enough', () => {
     // Measured on 2026-11-06 (docs/voice.md): the 80 synthetic clips are at
-    // 0.11 or more, white noise of -60 dBFS at 0.001, of -45 dBFS at 0.006.
+    // 0.11 or more, the quietest FLEURS recording (a real voice) at 0.0021,
+    // white noise of -60 dBFS at 0.001, of -45 dBFS at 0.006.
     expect(VOICE_SILENT_RMS).toBeLessThan(VOICE_CONTEXT_MIN_RMS);
     expect(voiceGate(new Float32Array(16000))).toBe('silent');
     expect(voiceGate(tone(0.001))).toBe('silent');
-    expect(voiceGate(tone(0.006))).toBe('faint');
-    expect(voiceGate(tone(0.1))).toBe('speech');
+    // The quietest real voice measured is transcribed, without the names.
+    expect(voiceGate(tone(0.0021 * Math.SQRT2, 1, 0.5, 0.3))).toBe('plain');
+    expect(voiceGate(tone(0.006, 1, 0.5, 0.3))).toBe('plain');
+    expect(voiceGate(tone(0.1, 1, 0.5, 0.3))).toBe('speech');
+  });
+
+  // Measured on 2026-11-06 with the names given: steady noise of -30 dBFS was
+  // heard as "Cytotec,". Steady noise is transcribed without them.
+  it('gives no names to a steady sound, however loud', () => {
+    expect(VOICE_STEADY_RATIO).toBeGreaterThan(1.73);
+    // A tone or a noise as loud all along: no word starts or ends in it.
+    expect(voiceGate(tone(0.1))).toBe('plain');
+    const noise = Float32Array.from({ length: 16000 }, (_, at) => 0.05 * Math.sin(at * 12.9898));
+    expect(voiceGate(noise)).toBe('plain');
+    // A word over that noise stands out of it.
+    const loud = tone(0.2);
+    const word = noise.map((value, at) =>
+      at > 6000 && at < 10000 ? value + (loud[at] ?? 0) : value,
+    );
+    expect(voiceGate(word)).toBe('speech');
   });
 });
 
@@ -55,6 +75,16 @@ describe('isPromptEcho', () => {
       true,
     );
     expect(isPromptEcho('Merci. Codéine, fer, acide folique.', VOICE_NAMES_PROMPT)).toBe(true);
+  });
+
+  // Measured on 2026-11-06: noise was heard as "Cytotec,", the list of the
+  // prompt going on. A name said alone ends otherwise ("Cytotec.").
+  it('reads as an echo names of the prompt alone that end with a comma, as the list goes on', () => {
+    expect(isPromptEcho('Cytotec,', VOICE_NAMES_PROMPT)).toBe(true);
+    expect(isPromptEcho(' Advil, Cytotec, ', VOICE_NAMES_PROMPT)).toBe(true);
+    expect(isPromptEcho('Cytotec.', VOICE_NAMES_PROMPT)).toBe(false);
+    expect(isPromptEcho('Cytotec', VOICE_NAMES_PROMPT)).toBe(false);
+    expect(isPromptEcho("C'est le cas,", VOICE_NAMES_PROMPT)).toBe(false);
   });
 
   it('never reads so a sentence that names products of the list as said', () => {

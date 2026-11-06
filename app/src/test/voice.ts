@@ -71,11 +71,14 @@ export interface FakeSpeechOptions {
   samples?: Float32Array;
 }
 
-/** One second of a 440 Hz tone of this amplitude, at 16 kHz. */
+/**
+ * A recording of a word: a third of a second of silence, then a 440 Hz tone
+ * of this amplitude, at 16 kHz (one second in all by default).
+ */
 export function toneSamples(amplitude: number, seconds = 1): Float32Array {
-  return Float32Array.from(
-    { length: Math.round(seconds * 16000) },
-    (_, at) => amplitude * Math.sin((2 * Math.PI * 440 * at) / 16000),
+  const silence = Math.round(16000 / 3);
+  return Float32Array.from({ length: Math.round(seconds * 16000) }, (_, at) =>
+    at < silence ? 0 : amplitude * Math.sin((2 * Math.PI * 440 * at) / 16000),
   );
 }
 

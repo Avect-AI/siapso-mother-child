@@ -114,8 +114,8 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
       return;
     }
     // Review of #68: a recording with no speech is not transcribed (the names
-    // given to the decoder would come back on their own), and a faint one is
-    // transcribed without them.
+    // given to the decoder would come back on their own), and a faint one, or
+    // a steady sound, is transcribed without them.
     const gate = voiceGate(samples);
     if (gate === 'silent') {
       endUse();
