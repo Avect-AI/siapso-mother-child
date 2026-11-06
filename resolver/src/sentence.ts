@@ -19,7 +19,7 @@ import {
   WEAK_ALONE_WORDS,
 } from './sentence-words.js';
 import { parseStrength } from './strength.js';
-import type { Candidate, ResolverIndex } from './types.js';
+import type { Candidate, MatchKind, ResolverIndex } from './types.js';
 
 /** A product or remedy named inside a sentence. */
 export interface SentenceProduct {
@@ -35,6 +35,19 @@ export interface SentenceProduct {
   strengthMg?: number;
   /** The spelling read in place of a word spelt as a Wolof speaker writes it ("ibiprofen" for "ibiporofen"). */
   readAs?: string;
+  /**
+   * The words the voice heard, when they were read joined, sound for sound, as
+   * this name ("King Kyliba" for kinkéliba): offered unticked, to be checked.
+   */
+  heardAs?: string;
+}
+
+export interface SentenceOptions {
+  /**
+   * The sentence is what the voice heard: 2 or 3 words that name nothing are
+   * also read joined, as the voice may split a name it does not know.
+   */
+  heard?: boolean;
 }
 
 /** At most this many words of a name (linking and joining words aside). */
@@ -419,6 +432,144 @@ function strengthAfter(
   return { end, mg };
 }
 
+const DEVOICED: Readonly<Record<string, string>> = { b: 'p', d: 't', g: 'k', v: 'f', z: 's' };
+
+/**
+ * A normalised word as it sounds, the letters a voice confuses read alike:
+ * "ai" and "ei" as e, "au" as o, "eu" as e, each voiced consonant as its
+ * voiceless one (b p, d t, g k, v f, z s), then a doubled letter as one
+ * ("kingkiliba" and "kinkeliba" are one letter apart; "libuprofain" and
+ * "ibuprofen" too).
+ */
+export function phoneticKey(word: string): string {
+  return word
+    .replace(/[ae]i/g, 'e')
+    .replaceAll('au', 'o')
+    .replaceAll('eu', 'e')
+    .replace(/[bdgvz]/g, (letter) => DEVOICED[letter] ?? letter)
+    .replace(/(.)\1+/g, '$1');
+}
+
+/** A whole name joined from words this long or longer may be one letter off. */
+const MERGED_NEAR_LENGTH = 6;
+/** The shortest whole name read from joined words. */
+const MERGED_MIN_LENGTH = 5;
+/** At most this many words joined. */
+const MERGED_MAX_WORDS = 3;
+
+/** The whole names of an index (as matched, spaces taken out) by the length of their phonetic key; made once. */
+const keysByLength = new WeakMap<ResolverIndex, Map<number, { key: string; name: string }[]>>();
+
+function nameKeys(index: ResolverIndex): Map<number, { key: string; name: string }[]> {
+  let byLength = keysByLength.get(index);
+  if (byLength === undefined) {
+    byLength = new Map();
+    const seen = new Set<string>();
+    for (const { compact } of compiledOf(index).names) {
+      if (compact.length < MERGED_MIN_LENGTH || seen.has(compact)) continue;
+      seen.add(compact);
+      const key = phoneticKey(compact);
+      byLength.set(key.length, [...(byLength.get(key.length) ?? []), { key, name: compact }]);
+    }
+    keysByLength.set(index, byLength);
+  }
+  return byLength;
+}
+
+/** The whole name whose phonetic key is this one, or one letter off when it has 6 letters or more. */
+function nameSoundingLike(index: ResolverIndex, key: string): string | undefined {
+  const byLength = nameKeys(index);
+  const same = byLength.get(key.length)?.find((name) => name.key === key);
+  if (same !== undefined) return same.name;
+  for (const length of [key.length - 1, key.length, key.length + 1]) {
+    if (length < MERGED_NEAR_LENGTH) continue;
+    const near = byLength.get(length)?.find((name) => damerauLevenshtein(key, name.key) <= 1);
+    if (near !== undefined) return near.name;
+  }
+  return undefined;
+}
+
+/**
+ * What an article the voice may have moved gives the name after it, or
+ * undefined: "d" and "l" elided before the next word ("d'Oli-Pran": d), and
+ * "la" and "le", whose vowel may be the name's first letter ("la moxiceline"
+ * for "l'amoxicilline": a).
+ */
+function articleGlue(sentence: string, token: Token): string | undefined {
+  if ((token.norm === 'd' || token.norm === 'l') && /^['’]/u.test(sentence.slice(token.end))) {
+    return token.norm;
+  }
+  if (token.norm === 'la') return 'a';
+  if (token.norm === 'le') return 'e';
+  return undefined;
+}
+
+/**
+ * The spellings to compare of words joined: as heard, and without a first
+ * l or d before a vowel, an article the voice glued to the name ("Libu
+ * Profaine" for "l'ibuprofène").
+ */
+function joinedSpellings(joined: string): string[] {
+  return /^[ld][aeiou]/u.test(joined) ? [joined, joined.slice(1)] : [joined];
+}
+
+/**
+ * The names read from 2 or 3 words heard one after the other, joined and
+ * compared sound for sound (phoneticKey) with the whole names of the base,
+ * outside the words of a name found clearly: "King Kyliba" is kinkéliba,
+ * "Libu Profaine" ibuprofen, "d'Oli-Pran" Doliprane, "la moxiceline"
+ * amoxicillin (an article may start the words). Each is strong at most and
+ * offered unticked.
+ */
+function mergedReadings(
+  index: ResolverIndex,
+  best: Best,
+  sentence: string,
+  tokens: readonly Token[],
+  covered: ReadonlySet<number>,
+): { at: number; last: number; product: SentenceProduct }[] {
+  const found: { at: number; last: number; product: SentenceProduct }[] = [];
+  let first = 0;
+  while (first < tokens.length) {
+    let taken = 0;
+    for (let words = MERGED_MAX_WORDS; words >= 2 && taken === 0; words -= 1) {
+      const run = tokens.slice(first, first + words);
+      const head = run[0];
+      if (run.length < words || head === undefined) continue;
+      const glue = articleGlue(sentence, head);
+      const usable = run.every(
+        (token, at) =>
+          !covered.has(first + at) &&
+          (at === 0 ? isNameWord(token) || glue !== undefined : isNameWord(token)) &&
+          (at === 0 || !token.boundary) &&
+          /^\p{L}+$/u.test(token.norm),
+      );
+      if (!usable) continue;
+      const joined = run
+        .map((token, at) => (at === 0 && glue !== undefined ? glue : token.norm))
+        .join('');
+      const name = joinedSpellings(joined)
+        .map((spelling) => nameSoundingLike(index, phoneticKey(spelling)))
+        .find((sounding) => sounding !== undefined);
+      const candidate = name === undefined ? undefined : best(name);
+      if (candidate === undefined || matchStrength(candidate) === 'weak') continue;
+      const last = run.at(-1) ?? head;
+      const heardAs = sentence.slice(head.start, last.end);
+      found.push({
+        at: first,
+        last: first + words - 1,
+        product: { candidate, strength: 'strong', checked: false, text: heardAs, heardAs },
+      });
+      taken = words;
+    }
+    first += Math.max(taken, 1);
+  }
+  return found;
+}
+
+/** The kinds of match that name a product clearly: the voice's words joined never take their place. */
+const CLEAR_KINDS: ReadonlySet<MatchKind> = new Set(['exact', 'word', 'contained', 'substances']);
+
 /**
  * The products and remedies a sentence names, in the order they are said,
  * each family once. The sentence is read word by word, as normalize reads a
@@ -433,9 +584,16 @@ function strengthAfter(
  * words said are a whole name: "fer et acide folique"). A word of 6 letters
  * or more that names nothing clearly is read once more with a Wolof spelling
  * undone (respellingsOf): then strong at most. A strength said after the name
- * is read with it. Never a level: each product is confirmed by the user.
+ * is read with it. For a sentence the voice heard (`heard`), 2 or 3 words
+ * outside the names found are also read joined, sound for sound
+ * (mergedReadings): such a name is offered unticked, with the words heard
+ * (`heardAs`). Never a level: each product is confirmed by the user.
  */
-export function productsInSentence(index: ResolverIndex, sentence: string): SentenceProduct[] {
+export function productsInSentence(
+  index: ResolverIndex,
+  sentence: string,
+  options: SentenceOptions = {},
+): SentenceProduct[] {
   const tokens = tokensOf(sentence);
   const searched = new Map<string, Candidate | undefined>();
   const best: Best = (text) => {
@@ -446,9 +604,39 @@ export function productsInSentence(index: ResolverIndex, sentence: string): Sent
     const reading = readingOf(index, best, sentence, tokens, span);
     return reading === undefined ? [] : [reading];
   });
+  let taken = chosen(readings);
+  // For what the voice heard, 2 or 3 words joined that sound like a whole name
+  // take the place of a single word read only as the start or a near spelling
+  // of another name ("Libu profène" is ibuprofen, not the start of PROFENID).
+  const merged: ReturnType<typeof mergedReadings> = [];
+  if (options.heard === true) {
+    const clear = (reading: Reading) =>
+      reading.span.words > 1 ||
+      (reading.readAs === undefined && CLEAR_KINDS.has(reading.candidate.match));
+    const covered = new Set<number>();
+    for (const reading of taken.filter(clear)) {
+      for (let at = reading.span.first; at <= reading.span.last; at += 1) covered.add(at);
+    }
+    const overlap = (reading: Reading, joined: (typeof merged)[number]) =>
+      reading.span.first <= joined.last && joined.at <= reading.span.last;
+    // Words joined that name the product already read in one of them add nothing.
+    merged.push(
+      ...mergedReadings(index, best, sentence, tokens, covered).filter(
+        (joined) =>
+          !taken.some(
+            (reading) =>
+              overlap(reading, joined) &&
+              reading.candidate.family === joined.product.candidate.family,
+          ),
+      ),
+    );
+    taken = taken.filter(
+      (reading) => clear(reading) || !merged.some((joined) => overlap(reading, joined)),
+    );
+  }
   const families = new Set<string>();
-  const products: SentenceProduct[] = [];
-  for (const reading of chosen(readings)) {
+  const products: { at: number; product: SentenceProduct }[] = [];
+  for (const reading of taken) {
     if (families.has(reading.candidate.family)) continue;
     families.add(reading.candidate.family);
     const first = tokens[reading.span.first];
@@ -469,13 +657,21 @@ export function productsInSentence(index: ResolverIndex, sentence: string): Sent
     }
     const ambiguous = reading.span.words === 1 && AMBIGUOUS.has(first.norm);
     products.push({
-      candidate,
-      strength: reading.strength,
-      checked: !ambiguous,
-      text,
-      ...(strength === undefined ? {} : { strengthMg: strength.mg }),
-      ...(reading.readAs === undefined ? {} : { readAs: reading.readAs }),
+      at: reading.span.first,
+      product: {
+        candidate,
+        strength: reading.strength,
+        checked: !ambiguous,
+        text,
+        ...(strength === undefined ? {} : { strengthMg: strength.mg }),
+        ...(reading.readAs === undefined ? {} : { readAs: reading.readAs }),
+      },
     });
   }
-  return products;
+  for (const { at, product } of merged) {
+    if (families.has(product.candidate.family)) continue;
+    families.add(product.candidate.family);
+    products.push({ at, product });
+  }
+  return products.sort((a, b) => a.at - b.at).map(({ product }) => product);
 }

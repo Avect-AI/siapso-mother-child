@@ -75,12 +75,29 @@ describe('parseSentences', () => {
 describe('parseSentenceBaseline', () => {
   it('reads the bars, and rejects a missing or non-numeric one', () => {
     expect(
-      parseSentenceBaseline('{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0 }'),
-    ).toEqual({ precision: 0.95, recall: 0.85, backgroundFalseProducts: 0 });
+      parseSentenceBaseline(
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+      ),
+    ).toEqual({
+      precision: 0.95,
+      recall: 0.85,
+      backgroundFalseProducts: 0,
+      backgroundCheckOffers: 0,
+    });
     for (const [text, key] of [
-      ['{ "recall": 0.85, "backgroundFalseProducts": 0 }', 'precision'],
-      ['{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0 }', 'precision'],
-      ['{ "precision": 0.95, "recall": "high", "backgroundFalseProducts": 0 }', 'recall'],
+      [
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0 }',
+        'backgroundCheckOffers',
+      ],
+      ['{ "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }', 'precision'],
+      [
+        '{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+        'precision',
+      ],
+      [
+        '{ "precision": 0.95, "recall": "high", "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+        'recall',
+      ],
       ['{ "precision": 0.95, "recall": 0.85 }', 'backgroundFalseProducts'],
       [
         '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": -1 }',
@@ -140,16 +157,45 @@ describe('evaluateSentences', () => {
       "j'ai pris du kinkéliba",
     ]);
   });
+
+  // The sentences are read as the voice heard them: a name read from words
+  // the voice split is offered unticked ("Vérifiez"), never counted as found.
+  it('counts the names offered to check, right or wrong, apart from the products found', () => {
+    const report = evaluateSentences(
+      index,
+      families,
+      parseSentences(
+        [
+          '- { text: je bois du King Kyliba, lang: fr, type: misspelt, expect: [{ kind: plant, id: kinkeliba }] }',
+          '- { text: je bois du King Kyliba, lang: fr, type: misspelt, expect: [{ kind: plant, id: moringa }] }',
+        ].join('\n'),
+      ),
+    );
+    expect(report.overall).toMatchObject({
+      right: 0,
+      missed: 2,
+      false: 0,
+      checksRight: 1,
+      checksWrong: 1,
+    });
+  });
 });
 
 describe('failures', () => {
-  const baseline = { precision: 0.95, recall: 0.85, backgroundFalseProducts: 0 };
+  const baseline = {
+    precision: 0.95,
+    recall: 0.85,
+    backgroundFalseProducts: 0,
+    backgroundCheckOffers: 0,
+  };
   it('says each bar not met, and a measure that is not a number', () => {
-    expect(failures({ precision: 1, recall: 0.9, background: 0 }, baseline)).toEqual([]);
-    expect(failures({ precision: 0.9, recall: 0.8, background: 1 }, baseline)).toHaveLength(3);
-    expect(failures({ precision: Number.NaN, recall: 0.9, background: 0 }, baseline)).toEqual([
-      'precision is not a number (NaN)',
-    ]);
+    expect(failures({ precision: 1, recall: 0.9, background: 0, checks: 0 }, baseline)).toEqual([]);
+    expect(
+      failures({ precision: 0.9, recall: 0.8, background: 1, checks: 1 }, baseline),
+    ).toHaveLength(4);
+    expect(
+      failures({ precision: Number.NaN, recall: 0.9, background: 0, checks: 0 }, baseline),
+    ).toEqual(['precision is not a number (NaN)']);
   });
 });
 
@@ -174,7 +220,8 @@ describe('main', () => {
     }
   }
 
-  const BARS = '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0 }';
+  const BARS =
+    '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }';
 
   it('exits 0 when the bars are met', async () => {
     const { code, text } = await runWith(ONE, BARS);

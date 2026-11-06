@@ -32,7 +32,8 @@ export function sentenceReadingOf(
 ): SentenceProduct[] | null {
   const words = plainText(text).split(' ').filter(Boolean).length;
   if (words === 0 || (source === 'typed' && words < SENTENCE_TYPED_WORDS)) return null;
-  const products = productsInSentence(index, text);
+  // What the voice heard may split a name it does not know: also read joined, offered unticked.
+  const products = productsInSentence(index, text, { heard: source === 'voice' });
   if (products.length === 0) return null;
   if (products.length > 1) return products;
   return search(index, text, { kinds: [kind] }).length === 0 ? products : null;

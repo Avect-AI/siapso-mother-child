@@ -455,6 +455,9 @@ export const fr = {
     sentenceStrengthTyped: 'Dosage écrit : {strength}',
     // A name of the base that is also a common word ("goro", an in-law): offered unticked.
     sentenceCommonWord: "« {word} » a aussi un autre sens : cochez-le si c'est bien ce produit.",
+    // A name read from words the voice split ("King Kyliba" for kinkéliba):
+    // offered unticked. Never "vérifiez": the app flags, it does not verify.
+    sentenceCheckHeard: "À confirmer : j'ai entendu « {words} »",
     // Read by a screen reader: the list itself shows the names.
     sentenceFoundOne: 'Un produit trouvé dans la phrase : {name}.',
     sentenceFoundMany: '{count} produits trouvés dans la phrase, le premier : {name}.',

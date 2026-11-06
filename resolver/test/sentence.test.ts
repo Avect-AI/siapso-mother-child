@@ -9,6 +9,7 @@ import {
   buildIndex,
   FILLER_WORDS,
   normalize,
+  phoneticKey,
   productsInSentence,
   respellingsOf,
   WEAK_ALONE_WORDS,
@@ -197,6 +198,14 @@ const index = buildIndex([
       componentCount: 2,
     },
   ),
+  product(
+    'bi-profenid',
+    [
+      { text: 'BI PROFENID LP 100 mg, comprimé sécable', lang: 'fr' },
+      { text: 'BI PROFENID LP', lang: 'brand' },
+    ],
+    { family: 'brand:bi profenid lp', strengths: [100], substances: ['ketoprofen'] },
+  ),
   plant('moringa', [
     { text: 'Moringa', lang: 'fr' },
     { text: 'nebeday', lang: 'wo' },
@@ -215,9 +224,9 @@ const index = buildIndex([
   ]),
 ]);
 
-/** The families found, in their order. */
-const families = (sentence: string): string[] =>
-  productsInSentence(index, sentence).map((found) => found.candidate.family);
+/** The families found, in their order; `heard` for what the voice heard. */
+const families = (sentence: string, heard = false): string[] =>
+  productsInSentence(index, sentence, { heard }).map((found) => found.candidate.family);
 
 describe('productsInSentence: names inside a sentence', () => {
   it('finds the product a French sentence names', () => {
@@ -372,6 +381,93 @@ describe('productsInSentence: names spelt as a Wolof speaker writes them', () =>
     expect(families('dama naan amoksisilin')).toEqual(['brand:amoxisilin']);
     expect(families('mu ngi jël kardejik')).toEqual(['brand:kardegik']);
     expect(families('dafa naan metronidasol')).toEqual(['substances:metronidazole']);
+  });
+});
+
+// The voice splits a name it does not know into words ("King Kyliba" for
+// kinkéliba, "Libu Profaine" for l'ibuprofène, "d'Oli-Pran" for Doliprane):
+// for a sentence heard, 2 or 3 words joined are read as one, sound for sound,
+// and a name found so is offered unticked, to be checked.
+describe('productsInSentence: the words of a name the voice split', () => {
+  it('reads two or three words heard as one name, offered unticked', () => {
+    const [found, ...others] = productsInSentence(
+      index,
+      'je prends de la tisanne de King Kyliba le matin',
+      { heard: true },
+    );
+    expect(others).toEqual([]);
+    expect(found?.candidate.id).toBe('kinkeliba');
+    expect(found?.checked).toBe(false);
+    expect(found?.strength).toBe('strong');
+    expect(found?.heardAs).toBe('King Kyliba');
+    expect(families('elle a pris de Libu Profaine pour le mal de dose', true)).toEqual([
+      'substances:ibuprofen',
+    ]);
+    const [split] = productsInSentence(index, "j'ai pris du d'Oli-Pran ce matin", { heard: true });
+    expect(split?.candidate.family).toBe('brand:dolipran');
+    expect(split?.heardAs).toBe("d'Oli-Pran");
+  });
+
+  // The voice moves the article: "l'amoxicilline" heard as "la moxiceline",
+  // "l'ibuprofène" as "Libu Profènie".
+  it('reads an article the voice glued to the name, or cut from it', () => {
+    const [moved] = productsInSentence(index, "on m'a donné de la moxiceline", { heard: true });
+    expect(moved?.candidate.family).toBe('brand:amoxisilin');
+    expect(moved?.checked).toBe(false);
+    expect(moved?.heardAs).toBe('la moxiceline');
+    expect(families('elle a pris de Libu Profènie air soir', true)).toEqual([
+      'substances:ibuprofen',
+    ]);
+  });
+
+  it('prefers the name of the words joined to the start of another name in one of them', () => {
+    // "profène" alone starts BI PROFENID (ketoprofen); "Libu profène" is ibuprofen.
+    expect(families('elle a pris de Libu profène hier soir', true)).toEqual([
+      'substances:ibuprofen',
+    ]);
+    expect(families('elle a pris de Libu profène hier soir')).toEqual(['brand:bi profenid lp']);
+  });
+
+  it('keeps a name found ticked when the words joined name the same product', () => {
+    const [found, ...others] = productsInSentence(index, "on m'a donné de l'amoxiceline", {
+      heard: true,
+    });
+    expect(others).toEqual([]);
+    expect(found?.candidate.family).toBe('brand:amoxisilin');
+    expect(found?.checked).toBe(true);
+    expect(found?.heardAs).toBeUndefined();
+  });
+
+  it('reads them so only for what the voice heard, never for a typed text', () => {
+    expect(families('je prends de la tisanne de King Kyliba le matin')).toEqual([]);
+  });
+
+  it('never offers a name over the words of a name found', () => {
+    const found = productsInSentence(index, 'dama naan doliprane ak nivaquine', { heard: true });
+    expect(found.map((product) => [product.candidate.family, product.checked])).toEqual([
+      ['brand:dolipran', true],
+      ['substances:chloroquine', true],
+    ]);
+  });
+
+  it('finds nothing in words that sound like no name', () => {
+    for (const sentence of [
+      'Fatou ak Awa dañu dem marché',
+      "j'ai mal à la tête depuis hier soir",
+      'mburu ak meew laa lekk',
+    ]) {
+      expect(productsInSentence(index, sentence, { heard: true }), sentence).toEqual([]);
+    }
+  });
+});
+
+describe('phoneticKey', () => {
+  it('reads alike the letters a voice confuses', () => {
+    expect(phoneticKey('kingkiliba')).toBe('kinkilipa');
+    expect(phoneticKey('kinkeliba')).toBe('kinkelipa');
+    expect(phoneticKey('libuprofain')).toBe('lipuprofen');
+    expect(phoneticKey('ibuprofen')).toBe('ipuprofen');
+    expect(phoneticKey('dolipran')).toBe('tolipran');
   });
 });
 

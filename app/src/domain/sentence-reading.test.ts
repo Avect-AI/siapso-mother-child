@@ -43,6 +43,17 @@ describe('sentenceReadingOf: what the voice heard', () => {
     ]);
   });
 
+  it('offers unticked a name read from words the voice split', () => {
+    const found = sentenceReadingOf(index, 'je bois une tisanne de King Kyliba', 'plant', 'voice');
+    expect(
+      found?.map((product) => [product.candidate.id, product.checked, product.heardAs]),
+    ).toEqual([['kinkeliba', false, 'King Kyliba']]);
+    // Typed, the words are what she wrote: never read joined.
+    expect(
+      sentenceReadingOf(index, 'je bois une tisanne de King Kyliba', 'plant', 'typed'),
+    ).toBeNull();
+  });
+
   it('is null when the sentence names no product', () => {
     expect(sentenceReadingOf(index, 'dama feebar', 'product', 'voice')).toBeNull();
     expect(sentenceReadingOf(index, '', 'product', 'voice')).toBeNull();

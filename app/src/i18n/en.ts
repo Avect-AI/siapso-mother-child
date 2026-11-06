@@ -377,6 +377,7 @@ export const en: Dictionary = {
     sentenceStrengthSaid: 'Strength said: {strength}',
     sentenceStrengthTyped: 'Strength typed: {strength}',
     sentenceCommonWord: '"{word}" also means something else: tick it if it is this product.',
+    sentenceCheckHeard: 'To confirm: I heard "{words}"',
     sentenceFoundOne: 'One product found in the sentence: {name}.',
     sentenceFoundMany: '{count} products found in the sentence, the first: {name}.',
   },

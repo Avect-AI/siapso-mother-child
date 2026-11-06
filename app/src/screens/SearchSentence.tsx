@@ -58,8 +58,13 @@ export function SentenceProducts({
         ...(shown.detail === undefined ? [] : [shown.detail]),
         t(product.candidate.kind === 'product' ? 'search.kindProduct' : 'search.kindPlant'),
         ...strength,
-        // A name that is also a common word is offered unticked: why.
-        ...(product.checked ? [] : [t('search.sentenceCommonWord', { word: product.text })]),
+        // Offered unticked, and why: a name read from words the voice split
+        // ("King Kyliba"), or a name that is also a common word ("goro").
+        ...(product.heardAs !== undefined
+          ? [t('search.sentenceCheckHeard', { words: product.heardAs })]
+          : product.checked
+            ? []
+            : [t('search.sentenceCommonWord', { word: product.text })]),
       ],
       checked: ticked[at] === true,
       onChange: (checked: boolean) => {

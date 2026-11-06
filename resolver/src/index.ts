@@ -15,8 +15,8 @@ export {
   STOP_WORDS,
   withoutStopWords,
 } from './normalize.js';
-export { productsInSentence, respellingsOf } from './sentence.js';
-export type { SentenceProduct } from './sentence.js';
+export { phoneticKey, productsInSentence, respellingsOf } from './sentence.js';
+export type { SentenceOptions, SentenceProduct } from './sentence.js';
 export {
   AMBIGUOUS_NAME_WORDS,
   FILLER_WORDS,

@@ -196,6 +196,30 @@ describe('Search: products said in a sentence', () => {
   });
 });
 
+describe('Search: a name the voice split into words', () => {
+  it('offers it unticked, saying what was heard, and adds it only once ticked and confirmed', async () => {
+    const { user, group, probe } = await say(
+      'je bois une tisanne de King Kyliba',
+      'Ajouter un remède',
+    );
+    const box = within(group).getByRole('checkbox');
+    expect(box).not.toBeChecked();
+    expect(box.closest('label')).toHaveTextContent(/Kinkéliba/);
+    expect(box.closest('label')).toHaveTextContent(
+      new RegExp(`À confirmer${NBSP}: j'ai entendu «${NBSP}King Kyliba${NBSP}»`),
+    );
+    await user.click(add());
+    expect(screen.getByText('Cochez au moins un produit, ou écrivez le nom.')).toBeVisible();
+    await user.click(box);
+    await user.click(add());
+    await user.click(await screen.findByRole('button', { name: "Oui, c'est ce remède" }));
+    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    expect(probe.current().items.map((item) => item.ref)).toEqual([
+      { kind: 'plant', id: 'kinkeliba' },
+    ]);
+  });
+});
+
 describe('Search: products typed in a sentence', () => {
   it('reads a typed sentence of three words or more that has no candidate', async () => {
     const { user, field } = await openSearch('Ajouter un médicament', { supported: false });

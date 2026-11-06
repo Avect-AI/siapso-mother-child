@@ -40,6 +40,8 @@ export interface SentenceBaseline {
   recall: number;
   /** Maximum number of products found (ticked) in the background transcripts. */
   backgroundFalseProducts: number;
+  /** Maximum number of names offered to check ("Vérifiez", read from words joined) in the background. */
+  backgroundCheckOffers: number;
 }
 
 export interface SentenceTally {
@@ -54,6 +56,10 @@ export interface SentenceTally {
   missed: number;
   /** Products offered unticked. */
   unticked: number;
+  /** Names offered to check, read from words the voice split, that the sentence names. */
+  checksRight: number;
+  /** Names offered to check that the sentence does not name. */
+  checksWrong: number;
 }
 
 export interface SentenceMiss {
@@ -152,22 +158,38 @@ export function parseSentenceBaseline(text: string): SentenceBaseline {
     throw new Error(`${BASELINE_FILE} must be an object`);
   }
   const record = data as Record<string, unknown>;
-  const background = record.backgroundFalseProducts;
-  if (typeof background !== 'number' || !Number.isInteger(background) || background < 0) {
-    throw new Error(
-      `${BASELINE_FILE}: "backgroundFalseProducts" must be a whole number, 0 or more`,
-    );
-  }
   return {
     precision: ratioIn(record, 'precision'),
     recall: ratioIn(record, 'recall'),
-    backgroundFalseProducts: background,
+    backgroundFalseProducts: countIn(record, 'backgroundFalseProducts'),
+    backgroundCheckOffers: countIn(record, 'backgroundCheckOffers'),
   };
 }
 
-function emptyTally(): SentenceTally {
-  return { sentences: 0, expected: 0, right: 0, false: 0, missed: 0, unticked: 0 };
+function countIn(data: Record<string, unknown>, key: string): number {
+  const value = data[key];
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+    throw new Error(`${BASELINE_FILE}: "${key}" must be a whole number, 0 or more`);
+  }
+  return value;
 }
+
+function emptyTally(): SentenceTally {
+  return {
+    sentences: 0,
+    expected: 0,
+    right: 0,
+    false: 0,
+    missed: 0,
+    unticked: 0,
+    checksRight: 0,
+    checksWrong: 0,
+  };
+}
+
+/** The products read in a sentence, as the voice heard it (names read from split words included). */
+const read = (index: ResolverIndex, text: string): SentenceProduct[] =>
+  productsInSentence(index, text, { heard: true });
 
 const precisionOf = (tally: SentenceTally): number =>
   tally.right + tally.false === 0 ? 1 : tally.right / (tally.right + tally.false);
@@ -201,10 +223,12 @@ export function evaluateSentences(
   const misses: SentenceMiss[] = [];
   const strengths = { said: 0, read: 0 };
   for (const item of sentences) {
-    const found = productsInSentence(index, item.text);
+    const found = read(index, item.text);
     const ticked = found.filter((product) => product.checked);
+    const checks = found.filter((product) => product.heardAs !== undefined);
     const left = [...ticked];
     let right = 0;
+    let checksRight = 0;
     const missed: string[] = [];
     for (const product of item.expect) {
       const wanted = new Set(alternativesOf(product).map((entry) => familyOf(families, entry)));
@@ -212,6 +236,7 @@ export function evaluateSentences(
       const hit = at >= 0 ? left.splice(at, 1)[0] : undefined;
       if (hit === undefined) {
         missed.push(alternativesOf(product)[0]?.id ?? '');
+        if (checks.some((check) => wanted.has(check.candidate.family))) checksRight += 1;
         continue;
       }
       right += 1;
@@ -227,6 +252,8 @@ export function evaluateSentences(
       tally.false += left.length;
       tally.missed += missed.length;
       tally.unticked += found.length - ticked.length;
+      tally.checksRight += checksRight;
+      tally.checksWrong += checks.length - checksRight;
     }
     if (left.length > 0 || missed.length > 0) {
       misses.push({ text: item.text, lang: item.lang, found: describe(ticked), missed });
@@ -277,7 +304,7 @@ function collectHypotheses(value: unknown, into: string[]): void {
 
 /** The bars that a measure does not meet; a measure that is not a number fails. */
 export function failures(
-  measured: { precision: number; recall: number; background: number },
+  measured: { precision: number; recall: number; background: number; checks: number },
   baseline: SentenceBaseline,
   label = '',
 ): string[] {
@@ -297,6 +324,11 @@ export function failures(
       `${prefix}${String(measured.background)} false products in the background transcripts, above ${String(baseline.backgroundFalseProducts)}`,
     );
   }
+  if (measured.checks > baseline.backgroundCheckOffers) {
+    found.push(
+      `${prefix}${String(measured.checks)} names offered to check in the background transcripts, above ${String(baseline.backgroundCheckOffers)}`,
+    );
+  }
   return found;
 }
 
@@ -304,7 +336,8 @@ function row(label: string, tally: SentenceTally): string {
   const cells = [tally.sentences, tally.expected, tally.right, tally.false, tally.missed].map(
     (value) => String(value).padStart(6),
   );
-  return `${label.padEnd(9)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)}`;
+  const checks = `${String(tally.checksRight)}/${String(tally.checksWrong)}`;
+  return `${label.padEnd(9)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)} ${checks.padStart(7)}`;
 }
 
 /**
@@ -338,24 +371,30 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
   const background = await backgroundTranscripts(root);
   let backgroundFalse = 0;
   let backgroundUnticked = 0;
+  let backgroundChecks = 0;
   const times: number[] = [];
   for (const text of [...sentences.map((item) => item.text), ...background]) {
     const start = performance.now();
-    productsInSentence(index, text);
+    read(index, text);
     times.push(performance.now() - start);
   }
   for (const text of background) {
-    const found = productsInSentence(index, text);
+    const found = read(index, text);
     const ticked = found.filter((product) => product.checked);
+    const checks = found.filter((product) => product.heardAs !== undefined);
     backgroundFalse += ticked.length;
     backgroundUnticked += found.length - ticked.length;
-    if (ticked.length > 0) out(`background: "${text}" -> ${describe(ticked).join(', ')}`);
+    backgroundChecks += checks.length;
+    if (ticked.length + checks.length > 0) {
+      out(`background: "${text}" -> ${describe([...ticked, ...checks]).join(', ')}`);
+    }
   }
 
   const header = ['sentences', 'named', 'right', 'false', 'missed'];
   out(
-    `${'lang'.padEnd(9)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)}`,
+    `${'lang'.padEnd(9)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)} ${'checks'.padStart(7)}`,
   );
+  out('(checks: names read from words the voice split, offered unticked: right/wrong)');
   for (const lang of SENTENCE_LANGS) out(row(lang, report.perLang[lang]));
   out(row('overall', report.overall));
   for (const type of SENTENCE_TYPES) out(row(type, report.perType[type]));
@@ -368,11 +407,11 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
     );
   }
   out(
-    `background: ${String(background.length)} transcripts of eval/speech/results, ${String(backgroundFalse)} false products, ${String(backgroundUnticked)} offered unticked`,
+    `background: ${String(background.length)} transcripts of eval/speech/results, ${String(backgroundFalse)} false products, ${String(backgroundUnticked)} offered unticked, of which ${String(backgroundChecks)} names offered to check`,
   );
   out(`p95 time of one sentence: ${percentile95(times).toFixed(3)} ms`);
   out(
-    `baseline: precision >= ${String(baseline.precision)} and recall >= ${String(baseline.recall)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}`,
+    `baseline: precision >= ${String(baseline.precision)} and recall >= ${String(baseline.recall)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}, background names to check <= ${String(baseline.backgroundCheckOffers)}`,
   );
 
   const failed = [
@@ -381,6 +420,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
         precision: precisionOf(report.overall),
         recall: recallOf(report.overall),
         background: backgroundFalse,
+        checks: backgroundChecks,
       },
       baseline,
     ),
@@ -390,6 +430,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
           precision: precisionOf(report.perLang[lang]),
           recall: recallOf(report.perLang[lang]),
           background: 0,
+          checks: 0,
         },
         baseline,
         lang,

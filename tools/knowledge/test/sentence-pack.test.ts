@@ -67,6 +67,25 @@ describe('the sentences of the team feedback', () => {
     expect(ids('dama naan doliparan')[0]).toMatch(/^doliprane-/);
   });
 
+  // Transcripts of the French voice pack in the audio check of SCRUM-61.
+  it('offers to confirm a name the French voice split into words', () => {
+    const toConfirm = (heard: string): [string, boolean, string | undefined][] =>
+      productsInSentence(index, heard, { heard: true }).map((found) => [
+        found.candidate.family,
+        found.checked,
+        found.heardAs,
+      ]);
+    expect(toConfirm('Je prends de la tisanne de King Kyliba le matin')).toEqual([
+      ['kinkeliba', false, 'King Kyliba'],
+    ]);
+    expect(toConfirm('Elle a pris de Libu Profaine pour le mal de dose')).toEqual([
+      ['substances:ibuprofen', false, 'Libu Profaine'],
+    ]);
+    expect(toConfirm("J'ai pris du d'Oli-Pran ce matin")).toEqual([
+      ['brand:dolipran', false, "d'Oli-Pran"],
+    ]);
+  });
+
   it('finds nothing in a sentence that names no product', () => {
     for (const sentence of [
       'dama feebar, sama bopp dafa metti',
