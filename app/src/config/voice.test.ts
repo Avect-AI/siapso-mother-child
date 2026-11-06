@@ -30,21 +30,25 @@ describe('voice packs offered', () => {
   });
 });
 
-// SCRUM-61: the names of the base given to the French decoder, measured and
-// kept off (docs/voice.md): with it on, "kinkéliba" was heard as "quinine".
+// SCRUM-61: the names of the base given to the French decoder (docs/voice.md):
+// measured, 75 of 88 products ticked instead of 50, none ticked wrongly.
 describe('the names given to the decoder', () => {
-  it('are off, so no voice is given them', () => {
-    expect(VOICE_NAMES_PROMPT_ON).toBe(false);
-    expect(voiceContextFor('fr')).toBeUndefined();
+  it('are on for the French voice, and never given to the Wolof one', () => {
+    expect(VOICE_NAMES_PROMPT_ON).toBe(true);
+    expect(voiceContextFor('fr')).toBe(VOICE_NAMES_PROMPT);
+    // The Wolof model was trained with no prompt at all.
     expect(voiceContextFor('wo')).toBeUndefined();
+    expect(voiceContextFor(undefined)).toBeUndefined();
   });
 
-  it('would be given to the French voice only, and keep to the size measured', () => {
-    expect(voiceContextFor('fr', true)).toBe(VOICE_NAMES_PROMPT);
-    // The Wolof model was trained with no prompt at all.
-    expect(voiceContextFor('wo', true)).toBeUndefined();
-    expect(voiceContextFor(undefined, true)).toBeUndefined();
-    // 87 tokens when measured; Whisper reads at most 448 with the speech.
-    expect(VOICE_NAMES_PROMPT.length).toBeLessThanOrEqual(220);
+  it('are given to no voice when turned off', () => {
+    expect(voiceContextFor('fr', false)).toBeUndefined();
+    expect(voiceContextFor('wo', false)).toBeUndefined();
+  });
+
+  it('keep to the prompt measured (variant A, 87 tokens)', () => {
+    expect(VOICE_NAMES_PROMPT).toBe(
+      'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, quinine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.',
+    );
   });
 });

@@ -31,14 +31,15 @@ export const MAX_RECORDING_SECONDS = 8;
  * (Whisper's previous text, SCRUM-61): the most common names of the sentence
  * evaluation and the common brands of the registry, 87 tokens. Measured on
  * 2026-11-06 (docs/voice.md): far more names written right (75 of 88 products
- * ticked instead of 50, on 80 sentences of three Windows voices), the FLEURS
- * word error rate unchanged (30.0 % against 30.3 %), 6 to 13 % more time; but
- * "kinkéliba" was then heard as "quinine qu'il y va" three times, a medicine in
- * place of a remedy (offered to confirm, never ticked: the clause guard of the
- * resolver), and a prompt adding the remedies that sound like medicines did
- * not remove it. Off until real voices are measured with it (SCRUM-32).
+ * ticked instead of 50, sentences exactly right 67 of 80 instead of 43, on 80
+ * sentences of three Windows voices), none ticked wrongly, the FLEURS word
+ * error rate unchanged (30.0 % against 30.3 %), 6 to 13 % more time. Known
+ * limit: "kinkéliba" may be heard as "quinine qu'il y va", which the clause
+ * guard of the resolver offers only to confirm, never ticked; a prompt adding
+ * the remedies that sound like medicines did not remove it. On for French by
+ * decision of 2026-11-06; to measure again with real voices (SCRUM-32).
  */
-export const VOICE_NAMES_PROMPT_ON = false;
+export const VOICE_NAMES_PROMPT_ON = true;
 
 export const VOICE_NAMES_PROMPT =
   'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, quinine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';

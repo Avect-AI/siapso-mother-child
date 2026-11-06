@@ -68,6 +68,24 @@ describe('sentenceReadingOf: what the voice heard', () => {
     ).toEqual([['chloroquine-generic', false, "nivaquine qu'il y va"]]);
   });
 
+  // The transcripts of the French voice given the names of the base, where
+  // "kinkéliba" was said (docs/voice.md): never a product ticked.
+  it('never ticks a product heard inside a garbled clause of a prompted transcript', () => {
+    for (const heard of [
+      "Je prends de la tisanne de quinine qu'il y va le matin.",
+      "Je bois une tisan de quinine qu'il y va.",
+      "Je bois une tisan de quinine qu'il y ba.",
+    ]) {
+      const found = sentenceReadingOf(index, heard, 'product', 'voice');
+      expect(found?.length, heard).toBe(1);
+      expect(
+        found?.filter((product) => product.checked),
+        heard,
+      ).toEqual([]);
+      expect(found?.[0]?.heardAs, heard).toMatch(/quinine qu'il y [vb]a$/);
+    }
+  });
+
   it('is null when the sentence names no product', () => {
     expect(sentenceReadingOf(index, 'dama feebar', 'product', 'voice')).toBeNull();
     expect(sentenceReadingOf(index, '', 'product', 'voice')).toBeNull();

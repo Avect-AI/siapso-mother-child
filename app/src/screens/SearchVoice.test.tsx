@@ -6,6 +6,7 @@ import type { Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { VOICE_NAMES_PROMPT } from '../config/voice.js';
 import { saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
@@ -238,6 +239,21 @@ describe('Search: saying a name', () => {
     await user.click(moringa);
     expect(window.location.hash).toBe('#/confirm/plant');
     expect(await screen.findByRole('button', { name: "Oui, c'est ce remède" })).toBeVisible();
+  });
+
+  // SCRUM-61: the French voice is given the names of the base, the Wolof one
+  // never (the first test of this group checks its options exactly).
+  it('gives the French voice the names of the base as said before the speech', async () => {
+    const { user, speech } = await openSearch('Ajouter un médicament', { installed: ['fr'] });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await waitFor(() => {
+      expect(speech.client.transcribe).toHaveBeenCalledWith(expect.any(Float32Array), {
+        language: 'fr',
+        context: VOICE_NAMES_PROMPT,
+      });
+    });
   });
 
   it('lists the medicines too, one per family, when nothing matches in the medicines', async () => {
