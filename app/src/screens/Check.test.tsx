@@ -244,12 +244,12 @@ describe('Check', () => {
 
     const awa = await open('Awa');
     // Before any tap the line is the same whatever she answered: one says HIV.
-    const before = document.querySelector('.check__profile')?.textContent?.replace('Awa', '');
+    const before = document.querySelector('.check__profile')?.textContent.replace('Awa', '');
     await user.click(awa.getByRole('button', { name: 'Situations : touchez pour les afficher' }));
     expect(awa.getByText('Situations : aucune')).toBeVisible();
 
     const fatou = await open('Fatou');
-    expect(document.querySelector('.check__profile')?.textContent?.replace('Fatou', '')).toBe(
+    expect(document.querySelector('.check__profile')?.textContent.replace('Fatou', '')).toBe(
       before,
     );
     expect(document.body.textContent).not.toMatch(/VIH/);
