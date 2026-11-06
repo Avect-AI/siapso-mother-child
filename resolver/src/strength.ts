@@ -37,9 +37,6 @@ function factorOf(unit: string | undefined): number {
  * "deux cuillères", "pendant 3 jours", "2 boîtes" (accents aside).
  */
 const COUNT_AFTER: ReadonlySet<string> = new Set([
-  'cp',
-  'cps',
-  'cpr',
   'comprimes',
   'gelules',
   'sachets',
@@ -110,9 +107,18 @@ function plain(word: string): string {
   return word.normalize('NFD').replace(/\p{M}/gu, '');
 }
 
+/**
+ * The short forms of "comprimé" ("2 cp"): a count only up to MAX_TIMES, the
+ * tablets taken at once. A larger number before them is a strength written
+ * without its unit, as prescriptions do ("Doliprane 1000 cp"), never 1000
+ * tablets.
+ */
+const SHORT_COUNT_AFTER: ReadonlySet<string> = new Set(['cp', 'cps', 'cpr']);
+
 /** Whether the number `value`, followed by `after` (the text after it), is a count, a volume or a number of times. */
 function countAfter(after: string, value: number): boolean {
   const word = plain(/^\s*([\p{L}\p{M}]+)/u.exec(after)?.[1] ?? '');
+  if (SHORT_COUNT_AFTER.has(word)) return value <= MAX_TIMES;
   return COUNT_AFTER.has(word) || (value === 1 && ONE_OF.has(word));
 }
 
