@@ -273,11 +273,12 @@ const POSOLOGY_START =
 
 /**
  * A count and a unit inside a line: where the posology of a table row
- * starts ("2 cp x 3/j", "1 gél", "2 cpx3/j"). A count has one or two digits:
- * "Doliprane 1000 cp" is the strength of the box and its form.
+ * starts ("2 cp x 3/j", "1 gél", "2 cpx3/j"). A count is from 1 to 6:
+ * "Doliprane 1000 cp" is the strength of the box and its form, and
+ * "Efferalgan 1 9 Cp eff" a strength the OCR garbled ("1 g").
  */
 const POSOLOGY_INSIDE =
-  /(?<![\p{L}\d.,/])(\d{1,2}|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c\.|cuilleres?|lyoc|ovules?|gouttes?|ampoules?)(?=$|[^\p{L}]|x\s*\d)/u;
+  /(?<![\p{L}\d.,/])([1-6]|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c\.|cuilleres?|lyoc|ovules?|gouttes?|ampoules?)(?=$|[^\p{L}]|x\s*\d)/u;
 
 /** Where a posology starts in a name part: a count and a unit, a count times ("3 x 1 g"), or "x 3/j". */
 const POSOLOGY_CUT = new RegExp(
@@ -341,6 +342,24 @@ const MICROGRAMS = new RegExp(MICROGRAM_UNIT.source, 'iu');
  */
 const UNSURE_STRENGTH =
   /(?<![\p{L}])\p{L}{1,4}\d+(?:[.,]\d+)?\s*(?:mg|g|ml)(?![\p{L}])|(?<![\d.,])\d{1,3}[ \u00a0\u202f]\d{3}(?!\d)/u;
+
+/** Two numbers of a combination ("500/30", "20/120"): one strength, not two numbers. */
+const NUMBER_PAIR = /\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?/g;
+/** A number on its own, not glued to a letter before it ("B9" is a name). */
+const STANDALONE_NUMBER = /(?<![\p{L}\d.,])\d+(?:[.,]\d+)?/gu;
+
+/**
+ * Whether the strength of a name part may be misread, so none is proposed:
+ * in micrograms, glued to stray letters, a thousand that may be a count,
+ * a number with a sign glued to it ("96°", "2,4 %"), a number after a
+ * slash with none before ("/50"), or two numbers ("Clamoxyl 1 9", where "1
+ * g" was).
+ */
+function unsureStrength(name: string): boolean {
+  if (MICROGRAMS.test(name) || UNSURE_STRENGTH.test(name)) return true;
+  if (/\d\s?[°£$©®¤§%]|(?<!\d\s*)\/\s*\d/u.test(name)) return true;
+  return (name.replace(NUMBER_PAIR, ' ').match(STANDALONE_NUMBER) ?? []).length > 1;
+}
 
 /** The part of a line before an inline posology (a colon). */
 function namePartOf(line: string): string {
@@ -452,6 +471,8 @@ interface Vocabulary {
   combinationWords: Map<string, Set<string>>;
   /** The substances each word of `words` names at the fewest: of the substance, or of the product of its brand with the fewest. */
   leastOf: Map<string, Set<string>>;
+  /** The strongest strength of a component of the base, in mg: a strength read above it is a misread. */
+  largestMg: number;
 }
 
 const vocabularies = new WeakMap<Pack, Vocabulary>();
@@ -533,6 +554,10 @@ function vocabularyOf(pack: Pack): Vocabulary {
       substancesOfProduct,
       combinationWords,
       leastOf,
+      largestMg: Math.max(
+        0,
+        ...pack.products.flatMap((p) => p.components.map((c) => c.strengthMg ?? 0)),
+      ),
     };
     vocabularies.set(pack, vocabulary);
   }
@@ -836,6 +861,24 @@ function gluedStrengthSplit(line: string): string {
 const UNCLEAR_POSOLOGY =
   /\d\s*(?:a|-|–|ou)\s*\d|\bpuis\b|\bmax(?:imum)?\b|\bdemie?\b|½|\d\s*\/\s*\d|\d[.,]\d\s*(?:cp|gel|sachet|c\b|lyoc|ovule|comprime)/;
 
+/**
+ * Whether a posology holds a number that is no count of units, no
+ * frequency and no duration: one the OCR misread ("1 cp matin, 72304
+ * pendant 3 jours", where "midi et soir" was), so no count is offered.
+ */
+function strayNumber(t: string): boolean {
+  for (const number of t.matchAll(/(?<![\p{L}\d.,])\d+(?![\d.,])/gu)) {
+    const before = t.slice(0, number.index).trimEnd();
+    const after = t.slice(number.index + number[0].length).trimStart();
+    const counted =
+      /^(cps?|gel|gelules?|sachets?|c\b|cuilleres?|lyoc|ovules?|gouttes?|comprimes?|fois|x\b|\/|par\b|j\b|jours?\b|mois\b|semaines?\b|h\b|heures?\b|e\b)/.test(
+        after,
+      ) || /(?:\bx|\btpi|\bqsp|\bpendant|\bdurant)$/.test(before);
+    if (!counted) return true;
+  }
+  return false;
+}
+
 /** A count of units in a posology ("2 cp", "1 sachet"). */
 const COUNT =
   /(\d+)\s*(?:cps?|gel|gelules?|sachets?|c\b|cuilleres?|lyoc|ovules?|gouttes?|comprimes?)/g;
@@ -853,7 +896,7 @@ export function unitsPerDayOf(text: string): number | undefined {
   if (/semaine|mois\b.*\bfois|tous les \d+ jours/.test(t) && !/par jour|\/j/.test(t)) {
     return undefined;
   }
-  if (UNCLEAR_POSOLOGY.test(t)) return undefined;
+  if (UNCLEAR_POSOLOGY.test(t) || strayNumber(t)) return undefined;
   if (new Set([...t.matchAll(COUNT)].map((count) => count[1])).size > 1) return undefined;
   let m =
     /(\d+)\s*(cp|gel|gelules?|sachets?|c|lyoc|ovules?|comprimes?)?\.?\s*(a soupe|a cafe)?\s*x\s*(\d+)\s*(\/|par)\s*j/.exec(
@@ -866,11 +909,15 @@ export function unitsPerDayOf(text: string): number | undefined {
     );
   if (m) return Number(m[1]);
   m =
-    /(\d+)\s*(cp|gel|gelules?|sachets?|lyoc|ovules?|comprimes?)\b[^0-9]*?\b(matin|midi|soir)\b(.*)/.exec(
+    /(\d+)\s*(cp|gel|gelules?|sachets?|lyoc|ovules?|comprimes?)\b([^0-9]*?)\b(matin|midi|soir)\b(.*)/.exec(
       t,
     );
   if (m) {
-    const times = new Set([m[3], ...(m[4]?.match(/\b(matin|midi|soir)\b/g) ?? [])]);
+    // Only posology words before the first time of day: "1 cp mat in, midi
+    // et soir" is a time the OCR broke, never two times.
+    const before = (m[3] ?? '').split(/[^a-z]+/).filter((word) => word !== '');
+    if (!before.every((word) => POSOLOGY_WORDS.has(word))) return undefined;
+    const times = new Set([m[4], ...(m[5]?.match(/\b(matin|midi|soir)\b/g) ?? [])]);
     if (/le (matin|soir|midi)/.test(t) && times.size === 1) return Number(m[1]);
     return Number(m[1]) * times.size;
   }
@@ -1008,8 +1055,13 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
   joined.forEach(({ text: raw, index: lineIndex }, at) => {
     // A list number whose dot the OCR lost ("2 Acide folique") is a list mark
     // too; a strength glued to a long word ("Spéciafoldine5") is split from it.
-    const marked = MARKED.test(raw);
-    let whole = raw.normalize('NFC').replace(LIST_MARK, '');
+    // OCR marks before the list number ("| 1.", "4 4.") go first.
+    const lead = raw
+      .normalize('NFC')
+      .replace(/^[\s|!:;'"_~]+/u, '')
+      .replace(/^\d{1,2}\s+(?=\d{1,2}\s*[.),]\s*\p{L})/u, '');
+    const marked = MARKED.test(lead);
+    let whole = lead.replace(LIST_MARK, '');
     // A label before a colon says when, the product comes after it ("TPI :
     // SP", "Si douleur : Doliprane 1 g").
     const label = /^([^:]*\p{L}[^:]*?)\s*:\s*(\S.*)$/u.exec(whole);
@@ -1105,9 +1157,21 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     const posology = posologyOf(line, joined.slice(at + 1));
     const units = posology === undefined ? undefined : unitsPerDayOf(posology);
     const asksUnitsPerDay = needsUnitsPerDay(pack, ref);
-    // No strength in micrograms, and none that may be misread: she is asked.
-    const unsure = MICROGRAMS.test(namePart) || UNSURE_STRENGTH.test(namePart);
-    const strengthMg = unsure ? undefined : parseStrength(namePart).strengthMg;
+    // No strength in micrograms, none that may be misread, and none above the
+    // strongest box of the base ("11g" for "1 g"): she is asked.
+    const read = unsureStrength(namePart) ? undefined : parseStrength(namePart).strengthMg;
+    // A number without its unit ("Brufen 400", "19 CP" for "1 g") is a
+    // strength only when a box of the family has it, or the family gives none.
+    const family = [candidate.id, ...candidate.variants].flatMap(
+      (id) => pack.products.find((p) => p.id === id)?.components.map((c) => c.strengthMg) ?? [],
+    );
+    const boxes = family.filter((mg): mg is number => mg !== undefined);
+    const bare = !/\d\s*(?:mg|g|grammes?|milligrammes?)(?![\p{L}])/iu.test(namePart);
+    const plausible =
+      read !== undefined &&
+      read <= vocabulary.largestMg &&
+      (!bare || boxes.length === 0 || boxes.some((mg) => Math.abs(mg - read) < 1e-6));
+    const strengthMg = plausible ? read : undefined;
     const product: PrescriptionProduct = {
       ref,
       candidate,

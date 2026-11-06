@@ -602,6 +602,30 @@ describe('readPrescription: strengths, posology and units per day', () => {
     expect(only([line]).strengthMg).toBe(mg);
   });
 
+  // As Tesseract and PaddleOCR read the development set: a strength the OCR
+  // garbled gives none (she is asked), never a guessed one.
+  it.each([
+    ['| 1. Dépakine 500 mg : 1 cp x 2/j', 500],
+    ['4 4. Flagyl 500 mg cp', 500],
+    ['| 2, Flagyl 500 mg cp', 500],
+    ['3. Clamoxyl 1 9 : 1 cp matin et soir x 7 jours', undefined],
+    ['Efferalgan 1 9 Cp eff', undefined],
+    ['2. Laroscorbine 11g', undefined],
+    ['5. Amoxilline 500g g: 2glx 3j penant7 jot', undefined],
+    ['L Voltarène 0 my Lcpx 2 pendans S jours', undefined],
+    ['3. corrimoxazole 96° m£', undefined],
+    ['6. Fuconozole /50 M gé] cour DEL', undefined],
+    ['Doliprane 2,4 %', undefined],
+    // A number without its unit is a strength only when a box of the family
+    // has it (or the family gives none): "19 CP" was "1 g".
+    ['1. Efferaigan 19 CP eff', undefined],
+    ['1. Doliprane 1000 cp', 1000],
+    ['1. Aspégic 500', 500],
+    ['1. Brufen 400', 400],
+  ])('reads "%s" with the strength %s, or none when the OCR garbled it', (line, mg) => {
+    expect(only([line]).strengthMg).toBe(mg);
+  });
+
   it('keeps the posology of a table row out of the name: the query and the strength question', () => {
     const product = only(['Doliprane 1 cp x 3/j']);
     expect(product.query).toBe('Doliprane');
@@ -699,6 +723,9 @@ describe('unitsPerDayOf', () => {
     'un demi cp x 2/j',
     '1 cp x 3/j, max 4 cp/j',
     '1 cp x 3/j maximum',
+    // As the OCR garbled the times of day: never fewer than said.
+    '1 cp matin, 72304 pendant 3 ju',
+    '1 cp mat in, midi et soir pendant 3 jours',
   ])('gives nothing for a range, a change, a fraction, several counts or a maximum: %s', (text) => {
     expect(unitsPerDayOf(text)).toBeUndefined();
   });
