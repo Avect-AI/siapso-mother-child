@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-13-aspirin-generic-dose-not-known
+title: '30 weeks, generic aspirin answered "Je ne sais pas": flagged, as today'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: aspirin-generic, strength-unknown: true }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: aspirin-analgesic-dose-pregnancy,
+        message: aspirin-analgesic-dose-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

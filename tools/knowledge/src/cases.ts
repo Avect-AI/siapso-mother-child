@@ -57,6 +57,8 @@ export interface CaseItem {
   'long-term'?: boolean;
   /** The product is confirmed but the strength on its box is not known. */
   'strength-unknown'?: boolean;
+  /** The dose answered by a range: the box holds at most this many mg ("100 mg ou moins"). */
+  'strength-at-most-mg'?: number;
 }
 
 export interface ReferenceCase {
@@ -192,6 +194,9 @@ function itemOf(item: CaseItem): CheckedItem {
   if (item['units-per-day'] !== undefined) checked.unitsPerDay = item['units-per-day'];
   if (item['long-term'] !== undefined) checked.longTerm = item['long-term'];
   if (item['strength-unknown'] !== undefined) checked.strengthUnknown = item['strength-unknown'];
+  if (item['strength-at-most-mg'] !== undefined) {
+    checked.strengthAtMostMg = item['strength-at-most-mg'];
+  }
   return checked;
 }
 
