@@ -349,22 +349,30 @@ describe('contextFromProfile: conditions, items and signs', () => {
     ]);
   });
 
-  it('keeps the dose range of a product both checked and long-term only when both give one, the larger', () => {
+  it('merges a long-term box into the checked one read the same way only, its dose range included', () => {
     const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
-    const both = contextFromProfile(
-      profile({ longTermItems: [{ ...aspirin, strengthAtMostMg: 100 }] }),
-      { items: [{ ...aspirin, strengthAtMostMg: 75 }], signs: [] },
-      TODAY,
-    );
-    expect(both.items).toEqual([{ ...aspirin, strengthAtMostMg: 100, longTerm: true }]);
-
-    // One of them says no range ("Plus de 100 mg", or none asked): the safer reading, none.
-    const one = contextFromProfile(
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
+    // Two checked boxes, "100 mg ou moins" then without a range, and a long-term one without.
+    const two = contextFromProfile(
       profile({ longTermItems: [aspirin] }),
-      { items: [{ ...aspirin, strengthAtMostMg: 100 }], signs: [] },
+      { items: [low, aspirin], signs: [] },
       TODAY,
     );
-    expect(one.items).toEqual([{ ...aspirin, longTerm: true }]);
+    expect(two.items).toEqual([low, { ...aspirin, longTerm: true }]);
+
+    // The same range merges; another range, or none, is a box of its own, each read as said.
+    const same = contextFromProfile(
+      profile({ longTermItems: [low] }),
+      { items: [low], signs: [] },
+      TODAY,
+    );
+    expect(same.items).toEqual([{ ...low, longTerm: true }]);
+    const apart = contextFromProfile(
+      profile({ longTermItems: [aspirin] }),
+      { items: [low], signs: [] },
+      TODAY,
+    );
+    expect(apart.items).toEqual([low, { ...aspirin, longTerm: true }]);
   });
 
   it('keeps the larger units per day of a product both checked and long-term (safer for a maximum dose)', () => {

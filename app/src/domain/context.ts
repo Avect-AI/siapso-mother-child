@@ -91,9 +91,12 @@ function breastfeedingOf(profile: Profile, todayIso: string): BreastfeedingConte
   return breastfeeding;
 }
 
+/** A product or plant, with the dose range said: two boxes read two ways are two items. */
 function keyOf(item: CheckedItem): string | undefined {
   const { ref } = item;
-  return ref.kind === 'unrecognised' ? undefined : `${ref.kind}:${ref.id}`;
+  if (ref.kind === 'unrecognised') return undefined;
+  const range = item.strengthAtMostMg === undefined ? '' : `@${String(item.strengthAtMostMg)}`;
+  return `${ref.kind}:${ref.id}${range}`;
 }
 
 function refName(item: CheckedItem): string {
@@ -115,8 +118,9 @@ function checkUnits(item: CheckedItem): void {
  * longTerm. A long-term product or plant already listed is not added twice
  * (the engine would read two items of one substance as a duplicate): the item
  * already there is flagged longTerm and keeps the larger of the two units per
- * day (the safer count for a maximum dose), and a dose range only when both
- * give one, the larger (CheckedItem.strengthAtMostMg).
+ * day (the safer count for a maximum dose). A box read in another dose range
+ * (CheckedItem.strengthAtMostMg), or in none, is another item: each is read
+ * as it was said.
  */
 function itemsOf(checked: readonly CheckedItem[], longTerm: readonly CheckedItem[]): CheckedItem[] {
   // Every count is checked before any is compared or kept.
@@ -135,12 +139,6 @@ function itemsOf(checked: readonly CheckedItem[], longTerm: readonly CheckedItem
       present.longTerm = true;
       if (item.unitsPerDay !== undefined) {
         present.unitsPerDay = Math.max(present.unitsPerDay ?? 0, item.unitsPerDay);
-      }
-      // A dose range only when both give one, the larger: never a threshold kept off by one of them.
-      const atMost = present.strengthAtMostMg;
-      if (atMost !== undefined) {
-        if (item.strengthAtMostMg === undefined) delete present.strengthAtMostMg;
-        else present.strengthAtMostMg = Math.max(atMost, item.strengthAtMostMg);
       }
       continue;
     }
