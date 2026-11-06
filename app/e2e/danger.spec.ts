@@ -53,10 +53,7 @@ async function expectEmergencyNumbers(page: Page, { primary }: { primary: boolea
   const samu = page.getByRole('link', { name: 'Appeler le SAMU (1515)' });
   await expect(samu).toHaveAttribute('href', 'tel:1515');
   await expect(samu).toHaveClass(primary ? /button--primary/ : /button--secondary/);
-  await expect(page.getByRole('link', { name: 'Appeler les pompiers (18)' })).toHaveAttribute(
-    'href',
-    'tel:18',
-  );
+  await expect(page.getByRole('link', { name: 'Pompiers : 18' })).toHaveAttribute('href', 'tel:18');
   await expect(
     page.getByText('Allez au poste de santé ou au centre de santé le plus proche.'),
   ).toBeVisible();

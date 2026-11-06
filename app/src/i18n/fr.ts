@@ -718,17 +718,14 @@ export const fr = {
     emergencyLabel: "Numéros d'urgence",
     // The link that dials a public emergency number: the service named in the sentence, then the number.
     emergencyDial: 'Appeler {service} ({phone})',
-    // The call link of each service of config/emergency-numbers.json. 112 and
-    // its kind say what they reach: the police, the fire brigade and the ambulance.
+    // The call link of each medical service of config/emergency-numbers.json:
+    // 112 says what it reaches, the police, the fire brigade and the ambulance.
     dialService: {
       samu: 'Appeler le SAMU ({phone})',
       ambulance: "Appeler l'ambulance ({phone})",
       emergency: 'Appeler le {phone} (police, pompiers, ambulance)',
-      firefighters: 'Appeler les pompiers ({phone})',
-      'civil-protection': 'Appeler la protection civile ({phone})',
-      police: 'Appeler la police ({phone})',
     },
-    // A country with no medical number: its other numbers, named as such.
+    // The numbers that are not medical, named by their service, under their own heading.
     otherNumbers: 'Autres numéros (non médicaux)',
     otherDial: '{service} : {phone}',
     serviceName: {

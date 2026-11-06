@@ -72,7 +72,7 @@ function serveDeployment(file: object = deployment) {
 function emergencyLinks() {
   return {
     samu: screen.getByRole('link', { name: 'Appeler le SAMU (1515)' }),
-    firefighters: screen.getByRole('link', { name: 'Appeler les pompiers (18)' }),
+    firefighters: screen.getByRole('link', { name: 'Pompiers\u00a0: 18' }),
   };
 }
 
@@ -146,7 +146,13 @@ describe('Who to call', () => {
     expect(within(circuit).getByText(CIRCUIT_LINE)).toBeVisible();
     expect(
       within(screen.getByRole('list', { name: "Numéros d'urgence" })).getAllByRole('link'),
-    ).toHaveLength(2);
+    ).toEqual([samu]);
+    // The fire brigade is not a medical number: under its own heading, named by its service.
+    expect(
+      within(screen.getByRole('list', { name: 'Autres numéros (non médicaux)' })).getAllByRole(
+        'link',
+      ),
+    ).toEqual([firefighters]);
     // A keyboard reaches an action in the main area: the emergency links come first.
     const main = screen.getByRole('main');
     const focusable = within(main).getAllByRole('link');
@@ -215,7 +221,7 @@ describe('Who to call', () => {
       'href',
       'tel:1515',
     );
-    expect(screen.getByRole('link', { name: 'Call the fire brigade (18)' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Fire brigade: 18' })).toHaveAttribute(
       'href',
       'tel:18',
     );
@@ -619,7 +625,7 @@ describe('Who to call, by country of use', () => {
     const medical = screen.getByRole('link', { name: "Appeler l'ambulance (15)" });
     expect(medical).toHaveAttribute('href', 'tel:15');
     expect(medical).toHaveClass('button--primary');
-    expect(screen.getByRole('link', { name: 'Appeler les pompiers (18)' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Pompiers\u00a0: 18' })).toHaveAttribute(
       'href',
       'tel:18',
     );
@@ -629,7 +635,9 @@ describe('Who to call, by country of use', () => {
     const change = screen.getByRole('link', { name: 'Changer le pays' });
     expect(change).toHaveAttribute('href', '#/country');
     expect(change).toHaveClass('button--quiet');
-    expect(after(screen.getByRole('list', { name: "Numéros d'urgence" }), country)).toBe(true);
+    expect(
+      after(screen.getByRole('list', { name: 'Autres numéros (non médicaux)' }), country),
+    ).toBe(true);
     expect(within(screen.getByRole('main')).getAllByRole('link')[0]).toBe(medical);
     // A medical number to call: the place to go stays in the circuit, below.
     expect(
@@ -673,21 +681,47 @@ describe('Who to call, by country of use', () => {
     expect(screen.queryByRole('link', { name: 'Changer le pays' })).toBeNull();
   });
 
-  it('gives the police last, after the SAMU and the fire brigade', async () => {
+  it('gives the medical numbers alone as the emergency numbers, the fire brigade and the police after them under their own heading', async () => {
     await renderApp({ settings: { ...woman, country: 'CM' }, hash: '#/danger/call' });
     await circuitRead();
-    const links = within(screen.getByRole('list', { name: "Numéros d'urgence" })).getAllByRole(
-      'link',
-    );
-    expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      'tel:119',
-      'tel:118',
-      'tel:117',
+    const emergency = screen.getByRole('list', { name: "Numéros d'urgence" });
+    const medical = within(emergency).getAllByRole('link');
+    expect(medical.map((link) => link.getAttribute('href'))).toEqual(['tel:119']);
+    expect(medical[0]).toHaveAccessibleName('Appeler le SAMU (119)');
+    expect(medical[0]).toHaveClass('button--primary');
+    const heading = screen.getByText('Autres numéros (non médicaux)');
+    const others = screen.getByRole('list', { name: 'Autres numéros (non médicaux)' });
+    expect(after(emergency, heading)).toBe(true);
+    const links = within(others).getAllByRole('link');
+    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['Pompiers\u00a0: 118', 'tel:118'],
+      ['Police\u00a0: 117', 'tel:117'],
     ]);
-    expect(links[0]).toHaveAccessibleName('Appeler le SAMU (119)');
-    expect(links[0]).toHaveClass('button--primary');
-    expect(links[2]).toHaveAccessibleName('Appeler la police (117)');
-    expect(links[2]).toHaveClass('button--secondary');
+    for (const link of links) expect(link).toHaveClass('button--secondary');
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    // The country, under all its numbers.
+    expect(after(others, screen.getByText('Pays : Cameroun'))).toBe(true);
+  });
+
+  it('never switches the numbers under a finger at a cold open, while the stored settings are read', async () => {
+    // Ghana chosen on this phone, which says Senegal: the first frame has the
+    // numbers of the phone, before the settings come out of storage.
+    await renderApp({ settings: { ...woman, country: 'GH' }, hash: '#/danger/call' });
+    const samu = screen.getByRole('link', { name: 'Appeler le SAMU (1515)' });
+
+    fireEvent.pointerDown(samu);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+    expect(within(screen.getByRole('main')).getAllByRole('link')[0]).toBe(samu);
+    expect(screen.queryByRole('link', { name: /112/ })).toBeNull();
+
+    // Lifted: the country chosen shows.
+    fireEvent.pointerUp(samu);
+    expect(
+      await screen.findByRole('link', { name: 'Appeler le 112 (police, pompiers, ambulance)' }),
+    ).toBeVisible();
+    expect(screen.getByText('Pays : Ghana')).toBeVisible();
   });
 
   it('with no medical number, says to go to the health post first, then the other numbers as such, none first', async () => {
@@ -732,7 +766,7 @@ describe('Who to call, by country of use', () => {
     expect(
       screen.getByText('Ce numéro peut ne pas marcher depuis tous les réseaux.'),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Appeler les pompiers (118)' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Pompiers\u00a0: 118' })).toBeVisible();
   });
 
   it('with no country known, says to go to the health post, to call the emergency number of the country, and the country to choose first', async () => {

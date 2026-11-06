@@ -1,5 +1,5 @@
 {
-  "about": "Public national emergency numbers by country of use, shown as call links on who to call (app/src/config/emergency.ts). Each number is confirmed by at least two sources of two publishers, each fetched on the date given (checkedOn), with the date the page gives itself when it has one (pageUpdated). Every medical number (samu, ambulance, emergency) has at least one national source: the telecom regulator, a ministry of the country, or the service itself. A number whose sources disagree, or that has too few sources, is left out and listed with why: no number is guessed. In each country: the medical numbers first, then the fire brigade or civil protection, then the police (listed when the file has no medical number for the country, and in Cameroon). A number marked caveat not-all-networks is said to the person as maybe not working from every network. timeZones are the IANA zones of the country in zone.tab, one country each, used to find the country of a phone offline; weakTimeZones are zones other countries may report as theirs (canonical links in the tz database), never enough alone. A country with detect false is never found from the phone, only chosen by hand.",
+  "about": "Public national emergency numbers by country of use, shown as call links on who to call (app/src/config/emergency.ts). Each number is confirmed by at least two sources of two publishers, each fetched on the date given (checkedOn), with the date the page gives itself when it has one (pageUpdated). Every medical number (samu, ambulance, emergency) has at least one national source: the telecom regulator, a ministry of the country, the service itself, or the state press (state news agency, state daily or broadcaster) reporting the government. A number whose sources disagree, or that has too few sources, is left out and listed with why: no number is guessed. In each country: the medical numbers first, then the fire brigade or civil protection, then the police (listed when the file has no medical number for the country, and in Cameroon); who to call shows the medical numbers alone as the emergency numbers, the others under \"Autres numéros (non médicaux)\". A number marked caveat not-all-networks is said to the person as maybe not working from every network. timeZones are the IANA zones of the country in zone.tab, one country each, used to find the country of a phone offline; weakTimeZones are zones other countries may report as theirs (canonical links in the tz database), never enough alone. A country with detect false is never found from the phone, only chosen by hand.",
   "teamCheck": "TEAM CHECK: before a pilot, the team must confirm every number of the pilot country with the health authorities of the pilot district (that it answers there, from every mobile operator, free of charge), and add a number left out only once an official source gives it.",
   "attribution": [
     "The quoted texts (says) belong to their publishers and are quoted to cite each source.",
@@ -475,8 +475,8 @@
             },
             {
               "url": "https://www.aip.ci/cote-divoire-aip-le-gspm-appelle-a-une-implication-citoyenne-accrue-face-a-la-recrudescence-des-sinistres/",
-              "publisher": "Agence Ivoirienne de Presse",
-              "kind": "press",
+              "publisher": "Agence Ivoirienne de Presse (state news agency)",
+              "kind": "state-press",
               "pageUpdated": "2025-06-11",
               "checkedOn": "2026-11-06",
               "says": "le numéro vert 180"
@@ -508,16 +508,16 @@
             },
             {
               "url": "https://www.sidwaya.info/urgences-medicales-le-samu-est-pour-la-population-il-faut-en-faire-un-usage-responsable-directeur-general-professeur-armel-flavien-kabore/",
-              "publisher": "Sidwaya",
-              "kind": "press",
+              "publisher": "Sidwaya (state daily)",
+              "kind": "state-press",
               "pageUpdated": "2025-05-19",
               "checkedOn": "2026-11-06",
               "says": "Il suffit de composer le numéro gratuit 15 pour être mis en contact avec un professionnel de santé"
             },
             {
               "url": "https://www.sidwaya.info/prise-en-charge-des-urgences-medicales-le-samu-de-bobo-dioulasso-operationnel/",
-              "publisher": "Sidwaya",
-              "kind": "press",
+              "publisher": "Sidwaya (state daily)",
+              "kind": "state-press",
               "pageUpdated": "2025-11-10",
               "checkedOn": "2026-11-06",
               "says": "le numéro 15 est un numéro gratuit, simple et accessible à tous"
@@ -580,6 +580,46 @@
       "timeZones": ["Africa/Niamey"],
       "numbers": [
         {
+          "service": "samu",
+          "phone": "15",
+          "sources": [
+            {
+              "url": "https://anp.ne/lancement-officiel-ce-22-octobre-des-activites-de-lantenne-samu-niger-de-maradi/",
+              "publisher": "Agence Nigérienne de Presse (state news agency)",
+              "kind": "state-press",
+              "pageUpdated": "2025-10-22",
+              "checkedOn": "2026-11-06",
+              "says": "l’appel du numéro vert, le 15, est gratuit",
+              "note": "Reports the launch of the SAMU antenna of Maradi by the Minister of Health."
+            },
+            {
+              "url": "https://www.lesahel.org/lancement-officiel-des-activites-de-lantenne-regionale-samu-tahoua-promouvoir-lassistance-medicale-durgence-dans-les-regions/",
+              "publisher": "Le Sahel (ONEP, state daily)",
+              "kind": "state-press",
+              "pageUpdated": "2025-09-18",
+              "checkedOn": "2026-11-06",
+              "says": "les appels du numéro vert (le 15) et toutes les interventions de secours d'urgence du SAMU-Niger sont entièrement gratuits",
+              "note": "Reports the launch of the SAMU antenna of Tahoua."
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/niger/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-23",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 15"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/niger",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-15",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 15"
+            }
+          ]
+        },
+        {
           "service": "firefighters",
           "phone": "18",
           "sources": [
@@ -587,6 +627,7 @@
               "url": "https://www.gov.uk/foreign-travel-advice/niger/getting-help",
               "publisher": "UK Foreign, Commonwealth and Development Office",
               "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-23",
               "checkedOn": "2026-11-06",
               "says": "Fire: 18"
             },
@@ -599,42 +640,19 @@
               "says": "firefighters: 18"
             }
           ]
-        },
-        {
-          "service": "police",
-          "phone": "17",
-          "sources": [
-            {
-              "url": "https://www.gov.uk/foreign-travel-advice/niger/getting-help",
-              "publisher": "UK Foreign, Commonwealth and Development Office",
-              "kind": "foreign-ministry",
-              "checkedOn": "2026-11-06",
-              "says": "Police: 17"
-            },
-            {
-              "url": "https://travel.gc.ca/destinations/niger",
-              "publisher": "Global Affairs Canada",
-              "kind": "foreign-ministry",
-              "pageUpdated": "2026-10-15",
-              "checkedOn": "2026-11-06",
-              "says": "police: 17"
-            }
-          ]
         }
       ],
       "leftOut": [
-        {
-          "service": "samu",
-          "phone": "15",
-          "why": "No national source could be fetched on 2026-11-06 (gouv.ne refused the connection, sante.gouv.ne has an expired certificate, the APA News article of 2025-10-23 answered HTTP 403). The state press (ANP 2025-10-22, Le Sahel 2025-09-18 and 2025-03-19), the UK FCDO, Canada and a Swiss sheet of 2020 all give 15 for the SAMU, free of charge: add it once a national page confirms it."
-        },
         {
           "service": "samu",
           "phone": "118",
           "why": "One source only (Swiss FDFA sheet of 2020: \"15 ou 118\")."
         }
       ],
-      "notes": ["The police is listed because this file has no medical number for Niger."]
+      "notes": [
+        "The SAMU answers on 15, free of charge, in Niamey and in its regional antennas (Tahoua since 2025-09-15, Maradi since 2025-10-22); it aims to cover the eight regions.",
+        "The government sites (gouv.ne, sante.gouv.ne) could not be reached on 2026-11-06; the APA News article of 2025-10-23 answered HTTP 403 and is not cited. The police (17, UK FCDO and Canada) is not listed: the file has a medical number for Niger."
+      ]
     },
     {
       "code": "TG",
@@ -832,7 +850,8 @@
               "kind": "service",
               "pageUpdated": "2026-04-14",
               "checkedOn": "2026-11-06",
-              "says": "Ghana Ambulance Service 193"
+              "says": "193/112 [...] National Ambulance HQ",
+              "note": "From a diagram of the deck: \"193/112\" with an arrow to \"National Ambulance HQ\"."
             },
             {
               "url": "https://travel.gc.ca/destinations/ghana",
@@ -875,7 +894,8 @@
       ],
       "notes": [
         "The UK FCDO and France are wrong on 192 and 193: France gives \"Ambulance : 192\" and \"Pompiers : 193\", the UK FCDO \"192 (police)\"; the regulator's plan gives Fire Service 192 and Ambulance 193, as Canada does.",
-        "The regulator's plan shows no date (its file dates from 2017); the ITU deck of April 2026 shows 191, 192, 193 and 999 routed to the 112 centre, and says some areas lack strong connectivity on some operators."
+        "The same ITU deck shows 999 routed to the national call centre, while the regulator's plan marks it not operational: 999 stays out, 112 is given.",
+        "The regulator's plan shows no date (its file dates from 2017); the ITU deck says some areas lack strong connectivity on some operators."
       ]
     },
     {
@@ -910,8 +930,8 @@
             },
             {
               "url": "https://von.gov.ng/nemsas-reaffirms-112-emergency-medical-line/",
-              "publisher": "Voice of Nigeria",
-              "kind": "press",
+              "publisher": "Voice of Nigeria (federal state broadcaster)",
+              "kind": "state-press",
               "pageUpdated": "2026-08-20",
               "checkedOn": "2026-11-06",
               "says": "the toll-free 112 emergency line serves as a central contact point for medical emergencies"

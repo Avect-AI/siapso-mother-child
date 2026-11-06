@@ -16,7 +16,7 @@ import type { EmergencyNumber, ReferralContact } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { FROM_CALL, forgetSavedForCall, savedForCall } from '../state/contact-return.js';
-import { useCountryOfUse } from '../state/country.js';
+import { countryOfUse, type CountryChoice } from '../domain/country.js';
 import { epochToken, forgetStaleEntry, inVisit, visitState } from '../state/entry-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
@@ -170,14 +170,16 @@ function deploymentLinks(
   }));
 }
 
-/** A built-in number as a call: "Appeler le SAMU (1515)", "Appeler le 112 (police, pompiers, ambulance)". */
+type MedicalService = Extract<EmergencyService, 'samu' | 'ambulance' | 'emergency'>;
+
+/** A medical number as a call: "Appeler le SAMU (1515)", "Appeler le 112 (police, pompiers, ambulance)". */
 function dialLink(
   { service, phone, caveat }: BuiltInEmergencyNumber,
   t: ReturnType<typeof useT>,
 ): CallLink {
   const link: CallLink = {
     key: `${service}:${phone}`,
-    label: t(`call.dialService.${service}`, { phone }),
+    label: t(`call.dialService.${service as MedicalService}`, { phone }),
     phone,
   };
   if (caveat !== undefined) link.caveat = caveat;
@@ -247,14 +249,14 @@ function CallList({
  * a large "Appeler" link that opens the phone's dialler (after a contact saved
  * from here, "Contact enregistré : ..." once); then the emergency numbers of
  * the country of use (state/country.ts) as call links, medical first
- * ("Appeler le SAMU (1515)"; or the deployment file's), with the country under
- * them and a quiet way to change it, shown at once, those the phone says
- * until the deployment file is read (while a finger is down, what is read
- * waits, so nothing moves under a tap). When no medical number is sure to
- * answer, where to go comes first ("Allez au poste de santé ou au centre de
- * santé le plus proche."): with none, the other numbers follow under "Autres
- * numéros (non médicaux)" ("Pompiers : 118"), none of them first; a number
- * that may not work from every network says so. With no number for a known
+ * ("Appeler le SAMU (1515)"; or the deployment file's), the fire brigade and
+ * the police under "Autres numéros (non médicaux)" ("Pompiers : 18"), then the
+ * country and a quiet way to change it; shown at once, those the phone says
+ * until the stored settings and the deployment file are read (while a finger
+ * is down, what is read waits, so nothing moves under a tap). When no medical
+ * number is sure to answer, where to go comes first ("Allez au poste de santé
+ * ou au centre de santé le plus proche."): with none, the other numbers alone,
+ * none of them first; a number that may not work from every network says so. With no number for a known
  * country, it says so, with "Changer le pays"; with no country, "Appelez le
  * numéro d'urgence de votre pays." and "Choisir le pays"; when the language
  * and the time zone of the phone name two countries, the question and both
@@ -284,7 +286,7 @@ function CallList({
 export function Referral() {
   const t = useT();
   const lang = useLang();
-  const { pack, packError, storageTimeoutMs, settings, setSettings } = useApp();
+  const { pack, packError, storageTimeoutMs, settings, setSettings, phone } = useApp();
   const { unlocked, status } = useSession();
   const [, navigate] = useLocation();
   const [opened] = useState(openedWith);
@@ -297,6 +299,10 @@ export function Referral() {
     if (held.current) waiting.current = circuit;
     else setLoaded(circuit);
   }, []);
+  // The country chosen on the phone, as shown: at a cold open the stored
+  // settings come a moment after the first frame, and wait like the circuit.
+  const [chosen, setChosen] = useState<CountryChoice | undefined>(settings.country);
+  const waitingChosen = useRef<{ country: CountryChoice | undefined } | null>(null);
   // A country just answered here: its first call takes the focus.
   const focusCall = useRef(false);
   const nationalId = useId();
@@ -318,14 +324,25 @@ export function Referral() {
       const circuit = waiting.current;
       waiting.current = null;
       if (circuit !== null) setLoaded(circuit);
+      const country = waitingChosen.current;
+      waitingChosen.current = null;
+      if (country !== null) setChosen(country.country);
     };
+    // A finger lifted, a scroll that took the touch, or the page left.
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
+    window.addEventListener('blur', release);
     return () => {
       window.removeEventListener('pointerup', release);
       window.removeEventListener('pointercancel', release);
+      window.removeEventListener('blur', release);
     };
   }, []);
+
+  useEffect(() => {
+    if (held.current) waitingChosen.current = { country: settings.country };
+    else setChosen(settings.country);
+  }, [settings.country]);
 
   useEffect(() => {
     let live = true;
@@ -389,7 +406,11 @@ export function Referral() {
     justSaved !== null && unlocked && justSaved.epoch === epochToken() ? justSaved.who : null;
   // The country of use: the deployment's once its file is read, else the one
   // chosen, else what the phone says; its numbers show at once.
-  const { country, source: countryFrom, ask } = useCountryOfUse(circuit?.country);
+  const {
+    country,
+    source: countryFrom,
+    ask,
+  } = countryOfUse({ deployment: circuit?.country, chosen, phone });
   const deployed = circuit?.emergencyNumbers;
   const numbers = deployed === undefined ? emergencyNumbersOf(country) : [];
   const medical = numbers.filter(({ service }) => isMedical(service));
@@ -441,29 +462,32 @@ export function Referral() {
         primary={firstIsOurs}
       />
     );
-  } else if (medical.length > 0) {
-    calls = (
-      <>
-        <CallList
-          links={numbers.map((number) => dialLink(number, t))}
-          label={t('call.emergencyLabel')}
-          primary={firstIsOurs}
-        />
-        {countryLine}
-      </>
-    );
   } else if (numbers.length > 0) {
-    // No medical number: the others, said as such, none of them first.
+    // The medical numbers alone as the emergency numbers, the first of them
+    // the first call; the others under their own heading, said as such, none
+    // of them first.
+    const others = numbers.filter(({ service }) => !isMedical(service));
     calls = (
       <>
-        <p id={othersId} className="referral__others">
-          {t('call.otherNumbers')}
-        </p>
-        <CallList
-          links={numbers.map((number) => otherLink(number, t))}
-          labelledBy={othersId}
-          primary={false}
-        />
+        {medical.length === 0 ? null : (
+          <CallList
+            links={medical.map((number) => dialLink(number, t))}
+            label={t('call.emergencyLabel')}
+            primary={firstIsOurs}
+          />
+        )}
+        {others.length === 0 ? null : (
+          <>
+            <p id={othersId} className="referral__others">
+              {t('call.otherNumbers')}
+            </p>
+            <CallList
+              links={others.map((number) => otherLink(number, t))}
+              labelledBy={othersId}
+              primary={false}
+            />
+          </>
+        )}
         {countryLine}
       </>
     );

@@ -10,7 +10,8 @@
 //
 // The numbers are in emergency-numbers.json (CC BY 4.0, REUSE.toml), each
 // with its sources (publisher, kind, the day the page gives, the day it was
-// fetched); every medical number has a national source. A number whose
+// fetched); every medical number has a national source
+// (NATIONAL_SOURCE_KINDS). A number whose
 // sources disagree, or that has too few sources, is left out there with why.
 // The country of use is found offline (domain/country.ts).
 //
@@ -63,21 +64,38 @@ export interface BuiltInEmergencyNumber {
 
 /**
  * Who publishes a source: the telecom regulator, a ministry or government
- * office of the country, the emergency service itself (the three national
- * kinds), another country's foreign ministry, a mobile operator, the press,
- * or a compilation.
+ * office of the country, the emergency service itself, the state press (a
+ * state news agency, daily or broadcaster, reporting the government): the
+ * four national kinds; then another country's foreign ministry, a mobile
+ * operator, the press, or a compilation.
  */
 export type SourceKind =
-  'regulator' | 'ministry' | 'service' | 'foreign-ministry' | 'operator' | 'press' | 'compilation';
+  | 'regulator'
+  | 'ministry'
+  | 'service'
+  | 'state-press'
+  | 'foreign-ministry'
+  | 'operator'
+  | 'press'
+  | 'compilation';
 
 export const SOURCE_KINDS: readonly SourceKind[] = [
   'regulator',
   'ministry',
   'service',
+  'state-press',
   'foreign-ministry',
   'operator',
   'press',
   'compilation',
+];
+
+/** The kinds of source published in the country by its state: every medical number has one. */
+export const NATIONAL_SOURCE_KINDS: readonly SourceKind[] = [
+  'regulator',
+  'ministry',
+  'service',
+  'state-press',
 ];
 
 /** A source of a number: the page fetched, who publishes it, and what it says. */
@@ -90,6 +108,8 @@ export interface NumberSource {
   /** The day the page was fetched. */
   checkedOn: string;
   says: string;
+  /** Where the quote stands when it is not plain text (a diagram), or what the page reports. */
+  note?: string;
 }
 
 /**

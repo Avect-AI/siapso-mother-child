@@ -60,7 +60,7 @@ const PHONES = [
     country: 'Sénégal',
     calls: [
       { name: 'Appeler le SAMU (1515)', href: 'tel:1515' },
-      { name: 'Appeler les pompiers (18)', href: 'tel:18' },
+      { name: 'Pompiers : 18', href: 'tel:18' },
     ],
   },
   {
@@ -69,7 +69,7 @@ const PHONES = [
     country: 'Mali',
     calls: [
       { name: "Appeler l'ambulance (15)", href: 'tel:15' },
-      { name: 'Appeler les pompiers (18)', href: 'tel:18' },
+      { name: 'Pompiers : 18', href: 'tel:18' },
     ],
   },
   {
@@ -78,7 +78,7 @@ const PHONES = [
     country: "Côte d'Ivoire",
     calls: [
       { name: 'Appeler le SAMU (185)', href: 'tel:185' },
-      { name: 'Appeler les pompiers (180)', href: 'tel:180' },
+      { name: 'Pompiers : 180', href: 'tel:180' },
     ],
   },
   {
@@ -89,7 +89,7 @@ const PHONES = [
     calls: [
       { name: 'Appeler le 112 (police, pompiers, ambulance)', href: 'tel:112' },
       { name: "Appeler l'ambulance (193)", href: 'tel:193' },
-      { name: 'Appeler les pompiers (192)', href: 'tel:192' },
+      { name: 'Pompiers : 192', href: 'tel:192' },
     ],
   },
 ];

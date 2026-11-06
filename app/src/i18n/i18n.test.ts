@@ -102,9 +102,10 @@ describe('dictionaries', () => {
     const codes = COUNTRIES.map((country) => country.code).sort();
     expect(Object.keys(fr.countries).sort()).toEqual(codes);
     expect(Object.keys(en.countries).sort()).toEqual(codes);
-    // A call link for each service, and the noun of each service that is not medical.
-    expect(Object.keys(fr.call.dialService).sort()).toEqual([...EMERGENCY_SERVICES].sort());
-    expect(Object.keys(en.call.dialService).sort()).toEqual([...EMERGENCY_SERVICES].sort());
+    // A call link for each medical service, and the noun of each other one.
+    const medical = EMERGENCY_SERVICES.filter(isMedical).sort();
+    expect(Object.keys(fr.call.dialService).sort()).toEqual(medical);
+    expect(Object.keys(en.call.dialService).sort()).toEqual(medical);
     const others = EMERGENCY_SERVICES.filter((service) => !isMedical(service)).sort();
     expect(Object.keys(fr.call.serviceName).sort()).toEqual(others);
     expect(Object.keys(en.call.serviceName).sort()).toEqual(others);

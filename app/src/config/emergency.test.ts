@@ -8,6 +8,7 @@ import {
   emergencyNumbersOf,
   isCountryCode,
   isMedical,
+  NATIONAL_SOURCE_KINDS,
   NUMBER_CAVEATS,
   SOURCE_KINDS,
   type EmergencyService,
@@ -83,6 +84,7 @@ describe('the emergency numbers file', () => {
           expect(source.checkedOn, where).toMatch(DATE);
           expect(Number.isNaN(Date.parse(source.checkedOn)), where).toBe(false);
           if (source.pageUpdated !== undefined) expect(source.pageUpdated, where).toMatch(DATE);
+          if (source.note !== undefined) expect(source.note.trim(), where).not.toBe('');
           expect(source.says.trim(), where).not.toBe('');
         }
         const publishers = new Set(number.sources.map((source) => source.publisher));
@@ -91,13 +93,14 @@ describe('the emergency numbers file', () => {
     }
   });
 
-  it('gives each medical number at least one national source: the regulator, a ministry or the service itself', () => {
-    const national: readonly SourceKind[] = ['regulator', 'ministry', 'service'];
+  it('gives each medical number at least one national source: the regulator, a ministry, the service itself or the state press', () => {
+    const national: readonly SourceKind[] = ['regulator', 'ministry', 'service', 'state-press'];
+    expect(NATIONAL_SOURCE_KINDS).toEqual(national);
     for (const country of EMERGENCY_FILE.countries) {
       for (const number of country.numbers.filter(({ service }) => isMedical(service))) {
         const kinds = number.sources.map((source) => source.kind);
         expect(
-          kinds.some((kind) => national.includes(kind)),
+          kinds.some((kind) => NATIONAL_SOURCE_KINDS.includes(kind)),
           `${country.code} ${number.phone}`,
         ).toBe(true);
       }
@@ -216,10 +219,21 @@ describe('emergency numbers by country', () => {
       { service: 'police', phone: '117' },
     ]);
     expect(emergencyNumbersOf('TD')).toEqual([{ service: 'police', phone: '117' }]);
+  });
+
+  it('gives the SAMU of Niger first, from the state press reporting its launch by the government', () => {
     expect(emergencyNumbersOf('NE')).toEqual([
+      { service: 'samu', phone: '15' },
       { service: 'firefighters', phone: '18' },
-      { service: 'police', phone: '17' },
     ]);
+  });
+
+  it('says where a quote comes from a diagram', () => {
+    const ghana = EMERGENCY_FILE.countries.find((country) => country.code === 'GH');
+    const ambulance = ghana?.numbers.find((number) => number.phone === '193');
+    const deck = ambulance?.sources.find((source) => source.url.includes('itu.int'));
+    expect(deck?.says).toMatch(/193\/112/);
+    expect(deck?.note).toMatch(/diagram/);
   });
 
   it('gives no number for an unknown country, or a country whose numbers are all left out', () => {
