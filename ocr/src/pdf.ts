@@ -340,9 +340,6 @@ export async function readPdf(
   const { readScan, signal } = options;
   stopIfCancelled(signal);
   let leftOut = false;
-  const stopWatching = watchWarnings((message) => {
-    if (message.includes(IMAGE_LEFT_OUT)) leftOut = true;
-  });
   const stopIfLeftOut = () => {
     if (leftOut) {
       throw new OcrPackError('too-large', 'An image of the PDF is too large for this phone.');
@@ -369,6 +366,10 @@ export async function readPdf(
     maxImageSize: MAX_PDF_IMAGE_PIXELS,
     verbosity: 1,
     ...(options.CanvasFactory === undefined ? {} : { CanvasFactory: options.CanvasFactory }),
+  });
+  // From here on, before pdf.js parses anything (it starts once this returns).
+  const stopWatching = watchWarnings((message) => {
+    if (message.includes(IMAGE_LEFT_OUT)) leftOut = true;
   });
   try {
     let doc: PdfDocumentLike;
