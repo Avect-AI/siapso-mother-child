@@ -243,8 +243,10 @@ export interface CheckedItem {
    * no strength for, such as generic aspirin). A component of unknown
    * strength (none in the pack, or strengthUnknown) is then read as at most
    * this value: a strengthAboveMg rule at or above it does not apply, one
-   * below it still does. A strength the pack knows is read as it is, and a
-   * daily maximum still reads the strength as not known.
+   * below it still does. Only when that component is the only one of the
+   * product whose strength is not known: with two or more, the value is
+   * ignored. A strength the pack knows is read as it is, and a daily maximum
+   * still reads the strength as not known.
    */
   strengthAtMostMg?: number;
 }

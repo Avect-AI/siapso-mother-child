@@ -12,7 +12,7 @@ The machine-readable contract is `server/openapi.yaml` (OpenAPI 3.1). It is gene
 | `GET /v1/pack`      | no  | `200` with `version`, `date`, `clinicallyValidated` and `counts` (substances, classes, products, plants, rules, dangerSigns, sources) |
 | `POST /v1/evaluate` | yes | `200` with the engine `Evaluation`                                                                                                    |
 
-`POST /v1/evaluate` takes `{ "pack_version": "<version>", "context": <EvaluationContext> }`. The context is the engine's `EvaluationContext` (`engine/src/types.ts`): `pregnancy` (`weeksMin`, `weeksMax`, `precision`), `breastfeeding` (`babyAgeWeeks`, `premature`), `conditions`, `items` (each with a `ref` that is a product id, a plant id or unrecognised text, and `unitsPerDay`, `longTerm`, `strengthUnknown`, `strengthAtMostMg`) and `signs`.
+`POST /v1/evaluate` takes `{ "pack_version": "<version>", "context": <EvaluationContext> }`. The context is the engine's `EvaluationContext` (`engine/src/types.ts`): `pregnancy` (`weeksMin`, `weeksMax`, `precision`), `breastfeeding` (`babyAgeWeeks`, `premature`), `conditions`, `items` (each with a `ref` that is a product id, a plant id or unrecognised text, and `unitsPerDay`, `longTerm`, `strengthUnknown`, `strengthAtMostMg`) and `signs`. `strengthAtMostMg` (optional, mg, greater than 0) is a dose answered by a range ("100 mg ou moins"): it bounds the one component of the product whose strength is not known, so a `strengthAboveMg` rule at or above it does not apply; with two or more components of unknown strength it is ignored.
 
 Status codes of `POST /v1/evaluate`, in the order the server checks them:
 

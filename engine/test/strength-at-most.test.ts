@@ -7,13 +7,35 @@
 // still reads the strength as not known.
 import { describe, expect, it } from 'vitest';
 import { evaluate } from '../src/index.js';
-import type { CheckedItem, Evaluation, EvaluationContext, Pack, Rule } from '../src/index.js';
+import type {
+  CheckedItem,
+  Component,
+  Evaluation,
+  EvaluationContext,
+  Pack,
+  Product,
+  Rule,
+} from '../src/index.js';
 import { deepFreeze } from './fixtures/freeze.js';
 import { fixturePack } from './fixtures/pack.js';
 
 const CODEINE_RULE = 'fixture-codeine-above-30';
 const PARACETAMOL_RULE = 'fixture-paracetamol-above-500';
+const CODEINE_HIGH_RULE = 'fixture-codeine-above-60';
 const MAX_DOSE_RULE = 'fixture-max-dose-paracetamol';
+
+function fixtureProduct(id: string, components: Component[]): Product {
+  return {
+    id,
+    names: { fr: `${id} (fr)`, en: `${id} (en)` },
+    brands: [],
+    localNames: [],
+    components,
+    form: 'syrup',
+    route: 'oral',
+    demo: true,
+  };
+}
 
 function thresholdRule(id: string, substance: string, strengthAboveMg: number): Rule {
   return {
@@ -28,20 +50,37 @@ function thresholdRule(id: string, substance: string, strengthAboveMg: number): 
   };
 }
 
-/** The fixture pack with a threshold on codeine (whose syrup has no strength) and on paracetamol. */
+/**
+ * The fixture pack with two thresholds on codeine (whose syrup has no
+ * strength) and one on paracetamol, and two combinations of codeine and
+ * paracetamol: one with no strength at all, one with paracetamol at 500 mg.
+ */
 function thresholdPack(): Pack {
   const base = fixturePack();
   const extra = [
     thresholdRule(CODEINE_RULE, 'codeine', 30),
+    thresholdRule(CODEINE_HIGH_RULE, 'codeine', 60),
     thresholdRule(PARACETAMOL_RULE, 'paracetamol', 500),
   ];
   const words = { fact: 'Fait.', risk: 'Risque.' };
+  const messages = Object.fromEntries(extra.map((r) => [r.id, words]));
   return {
     ...base,
+    products: [
+      ...base.products,
+      fixtureProduct('codeine-paracetamol-syrup', [
+        { substance: 'codeine' },
+        { substance: 'paracetamol' },
+      ]),
+      fixtureProduct('codeine-paracetamol-500', [
+        { substance: 'codeine' },
+        { substance: 'paracetamol', strengthMg: 500 },
+      ]),
+    ],
     rules: [...base.rules, ...extra],
     messages: {
-      fr: { ...base.messages.fr, [CODEINE_RULE]: words, [PARACETAMOL_RULE]: words },
-      en: { ...base.messages.en, [CODEINE_RULE]: words, [PARACETAMOL_RULE]: words },
+      fr: { ...base.messages.fr, ...messages },
+      en: { ...base.messages.en, ...messages },
     },
   };
 }
@@ -105,6 +144,33 @@ describe('CheckedItem.strengthAtMostMg', () => {
       run([unknown]).findings.filter((f) => f.check === 'C7'),
     );
     expect(bounded.notes).toMatchObject([{ ruleId: MAX_DOSE_RULE }]);
+  });
+
+  it('reads each threshold of a substance against the value said: the lower one only may apply', () => {
+    const at = (mg: number) => ruleIds(run([product('codeine-syrup', { strengthAtMostMg: mg })]));
+    expect(at(30)).not.toContain(CODEINE_RULE);
+    expect(at(30)).not.toContain(CODEINE_HIGH_RULE);
+    // "50 mg or less" may be above 30 mg, never above 60 mg.
+    expect(at(50)).toContain(CODEINE_RULE);
+    expect(at(50)).not.toContain(CODEINE_HIGH_RULE);
+    expect(at(80)).toEqual(expect.arrayContaining([CODEINE_RULE, CODEINE_HIGH_RULE]));
+  });
+
+  it('bounds the one component of unknown strength of a combination, the others read as the pack says', () => {
+    const item = product('codeine-paracetamol-500', { strengthAtMostMg: 30 });
+    expect(ruleIds(run([item]))).not.toContain(CODEINE_RULE);
+    expect(ruleIds(run([product('codeine-paracetamol-500')]))).toContain(CODEINE_RULE);
+  });
+
+  it('ignores the value when two components or more have no strength: which one it bounds is not said', () => {
+    const bounded = run([product('codeine-paracetamol-syrup', { strengthAtMostMg: 30 })]);
+    expect(ruleIds(bounded)).toEqual(
+      expect.arrayContaining([CODEINE_RULE, CODEINE_HIGH_RULE, PARACETAMOL_RULE]),
+    );
+    expect(bounded).toEqual(run([product('codeine-paracetamol-syrup')]));
+    // strengthUnknown makes every component unknown: the value is ignored too.
+    const unknown = product('codeine-paracetamol-500', { strengthUnknown: true });
+    expect(run([{ ...unknown, strengthAtMostMg: 30 }])).toEqual(run([unknown]));
   });
 
   it('changes nothing when absent', () => {
