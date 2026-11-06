@@ -605,6 +605,25 @@ export const WEAK_ALONE_WORDS: readonly string[] = [
  */
 export const AMBIGUOUS_NAME_WORDS: readonly string[] = ['goro', 'nem'];
 
+/**
+ * French words that start another clause: right after a name the voice heard
+ * ("quinine qu'il y va", where "kinkéliba" was said), the sentence is not the
+ * one it seems, and the name is offered to confirm.
+ */
+export const CLAUSE_START_WORDS: readonly string[] = [
+  'qu',
+  'que',
+  'qui',
+  'il',
+  'ils',
+  'elle',
+  'elles',
+  'je',
+  'j',
+  'tu',
+  'on',
+];
+
 /** Number words a strength is said with, after the name ("doliprane mille", "un gramme"). */
 export const NUMBER_WORDS: readonly string[] = [
   'un',

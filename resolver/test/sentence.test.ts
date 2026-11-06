@@ -206,6 +206,14 @@ const index = buildIndex([
     ],
     { family: 'brand:bi profenid lp', strengths: [100], substances: ['ketoprofen'] },
   ),
+  product(
+    'inofer',
+    [
+      { text: 'INOFER, comprimé pelliculé', lang: 'fr' },
+      { text: 'INOFER', lang: 'brand' },
+    ],
+    { family: 'brand:inofer', substances: ['iron'] },
+  ),
   plant('moringa', [
     { text: 'Moringa', lang: 'fr' },
     { text: 'nebeday', lang: 'wo' },
@@ -436,6 +444,30 @@ describe('productsInSentence: the words of a name the voice split', () => {
     expect(found?.candidate.family).toBe('brand:amoxisilin');
     expect(found?.checked).toBe(true);
     expect(found?.heardAs).toBeUndefined();
+  });
+
+  // With the names of the base given to the decoder, "kinkéliba" was heard as
+  // "quinine qu'il y va": a name followed at once by the start of another
+  // clause is not the sentence it seems.
+  it('offers to confirm a name heard right before the start of another clause', () => {
+    const [found] = productsInSentence(index, "je prends de la nivaquine qu'il y va le matin", {
+      heard: true,
+    });
+    expect(found?.candidate.family).toBe('substances:chloroquine');
+    expect(found?.checked).toBe(false);
+    expect(found?.heardAs).toBe("nivaquine qu'il y va");
+    // Typed, the words are what she wrote.
+    const [typed] = productsInSentence(index, "je prends de la nivaquine qu'il y va le matin");
+    expect(typed?.checked).toBe(true);
+    // A name the sentence goes on from as usual stays ticked.
+    const [plain] = productsInSentence(index, 'dama naan nivaquine ci suba', { heard: true });
+    expect(plain?.checked).toBe(true);
+  });
+
+  // A FLEURS transcript: "l'invérée" sounds 1 letter off INOFER, but read as
+  // "inver" it has 5 sounds only, too few to be one letter off a name.
+  it('never reads words joined of fewer than 6 sounds as a name one letter off', () => {
+    expect(families("la monnaie elle a l'invérée des îles", true)).toEqual([]);
   });
 
   it('reads them so only for what the voice heard, never for a typed text', () => {

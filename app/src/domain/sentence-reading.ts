@@ -20,9 +20,11 @@ export const SENTENCE_TYPED_WORDS = 3;
 /**
  * The products a sentence names, when the search offers them instead of the
  * candidates of the whole text, or null: what the voice heard, when the whole
- * text has no candidate in the list searched or the sentence names several
- * products; a typed text the same way from 3 words (a name of one or two
- * words stays the search's). Null when the sentence names no product clearly.
+ * text has no candidate in the list searched, the sentence names several
+ * products, or a name is to confirm (read from words the voice split, or
+ * heard right before another clause); a typed text the same way from 3 words
+ * (a name of one or two words stays the search's). Null when the sentence
+ * names no product clearly.
  */
 export function sentenceReadingOf(
   index: ResolverIndex,
@@ -35,6 +37,10 @@ export function sentenceReadingOf(
   // What the voice heard may split a name it does not know: also read joined, offered unticked.
   const products = productsInSentence(index, text, { heard: source === 'voice' });
   if (products.length === 0) return null;
-  if (products.length > 1) return products;
+  // Several products, or one to confirm ("quinine qu'il y va"): never the
+  // candidates of the whole text, which would offer it as the answer.
+  if (products.length > 1 || products.some((product) => product.heardAs !== undefined)) {
+    return products;
+  }
   return search(index, text, { kinds: [kind] }).length === 0 ? products : null;
 }

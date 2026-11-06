@@ -54,6 +54,20 @@ describe('sentenceReadingOf: what the voice heard', () => {
     ).toBeNull();
   });
 
+  // "quinine qu'il y va" was heard for kinkéliba: the whole text has a
+  // candidate, but the name must be confirmed, so it is offered unticked.
+  it('offers unticked, in place of the candidates, a name heard before another clause', () => {
+    const found = sentenceReadingOf(
+      index,
+      "je prends de la nivaquine qu'il y va le matin",
+      'product',
+      'voice',
+    );
+    expect(
+      found?.map((product) => [product.candidate.id, product.checked, product.heardAs]),
+    ).toEqual([['chloroquine-generic', false, "nivaquine qu'il y va"]]);
+  });
+
   it('is null when the sentence names no product', () => {
     expect(sentenceReadingOf(index, 'dama feebar', 'product', 'voice')).toBeNull();
     expect(sentenceReadingOf(index, '', 'product', 'voice')).toBeNull();

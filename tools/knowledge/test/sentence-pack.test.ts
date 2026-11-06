@@ -86,6 +86,23 @@ describe('the sentences of the team feedback', () => {
     ]);
   });
 
+  // With the names of the base given to the French decoder, "Je bois une
+  // tisane de kinkéliba." was heard so.
+  it('offers to confirm, never ticked, a medicine heard before another clause', () => {
+    const [found, ...others] = productsInSentence(
+      index,
+      "Je bois une tisan de quinine qu'il y va.",
+      { heard: true },
+    );
+    expect(others).toEqual([]);
+    expect([found?.candidate.id, found?.checked, found?.heardAs]).toEqual([
+      'quinine-generic',
+      false,
+      // "tisane de" names no remedy of its own: read with the name it carries.
+      "tisan de quinine qu'il y va",
+    ]);
+  });
+
   it('finds nothing in a sentence that names no product', () => {
     for (const sentence of [
       'dama feebar, sama bopp dafa metti',

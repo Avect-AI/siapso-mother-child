@@ -11,6 +11,7 @@ import { normalize } from './normalize.js';
 import { search } from './search.js';
 import {
   AMBIGUOUS_NAME_WORDS,
+  CLAUSE_START_WORDS,
   FILLER_WORDS,
   JOINING_WORDS,
   LINKING_WORDS,
@@ -70,6 +71,26 @@ const JOINS = setOf(JOINING_WORDS);
 const WEAK_ALONE = setOf(WEAK_ALONE_WORDS);
 const AMBIGUOUS = setOf(AMBIGUOUS_NAME_WORDS);
 const NUMBERS = setOf(NUMBER_WORDS);
+const CLAUSE_STARTS = setOf(CLAUSE_START_WORDS);
+/** At most this many words after a name are shown with it when they start another clause. */
+const CLAUSE_WORDS_SHOWN = 4;
+
+/**
+ * The end of the words heard with a name when the next word starts another
+ * clause ("quinine qu'il y va"), up to 4 words and never across punctuation;
+ * undefined when the sentence goes on from the name as usual.
+ */
+function clauseAfter(tokens: readonly Token[], last: number): number | undefined {
+  const next = tokens[last + 1];
+  if (next === undefined || next.boundary || !CLAUSE_STARTS.has(next.norm)) return undefined;
+  let end = next.end;
+  for (let at = last + 2; at <= last + CLAUSE_WORDS_SHOWN; at += 1) {
+    const token = tokens[at];
+    if (token === undefined || token.boundary) break;
+    end = token.end;
+  }
+  return end;
+}
 const UNITS = setOf(UNIT_WORDS);
 
 /** A word of the sentence, where it is, and what it is. */
@@ -476,11 +497,15 @@ function nameKeys(index: ResolverIndex): Map<number, { key: string; name: string
   return byLength;
 }
 
-/** The whole name whose phonetic key is this one, or one letter off when it has 6 letters or more. */
+/**
+ * The whole name whose phonetic key is this one, or one letter off when both
+ * have 6 letters or more ("inver" is not INOFER).
+ */
 function nameSoundingLike(index: ResolverIndex, key: string): string | undefined {
   const byLength = nameKeys(index);
   const same = byLength.get(key.length)?.find((name) => name.key === key);
   if (same !== undefined) return same.name;
+  if (key.length < MERGED_NEAR_LENGTH) return undefined;
   for (const length of [key.length - 1, key.length, key.length + 1]) {
     if (length < MERGED_NEAR_LENGTH) continue;
     const near = byLength.get(length)?.find((name) => damerauLevenshtein(key, name.key) <= 1);
@@ -656,15 +681,22 @@ export function productsInSentence(
       if (withStrength !== undefined) candidate = withStrength;
     }
     const ambiguous = reading.span.words === 1 && AMBIGUOUS.has(first.norm);
+    // Heard right before the start of another clause: the voice may have made
+    // the name out of a longer one ("quinine qu'il y va" for kinkéliba).
+    const clauseEnd =
+      options.heard === true && strength === undefined
+        ? clauseAfter(tokens, reading.span.last)
+        : undefined;
     products.push({
       at: reading.span.first,
       product: {
         candidate,
         strength: reading.strength,
-        checked: !ambiguous,
+        checked: !ambiguous && clauseEnd === undefined,
         text,
         ...(strength === undefined ? {} : { strengthMg: strength.mg }),
         ...(reading.readAs === undefined ? {} : { readAs: reading.readAs }),
+        ...(clauseEnd === undefined ? {} : { heardAs: sentence.slice(first.start, clauseEnd) }),
       },
     });
   }
