@@ -887,6 +887,38 @@ describe('productsInSentence: round 3 of the review', () => {
     expect(both('il y a deux mois j’ai pris du coartem')[0]).toEqual([[false, 'past']]);
   });
 
+  // Follow-up of the review: words of a refusal, and a person after "au".
+  it('unticks a product forbidden, refused or to avoid', () => {
+    for (const sentence of [
+      'le médecin a interdit le cytotec',
+      'je refuse le cytotec',
+      'on m’a déconseillé l’advil',
+      'il faut éviter le cytotec',
+      'le cytotec est défendu',
+      'doktoor bi tere na ma cytotec',
+      'dama bañ cytotec',
+    ]) {
+      expect(both(sentence), sentence).toEqual([[[false, 'negation']], [[false, 'negation']]]);
+    }
+  });
+
+  it('reads a person after "au", "aux" or "à la" as another person', () => {
+    for (const sentence of [
+      'je donne du doliprane au bébé',
+      'je donne du doliprane aux enfants',
+      'je donne du doliprane à la voisine',
+      'je donne du doliprane à l’enfant',
+    ]) {
+      expect(both(sentence)[0], sentence).toEqual([[false, 'other-person']]);
+    }
+    for (const sentence of [
+      'je prends du doliprane au petit déjeuner',
+      'je prends du doliprane à la maison',
+    ]) {
+      expect(both(sentence)[0], sentence).toEqual(ticked);
+    }
+  });
+
   it('starts a clause at a subject and its verb after a product, even with no punctuation', () => {
     const [typed, heard] = both('je ne prends pas de cytotec je prends du doliprane');
     expect(typed).toEqual([

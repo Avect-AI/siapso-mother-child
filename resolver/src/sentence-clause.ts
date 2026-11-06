@@ -16,6 +16,8 @@ import {
   OBJECT_PRONOUN_WORDS,
   ONGOING_WORDS,
   OTHER_VERB_WORDS,
+  PERSON_ARTICLE_WORDS,
+  REFUSAL_WORDS,
   STOP_VERB_WORDS,
   TAKING_VERB_WORDS,
   WOLOF_VERB_WORDS,
@@ -116,6 +118,10 @@ const OBJECT_PRONOUNS = setOf(OBJECT_PRONOUN_WORDS);
 const ONGOING = setOf(ONGOING_WORDS);
 const WOLOF_VERBS = setOf(WOLOF_VERB_WORDS);
 const AVANT = normalize('avant');
+const REFUSALS = setOf(REFUSAL_WORDS);
+const PERSON_ARTICLES = setOf(PERSON_ARTICLE_WORDS);
+const LA = normalize('la');
+const L = normalize('l');
 /** The French words of a negation; the other NEGATION_WORDS are Wolof ("duma", "amul"). */
 const FRENCH_NEGATIONS = setOf(['pas', 'jamais', 'rien', 'aucun', 'aucune']);
 const WOLOF_NEGATIONS = new Set([...NEGATIONS].filter((word) => !FRENCH_NEGATIONS.has(word)));
@@ -327,6 +333,7 @@ function reasonsOf(
   let healthWorker = false;
   let ongoing = false;
   let timePast = false;
+  let refused = false;
   const word = (at: number): string =>
     at >= first && at <= last && inName[at] !== true ? (words[at]?.norm ?? '') : '';
   const negation = negationsOf(words, inName, first, last);
@@ -346,7 +353,18 @@ function reasonsOf(
     const past =
       PAST.has(here) && !negation.stopsNegated.has(at) && (here !== AVANT || SUBJECTS.has(next));
     if (past || (negation.counts && negation.plus)) reasons.add('past');
-    if ((POSSESSIVES.has(here) && personAfter(words, at)) || OTHER_PEOPLE.has(here)) {
+    // A refusal or a ban ("interdit", "je refuse", "éviter", "tere") is a negation.
+    if (REFUSALS.has(here)) refused = true;
+    // Another person after a possessive, or after "au", "aux", "à la", "à l'"
+    // ("je donne du doliprane au bébé").
+    const afterArticle =
+      (PERSON_ARTICLES.has(here) && personAfter(words, at)) ||
+      (here === A && (next === LA || next === L) && personAfter(words, at + 1));
+    if (
+      (POSSESSIVES.has(here) && personAfter(words, at)) ||
+      afterArticle ||
+      OTHER_PEOPLE.has(here)
+    ) {
       otherPerson = true;
     } else if (SPEAKER.has(here)) {
       speaker = true;
@@ -354,7 +372,7 @@ function reasonsOf(
   }
   // A time said with "depuis" or "commencé" is when the use began.
   if (timePast && !ongoing) reasons.add('past');
-  if (negation.counts) reasons.add('negation');
+  if (negation.counts || refused) reasons.add('negation');
   if (otherPerson && !speaker) reasons.add('other-person');
   // Someone told her of it ("ma voisine m'a parlé du cytotec"), not a health worker.
   if (telling && toSpeaker && !healthWorker) reasons.add('advice');

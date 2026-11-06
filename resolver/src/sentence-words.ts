@@ -1011,6 +1011,35 @@ export const ONGOING_WORDS: readonly string[] = [
   'débuté',
 ];
 
+/**
+ * Words of a refusal or a ban: the product is not taken, like a negation
+ * ("le médecin a interdit le cytotec", "je refuse le cytotec", "il faut
+ * éviter", Wolof "tere" to forbid, "bañ" to refuse).
+ */
+export const REFUSAL_WORDS: readonly string[] = [
+  'interdit',
+  'interdite',
+  'interdire',
+  'interdis',
+  'défendu',
+  'défendue',
+  'défend',
+  'déconseillé',
+  'déconseillée',
+  'déconseille',
+  'refuse',
+  'refusé',
+  'refuser',
+  'éviter',
+  'évite',
+  'évité',
+  'tere',
+  'bañ',
+];
+
+/** Articles before a person ("au bébé", "aux enfants"): another person, as after "mon". */
+export const PERSON_ARTICLE_WORDS: readonly string[] = ['au', 'aux'];
+
 /** French and Wolof possessives: "mon mari", "sama jëkkër". */
 export const POSSESSIVE_WORDS: readonly string[] = [
   'mon',

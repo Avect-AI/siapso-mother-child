@@ -1804,3 +1804,25 @@
     type: plain,
     expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
   }
+# Follow-up of the review: a refusal or a ban, and a person after "au".
+- {
+    text: 'le médecin a interdit le cytotec',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'je refuse le cytotec',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'je donne du doliprane au bébé',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
