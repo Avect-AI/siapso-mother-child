@@ -244,6 +244,30 @@ describe('the hidden-instruction check', () => {
       expect(await problemsOf(lang, 'risk-detail', text), `${lang} ${text}`).toEqual([]);
     }
   });
+
+  it('accepts "Never" or "Keep" starting a sentence inside a quoted English title', async () => {
+    for (const text of [
+      'The WHO guide "Medicines in pregnancy. Never give up on the data" is old.',
+      'The review "Never take risks with herbs" found little data.',
+      'The study “Keep, watch and wait” followed forty women.',
+    ]) {
+      expect(await problemsOf('en', 'risk-detail', text), text).toEqual([]);
+    }
+  });
+
+  it('still reads an English instruction outside the quoted title', async () => {
+    for (const text of [
+      'The review "Herbs in pregnancy" found little data: tell the midwife.',
+      'If she bleeds, go to the health post ("Bleeding in pregnancy", WHO).',
+      'She should see the midwife, as the leaflet “Herbs and the baby” says.',
+    ]) {
+      const problems = await problemsOf('en', 'risk-detail', text);
+      expect(
+        problems.some((p) => /instruction/.test(p.message)),
+        text,
+      ).toBe(true);
+    }
+  });
 });
 
 describe('the dose-in-words check', () => {
