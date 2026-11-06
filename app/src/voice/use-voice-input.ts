@@ -16,6 +16,7 @@ import {
   voiceFlow,
   type VoiceState,
 } from '../domain/voice-flow.js';
+import { isPromptEcho, voiceGate } from '../domain/voice-guard.js';
 import { useVoice } from './voice-context.js';
 import { installedPackOf } from './voice-service.js';
 
@@ -112,14 +113,25 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
       fail(mine, error, 'record');
       return;
     }
+    // Review of #68: a recording with no speech is not transcribed (the names
+    // given to the decoder would come back on their own), and a faint one is
+    // transcribed without them.
+    const gate = voiceGate(samples);
+    if (gate === 'silent') {
+      endUse();
+      dispatch({ type: 'heard', text: '', candidates: 0 });
+      return;
+    }
     try {
-      const context = voiceContextFor(language);
+      const context = gate === 'speech' ? voiceContextFor(language) : undefined;
       const { text } = await client.transcribe(samples, {
         ...(language === undefined ? {} : { language }),
         ...(context === undefined ? {} : { context }),
       });
       if (mine !== attempt.current) return;
-      const heard = cleanTranscript(text, latest.current.maxLength);
+      // The names given, repeated in their order: an echo, nothing heard.
+      const echo = context !== undefined && isPromptEcho(text, context);
+      const heard = echo ? '' : cleanTranscript(text, latest.current.maxLength);
       const candidates = heard === '' ? 0 : latest.current.countCandidates(heard);
       endUse();
       if (heard !== '') latest.current.onHeard(heard);

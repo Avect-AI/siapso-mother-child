@@ -67,6 +67,16 @@ export interface FakeSpeechOptions {
   loadError?: Error;
   /** The speech package cannot be loaded (its chunk is gone after an update elsewhere). */
   packageFails?: boolean;
+  /** What the microphone recorded (default: one second of a tone as loud as speech). */
+  samples?: Float32Array;
+}
+
+/** One second of a 440 Hz tone of this amplitude, at 16 kHz. */
+export function toneSamples(amplitude: number, seconds = 1): Float32Array {
+  return Float32Array.from(
+    { length: Math.round(seconds * 16000) },
+    (_, at) => amplitude * Math.sin((2 * Math.PI * 440 * at) / 16000),
+  );
 }
 
 export function fakeSpeech(options: FakeSpeechOptions = {}) {
@@ -152,7 +162,7 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
         start: vi.fn(() =>
           options.startError === undefined ? Promise.resolve() : Promise.reject(options.startError),
         ),
-        stop: vi.fn(() => Promise.resolve(new Float32Array(16000))),
+        stop: vi.fn(() => Promise.resolve(options.samples ?? toneSamples(0.2))),
         cancel: vi.fn(),
         level: () => 0,
         onAutoStop: () => recorderOptions.onAutoStop?.(),

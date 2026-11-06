@@ -12,7 +12,7 @@ import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
-import { fakeSpeech, voicePackError, type FakeSpeechOptions } from '../test/voice.js';
+import { fakeSpeech, toneSamples, voicePackError, type FakeSpeechOptions } from '../test/voice.js';
 import { createVoiceService } from '../voice/voice-service.js';
 
 beforeEach(async () => {
@@ -254,6 +254,52 @@ describe('Search: saying a name', () => {
         context: VOICE_NAMES_PROMPT,
       });
     });
+  });
+
+  // Review of #68: the names given may come back on their own when nobody speaks.
+  it('transcribes nothing from a silent recording, and says it heard no name', async () => {
+    const { user, speech } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      samples: new Float32Array(16000),
+      transcript: 'Doliprane, paracétamol, Efferalgan.',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    expect(
+      await screen.findByText("Je n'ai pas entendu de nom. Réessayez, ou écrivez le nom."),
+    ).toBeVisible();
+    expect(speech.client.transcribe).not.toHaveBeenCalled();
+  });
+
+  it('gives a faint recording no names', async () => {
+    const { user, speech } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      samples: toneSamples(0.006),
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await waitFor(() => {
+      expect(speech.client.transcribe).toHaveBeenCalledWith(expect.any(Float32Array), {
+        language: 'fr',
+      });
+    });
+  });
+
+  it('reads as nothing heard a transcript that repeats the names given', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcript: 'Doliprane, paracétamol, Efferalgan, Dafalgan.',
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    expect(
+      await screen.findByText("Je n'ai pas entendu de nom. Réessayez, ou écrivez le nom."),
+    ).toBeVisible();
+    expect(field).toHaveValue('');
+    expect(screen.queryByRole('group', { name: /Produits trouvés/ })).toBeNull();
   });
 
   it('lists the medicines too, one per family, when nothing matches in the medicines', async () => {
