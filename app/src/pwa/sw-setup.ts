@@ -25,6 +25,12 @@
 //   answers, cached or from the network, carry the isolation headers too (a
 //   worker script under COEP needs them). Older scripts go when the new
 //   version activates, all of them when the voice is removed;
+// - the prescription reading worker's script (assets/ocr-worker-*.js, about
+//   64 KB: the JavaScript of ONNX Runtime) is precached with the app shell,
+//   isolated like it: a reading starts a new worker offline once the reading
+//   pack is installed, with or without a voice. Its entry has a name of its
+//   own (ocr/src/ocr-worker.ts) so that the speech worker's pattern never
+//   takes it (worker-scripts.test.ts);
 // - its first install takes control of the page (the page then says it is
 //   ready without the Internet), and an update waits until the user accepts
 //   the update prompt, which sends SKIP_WAITING.

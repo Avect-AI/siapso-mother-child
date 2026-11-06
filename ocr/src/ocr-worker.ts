@@ -6,16 +6,21 @@
  * (Apache License 2.0) come with the reading pack, with their licence texts
  * (licenses/ and NOTICE.md in the pack, docs/ocr.md). */
 // The reading worker: PaddleOCR PP-OCRv5 mobile with ONNX Runtime Web, and
-// pdf.js for PDFs, all read from the installed pack in the Cache API. The
-// fetch it leaves to ONNX Runtime and pdf.js answers the pack's files from
-// the cache and refuses every other address: no request outside the pack,
-// and a file that is not installed is an error, never a download. The photo
-// or the PDF stays in this worker's memory and is dropped once read; only
-// the lines of text go back to the page.
+// pdf.js for PDFs, all read from the installed pack in the Cache API. As it
+// starts, it closes XMLHttpRequest, WebSocket, EventSource, WebTransport and
+// importScripts, and its fetch refuses everything; once a reading names the
+// pack, the fetch it leaves to ONNX Runtime and pdf.js answers the pack's
+// files from the cache and refuses every other address: no request outside
+// the pack, and a file that is not installed is an error, never a download.
+// The photo or the PDF stays in this worker's memory and is dropped once
+// read; only the lines of text go back to the page.
 import { loadEngine, readInput, type LoadedEngine } from './engine.js';
 import { OcrPackError, type OcrErrorReason } from './ocr-pack.js';
 import type { WorkerReadRequest, WorkerResponse } from './protocol.js';
-import { cacheOnlyFetch, guardedFetch, threadCount } from './runtime.js';
+import { cacheOnlyFetch, closeNetwork, guardedFetch, threadCount } from './runtime.js';
+
+// Before any message: nothing in this worker reaches the network but through the pack guard.
+closeNetwork(globalThis);
 
 const scope = globalThis as unknown as {
   postMessage(message: WorkerResponse): void;
@@ -52,8 +57,6 @@ async function load(request: WorkerReadRequest): Promise<LoadedEngine> {
   const engine = await loadEngine(request.baseUrl, threads, (progress) => {
     post({ type: 'progress', id: request.id, stage: 'load', progress });
   });
-  // The runtime's loader, a blob address of this worker, is allowed too.
-  scope.fetch = guardedFetch(request.baseUrl, request.files, cacheOnlyFetch(), engine.blobs);
   loaded = engine;
   return engine;
 }

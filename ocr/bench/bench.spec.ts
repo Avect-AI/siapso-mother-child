@@ -179,7 +179,7 @@ test('reads a synthetic prescription offline, photo and PDF, with and without CP
   await call(page, 'release');
   const afterRelease = await call<Reading>(page, 'read', docs.scan, 'image/png');
   const firstRequests = since(mark);
-  expect(firstRequests.every((path) => /\/assets\/worker-[\w-]+\.js$/.test(path))).toBe(true);
+  expect(firstRequests.every((path) => /\/assets\/ocr-worker-[\w-]+\.js$/.test(path))).toBe(true);
 
   await context.setOffline(true);
   offline = true;

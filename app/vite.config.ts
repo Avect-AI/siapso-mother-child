@@ -250,7 +250,9 @@ export const workbox = {
   // manifest, its signature (manifest.sig, when the pack is signed) and its
   // fragments. The speech worker's script is listed too, so the service
   // worker knows its name, but src/pwa/sw-setup.ts keeps it out of the
-  // precache: it is downloaded only once a voice is installed. pack.json repeats every fragment in one
+  // precache: it is downloaded only once a voice is installed. The reading
+  // worker's script (assets/ocr-worker-*.js) is precached with the app once
+  // the app imports @siapso/ocr. pack.json repeats every fragment in one
   // file and the app never reads it, so it is not downloaded twice.
   // config/: the deployment's referral file when the build has one (who to
   // call works offline), and its small example.

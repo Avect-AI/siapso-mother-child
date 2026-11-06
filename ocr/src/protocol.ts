@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Messages between the page (client.ts) and the reading worker (worker.ts).
+// Messages between the page (client.ts) and the reading worker (ocr-worker.ts).
 import type { OcrErrorReason } from './ocr-pack.js';
 
 /** Where the lines came from: a photo, the text layer of a PDF, or a PDF page read by the OCR. */

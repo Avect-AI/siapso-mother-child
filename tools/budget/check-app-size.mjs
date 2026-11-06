@@ -8,7 +8,8 @@
 // the speech worker (assets/worker-*.js:
 // Transformers.js and the JavaScript of ONNX Runtime), which the service
 // worker caches only once a voice is installed; it is said apart, with the
-// voice. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
+// voice. The prescription reading worker (assets/ocr-worker-*.js) is
+// precached with the app, so it counts in the app budget. Run after `pnpm build` (app/dist-demo) or a release build (app/dist):
 //   node tools/budget/check-app-size.mjs [dist directory, default app/dist]
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -19,7 +20,11 @@ export const LIMIT_BYTES = 1_572_864;
 /** Top-level folders of the build that the app budget does not count. */
 export const EXCLUDED = new Set(['pack', 'voice', 'ocr']);
 
-/** The speech worker chunk: downloaded with the voice (app/src/pwa/sw-setup.ts). */
+/**
+ * The speech worker chunk: downloaded with the voice (app/src/pwa/sw-setup.ts).
+ * It takes the speech worker's script only (check-app-size.test.mjs reads
+ * every worker entry of the workspace).
+ */
 export const VOICE_WORKER = /^assets\/worker-[\w-]+\.js$/;
 
 const DEFAULT_DIST = fileURLToPath(new URL('../../app/dist/', import.meta.url));

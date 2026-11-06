@@ -2,7 +2,7 @@
 // The reading itself, with the browser's APIs: the models loaded with ONNX
 // Runtime Web from the installed pack (Cache API only), a photo or a camera
 // frame decoded into pixels, a PDF read with pdf.js from the pack. The worker
-// (worker.ts) runs it; the bench page runs it on the page thread too, where
+// (ocr-worker.ts) runs it; the bench page runs it on the page thread too, where
 // DevTools CPU throttling applies. No side effect at import.
 import * as ort from 'onnxruntime-web/wasm';
 import { recognitionAlphabet } from './ctc.js';
@@ -12,7 +12,7 @@ import { readPdf, type PdfPageLike, type PdfjsLike } from './pdf.js';
 import { readRaster, type OcrEngine } from './pipeline.js';
 import type { OcrSource } from './protocol.js';
 import type { Raster } from './raster.js';
-import { readInstalledFile } from './runtime.js';
+import { readInstalledFile, withModuleUrl } from './runtime.js';
 
 /** Bytes of a file read first, to tell what it is and its size in pixels. */
 const HEAD_BYTES = 64 * 1024;
@@ -21,8 +21,6 @@ export interface LoadedEngine {
   baseUrl: string;
   engine: OcrEngine;
   alphabet: string[];
-  /** The blob addresses made for the runtime's loader: the only ones it may fetch. */
-  blobs: string[];
 }
 
 export interface Reading {
@@ -31,24 +29,30 @@ export interface Reading {
   pages: number;
 }
 
-/** An installed file of the pack as a blob address, for a module import with no request. */
-async function moduleUrlOf(url: string): Promise<string> {
-  const code = await readInstalledFile(url);
-  return URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
-}
-
 /**
  * Loads the two models from the installed pack at `baseUrl`. ONNX Runtime's
- * loader is imported from a blob address and its WebAssembly handed over as
- * bytes, so it fetches nothing. `onProgress` receives 0 to 1.
+ * loader is imported from a blob address, revoked once the models are loaded
+ * (the workers of its threads start from it while they load), and its
+ * WebAssembly handed over as bytes, so it fetches nothing. `onProgress`
+ * receives 0 to 1.
  */
 export async function loadEngine(
   baseUrl: string,
   threads: number,
   onProgress: (progress: number) => void = () => undefined,
 ): Promise<LoadedEngine> {
+  return withModuleUrl(new URL(RUNTIME_FILES.mjs, baseUrl).href, (loader) =>
+    loadModels(baseUrl, loader, threads, onProgress),
+  );
+}
+
+async function loadModels(
+  baseUrl: string,
+  loader: string,
+  threads: number,
+  onProgress: (progress: number) => void,
+): Promise<LoadedEngine> {
   const url = (path: string) => new URL(path, baseUrl).href;
-  const loader = await moduleUrlOf(url(RUNTIME_FILES.mjs));
   ort.env.wasm.wasmPaths = { mjs: loader };
   ort.env.wasm.wasmBinary = await readInstalledFile(url(RUNTIME_FILES.wasm));
   ort.env.wasm.numThreads = threads;
@@ -97,7 +101,7 @@ export async function loadEngine(
     },
   };
   onProgress(1);
-  return { baseUrl, engine, alphabet: recognitionAlphabet(characters), blobs: [loader] };
+  return { baseUrl, engine, alphabet: recognitionAlphabet(characters) };
 }
 
 let pdfjs: PdfjsLike | undefined;
@@ -105,17 +109,24 @@ let pdfjs: PdfjsLike | undefined;
 /**
  * pdf.js from the pack: its worker code imported here first (it sets
  * `globalThis.pdfjsWorker`, so pdf.js parses in this very thread, with no
- * nested worker), then its API.
+ * nested worker), then its API. Each is imported from a blob address,
+ * revoked once imported.
  */
 async function loadPdfjs(baseUrl: string): Promise<PdfjsLike> {
   if (pdfjs !== undefined) return pdfjs;
   const url = (path: string) => new URL(path, baseUrl).href;
-  const parser = await moduleUrlOf(url(PDF_FILES.worker));
-  await import(/* @vite-ignore */ parser);
-  const apiUrl = await moduleUrlOf(url(PDF_FILES.api));
-  const api = (await import(/* @vite-ignore */ apiUrl)) as PdfjsLike & {
-    GlobalWorkerOptions: { workerSrc: string };
-  };
+  const parser = await withModuleUrl(url(PDF_FILES.worker), async (address) => {
+    await import(/* @vite-ignore */ address);
+    return address;
+  });
+  const api = await withModuleUrl(
+    url(PDF_FILES.api),
+    async (address) =>
+      (await import(/* @vite-ignore */ address)) as PdfjsLike & {
+        GlobalWorkerOptions: { workerSrc: string };
+      },
+  );
+  // Never loaded: pdfjsWorker is set, so pdf.js starts no worker of its own.
   api.GlobalWorkerOptions.workerSrc = parser;
   pdfjs = api;
   return api;

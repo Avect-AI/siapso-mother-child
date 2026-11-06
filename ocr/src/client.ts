@@ -133,7 +133,11 @@ export function createOcrClient(info: OcrPackInfo, options: OcrClientOptions = {
   }
 
   function spawn(): Worker {
-    const created = new Worker(new URL('./worker.ts', import.meta.url), {
+    // Built as assets/ocr-worker-<hash>.js, a name of its own: the app's
+    // service worker precaches it with the app shell, so a new worker starts
+    // offline, while the speech worker's script (assets/worker-<hash>.js) is
+    // kept apart until a voice is installed (app/src/pwa/worker-scripts.test.ts).
+    const created = new Worker(new URL('./ocr-worker.ts', import.meta.url), {
       type: 'module',
       name: 'siapso-ocr',
     });
