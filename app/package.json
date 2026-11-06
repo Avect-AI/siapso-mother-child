@@ -17,6 +17,7 @@
     "@noble/ed25519": "3.2.0",
     "@noble/hashes": "2.4.0",
     "@siapso/engine": "workspace:*",
+    "@siapso/ocr": "workspace:*",
     "@siapso/resolver": "workspace:*",
     "@siapso/speech": "workspace:*",
     "idb": "8.0.4",

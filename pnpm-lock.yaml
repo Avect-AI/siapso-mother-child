@@ -211,6 +211,9 @@ importers:
       '@siapso/engine':
         specifier: workspace:*
         version: link:../engine
+      '@siapso/ocr':
+        specifier: workspace:*
+        version: link:../ocr
       '@siapso/resolver':
         specifier: workspace:*
         version: link:../resolver

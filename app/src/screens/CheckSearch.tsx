@@ -10,6 +10,7 @@ import {
   type RefObject,
   type SubmitEvent,
 } from 'react';
+import { isOcrSupported } from '@siapso/ocr';
 import { useLocation } from 'wouter';
 import { oneTapItem } from '../domain/one-tap.js';
 import {
@@ -36,6 +37,7 @@ import {
   SearchLimit,
   useSearchedText,
 } from './search-parts.js';
+import { PRESCRIPTION_PATH } from './Prescription.js';
 import { MicButton, VoicePanel } from './SearchVoice.js';
 import { VOICE_PATH } from './VoicePack.js';
 
@@ -154,6 +156,9 @@ export function CheckSearch({
   );
 
   /** Another screen opens from here, the text kept on the check's entry for the way back. */
+  // Read once: whether this browser can read a prescription (a secure page, workers, Cache API).
+  const [prescriptionSupported] = useState(isOcrSupported);
+
   const leaveFor = (path: string, state: Record<string, unknown>) => {
     if (busy.current) return;
     busy.current = true;
@@ -163,6 +168,11 @@ export function CheckSearch({
 
   const toVoiceScreen = () => {
     leaveFor(VOICE_PATH, inSession({ fromSearch: true }));
+  };
+
+  // A prescription read on the phone (SCRUM-57, 8.10): one entry back to the check.
+  const toPrescription = () => {
+    leaveFor(PRESCRIPTION_PATH, flowEntry({ stepsToCheck: 1 }));
   };
 
   const voice = useVoiceInput({
@@ -365,6 +375,13 @@ export function CheckSearch({
         </div>
         <SearchLimit id={limitId} length={text.length} />
       </form>
+
+      {prescriptionSupported ? (
+        <Button variant="secondary" className="search__prescription" onClick={toPrescription}>
+          {t('prescription.entry')}
+          <span className="search__prescription-hint">{t('prescription.entryHint')}</span>
+        </Button>
+      ) : null}
 
       {voice.supported ? (
         <VoicePanel

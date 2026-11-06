@@ -3377,3 +3377,72 @@ html:has(.sticky-action:not(.sticky-action--off)) {
     animation: none;
   }
 }
+
+/*
+ * Read a prescription (SCRUM-57): the entry under the check's field, the
+ * steps of the screen in one column, and the list to tick, each line with
+ * what was read and what to compare, the checkbox a 48 px target.
+ */
+.search__prescription {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  text-align: start;
+}
+
+.search__prescription-hint {
+  font-weight: normal;
+  font-size: 0.9em;
+}
+
+.prescription section {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.prescription__items {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prescription__item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.prescription__item input[type='checkbox'] {
+  width: 28px;
+  height: 28px;
+  margin: 10px;
+}
+
+.prescription__item label {
+  display: grid;
+  gap: var(--space-1);
+  min-height: 48px;
+  overflow-wrap: anywhere;
+}
+
+.prescription__name {
+  font-weight: 600;
+}
+
+.prescription__line,
+.prescription__note {
+  font-size: 0.95em;
+}
+
+.prescription__note {
+  font-weight: 600;
+}

@@ -1077,6 +1077,65 @@ export const fr = {
     textsLead: "Les textes restent en anglais, leur langue d'origine.",
     back: 'Revenir à la page À propos',
   },
+  prescription: {
+    entry: 'Lire une ordonnance',
+    entryHint: 'Photo ou fichier (image, PDF)',
+    title: 'Lire une ordonnance',
+    lead: "L'application lit les noms des produits sur l'ordonnance. Rien n'est coché d'avance : vous cochez ce qui est pris, puis chaque produit est confirmé comme un nom tapé. La photo n'est jamais gardée.",
+    unsupported:
+      "Ce téléphone ne peut pas lire une ordonnance dans l'application. Tapez ou dites le nom de chaque produit.",
+    checking: 'Un instant.',
+    packTitle: "Pack « Lecture d'ordonnance »",
+    packLead:
+      "Pour lire une ordonnance, l'application a besoin de ce pack : environ {size} à télécharger, une seule fois. Ensuite, la lecture marche sans Internet.",
+    packInstall: 'Installer le pack',
+    packInstalling: 'Installation : {percent} %',
+    packCancel: "Annuler l'installation",
+    packRemove: 'Retirer le pack de lecture',
+    packRemoved: 'Le pack de lecture est retiré du téléphone.',
+    takePhoto: 'Prendre une photo',
+    chooseFile: 'Choisir une image ou un PDF',
+    reading: "Lecture de l'ordonnance : {percent} %",
+    cancelReading: 'Annuler la lecture',
+    listTitle: "Produits lus sur l'ordonnance",
+    listLead: 'Cochez les produits pris, en comparant avec les boîtes.',
+    readOn: "Lu sur l'ordonnance : « {line} »",
+    compare: 'Comparez ce nom avec celui de la boîte.',
+    alsoNames: 'Regardez la boîte : la ligne dit aussi « {names} ».',
+    holdsMore: 'Ce produit contient aussi {names}, que la ligne ne nomme pas. Regardez la boîte.',
+    namesMore: 'Regardez la boîte : la ligne nomme aussi autre chose.',
+    typedTitle: 'Lignes non reconnues',
+    typedLead: "Ajoutez une ligne telle qu'elle est écrite si c'est un produit pris.",
+    addTyped: 'Ajouter tel quel : « {text} »',
+    nothing:
+      "Aucun produit n'a été lu sur cette ordonnance. Reprenez une photo bien nette, ou tapez les noms.",
+    confirmTicked: 'Confirmer les produits cochés',
+    noneTicked: 'Cochez au moins un produit.',
+    confirmStep: 'Produit {n} sur {total}',
+    backToCheck: 'Revenir à la liste',
+    again: 'Lire une autre ordonnance',
+    errors: {
+      unavailable:
+        "Le pack de lecture n'est pas disponible depuis ce serveur ou sans Internet. Tapez ou dites le nom de chaque produit en attendant.",
+      invalid: 'Les fichiers reçus sont abîmés. Réessayez plus tard.',
+      storage: "Il n'y a pas assez de place sur le téléphone pour le pack de lecture.",
+      download: "L'installation s'est interrompue. Reprenez-la quand Internet revient.",
+      load: "La lecture n'a pas pu démarrer sur ce téléphone. Fermez l'application, rouvrez-la, puis réessayez.",
+      read: 'La lecture a échoué. Reprenez une photo, ou tapez les noms.',
+      timeout: 'La lecture a pris trop de temps. Reprenez une photo plus nette, ou tapez les noms.',
+      cancelled: 'Lecture annulée.',
+      'not-image':
+        "Ce fichier n'est ni une photo ni un PDF. Choisissez un autre fichier, ou prenez l'ordonnance en photo.",
+      'too-large':
+        "Ce fichier est trop grand pour ce téléphone. Prenez l'ordonnance en photo avec l'appareil.",
+      'pdf-password':
+        "Ce PDF est protégé par un mot de passe. Ouvrez-le, puis prenez l'ordonnance en photo.",
+      'pdf-damaged':
+        "Ce PDF ne s'ouvre pas. Choisissez un autre fichier, ou prenez l'ordonnance en photo.",
+      'pdf-unsupported':
+        "Ce PDF ne peut pas être lu ici. Prenez l'ordonnance en photo avec l'appareil.",
+    },
+  },
   update: {
     ready: 'Une nouvelle version est prête.',
     // Not "Recharger": in Senegal it reads as buying phone credit.
