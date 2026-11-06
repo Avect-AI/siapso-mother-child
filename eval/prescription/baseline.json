@@ -1,7 +1,7 @@
 {
   "sources": {
     "text": { "recallPrint": 1, "recallHand": 1, "maxFalsePrint": 0, "maxSilentHand": 0 },
-    "paddleocr": { "recallPrint": 1, "recallHand": 0.933, "maxFalsePrint": 0, "maxSilentHand": 0 },
+    "paddleocr": { "recallPrint": 1, "recallHand": 0.941, "maxFalsePrint": 0, "maxSilentHand": 0 },
     "pdf-scanned-paddleocr": {
       "recallPrint": 1,
       "recallHand": 0.666,
@@ -17,7 +17,7 @@
     },
     "tesseract-fast-fra-block-flat": {
       "recallPrint": 0.852,
-      "recallHand": 0.47,
+      "recallHand": 0.5,
       "maxFalsePrint": 2,
       "maxSilentHand": 6
     }
