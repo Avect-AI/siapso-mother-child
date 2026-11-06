@@ -6,11 +6,22 @@ export interface ParsedQuery {
   text: string;
   /** The strength in mg, when the query gives one. */
   strengthMg?: number;
+  /** The unit written with the strength, when one is ("75 mg", "1 g", "25 µg"). */
+  unit?: StrengthUnit;
 }
+
+/** A unit of strength as written, whatever its spelling ("mg", "milligrammes"). */
+export type StrengthUnit = 'mg' | 'g' | 'µg';
 
 const STRENGTH =
   /(\d+(?:[.,]\d+)?)\s*(microgrammes?|milligrammes?|grammes?|mcg|µg|mg|g)?(?![\p{L}\d])/gu;
 const FACTORS: Record<string, number> = { g: 1000, mg: 1, mcg: 0.001, µg: 0.001 };
+
+function unitOf(unit: string): StrengthUnit {
+  if (unit.startsWith('micro') || unit === 'mcg' || unit === 'µg') return 'µg';
+  if (unit.startsWith('milli') || unit === 'mg') return 'mg';
+  return 'g';
+}
 
 function factorOf(unit: string | undefined): number {
   if (unit === undefined) return 1;
@@ -26,6 +37,9 @@ function factorOf(unit: string | undefined): number {
  * "deux cuillères", "pendant 3 jours", "2 boîtes" (accents aside).
  */
 const COUNT_AFTER: ReadonlySet<string> = new Set([
+  'cp',
+  'cps',
+  'cpr',
   'comprimes',
   'gelules',
   'sachets',
@@ -71,8 +85,20 @@ const ONE_OF: ReadonlySet<string> = new Set([
   'unite',
 ]);
 
-/** "boîte de", "fois" or "x" just before a number: a count ("boîte de 100", "2 fois 100", "x100"). */
+/**
+ * "boîte de", "fois" or "x" just before a number without a unit: a count
+ * ("boîte de 100", "2 fois 100", "x100"); with a unit, its strength ("2 fois
+ * 100 mg").
+ */
 const COUNT_BEFORE = /(?:^|[\s,;(])(?:bo[iî]tes?\s+de|fois|x)\s*$/u;
+
+/**
+ * A number without a unit then "x" and another number ("2 x 500 mg", "2 × 500"):
+ * the first is a count when the second has a unit or is larger; otherwise the
+ * second is ("doliprane 1000 x 8").
+ */
+const TIMES_NUMBER =
+  /^\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(microgrammes?|milligrammes?|grammes?|mcg|µg|mg|g)?(?![\p{L}\d])/u;
 
 /** A word without its accents, as the counts above are written. */
 function plain(word: string): string {
@@ -94,23 +120,41 @@ function countAfter(after: string, value: number): boolean {
  * (number-words.ts). A count, a volume or a number of times is never a
  * strength, in digits or in words: a number after "boîte de", "fois" or "x",
  * or one without a unit followed by a count word ("100 comprimés", "cent
- * ml", "1 comprimé").
+ * ml", "1 comprimé"), and the count before "x" ("2 x 500 mg" reads 500 mg).
+ * The unit written, if any, is said with it.
  */
 export function parseStrength(query: string): ParsedQuery {
   const lower = numberWordsToDigits(query.toLowerCase());
+  // The number after a count and "x" is the strength, even with no unit ("2 x 500").
+  let afterCount = -1;
   for (const found of lower.matchAll(STRENGTH)) {
     const [whole, number = '', unit] = found;
     const start = found.index;
     const before = start > 0 ? lower.charAt(start - 1) : ' ';
     const glued = /\p{L}/u.test(before);
-    if (COUNT_BEFORE.test(lower.slice(0, start))) continue;
+    if (unit === undefined && start !== afterCount && COUNT_BEFORE.test(lower.slice(0, start))) {
+      continue;
+    }
     if (glued && unit === undefined && number.replace(/\D/g, '').length < 3) continue;
     const amount = Number.parseFloat(number.replace(',', '.'));
-    if (unit === undefined && countAfter(lower.slice(start + whole.length), amount)) continue;
+    const after = lower.slice(start + whole.length);
+    if (unit === undefined && countAfter(after, amount)) continue;
+    const times = unit === undefined ? TIMES_NUMBER.exec(after) : null;
+    if (times !== null) {
+      const [, next = '', nextUnit] = times;
+      if (nextUnit !== undefined || Number.parseFloat(next.replace(',', '.')) > amount) {
+        afterCount = start + whole.length + times[0].indexOf(next);
+        continue;
+      }
+    }
     const value = amount * factorOf(unit);
     if (!Number.isFinite(value) || value <= 0) continue;
-    const rest = lower.slice(0, start) + ' ' + lower.slice(start + whole.length);
-    return { text: rest.replace(/\s+/g, ' ').trim(), strengthMg: Math.round(value * 1e6) / 1e6 };
+    const rest = lower.slice(0, start) + ' ' + after;
+    return {
+      text: rest.replace(/\s+/g, ' ').trim(),
+      strengthMg: Math.round(value * 1e6) / 1e6,
+      ...(unit === undefined ? {} : { unit: unitOf(unit) }),
+    };
   }
   return { text: query };
 }

@@ -13,7 +13,7 @@ export {
   withoutStopWords,
 } from './normalize.js';
 export { parseStrength } from './strength.js';
-export type { ParsedQuery } from './strength.js';
+export type { ParsedQuery, StrengthUnit } from './strength.js';
 export {
   DEFAULT_LIMIT,
   DEFAULT_MIN_SCORE,

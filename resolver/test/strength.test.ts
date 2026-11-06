@@ -4,13 +4,30 @@ import { parseStrength } from '../src/index.js';
 
 describe('parseStrength', () => {
   it('reads a strength with a unit and normalises it to mg', () => {
-    expect(parseStrength('doliprane 1 g')).toEqual({ text: 'doliprane', strengthMg: 1000 });
-    expect(parseStrength('doliprane 1000 mg')).toEqual({ text: 'doliprane', strengthMg: 1000 });
-    expect(parseStrength('doliprane 0,5 g')).toEqual({ text: 'doliprane', strengthMg: 500 });
-    expect(parseStrength('doliprane 0.5g')).toEqual({ text: 'doliprane', strengthMg: 500 });
+    expect(parseStrength('doliprane 1 g')).toEqual({
+      text: 'doliprane',
+      strengthMg: 1000,
+      unit: 'g',
+    });
+    expect(parseStrength('doliprane 1000 mg')).toEqual({
+      text: 'doliprane',
+      strengthMg: 1000,
+      unit: 'mg',
+    });
+    expect(parseStrength('doliprane 0,5 g')).toEqual({
+      text: 'doliprane',
+      strengthMg: 500,
+      unit: 'g',
+    });
+    expect(parseStrength('doliprane 0.5g')).toEqual({
+      text: 'doliprane',
+      strengthMg: 500,
+      unit: 'g',
+    });
     expect(parseStrength('angusta 25 microgrammes')).toEqual({
       text: 'angusta',
       strengthMg: 0.025,
+      unit: 'µg',
     });
   });
 
@@ -21,7 +38,11 @@ describe('parseStrength', () => {
 
   it('reads a strength glued to the name when it has 3 digits or a unit', () => {
     expect(parseStrength('ibuprofene400')).toEqual({ text: 'ibuprofene', strengthMg: 400 });
-    expect(parseStrength('ibuprofene4g')).toEqual({ text: 'ibuprofene', strengthMg: 4000 });
+    expect(parseStrength('ibuprofene4g')).toEqual({
+      text: 'ibuprofene',
+      strengthMg: 4000,
+      unit: 'g',
+    });
   });
 
   it('keeps digits that belong to a name', () => {
@@ -41,8 +62,16 @@ describe('parseStrength', () => {
   });
 
   it('reads the gram and milligram units written out', () => {
-    expect(parseStrength('doliprane 1 gramme')).toEqual({ text: 'doliprane', strengthMg: 1000 });
-    expect(parseStrength('advil 400 milligrammes')).toEqual({ text: 'advil', strengthMg: 400 });
+    expect(parseStrength('doliprane 1 gramme')).toEqual({
+      text: 'doliprane',
+      strengthMg: 1000,
+      unit: 'g',
+    });
+    expect(parseStrength('advil 400 milligrammes')).toEqual({
+      text: 'advil',
+      strengthMg: 400,
+      unit: 'mg',
+    });
   });
 
   it('reads a strength said or typed in French words', () => {
@@ -51,17 +80,23 @@ describe('parseStrength', () => {
     expect(parseStrength('Advil quatre cents milligrammes, boîte de vingt')).toEqual({
       text: 'advil , boîte de vingt',
       strengthMg: 400,
+      unit: 'mg',
     });
     expect(parseStrength('advil quatre-cents')).toEqual({ text: 'advil', strengthMg: 400 });
     expect(parseStrength('amoxicilline deux cent cinquante')).toEqual({
       text: 'amoxicilline',
       strengthMg: 250,
     });
-    expect(parseStrength('doliprane un gramme')).toEqual({ text: 'doliprane', strengthMg: 1000 });
+    expect(parseStrength('doliprane un gramme')).toEqual({
+      text: 'doliprane',
+      strengthMg: 1000,
+      unit: 'g',
+    });
     expect(parseStrength('doliprane cent')).toEqual({ text: 'doliprane', strengthMg: 100 });
     expect(parseStrength('quatre-vingt-dix mg aspirine')).toEqual({
       text: 'aspirine',
       strengthMg: 90,
+      unit: 'mg',
     });
   });
 
@@ -105,6 +140,35 @@ describe('parseStrength', () => {
     ]) {
       expect(parseStrength(query), query).toEqual({ text: query });
     }
+  });
+
+  it('reads the strength after a count and "x", never the count (review of #71)', () => {
+    expect(parseStrength('aspirine 2 x 500 mg')).toMatchObject({ strengthMg: 500, unit: 'mg' });
+    expect(parseStrength('aspirine 2x500mg')).toMatchObject({ strengthMg: 500, unit: 'mg' });
+    expect(parseStrength('doliprane 2 × 500')).toMatchObject({ strengthMg: 500 });
+    expect(parseStrength('aspirine 500 mg x 2')).toMatchObject({ strengthMg: 500, unit: 'mg' });
+    // "1 cp", one tablet, three times: no strength at all.
+    expect(parseStrength('aspirine 1 cp x 3')).toEqual({ text: 'aspirine 1 cp x 3' });
+    expect(parseStrength('doliprane 2 cps')).toEqual({ text: 'doliprane 2 cps' });
+    // A strength then a count stays the strength.
+    expect(parseStrength('doliprane 1000 x 8')).toMatchObject({ strengthMg: 1000 });
+  });
+
+  it('says the unit written, and none for a bare number', () => {
+    expect(parseStrength('aspirine 75 mg')).toEqual({
+      text: 'aspirine',
+      strengthMg: 75,
+      unit: 'mg',
+    });
+    expect(parseStrength('aspirine 0,5 g')).toEqual({
+      text: 'aspirine',
+      strengthMg: 500,
+      unit: 'g',
+    });
+    expect(parseStrength('advil 400 milligrammes')).toMatchObject({ unit: 'mg' });
+    expect(parseStrength('angusta 25 µg')).toMatchObject({ unit: 'µg' });
+    expect(parseStrength('aspirine 1')).toEqual({ text: 'aspirine', strengthMg: 1 });
+    expect(parseStrength('aspirine 0,5')).toEqual({ text: 'aspirine', strengthMg: 0.5 });
   });
 
   it('still reads the strength next to a count, and the strength followed by its form', () => {
