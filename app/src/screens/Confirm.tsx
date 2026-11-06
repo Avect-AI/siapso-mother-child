@@ -692,6 +692,7 @@ export function Confirm({ kind }: { kind: EntryKind }) {
       matched: following.matched,
       queue: rest,
       queueTotal: entry.queueTotal,
+      ...(following.heardAs === undefined ? {} : { heardAs: following.heardAs }),
       ...(entry.stepsToCheck === undefined ? {} : { stepsToCheck: entry.stepsToCheck }),
       ...(entry.heard === true ? { heard: true } : {}),
       ...(added || entry.queueAdded === true ? { queueAdded: true } : {}),
@@ -731,6 +732,9 @@ export function Confirm({ kind }: { kind: EntryKind }) {
             total: entry.queueTotal,
           })}
         </p>
+      )}
+      {entry.heardAs === undefined ? null : (
+        <p className="meta confirm__heard">{t('confirm.heardAs', { words: entry.heardAs })}</p>
       )}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
       {pack !== null && candidate === undefined ? (

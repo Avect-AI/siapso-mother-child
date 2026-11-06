@@ -243,11 +243,28 @@ describe('Search: a name the voice split into words', () => {
     expect(screen.getByText('Cochez au moins un produit, ou écrivez le nom.')).toBeVisible();
     await user.click(box);
     await user.click(add());
+    // Review of #68: the words heard go with it to its confirm screen.
+    expect(await screen.findByText(/^J'ai entendu\s:\s«\sKing Kyliba\s»$/)).toBeVisible();
     await user.click(await screen.findByRole('button', { name: "Oui, c'est ce remède" }));
     await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
     expect(probe.current().items.map((item) => item.ref)).toEqual([
       { kind: 'plant', id: 'kinkeliba' },
     ]);
+  });
+});
+
+describe('Search: the words heard, on the confirm screen', () => {
+  it('shows them with the product they go with only, in the queue too', async () => {
+    const { user, group } = await say('dama naan nivaquine ak King Kyliba');
+    const [, heard] = within(group).getAllByRole('checkbox');
+    expect(heard).not.toBeChecked();
+    await user.click(heard as HTMLElement);
+    await user.click(add());
+    await screen.findByText('Produit 1 sur 2 trouvés dans la phrase');
+    expect(screen.queryByText(/^J'ai entendu\s:/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    await screen.findByText('Produit 2 sur 2 trouvés dans la phrase');
+    expect(screen.getByText(/^J'ai entendu\s:\s«\sKing Kyliba\s»$/)).toBeVisible();
   });
 });
 

@@ -512,6 +512,8 @@ export const fr = {
     no: 'Non, chercher encore',
     // The products ticked in a sentence (SCRUM-61), confirmed one after the other.
     queuePosition: 'Produit {position} sur {total} trouvés dans la phrase',
+    // The words the voice heard for a name to confirm (review of #68).
+    heardAs: "J'ai entendu : « {words} »",
     noNext: 'Non, passer au suivant',
     noBackToList: 'Non, revenir à la liste',
     // The product chosen is already in the check: never listed twice. Names the listed product.

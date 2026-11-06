@@ -292,6 +292,8 @@ export function Search({ kind }: { kind: EntryKind }) {
         matched: first.candidate.matched,
         stepsToCheck: oneMoreStep(entry.stepsToCheck),
         heard: fromVoice ? true : undefined,
+        // The words the voice heard for a name to confirm go with it (review of #68).
+        heardAs: first.heardAs,
         ...(rest.length === 0
           ? {}
           : {
@@ -300,6 +302,7 @@ export function Search({ kind }: { kind: EntryKind }) {
                 id: product.candidate.id,
                 query: product.text,
                 matched: product.candidate.matched,
+                ...(product.heardAs === undefined ? {} : { heardAs: product.heardAs }),
               })),
               queueTotal: ticked.length,
             }),

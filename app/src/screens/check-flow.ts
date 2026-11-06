@@ -34,6 +34,11 @@ export interface FlowState {
    */
   heard?: boolean;
   /**
+   * On the confirm entry, the words the voice heard for a name to confirm
+   * ("King Kyliba", "quinine qu'il y va"): shown with it (review of #68).
+   */
+  heardAs?: string;
+  /**
    * On the confirm entry of a product ticked in a sentence (SCRUM-61), the
    * products ticked after it, each confirmed in turn on its confirm screen.
    */
@@ -52,17 +57,22 @@ export interface QueuedProduct {
   query: string;
   /** The name it was found by. */
   matched: string;
+  /** The words the voice heard for it, when it is a name to confirm. */
+  heardAs?: string;
 }
 
 function isQueuedProduct(value: unknown): value is QueuedProduct {
   if (typeof value !== 'object' || value === null) return false;
-  const { kind, id, query, matched } = value as Partial<Record<keyof QueuedProduct, unknown>>;
+  const { kind, id, query, matched, heardAs } = value as Partial<
+    Record<keyof QueuedProduct, unknown>
+  >;
   return (
     (kind === 'product' || kind === 'plant') &&
     typeof id === 'string' &&
     id !== '' &&
     typeof query === 'string' &&
-    typeof matched === 'string'
+    typeof matched === 'string' &&
+    (heardAs === undefined || typeof heardAs === 'string')
   );
 }
 
@@ -73,7 +83,8 @@ function isQueuedProduct(value: unknown): value is QueuedProduct {
  * entry ignored; empty when there is none.
  */
 export function flowState(): FlowState {
-  const { stepsToCheck, query, matched, id, heard, queue, queueTotal, queueAdded } = sessionState();
+  const { stepsToCheck, query, matched, id, heard, heardAs, queue, queueTotal, queueAdded } =
+    sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
@@ -82,6 +93,7 @@ export function flowState(): FlowState {
   if (typeof matched === 'string') flow.matched = matched;
   if (typeof id === 'string' && id !== '') flow.id = id;
   if (heard === true) flow.heard = true;
+  if (typeof heardAs === 'string') flow.heardAs = heardAs;
   if (
     Array.isArray(queue) &&
     queue.every(isQueuedProduct) &&
@@ -89,11 +101,12 @@ export function flowState(): FlowState {
     Number.isInteger(queueTotal) &&
     queueTotal > queue.length
   ) {
-    flow.queue = queue.map(({ kind, id: queued, query: words, matched: name }) => ({
+    flow.queue = queue.map(({ kind, id: queued, query: words, matched: name, heardAs: heard }) => ({
       kind,
       id: queued,
       query: words,
       matched: name,
+      ...(heard === undefined ? {} : { heardAs: heard }),
     }));
     flow.queueTotal = queueTotal;
     if (queueAdded === true) flow.queueAdded = true;

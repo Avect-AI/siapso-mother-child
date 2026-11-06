@@ -422,6 +422,7 @@ export const en: Dictionary = {
     yesPlant: 'Yes, this is the remedy',
     no: 'No, search again',
     queuePosition: 'Product {position} of {total} found in the sentence',
+    heardAs: 'I heard: "{words}"',
     noNext: 'No, go to the next one',
     noBackToList: 'No, back to the list',
     alreadyNamed: '{name} is already on the list.',
