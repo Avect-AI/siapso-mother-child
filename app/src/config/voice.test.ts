@@ -49,7 +49,9 @@ describe('the names given to the decoder', () => {
   });
 
   // Review of #68: variant A without "quinine" (84 tokens), measured so:
-  // "kinkéliba" was never heard as "quinine qu'il y va" any more.
+  // "kinkéliba" was never heard as "quinine qu'il y va" any more. Round 2:
+  // two orders keeping names said together apart were measured and not
+  // adopted (65 and 64 products ticked of 88 instead of 70; docs/voice.md).
   it('keep to the prompt measured (variant A without quinine, 84 tokens)', () => {
     expect(VOICE_NAMES_PROMPT).toBe(
       'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.',

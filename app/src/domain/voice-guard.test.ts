@@ -68,23 +68,25 @@ describe('voiceGate', () => {
 });
 
 describe('isPromptEcho', () => {
+  /** The rules on a prompt of their own: the names in the order first measured. */
+  const PROMPT =
+    'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
+
   it('reads as an echo the names given, three in a row or four words of them in a row', () => {
-    expect(isPromptEcho(VOICE_NAMES_PROMPT, VOICE_NAMES_PROMPT)).toBe(true);
-    expect(isPromptEcho('Doliprane, paracétamol, Efferalgan.', VOICE_NAMES_PROMPT)).toBe(true);
-    expect(isPromptEcho('kinkéliba, moringa, bissap, huile de ricin', VOICE_NAMES_PROMPT)).toBe(
-      true,
-    );
-    expect(isPromptEcho('Merci. Codéine, fer, acide folique.', VOICE_NAMES_PROMPT)).toBe(true);
+    expect(isPromptEcho(PROMPT, PROMPT)).toBe(true);
+    expect(isPromptEcho('Doliprane, paracétamol, Efferalgan.', PROMPT)).toBe(true);
+    expect(isPromptEcho('kinkéliba, moringa, bissap, huile de ricin', PROMPT)).toBe(true);
+    expect(isPromptEcho('Merci. Codéine, fer, acide folique.', PROMPT)).toBe(true);
   });
 
   // Measured on 2026-11-06: noise was heard as "Cytotec,", the list of the
   // prompt going on. A name said alone ends otherwise ("Cytotec.").
   it('reads as an echo names of the prompt alone that end with a comma, as the list goes on', () => {
-    expect(isPromptEcho('Cytotec,', VOICE_NAMES_PROMPT)).toBe(true);
-    expect(isPromptEcho(' Advil, Cytotec, ', VOICE_NAMES_PROMPT)).toBe(true);
-    expect(isPromptEcho('Cytotec.', VOICE_NAMES_PROMPT)).toBe(false);
-    expect(isPromptEcho('Cytotec', VOICE_NAMES_PROMPT)).toBe(false);
-    expect(isPromptEcho("C'est le cas,", VOICE_NAMES_PROMPT)).toBe(false);
+    expect(isPromptEcho('Cytotec,', PROMPT)).toBe(true);
+    expect(isPromptEcho(' Advil, Cytotec, ', PROMPT)).toBe(true);
+    expect(isPromptEcho('Cytotec.', PROMPT)).toBe(false);
+    expect(isPromptEcho('Cytotec', PROMPT)).toBe(false);
+    expect(isPromptEcho("C'est le cas,", PROMPT)).toBe(false);
   });
 
   it('never reads so a sentence that names products of the list as said', () => {
@@ -96,7 +98,30 @@ describe('isPromptEcho', () => {
       'huile de ricin',
       '',
     ]) {
+      expect(isPromptEcho(sentence, PROMPT), sentence).toBe(false);
+    }
+  });
+
+  // Round 2 of the review of #68: with the names given now, the lists women
+  // say most pass the guard, except those said in the very order of the
+  // prompt (a known cost, docs/voice.md: the orders that keep them apart
+  // wrote fewer names right and were not adopted).
+  it('lets through, with the names given, the lists women say most, unless in the prompt order', () => {
+    expect(isPromptEcho(VOICE_NAMES_PROMPT, VOICE_NAMES_PROMPT)).toBe(true);
+    for (const sentence of [
+      'fer et acide folique',
+      'SP, fer, acide folique',
+      'acide folique, fer, SP',
+      'je prends du fer, de l’acide folique et la SP',
+      'paracétamol, Doliprane, Dafalgan',
+      'Coartem, SP, Nivaquine',
+      'Advil, ibuprofène',
+      'moringa, kinkéliba, bissap',
+    ]) {
       expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT), sentence).toBe(false);
+    }
+    for (const sentence of ['fer, acide folique, SP', 'Doliprane, paracétamol, Efferalgan']) {
+      expect(isPromptEcho(sentence, VOICE_NAMES_PROMPT), sentence).toBe(true);
     }
   });
 });

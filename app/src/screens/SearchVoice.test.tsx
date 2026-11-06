@@ -290,7 +290,8 @@ describe('Search: saying a name', () => {
   it('reads as nothing heard a transcript that repeats the names given', async () => {
     const { user, field } = await openSearch('Ajouter un médicament', {
       installed: ['fr'],
-      transcript: 'Doliprane, paracétamol, Efferalgan, Dafalgan.',
+      // The first four names given, as the decoder writes them again.
+      transcript: `${VOICE_NAMES_PROMPT.split(', ').slice(0, 4).join(', ')}.`,
     });
     await user.click(mic());
     await screen.findByText("J'écoute en français.");
