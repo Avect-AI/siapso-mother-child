@@ -84,12 +84,38 @@ describe('refusing input that would hide a failure', () => {
     expect(() => parseBaseline('[0.98, 12]')).toThrow('baseline.json');
   });
 
+  it('reads the bar of the rows of the check screen when it is given, and only a ratio', () => {
+    expect(parseBaseline('{ "top3": 0.98, "top4": 0.99, "p95Ms": 12 }')).toEqual({
+      top3: 0.98,
+      top4: 0.99,
+      p95Ms: 12,
+    });
+    for (const text of [
+      '{ "top3": 0.98, "top4": "0.99", "p95Ms": 12 }',
+      '{ "top3": 0.98, "top4": 1.2, "p95Ms": 12 }',
+      '{ "top3": 0.98, "top4": null, "p95Ms": 12 }',
+    ]) {
+      expect(() => parseBaseline(text), text).toThrow('"top4"');
+    }
+  });
+
   it('fails a metric that is not a number', () => {
     const baseline = { top3: 0.9, p95Ms: 12 };
     expect(failures(0.95, 1, baseline)).toEqual([]);
     expect(failures(Number.NaN, 1, baseline)).toEqual(['top-3 accuracy is not a number (NaN)']);
     expect(failures(0.95, Number.NaN, baseline)).toEqual(['p95 latency is not a number (NaN)']);
     expect(failures(0.5, 20, baseline)).toHaveLength(2);
+  });
+
+  it('fails the rows of the check screen below their bar, when it is given', () => {
+    expect(failures(0.95, 1, { top3: 0.9, p95Ms: 12 }, 0.5)).toEqual([]);
+    expect(failures(0.95, 1, { top3: 0.9, top4: 0.96, p95Ms: 12 }, 0.97)).toEqual([]);
+    expect(failures(0.95, 1, { top3: 0.9, top4: 0.96, p95Ms: 12 }, 0.95)).toEqual([
+      'top-4 accuracy (the rows of the check screen) 0.950 is below the baseline 0.96',
+    ]);
+    expect(failures(0.95, 1, { top3: 0.9, top4: 0.96, p95Ms: 12 }, Number.NaN)).toEqual([
+      'top-4 accuracy (the rows of the check screen) is not a number (NaN)',
+    ]);
   });
 });
 
@@ -117,7 +143,14 @@ describe('main', () => {
 
   it('exits 0 when the bars are met', async () => {
     const { code, text } = await runWith(ONE_QUERY, '{ "top3": 0.9, "p95Ms": 1000 }');
-    expect(text).toMatch(/overall\s+1\s+1\.000\s+1\.000/);
+    expect(text).toMatch(/overall\s+1\s+1\.000\s+1\.000\s+1\.000/);
+    expect(code).toBe(0);
+  });
+
+  it('says and checks the rows of the check screen, both lists together', async () => {
+    const { code, text } = await runWith(ONE_QUERY, '{ "top3": 0.9, "top4": 1, "p95Ms": 1000 }');
+    expect(text).toMatch(/both lists together, at most 4 rows as on the check screen/);
+    expect(text).toMatch(/baseline: top-3 >= 0\.9, top-4 >= 1, p95 <= 1000 ms/);
     expect(code).toBe(0);
   });
 
@@ -178,8 +211,8 @@ describe('evaluate', () => {
         ].join('\n'),
       ),
     );
-    expect(report.overall).toEqual({ count: 3, top1: 2, top3: 2 });
-    expect(report.perType['local-wo']).toEqual({ count: 2, top1: 1, top3: 1 });
+    expect(report.overall).toEqual({ count: 3, top1: 2, top3: 2, top4: 2 });
+    expect(report.perType['local-wo']).toEqual({ count: 2, top1: 1, top3: 1, top4: 1 });
     expect(report.misses).toEqual([{ query: 'nebeday', type: 'local-wo', got: ['moringa'] }]);
   });
 
@@ -193,7 +226,7 @@ describe('evaluate', () => {
         ].join('\n'),
       ),
     );
-    expect(report.perType.noise).toEqual({ count: 2, top1: 1, top3: 1 });
+    expect(report.perType.noise).toEqual({ count: 2, top1: 1, top3: 1, top4: 1 });
     expect(report.misses).toEqual([{ query: 'nebeday', type: 'noise', got: ['moringa'] }]);
   });
 
@@ -260,5 +293,17 @@ describe('the committed evaluation set', () => {
     expect(baseline.top3).toBeGreaterThanOrEqual(0.9);
     const report = evaluate(index, queries);
     expect(report.overall.top3 / report.overall.count).toBeGreaterThanOrEqual(baseline.top3);
+  });
+
+  it('reaches the recorded top-4 accuracy of the check screen, both lists together (SCRUM-56)', async () => {
+    const pack = buildPack(await loadContent(ROOT, ROOT));
+    const index = buildIndex(entriesFromPack(pack));
+    const queries = parseQueries(await readFile(QUERIES_FILE, 'utf8'));
+    const baseline = parseBaseline(
+      await readFile(path.join(ROOT, 'eval', 'resolver', 'baseline.json'), 'utf8'),
+    );
+    expect(baseline.top4).toBeGreaterThanOrEqual(baseline.top3);
+    const report = evaluate(index, queries);
+    expect(report.overall.top4 / report.overall.count).toBeGreaterThanOrEqual(baseline.top4 ?? 1);
   });
 });

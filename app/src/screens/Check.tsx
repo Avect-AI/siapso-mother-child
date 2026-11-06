@@ -18,7 +18,8 @@ import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
-import { flowEntry, searchPath } from './check-flow.js';
+import { flowEntry } from './check-flow.js';
+import { CheckSearch } from './CheckSearch.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
 import { Typed } from './Typed.js';
 
@@ -116,12 +117,14 @@ function Item({
 }
 
 /**
- * Check: what the woman takes, being looked at. The items added (name,
- * substances and strengths, units per day when given), each with a way off the
- * list; a medicine or a remedy is added through the search screen. Under the
- * list, in words, what just changed (added, taken off with a way to put it
- * back). The one primary action goes on to the result, through the danger
- * signs present now, once at least one item is listed.
+ * Check: what the woman takes, being looked at. One field searches the
+ * medicines and the remedies (SCRUM-56, S12: CheckSearch), its candidates
+ * under it, each added by a tap or by the "yes" of the question under it;
+ * then the items added (name, substances and strengths, units per day when
+ * given), each with a way off the list. Under the list, in words, what just
+ * changed (added, taken off with a way to put it back). The one primary
+ * action goes on to the result, through the danger signs present now, once
+ * at least one item is listed.
  *
  * The check is for the active profile: hers in woman mode, the one chosen in
  * the list of profiles in accompanied mode (without a choice, the list opens),
@@ -191,12 +194,14 @@ export function Check() {
   const [today] = useState(() => todayIso(new Date()));
   const [failed, setFailed] = useState(false);
   const [change, setChange] = useState<Change | null>(null);
-  // After a removal or an undo, the row whose button takes the focus (else the first add button).
+  // After a removal or an undo, the row whose button takes the focus (else the search field).
   const focusRow = useRef<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const addRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLInputElement>(null);
   const emptyId = useId();
   const { start, profileId, changed, clearChanged, quick } = check;
+  // Read once, before it is said and cleared: an item was just added on another screen.
+  const [justAdded] = useState(() => changed !== null);
   // A passer-by checked without saving: her answers are in memory, never stored.
   // Accompanied mode only: woman mode never shows a passer-by's answers.
   const passerBy =
@@ -270,7 +275,7 @@ export function Check() {
     focusRow.current = null;
     const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('.check__remove') ?? [];
     const next = buttons[Math.min(index, buttons.length - 1)];
-    (next ?? addRef.current?.querySelector('button'))?.focus();
+    (next ?? fieldRef.current)?.focus();
   }, [check.items]);
 
   const putBack = (removed: Extract<Change, { kind: 'removed' }>) => {
@@ -297,11 +302,6 @@ export function Check() {
     item.ref.kind === 'unrecognised'
       ? t('result.quoted', { text: shownOf(item).name })
       : namedOf(item);
-
-  const openSearch = (kind: 'product' | 'plant') => {
-    // One entry after this one: adding an item comes back here (check-flow.ts).
-    navigate(searchPath(kind), { state: flowEntry({ stepsToCheck: 1 }) });
-  };
 
   // Nothing until her profile is read: without one, the profile screen opens
   // instead, so the check never shows first, nor takes the focus, before it.
@@ -338,7 +338,7 @@ export function Check() {
         <h1 tabIndex={-1}>
           {t(mode === 'accompanied' ? 'check.titleAccompanied' : 'check.titleWoman')}
         </h1>
-        <p>{t('check.lead')}</p>
+        {/* No lead: the field's label says what to do (SCRUM-56, the list stays in the first screen). */}
         {profile === null ? null : (
           <p className="meta check__profile">
             {passerBy !== null ? <span>{t('check.quick')}</span> : null}
@@ -358,6 +358,9 @@ export function Check() {
       </div>
       {failed ? <Notice>{t('profile.loadFailed')}</Notice> : null}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
+
+      {/* When her profile could not be read, the heading takes the focus, so the notice is read first. */}
+      <CheckSearch field={fieldRef} autoFocus={!failed} startEmpty={justAdded} />
 
       {empty ? (
         <p id={emptyId} className="check__empty">
@@ -403,25 +406,6 @@ export function Check() {
           {t('check.putBack')}
         </Button>
       ) : null}
-
-      <div ref={addRef} className="check__add">
-        <Button
-          variant="secondary"
-          onClick={() => {
-            openSearch('product');
-          }}
-        >
-          {t('check.addMedicine')}
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            openSearch('plant');
-          }}
-        >
-          {t('check.addRemedy')}
-        </Button>
-      </div>
 
       <Button
         variant="primary"

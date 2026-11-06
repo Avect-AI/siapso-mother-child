@@ -255,7 +255,6 @@ test('the app never fetches a voice file before the install button', async ({ pa
   const requested = await serveFakePacks(context);
   await mockSpeechWorker(page, 'nebeday');
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('nebeday');
   // The first test of a browser also waits for the knowledge pack, while the
   // service worker fills its precache through the routed network.
@@ -295,7 +294,6 @@ test('say "nebeday", see Moringa, confirm it, and it is added', async ({ page, c
   await serveFakePacks(context);
   await mockSpeechWorker(page, 'nebeday');
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await installWolof(page);
   await expectNoSeriousViolation(page);
 
@@ -334,7 +332,6 @@ test('in airplane mode, an installed voice still finds Moringa', async ({ page, 
   await serveFakePacks(context);
   await mockSpeechWorker(page, 'nebeday');
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await installWolof(page);
   await waitForServiceWorkerControl(page);
 
@@ -345,7 +342,6 @@ test('in airplane mode, an installed voice still finds Moringa', async ({ page, 
   await page.reload();
   await unlock(page);
   await page.goto('/#/check');
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await sayName(page);
   await expect(page.getByText("J'ai entendu : nebeday")).toBeVisible();
   await page.getByRole('list', { name: 'Propositions' }).locator('.candidate').first().click();
@@ -409,7 +405,6 @@ test.describe('with an update waiting', () => {
     });
 
     await page.goto(`${origin}/#/check`);
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await installWolof(page);
     expect((await workerScripts(page))['siapso-voice-worker']).toHaveLength(1);
 
@@ -420,7 +415,6 @@ test.describe('with an update waiting', () => {
     await unlock(page);
     expect(await page.evaluate(() => self.crossOriginIsolated)).toBe(true);
     await page.goto(`${origin}/#/check`);
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await mic(page).click();
     await expect(page.getByText(/^La voix n'est pas complète sur ce téléphone\./)).toBeVisible({
       timeout: 30_000,
@@ -444,7 +438,6 @@ test('the real speech worker is kept with the voice only, survives a new install
   await page.reload();
   await unlock(page);
   await page.goto('/#/check');
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await installWolof(page);
   expect(await workerScripts(page)).toEqual({ 'siapso-voice-worker': [expect.any(String)] });
 
@@ -466,7 +459,6 @@ test('the real speech worker is kept with the voice only, survives a new install
   await unlock(page);
   expect(await page.evaluate(() => self.crossOriginIsolated)).toBe(true);
   await page.goto('/#/check');
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await mic(page).click();
   // The real worker started from its cache, read the pack from the Cache API
   // only, and answered that the model is not there: unavailable.
@@ -487,7 +479,6 @@ test('a refused microphone is explained in words, and typing goes on', async ({
       Promise.reject(new DOMException('Permission denied', 'NotAllowedError'));
   });
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await installWolof(page);
   await mic(page).click();
   await expect(page.getByText('Le micro est bloqué pour cette application.')).toBeVisible();
@@ -506,7 +497,6 @@ test('offline, the install button is off and says to connect, and nothing is req
   const requested = await serveFakePacks(context);
   await mockSpeechWorker(page, 'nebeday');
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await mic(page).click();
   await page.getByRole('radio', { name: /^Français, 137/ }).check({ timeout: 15_000 });
   await context.setOffline(true);
@@ -529,7 +519,6 @@ test('a server that answers the voice with the app page says the voice is not av
     route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Carnet</title>' }),
   );
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await mic(page).click();
   await page.getByRole('radio', { name: /^Français, 137/ }).check({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Installer la voix en français' }).click();
@@ -573,7 +562,6 @@ test.describe('at 360 px with text at 200 percent', () => {
     await serveFakePacks(context);
     await mockSpeechWorker(page, 'zzqxw');
     await startWithProfile(page);
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await mic(page).click();
     await expect(
       page.getByRole('button', { name: 'Installer la voix', exact: true }),

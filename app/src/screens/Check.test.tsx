@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Pack } from '@siapso/engine';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeAppDb } from '../data/db.js';
@@ -10,6 +10,8 @@ import { probeCheck } from '../test/check-probe.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { fakeSpeech } from '../test/voice.js';
+import { createVoiceService, type VoiceService } from '../voice/voice-service.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -47,20 +49,54 @@ async function openCheckFromHome(settings: Settings = woman) {
   return { user, probe };
 }
 
-/** Adds an item through the search and confirm screens, as the user does. */
-async function addThrough(
-  user: ReturnType<typeof userEvent.setup>,
-  list: 'Ajouter un médicament' | 'Ajouter un remède',
-  query: string,
-) {
-  await user.click(await screen.findByRole('button', { name: list }));
-  await user.type(await screen.findByRole('searchbox'), query);
-  const candidates = await screen.findByRole('list');
-  // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).
-  expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+const FIELD = 'Nom du médicament ou du remède';
+
+function field() {
+  return screen.getByRole('searchbox', { name: FIELD });
+}
+
+/** The candidate rows under the check's field (the question under a row has buttons too). */
+function rows(): HTMLElement[] {
+  const list = screen.queryByRole('list', { name: 'Propositions' });
+  return list
+    ? within(list)
+        .getAllByRole('button')
+        .filter((button) => button.classList.contains('candidate'))
+    : [];
+}
+
+/** The row whose name starts with `name`. */
+async function rowOf(name: RegExp): Promise<HTMLElement> {
+  const list = await screen.findByRole('list', { name: 'Propositions' });
+  return await waitFor(() => {
+    const row = within(list)
+      .getAllByRole('button')
+      .find((button) => button.classList.contains('candidate') && name.test(button.textContent));
+    if (row === undefined) throw new Error(`no row ${String(name)}`);
+    return row;
+  });
+}
+
+/** The check's change line (added, taken off, put back). */
+function changeLine() {
+  return document.querySelector('.check__status');
+}
+
+/**
+ * Adds an item through the check's field, as the user does (SCRUM-56):
+ * Enter opens the question under the best row, "yes" adds it.
+ */
+async function addThrough(user: ReturnType<typeof userEvent.setup>, query: string) {
+  const input = await screen.findByRole('searchbox', { name: FIELD });
+  await user.clear(input);
+  await user.type(input, query);
+  await screen.findByRole('list', { name: 'Propositions' });
+  // Enter opens the question of the best row, never adds (a tap may add it at once).
   await user.keyboard('{Enter}');
   await user.click(await screen.findByRole('button', { name: /^Oui, c'est ce/ }));
-  await screen.findByRole('button', { name: 'Voir le résultat' });
+  await waitFor(() => {
+    expect(input).toHaveValue('');
+  });
 }
 
 describe('Check', () => {
@@ -79,12 +115,12 @@ describe('Check', () => {
       "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
     );
     expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toHaveClass(
-      'button--secondary',
+    // One field for medicines and remedies (SCRUM-56, S12), no screen to open first.
+    expect(field()).toHaveAccessibleDescription(
+      'Le nom sur la boîte ou celui du remède, même mal écrit.',
     );
-    expect(screen.getByRole('button', { name: 'Ajouter un remède' })).toHaveClass(
-      'button--secondary',
-    );
+    expect(screen.queryByRole('button', { name: 'Ajouter un médicament' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ajouter un remède' })).toBeNull();
   });
 
   it('never shows the check, nor gives it the focus, before the profile screen it opens', async () => {
@@ -158,12 +194,12 @@ describe('Check', () => {
     });
   });
 
-  it('gives the check its heading and the focus once her profile is read', async () => {
+  it('gives the focus to its field once her profile is read: she came to look up a product (SCRUM-56)', async () => {
     await saveProfile(profileOf());
     await openCheckFromHome();
-    const heading = await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
     await waitFor(() => {
-      expect(heading).toHaveFocus();
+      expect(field()).toHaveFocus();
     });
   });
 
@@ -292,7 +328,7 @@ describe('Check', () => {
     ).toHaveFocus();
     expect(screen.getByText('Profil : Bineta')).toBeVisible();
     expect(screen.queryByRole('button', { name: 'Voir le résultat' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Ajouter un médicament' })).toBeNull();
+    expect(screen.queryByRole('searchbox')).toBeNull();
     // Danger signs stay one tap away.
     expect(
       within(screen.getByRole('banner')).getByRole('link', { name: 'Signes de danger' }),
@@ -350,7 +386,7 @@ describe('Check', () => {
       await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
     ).toBeVisible();
     expect(await screen.findByText(/^À confirmer\s: le bébé est peut-être né$/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
+    expect(field()).toBeVisible();
   });
 
   it('sends accompanied mode to the list when no woman is chosen, never to one by default', async () => {
@@ -364,8 +400,8 @@ describe('Check', () => {
   it('lists each item added with its substances and units, and removes one', async () => {
     await saveProfile(profileOf());
     const { user, probe } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un médicament', 'paracetamol 500');
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'paracetamol 500');
+    await addThrough(user, 'kinkeliba');
 
     const list = screen.getByRole('list', { name: 'Produits ajoutés' });
     const rows = within(list).getAllByRole('listitem');
@@ -387,24 +423,24 @@ describe('Check', () => {
 
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'kinkeliba' } }]);
     expect(screen.getByRole('button', { name: 'Retirer Kinkéliba de la liste' })).toHaveFocus();
-    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
+    expect(changeLine()).toHaveTextContent(
       'Paracétamol 500 mg (générique) est retiré de la liste.',
     );
 
     await user.click(screen.getByRole('button', { name: 'Retirer Kinkéliba de la liste' }));
-    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toHaveFocus();
+    expect(field()).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Voir le résultat' })).toBeDisabled();
   });
 
   it('says what was just added, and puts a removed item back at its place', async () => {
     await saveProfile(profileOf());
     const { user, probe } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un médicament', 'paracetamol 500');
-    const status = () => within(screen.getByRole('main')).getByRole('status');
+    await addThrough(user, 'paracetamol 500');
+    const status = () => changeLine();
     await waitFor(() => {
       expect(status()).toHaveTextContent('Paracétamol 500 mg (générique) est ajouté à la liste.');
     });
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'kinkeliba');
     await waitFor(() => {
       expect(status()).toHaveTextContent('Kinkéliba est ajouté à la liste.');
     });
@@ -429,7 +465,7 @@ describe('Check', () => {
   it('says an added item once: not again when Home opens the check again', async () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'kinkeliba');
     await screen.findByText('Kinkéliba est ajouté à la liste.');
 
     await user.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Carnet' }));
@@ -442,7 +478,7 @@ describe('Check', () => {
   it('keeps the check when Home opens it again for the same profile', async () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'kinkeliba');
 
     await user.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Carnet' }));
     await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
@@ -453,7 +489,7 @@ describe('Check', () => {
   it('goes back to Home, not to the search, after an item is added', async () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'kinkeliba');
 
     window.history.back();
 
@@ -461,11 +497,406 @@ describe('Check', () => {
   });
 });
 
+/** Her check, open, with nothing listed. */
+async function openCheck(settings: Settings = woman, options: { voice?: VoiceService } = {}) {
+  await saveProfile(profileOf());
+  const probe = probeCheck();
+  await renderApp({
+    settings,
+    hash: '#/check',
+    packLoader: loaderOf(pack),
+    children: probe.element,
+    ...options,
+  });
+  await screen.findByRole('heading', { level: 1, name: /^Ce qu/ });
+  return { user: userEvent.setup(), probe };
+}
+
+/** Types `query` in the check's field and waits for the row `name`. */
+async function typeAndFind(user: ReturnType<typeof userEvent.setup>, query: string, name: RegExp) {
+  await user.type(field(), query);
+  return rowOf(name);
+}
+
+/** The question open under a row, by its heading ("Est-ce bien <nom> ?"). */
+async function question(name: RegExp): Promise<HTMLElement> {
+  const heading = await screen.findByRole('heading', { level: 2, name });
+  const section = heading.closest('section');
+  if (section === null) throw new Error('no question');
+  return section;
+}
+
+describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
+  it('searches the medicines and the remedies in one field, each row saying its list', async () => {
+    const { user } = await openCheck();
+    const remedy = await typeAndFind(user, 'kinkeliba', /^Kinkéliba/);
+    expect(remedy).toHaveTextContent('Remède');
+    // Read with Latin rules (WCAG 3.1.2), as on the search screen.
+    expect(within(remedy).getByText('Combretum micranthum')).toHaveAttribute('lang', 'la');
+
+    await user.clear(field());
+    const medicine = await typeAndFind(user, 'ibuprofene', /^Ibuprofène/);
+    expect(medicine).toHaveTextContent('Médicament');
+    expect(rows().length).toBeLessThanOrEqual(4);
+    // In the live region: how many, the first, what to do.
+    expect(document.querySelector('.check__search .search__status')).toHaveTextContent(
+      /propositions, la première : Ibuprofène \(générique\)\. Choisissez celui qui correspond\.$/,
+    );
+    // The address never says what is looked up.
+    expect(window.location.hash).toBe('#/check');
+  });
+
+  it('adds nothing from what is typed alone', async () => {
+    const { user, probe } = await openCheck();
+    await typeAndFind(user, 'ibuprofene', /^Ibuprofène/);
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('adds an INN found whole at a tap: the field empty with the focus, the check says so (S11)', async () => {
+    const { user, probe } = await openCheck();
+    const length = window.history.length;
+    const row = await typeAndFind(user, 'ibuprofene', /^Ibuprofène \(générique\)/);
+    // Its name ends with what a tap does.
+    expect(row).toHaveAccessibleName(/Ajouter$/);
+    expect(row).not.toHaveAttribute('aria-expanded');
+
+    await user.click(row);
+
+    expect(probe.current().items).toEqual([{ ref: { kind: 'product', id: 'ibuprofen-generic' } }]);
+    expect(field()).toHaveValue('');
+    expect(field()).toHaveFocus();
+    await waitFor(() => {
+      expect(changeLine()).toHaveTextContent('Ibuprofène (générique) est ajouté à la liste.');
+    });
+    expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent(
+      'Ibuprofène (générique)',
+    );
+    // No screen and no history entry for it.
+    expect(window.location.hash).toBe('#/check');
+    expect(window.history.length).toBe(length);
+  });
+
+  it('adds a brand found whole at a tap, the name typed kept (cytotec)', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'cytotec', /^Misoprostol/);
+    expect(row).toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'misoprostol-generic' } },
+    ]);
+    expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent(
+      'Vous avez écrit : « cytotec »',
+    );
+  });
+
+  it('adds at a tap a brand whose strength typed agrees with its box (clamoxyl 1g)', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'clamoxyl 1g', /^CLAMOXYL/);
+    expect(row).toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'clamoxyl-1-g-64539416' } },
+    ]);
+  });
+
+  it('adds once when two clicks on a row come in the same task', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'ibuprofene', /^Ibuprofène \(générique\)/);
+
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(probe.current().items).toHaveLength(1);
+    await waitFor(() => {
+      expect(changeLine()).toHaveTextContent('Ibuprofène (générique) est ajouté à la liste.');
+    });
+  });
+
+  it('asks "Est-ce bien ... ?" under the row of a prefix (ibupro), and adds only on its yes', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'ibupro', /^Ibuprofène \(générique\)/);
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    expect(row).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(row);
+
+    const asked = await question(/^Est-ce bien Ibuprofène \(générique\)\s\?$/);
+    expect(row).toHaveAttribute('aria-expanded', 'true');
+    // Under its own row, in the list of candidates.
+    expect(row.closest('li')).toContainElement(asked);
+    await waitFor(() => {
+      expect(within(asked).getByRole('heading', { level: 2 })).toHaveFocus();
+    });
+    expect(probe.current().items).toEqual([]);
+    // "Yes" is an answer: the check keeps its one primary action (the result).
+    const yes = within(asked).getByRole('button', { name: "Oui, c'est ce produit" });
+    expect(yes).toHaveClass('button--secondary');
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+
+    await user.click(yes);
+
+    expect(probe.current().items).toEqual([{ ref: { kind: 'product', id: 'ibuprofen-generic' } }]);
+    expect(field()).toHaveValue('');
+    expect(field()).toHaveFocus();
+    expect(screen.queryByRole('heading', { level: 2, name: /^Est-ce bien/ })).toBeNull();
+  });
+
+  it('closes the question on "Non", the text kept and the field focused', async () => {
+    const { user, probe } = await openCheck();
+    await user.click(await typeAndFind(user, 'ibupro', /^Ibuprofène \(générique\)/));
+    const asked = await question(/^Est-ce bien/);
+
+    await user.click(within(asked).getByRole('button', { name: 'Non, chercher encore' }));
+
+    expect(screen.queryByRole('heading', { level: 2, name: /^Est-ce bien/ })).toBeNull();
+    expect(field()).toHaveValue('ibupro');
+    expect(field()).toHaveFocus();
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('keeps one question open when two clicks on its row come in the same task', async () => {
+    const { user } = await openCheck();
+    const row = await typeAndFind(user, 'ibupro', /^Ibuprofène \(générique\)/);
+
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(await question(/^Est-ce bien/)).toBeVisible();
+    expect(screen.getAllByRole('heading', { level: 2, name: /^Est-ce bien/ })).toHaveLength(1);
+  });
+
+  it('closes the question when the name typed changes', async () => {
+    const { user } = await openCheck();
+    await user.click(await typeAndFind(user, 'ibupro', /^Ibuprofène \(générique\)/));
+    await question(/^Est-ce bien/);
+
+    await user.type(field(), 'f');
+
+    expect(screen.queryByRole('heading', { level: 2, name: /^Est-ce bien/ })).toBeNull();
+  });
+
+  it('says "Vous avez écrit" in the question of a close spelling (cytotek)', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'cytotek', /^Misoprostol/);
+    // The name on the box it was found by, on the row.
+    expect(row).toHaveTextContent('Nom sur la boîte : Cytotec');
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    const asked = await question(/^Est-ce bien Misoprostol/);
+    expect(asked).toHaveTextContent('Vous avez écrit : « cytotek »');
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('says what a product lacks of the substances typed (doliprane vitamine c)', async () => {
+    const { user } = await openCheck();
+    await user.click(await typeAndFind(user, 'doliprane vitamine c', /^DOLIPRANE/));
+
+    const asked = await question(/^Est-ce bien DOLIPRANE/);
+    expect(asked).toHaveTextContent(
+      /ce produit n'en contient pas\. Comparez avec le nom sur la boîte\./,
+    );
+  });
+
+  it('says a strength typed that no box has, and asks it (clamoxyl 3g)', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'clamoxyl 3g', /^CLAMOXYL/);
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    const asked = await question(/^Est-ce bien CLAMOXYL/);
+    expect(asked).toHaveTextContent(
+      "Aucune boîte de ce produit à 3000 mg n'est connue. Comparez avec le dosage écrit sur la boîte.",
+    );
+    expect(
+      within(asked).getByRole('group', { name: /^Quel dosage est écrit sur la boîte/ }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('says the local name a remedy was found by, and asks (nebeday)', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'nebeday', /^Moringa/);
+    expect(row).toHaveTextContent('Nom local : nebeday (wolof)');
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    const asked = await question(/^Est-ce bien Moringa/);
+    expect(asked).toHaveTextContent('Nom local : nebeday (wolof)');
+    await user.click(within(asked).getByRole('button', { name: "Oui, c'est ce remède" }));
+    expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
+  });
+
+  it('asks the daily count in the question of a product under a daily maximum, in sight (doliprane)', async () => {
+    const { user, probe } = await openCheck();
+    await user.click(await typeAndFind(user, 'doliprane', /^DOLIPRANE/));
+
+    const asked = await question(/^Est-ce bien DOLIPRANE/);
+    // Open without a tap, never with the focus (the question's heading has it).
+    expect(
+      within(asked).getByRole('textbox', { name: /^Combien d'unités par jour/ }),
+    ).toBeVisible();
+    await user.click(within(asked).getByRole('button', { name: "Oui, c'est ce produit" }));
+    // Left blank: the count is not known, never 0 or 1.
+    expect(probe.current().items).toEqual([
+      {
+        ref: { kind: 'product', id: expect.stringMatching(/^doliprane-/) as string },
+        strengthUnknown: true,
+      },
+    ]);
+  });
+
+  it('opens the question of the best row with Enter, and adds nothing', async () => {
+    const { user, probe } = await openCheck();
+    await user.type(field(), 'ibuprofene{Enter}');
+
+    expect(await question(/^Est-ce bien Ibuprofène/)).toBeVisible();
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('says under the row that a product is listed already, never twice (S11)', async () => {
+    const { user, probe } = await openCheck();
+    await user.click(await typeAndFind(user, 'ibuprofene', /^Ibuprofène \(générique\)/));
+    // Its family again: no longer added at a tap.
+    const row = await typeAndFind(user, 'ibuprofene', /^Ibuprofène \(générique\)/);
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+
+    const asked = await question(/^Est-ce bien Ibuprofène/);
+    expect(asked).toHaveTextContent('Ibuprofène (générique) est déjà dans la liste.');
+    await user.click(within(asked).getByRole('button', { name: 'Revenir à la liste' }));
+    expect(probe.current().items).toEqual([{ ref: { kind: 'product', id: 'ibuprofen-generic' } }]);
+    await waitFor(() => {
+      expect(changeLine()).toHaveTextContent('Ibuprofène (générique) est déjà dans la liste.');
+    });
+  });
+
+  it('adds the text as typed when nothing looks like it, on the check, quoted', async () => {
+    const { user, probe } = await openCheck();
+    await user.type(field(), '  poudre du marché ');
+    const notFound = await screen.findByRole('button', { name: 'Je ne trouve pas ce produit' });
+    expect(notFound).toHaveClass('button--secondary');
+    expect(notFound).toHaveAccessibleDescription(
+      "Il sera ajouté tel qu'il est écrit, comme produit non reconnu.",
+    );
+    await user.click(notFound);
+
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'unrecognised', text: 'poudre du marché' } },
+    ]);
+    expect(window.location.hash).toBe('#/check');
+    expect(screen.getByText('« poudre du marché »')).toHaveClass('typed');
+    expect(field()).toHaveValue('');
+  });
+
+  it('asks "Ce nom ressemble à :" on the search screen when the name looks like products', async () => {
+    const { user, probe } = await openCheck();
+    await user.type(field(), 'advill');
+    await rowOf(/^ADVIL/);
+    const notFound = screen.getByRole('button', { name: 'Je ne trouve pas ce produit' });
+    // Quiet while rows are on offer.
+    expect(notFound).toHaveClass('button--quiet');
+    await user.click(notFound);
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: /^Ce nom ressemble à/ }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/search/product');
+    expect(probe.current().items).toEqual([]);
+    await user.click(screen.getByRole('button', { name: /^Non, aucun de ces/ }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/check');
+    expect(probe.current().items).toEqual([{ ref: { kind: 'unrecognised', text: 'advill' } }]);
+    expect(probe.current().declinedOf({ ref: { kind: 'unrecognised', text: 'advill' } })).toBe(
+      true,
+    );
+    // The item is added: the text is not brought back in the field.
+    expect(field()).toHaveValue('');
+  });
+
+  it('keeps the text on the check entry for the way back from the search screen', async () => {
+    const { user } = await openCheck();
+    await user.type(field(), 'advill');
+    await rowOf(/^ADVIL/);
+    await user.click(screen.getByRole('button', { name: 'Je ne trouve pas ce produit' }));
+    await screen.findByRole('heading', { level: 2, name: /^Ce nom ressemble à/ });
+
+    window.history.back();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(field()).toHaveValue('advill');
+  });
+});
+
+describe('Check: saying a name on the check screen (SCRUM-56, S12)', () => {
+  it('puts what the voice heard in the field: a whole name adds at a tap', async () => {
+    const speech = fakeSpeech({ installed: ['fr'], transcript: 'ibuprofene' });
+    const { user, probe } = await openCheck(woman, { voice: createVoiceService(speech.port) });
+    const mic = screen.getByRole('button', { name: 'Dire le nom' });
+    expect(mic.closest('.search__entry')).toContainElement(field());
+
+    await user.click(mic);
+    await user.click(await screen.findByRole('button', { name: "Terminer l'enregistrement" }));
+
+    await waitFor(() => {
+      expect(field()).toHaveValue('ibuprofene');
+    });
+    const row = await rowOf(/^Ibuprofène \(générique\)/);
+    expect(row).toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+    expect(probe.current().items).toEqual([{ ref: { kind: 'product', id: 'ibuprofen-generic' } }]);
+  });
+
+  it('asks with "Vous avez dit" for a name heard that is not a whole name', async () => {
+    const speech = fakeSpeech({ installed: ['fr'], transcript: 'cytotek' });
+    const { user, probe } = await openCheck(woman, { voice: createVoiceService(speech.port) });
+    await user.click(screen.getByRole('button', { name: 'Dire le nom' }));
+    await user.click(await screen.findByRole('button', { name: "Terminer l'enregistrement" }));
+
+    const row = await rowOf(/^Misoprostol/);
+    expect(row).not.toHaveAccessibleName(/Ajouter$/);
+    await user.click(row);
+    const asked = await question(/^Est-ce bien Misoprostol/);
+    expect(asked).toHaveTextContent('Vous avez dit : « cytotek »');
+    // The machine's text is never added as typed while rows are on offer.
+    expect(screen.queryByRole('button', { name: 'Je ne trouve pas ce produit' })).toBeNull();
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('offers either whole list when the name heard matches nothing, on the search screen', async () => {
+    const speech = fakeSpeech({ installed: ['fr'], transcript: 'zzzzqx' });
+    const { user } = await openCheck(woman, { voice: createVoiceService(speech.port) });
+    await user.click(screen.getByRole('button', { name: 'Dire le nom' }));
+    await user.click(await screen.findByRole('button', { name: "Terminer l'enregistrement" }));
+
+    expect(
+      await screen.findByText('Aucun médicament ni remède ne correspond à ce nom.'),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Choisir dans la liste des remèdes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: /^Tous les remèdes/ }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/search/plant');
+  });
+});
+
 describe('Check to result', () => {
   it('shows the level the engine gives for the confirmed items', async () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
-    await addThrough(user, 'Ajouter un remède', 'kinkeliba');
+    await addThrough(user, 'kinkeliba');
     await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
     // The danger signs present now come first.
     await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));

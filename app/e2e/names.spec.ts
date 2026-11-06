@@ -37,7 +37,6 @@ async function pregnantAt(page: Page, weeks: number, situation: string) {
 
 /** Types `name` among the medicines, then keeps it as typed through the question "not found" asks first. */
 async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   // The field has the focus: the name is typed at once.
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
@@ -119,7 +118,6 @@ test('Advil typed as free text at 28 weeks: the card of what it looks like, befo
 
 test('a brand typed for a generic keeps the name typed, up to the result', async ({ page }) => {
   await pregnantAt(page, 10, 'Aucune de ces situations');
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.keyboard.type('cytotec');
   // Its row says the name on the box; a brand found whole is added by the tap (SCRUM-56).
   await expect(page.locator('.candidate').first()).toContainText(
@@ -138,7 +136,6 @@ test('a brand typed for a generic keeps the name typed, up to the result', async
 
 /** Types `name` among the medicines and keeps it as typed: through the question when one is asked. */
 async function addTyped(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();

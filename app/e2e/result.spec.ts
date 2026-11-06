@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addFirstCandidate, onboard, type Mode } from './support.js';
+import { addOnCheck, onboard, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -48,11 +48,9 @@ async function seeResult(page: Page) {
   await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
 }
 
-/** Adds the first candidate for `query` from one list, confirmed. */
-async function add(page: Page, list: 'Ajouter un médicament' | 'Ajouter un remède', query: string) {
-  await page.getByRole('button', { name: list }).click();
-  await page.getByRole('searchbox').fill(query);
-  await addFirstCandidate(page);
+/** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56), confirmed. */
+async function add(page: Page, query: string) {
+  await addOnCheck(page, query);
   // "Ce que vous prenez" in woman mode, "Ce qu'elle prend" in accompanied mode.
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }
@@ -61,7 +59,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   page,
 }) => {
   await womanAt(page, 30);
-  await add(page, 'Ajouter un médicament', 'ibuprofene');
+  await add(page, 'ibuprofene');
   await seeResult(page);
 
   const card = page.getByRole('article');
@@ -103,7 +101,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
 
 test('kinkeliba without a danger sign: we do not know, and who to show it to', async ({ page }) => {
   await womanAt(page, 14);
-  await add(page, 'Ajouter un remède', 'kinkeliba');
+  await add(page, 'kinkeliba');
   await seeResult(page);
 
   const card = page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' });
@@ -123,7 +121,7 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
   page,
 }) => {
   await pregnantAt(page, 30, 'accompanied');
-  await add(page, 'Ajouter un médicament', 'advil 400');
+  await add(page, 'advil 400');
   await seeResult(page);
 
   const card = page.getByRole('article');

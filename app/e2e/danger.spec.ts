@@ -120,7 +120,6 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
@@ -267,7 +266,6 @@ test.describe('on a small phone (360 x 560), a call is in the first screen', () 
     await answer(page, /^Allaite/, 'Non').click();
     await page.getByText('Aucune de ces situations').click();
     await page.getByRole('button', { name: 'Enregistrer' }).click();
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('kinkeliba');
     await addFirstCandidate(page);
     await page.getByRole('button', { name: 'Voir le résultat' }).click();

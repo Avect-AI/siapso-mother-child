@@ -51,8 +51,8 @@ export interface VoicePanelActions {
   onCancel: () => void;
   /** Back to the keyboard: the field takes the focus. */
   onType: () => void;
-  /** The whole list of the kind searched. */
-  onBrowse: () => void;
+  /** The whole list of the kind searched (on the check screen, of the kind chosen). */
+  onBrowse: (kind: EntryKind) => void;
   /** The voice screen, to install the voice again (or remove it first). */
   onInstall: () => void;
 }
@@ -65,11 +65,17 @@ export interface VoicePanelActions {
 export function VoicePanel({
   state,
   kind,
+  both = false,
   language,
   actions,
 }: {
   state: VoiceState;
   kind: EntryKind;
+  /**
+   * The field searches both lists (the check screen, SCRUM-56): "no medicine
+   * or remedy" is said, and either whole list is offered.
+   */
+  both?: boolean;
   /** The language the installed voice understands, said while it listens. */
   language: VoiceLang | undefined;
   actions: VoicePanelActions;
@@ -128,14 +134,29 @@ export function VoicePanel({
         <>
           {/* What is wrong first, then what to do; the results below do not say it again. */}
           <p className="voice__none">
-            {t(kind === 'product' ? 'search.noneFound' : 'search.noneFoundPlant')}
+            {t(
+              both
+                ? 'check.noneFound'
+                : kind === 'product'
+                  ? 'search.noneFound'
+                  : 'search.noneFoundPlant',
+            )}
           </p>
           <p>{t('voice.noneHint')}</p>
           <div className="voice__actions">
             {typeButton}
-            <Button variant="secondary" className="voice__browse" onClick={actions.onBrowse}>
-              {t(kind === 'product' ? 'voice.chooseProduct' : 'voice.choosePlant')}
-            </Button>
+            {(both ? (['product', 'plant'] as const) : [kind]).map((list) => (
+              <Button
+                key={list}
+                variant="secondary"
+                className="voice__browse"
+                onClick={() => {
+                  actions.onBrowse(list);
+                }}
+              >
+                {t(list === 'product' ? 'voice.chooseProduct' : 'voice.choosePlant')}
+              </Button>
+            ))}
           </div>
         </>
       );
@@ -249,7 +270,8 @@ export function BrowseList({
   };
   return (
     <section className="search__browse" aria-labelledby={id}>
-      <h2 id={id} ref={heading} tabIndex={-1}>
+      {/* data-autofocus: a screen opened on the list (from the check) gives its heading the focus (App.tsx). */}
+      <h2 id={id} ref={heading} tabIndex={-1} data-autofocus="">
         {t(kind === 'product' ? 'voice.listProduct' : 'voice.listPlant')}
       </h2>
       <TextField

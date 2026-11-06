@@ -4,7 +4,7 @@
 // Common answers: code 2468 tapped on the keypad, pregnant at 24 weeks given
 // today, not breastfeeding, no long-term situation.
 import type { Locator, Page } from '@playwright/test';
-import { CODE, herCheckThenProfiles, onboard } from '../support.js';
+import { checkField, CODE, herCheckThenProfiles, onboard } from '../support.js';
 import type { Journey } from './meter.js';
 
 export const WEEKS = 24;
@@ -36,7 +36,7 @@ export async function womanWithProfile(page: Page): Promise<void> {
   await button(page, 'Regarder un produit').click();
   await fillPregnant(page);
   await button(page, 'Enregistrer').click();
-  await button(page, 'Ajouter un médicament').waitFor();
+  await checkField(page).waitFor();
 }
 
 /** Accompanied mode with two saved profiles, Awa and Fatou: ends on the list of profiles. */
@@ -92,10 +92,11 @@ export async function pregnantAnswers(j: Journey): Promise<void> {
 }
 
 /**
- * One product added from the check: the add button, the name typed, the first
- * candidate, then the confirm screen when it has something to ask (SCRUM-56:
- * otherwise the tap on the candidate adds it). `strength`: the answer tapped
- * when a strength question shows ("Je ne sais pas" by default).
+ * One product added on the check (SCRUM-56, S12): the name typed in its
+ * field (which has the focus when the check opens and after each add), the
+ * first row, then "Est-ce bien ... ?" under it when it has something to ask
+ * (otherwise the tap on the row adds it). `strength`: the answer tapped when a
+ * strength question shows ("Je ne sais pas" by default).
  */
 export async function addProduct(
   j: Journey,
@@ -103,32 +104,31 @@ export async function addProduct(
   { strength = 'Je ne sais pas' }: { strength?: string } = {},
 ): Promise<void> {
   const { page } = j;
-  const check = page.getByRole('heading', { level: 1, name: /^Ce qu/ });
-  await j.tap(button(page, 'Ajouter un médicament'), `add ${query}`);
-  await j.type(page.getByRole('searchbox'), query, `typed ${query}`, {
-    then: page.locator('.candidate'),
-  });
+  const field = checkField(page);
+  const listed = await page.locator('.check__item').count();
+  // The product the add lists, at the end of the list.
+  const added = page.locator('.check__item').nth(listed);
+  await j.type(field, query, `typed ${query}`, { then: page.locator('.candidate') });
   const yes = button(page, /^Oui, c'est ce/);
-  await j.tap(page.locator('.candidate'), `candidate ${query}`, { then: yes.or(check) });
-  if (await check.isVisible()) {
+  await j.tap(page.locator('.candidate'), `candidate ${query}`, { then: yes.or(added) });
+  if (await added.isVisible()) {
     j.notes.push(`${query}: added at one tap`);
     return;
   }
-  const answers = page.locator('form.confirm__form input[type="radio"]');
-  const chosen = page.locator('form.confirm__form input[type="radio"]:checked');
+  const form = page.locator('.check__question form.confirm__form');
+  const answers = form.locator('input[type="radio"]');
+  const chosen = form.locator('input[type="radio"]:checked');
   if ((await answers.count()) > 0 && (await chosen.count()) === 0) {
     j.notes.push(`${query}: strength question with ${String(await answers.count())} answers`);
-    let target = page.locator('form.confirm__form label').filter({ hasText: strength });
+    let target = form.locator('label').filter({ hasText: strength });
     if ((await target.count()) === 0) {
       // A long list: every strength on demand.
       await j.tap(button(page, /^Voir tous les dosages/), 'voir tous les dosages');
-      target = page.locator('form.confirm__form label').filter({ hasText: strength });
+      target = form.locator('label').filter({ hasText: strength });
     }
     await j.tap(target, `strength ${strength}`);
   }
-  await j.tap(button(page, /^Oui, c'est ce/), `oui ${query}`, {
-    then: page.getByRole('heading', { level: 1, name: /^Ce qu/ }),
-  });
+  await j.tap(yes, `oui ${query}`, { then: added });
 }
 
 /** The prescription of the pharmacist's journey (spec section 3.1), as typed at the counter. */

@@ -370,12 +370,9 @@ export const fr = {
     titleAccompanied: "Ce qu'elle prend",
     // Said only when the profile takes a moment to read.
     loading: 'Chargement en cours.',
-    lead: 'Ajoutez chaque médicament et chaque remède, un par un.',
     profile: 'Profil : {name}',
     listLabel: 'Produits ajoutés',
     empty: "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
-    addMedicine: 'Ajouter un médicament',
-    addRemedy: 'Ajouter un remède',
     seeResult: 'Voir le résultat',
     // Taken off the list being looked at, never off the treatment.
     remove: 'Retirer',
@@ -401,6 +398,13 @@ export const fr = {
     nameAbove: '{name}, plus de {strength}',
     // "Je ne sais pas" to that dose, in the same-box question.
     nameUnknown: '{name}, dosage non précisé',
+    // The one field of the check (SCRUM-56, S12): medicines and remedies together.
+    field: 'Nom du médicament ou du remède',
+    // Short: two lines at most on a small phone, so the list and what follows stay in the first screen.
+    fieldHint: 'Le nom sur la boîte ou celui du remède, même mal écrit.',
+    noneFound: 'Aucun médicament ni remède ne correspond à ce nom.',
+    // The question under a candidate a tap does not add at once (S11), in place of the confirm screen.
+    confirmNamed: 'Est-ce bien {name} ?',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },

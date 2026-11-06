@@ -33,6 +33,14 @@ export interface FlowState {
    * is labelled "Vous avez dit".
    */
   heard?: boolean;
+  /**
+   * On a search entry opened by "Je ne trouve pas ce produit" of the check
+   * screen (SCRUM-56): the question "Ce nom ressemble à :" for the query is
+   * asked at once.
+   */
+  notFound?: boolean;
+  /** On a search entry opened from the check screen's voice: the whole list of the kind is shown. */
+  browse?: boolean;
 }
 
 /**
@@ -42,7 +50,7 @@ export interface FlowState {
  * none.
  */
 export function flowState(): FlowState {
-  const { stepsToCheck, query, matched, id, heard } = sessionState();
+  const { stepsToCheck, query, matched, id, heard, notFound, browse } = sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
@@ -51,6 +59,8 @@ export function flowState(): FlowState {
   if (typeof matched === 'string') flow.matched = matched;
   if (typeof id === 'string' && id !== '') flow.id = id;
   if (heard === true) flow.heard = true;
+  if (notFound === true) flow.notFound = true;
+  if (browse === true) flow.browse = true;
   return flow;
 }
 
@@ -61,8 +71,8 @@ export function flowEntry(flow: {
   return inSession({ ...flow });
 }
 
-/** Keeps `patch` on the current entry's state, without a new entry. */
-export function keepOnEntry(patch: FlowState): void {
+/** Keeps `patch` on the current entry's state, without a new entry (a field undefined: dropped). */
+export function keepOnEntry(patch: { [K in keyof FlowState]?: FlowState[K] | undefined }): void {
   window.history.replaceState(flowEntry({ ...flowState(), ...patch }), '');
 }
 

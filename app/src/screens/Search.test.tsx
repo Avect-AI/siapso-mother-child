@@ -9,6 +9,8 @@ import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, renderApp, storeTestCode } from '../test/render-app.js';
+import { openSearchScreen } from '../test/search-screen.js';
+import { navigate } from 'wouter/use-hash-location';
 import { SEARCH_DEBOUNCE_MS } from './Search.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
@@ -45,7 +47,7 @@ async function openSearch(list: 'Ajouter un médicament' | 'Ajouter un remède',
     children: probe.element,
   });
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: list }));
+  await openSearchScreen(list);
   const field = await screen.findByRole('searchbox');
   return { user, field, probe };
 }
@@ -266,9 +268,11 @@ describe('Search', () => {
     expect(name).toHaveClass('typed');
     expect(screen.getByText('Produit non reconnu')).toBeVisible();
     // The line that says it was added quotes it too.
-    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
-      '« poudre du marché » est ajouté à la liste.',
-    );
+    await waitFor(() => {
+      expect(document.querySelector('.check__status')).toHaveTextContent(
+        '« poudre du marché » est ajouté à la liste.',
+      );
+    });
   });
 
   it('adds nothing when a candidate is chosen: the confirm screen opens', async () => {
@@ -443,7 +447,7 @@ describe('Search', () => {
     ).toBe(true);
   });
 
-  it('adds a lookalike of the other list found by its whole name at a tap, the name typed kept', async () => {
+  it('asks first about a lookalike of the other list, even one found by its whole name, the name typed kept', async () => {
     const { user, field, probe } = await openSearch('Ajouter un remède');
     await user.type(field, 'cytotec');
     await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
@@ -455,8 +459,15 @@ describe('Search', () => {
     expect(first).toHaveTextContent('Nom sur la boîte : Cytotec');
     expect(screen.getByText("Est-ce l'un de ces médicaments ?")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Non, aucun de ces médicaments' })).toBeVisible();
-    // A brand found whole, nothing to ask: the tap on its named row adds it (SCRUM-56).
+    // She said she does not find it: a resemblance always asks (SCRUM-56, spec section 11).
+    expect(first).not.toHaveAccessibleName(/Ajouter$/);
     await user.click(first as HTMLElement);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([]);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
@@ -465,6 +476,24 @@ describe('Search', () => {
       { ref: { kind: 'product', id: 'misoprostol-generic' } },
     ]);
     expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('cytotec');
+  });
+
+  it('asks "Ce nom ressemble à :" at once when the check opened it for a name it does not find (SCRUM-56)', async () => {
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/check', packLoader: loaderOf(pack) });
+    await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+    act(() => {
+      navigate('/search/product', {
+        state: inSession({ stepsToCheck: 1, query: 'huile de ricin', notFound: true }),
+      });
+    });
+
+    const heading = await screen.findByRole('heading', { level: 2, name: LOOKALIKE });
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
+    expect(screen.getByRole('searchbox')).toHaveValue('huile de ricin');
+    expect(screen.getByRole('button', { name: 'Non, aucun de ces remèdes' })).toBeVisible();
   });
 
   it('says the name on the box a misspelt brand was found by, in the question too', async () => {

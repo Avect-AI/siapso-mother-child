@@ -89,18 +89,36 @@ export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: s
   await expectStart(page, mode, lang);
 }
 
+/** The one field of the check (SCRUM-56, S12): medicines and remedies together. */
+export const CHECK_FIELD = 'Nom du médicament ou du remède';
+
+/** The check's field. */
+export function checkField(page: Page) {
+  return page.getByRole('searchbox', { name: CHECK_FIELD });
+}
+
 /**
- * Adds the first candidate of the search: a tap adds it at once when nothing
- * is to ask (SCRUM-56, S11), otherwise "Oui" on its confirm screen; ends on
- * the check.
+ * Adds the first candidate under the check's field (its name typed there
+ * first): a tap adds it at once when nothing is to ask (SCRUM-56, S11),
+ * otherwise "Oui" in "Est-ce bien ... ?" under its row; ends on the check,
+ * the field empty for the next name.
  */
 export async function addFirstCandidate(page: Page) {
+  const field = checkField(page);
   await page.locator('.candidate').first().click();
   const yes = page.getByRole('button', { name: /^Oui, c'est ce/ });
-  const check = page.getByRole('heading', { level: 1, name: /^Ce qu/ });
-  await expect(yes.or(check)).toBeVisible();
+  await expect
+    .poll(async () => (await yes.isVisible()) || (await field.inputValue()) === '')
+    .toBe(true);
   if (await yes.isVisible()) await yes.click();
-  await expect(check).toBeVisible();
+  await expect(field).toHaveValue('');
+  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+}
+
+/** Types `query` in the check's field, then adds its first candidate (addFirstCandidate). */
+export async function addOnCheck(page: Page, query: string) {
+  await checkField(page).fill(query);
+  await addFirstCandidate(page);
 }
 
 /**

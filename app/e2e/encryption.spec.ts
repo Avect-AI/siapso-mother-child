@@ -189,7 +189,6 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   await unlock(page);
   await list.getByRole('button', { name: new RegExp(`^${AMINATA}`) }).click();
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();

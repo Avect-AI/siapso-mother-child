@@ -4,7 +4,7 @@
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { addFirstCandidate, CODE, expectWelcome, onboard, unlock } from './support.js';
+import { addOnCheck, CODE, expectWelcome, onboard, unlock } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -176,10 +176,9 @@ async function pregnantAt(page: Page, weeks: number) {
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
 }
 
-async function add(page: Page, list: string, query: string) {
-  await page.getByRole('button', { name: list }).click();
-  await page.getByRole('searchbox').fill(query);
-  await addFirstCandidate(page);
+/** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56). */
+async function add(page: Page, query: string) {
+  await addOnCheck(page, query);
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }
 
@@ -384,7 +383,6 @@ test.describe('on a 360 px phone, a long name in the search field', () => {
   test('keeps the clear mark apart from the end of the name', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     const field = page.getByRole('searchbox');
     await field.fill('Advil 400 mg comprimé pelliculé, boîte de vingt');
     await field.blur();
@@ -530,7 +528,7 @@ test.describe('on a 360 px phone', () => {
   test('"Voir tous les signes" takes the focus to the first sign it shows', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await add(page, 'Ajouter un médicament', 'ibuprofene');
+    await add(page, 'ibuprofene');
     await page.getByRole('button', { name: 'Voir le résultat' }).click();
     const showAll = page.getByRole('button', { name: 'Voir tous les signes' });
     await showAll.focus();
@@ -543,7 +541,6 @@ test.describe('on a 360 px phone', () => {
   test('Wolof and Latin names are marked with their language', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('nebeday');
     const first = page.locator('.candidate').first();
     await expect(first.getByText('nebeday', { exact: true })).toHaveAttribute('lang', 'wo');
@@ -554,7 +551,6 @@ test.describe('on a 360 px phone', () => {
   test('a number and its unit stay on one line in a product name', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     await page.getByRole('searchbox').fill('Doliprane 1000 mg');
     await page.locator('.candidate').first().click();
     const name = page.locator('.confirm__name');
@@ -633,10 +629,10 @@ test.describe('at 360 px with text at 200 percent', () => {
     await page.getByText("Ancienne césarienne (cicatrice sur l'utérus)").click();
     // Saved, her check opens (SCRUM-56).
     await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
-    await add(page, 'Ajouter un médicament', 'ibuprofene');
-    await add(page, 'Ajouter un remède', 'huile de ricin');
-    await add(page, 'Ajouter un remède', 'argile');
-    await add(page, 'Ajouter un remède', 'kinkeliba');
+    await add(page, 'ibuprofene');
+    await add(page, 'huile de ricin');
+    await add(page, 'argile');
+    await add(page, 'kinkeliba');
     await page.getByRole('button', { name: 'Voir le résultat' }).click();
     await page.getByText('Aucun de ces signes', { exact: true }).click();
     await page.getByRole('button', { name: 'Voir le résultat' }).click();

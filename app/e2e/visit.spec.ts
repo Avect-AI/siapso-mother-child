@@ -51,7 +51,6 @@ async function addProfile(page: Page, pseudonym: string) {
 
 /** From the check: a remedy found by its name, confirmed. */
 async function addRemedy(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill(name);
   await addFirstCandidate(page);
 }
@@ -133,7 +132,6 @@ test('a depot keeper checks a passer-by without a profile, and nothing is kept',
 
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await expect(page.locator('.check__profile')).toContainText('Femme de passage');
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('Advil 400');
   await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -211,7 +209,6 @@ test('a long list of strengths keeps the one typed and "yes" in the first screen
   await answerPregnant(page, '20');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('Doliprane 1000 mg');
   await page.locator('.candidate').first().click();
 
@@ -244,7 +241,6 @@ for (const { width, height } of [
       await answerPregnant(page, '20');
       await page.getByRole('button', { name: 'Enregistrer' }).click();
       await page.getByRole('button', { name: 'Regarder un produit' }).click();
-      await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
       await page.getByRole('searchbox').fill('doliprane');
       await page.locator('.candidate').first().click();
       // A daily count: the strength is then asked (SCRUM-56).

@@ -173,7 +173,6 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   ).toBeVisible();
   await list.getByRole('button', { name: /^Femme 1/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('codeine');
   await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -249,7 +248,6 @@ test('a last period with the phone date set back is read as unknown, and the res
   // The phone's date set 30 days back: before the day the profile was saved.
   await daysLater(page, -30);
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
   await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -342,7 +340,6 @@ test('one profile is deleted with its history after a last yes; the others stay'
   // A result for Awa, kept in the history of the phone.
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await list.getByRole('button', { name: /^Awa/ }).click();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -374,7 +371,6 @@ test('the danger signs now start unticked at each check, and a sign ticked after
   await onboard(page, 'woman');
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await pregnantProfile(page, 28);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
 

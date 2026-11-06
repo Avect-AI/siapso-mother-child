@@ -267,22 +267,37 @@ function planOf(
   return unknown ? { kind: 'askReplace', ...unknown } : { kind: 'new' };
 }
 
-function ConfirmForm({
+/**
+ * The question of one product or remedy before it is added: what it is, what
+ * to compare with the box (a name close to the one typed, a local name, a
+ * substance named that it lacks, a strength typed that no box has), then what
+ * a rule needs (the strength, the dose by a range, the daily count, whether
+ * it is the same box as one listed), and "yes" or "no". On the confirm
+ * screen, and under its row on the check screen (SCRUM-56, S11: `inline`,
+ * where the screen keeps no primary action of its own and "yes" is an answer
+ * among others). `entry` says what it was found by (the query, the name
+ * matched, whether the voice heard it); `onDone` follows "yes", once the
+ * check holds the product.
+ */
+export function ConfirmForm({
   pack,
   candidate,
   entry,
   onSearchAgain,
+  onDone,
+  inline = false,
 }: {
   pack: Pack;
   candidate: ConfirmCandidate;
-  entry: FlowState;
+  entry: Pick<FlowState, 'query' | 'matched' | 'heard'>;
   onSearchAgain: () => void;
+  onDone: () => void;
+  inline?: boolean;
 }) {
   const t = useT();
   const tNodes = useTNodes();
   const lang = useLang();
   const check = useCheck();
-  const [, navigate] = useLocation();
   const query = entry.query ?? '';
   // Read once: the pack and the candidate do not change while the screen is open.
   const [choice] = useState(() => strengthChoiceOf(pack, candidate, query));
@@ -525,7 +540,7 @@ function ConfirmForm({
       ...(written !== undefined && said ? { said: true } : {}),
     });
     leaving.current = true;
-    backToCheck(navigate, entry.stepsToCheck);
+    onDone();
   };
 
   // A long list with the strength typed: those boxes first, the others on demand.
@@ -611,7 +626,7 @@ function ConfirmForm({
   if (target !== null) yes = askUnits ? 'confirm.changeUnits' : 'confirm.backToList';
   const adding = readback === '' ? null : <p className="confirm__adding">{readback}</p>;
   const yesButton = (
-    <Button variant="primary" type="submit" className="confirm__yes">
+    <Button variant={inline ? 'secondary' : 'primary'} type="submit" className="confirm__yes">
       {t(yes)}
     </Button>
   );
@@ -805,6 +820,9 @@ export function Confirm({ kind }: { kind: EntryKind }) {
   // Read once: the state of this history entry (the product, the search behind it, the way back).
   const [entry] = useState(flowState);
   const id = entry.id;
+  const done = () => {
+    backToCheck(navigate, entry.stepsToCheck);
+  };
 
   const searchAgain = () => {
     // Opened from the search screen (it leaves the query): back to that entry, with the text.
@@ -827,7 +845,13 @@ export function Confirm({ kind }: { kind: EntryKind }) {
         </>
       ) : null}
       {pack !== null && candidate !== undefined ? (
-        <ConfirmForm pack={pack} candidate={candidate} entry={entry} onSearchAgain={searchAgain} />
+        <ConfirmForm
+          pack={pack}
+          candidate={candidate}
+          entry={entry}
+          onSearchAgain={searchAgain}
+          onDone={done}
+        />
       ) : null}
     </main>
   );

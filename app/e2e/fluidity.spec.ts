@@ -7,7 +7,7 @@
 // The budgets start at the measured baseline of 2026-11-05 (spec section
 // 4.1) and only go down: a change that adds a step to a journey says so here.
 import { expect, test, type Page } from '@playwright/test';
-import { addFirstCandidate, CODE } from './support.js';
+import { addOnCheck, checkField, CODE } from './support.js';
 import { Journey, overBudget, report, resultFacts, type Budget } from './fluidity/meter.js';
 import {
   addProduct,
@@ -27,21 +27,22 @@ import {
 // in one screen, P2 the code opening at its length (no "Ouvrir"), P3 lighter
 // profile answers (weeks by default, a new profile opens her check, "Aujourd'hui"
 // for a passer-by), P4 the strength asked only when a rule reads it, P5 a
-// product added in one tap. The danger journeys (J5) never take more.
+// product added in one tap, P6 the search on the check screen (no add button,
+// no search or confirm screen per product). The danger journeys (J5) never take more.
 const BUDGETS: Record<string, Budget> = {
-  j1: { taps: 11, keys: 20, screens: 8, scrolls: 3 }, // baseline 17 / 20 / 12 / 3
-  j2a: { taps: 6, keys: 14, screens: 7, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
-  j2b: { taps: 9, keys: 25, screens: 10, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
-  j3a: { taps: 6, keys: 14, screens: 7, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
-  j3b: { taps: 12, keys: 22, screens: 8, scrolls: 3 }, // baseline 17 / 22 / 10 / 4
-  j4: { taps: 10, keys: 16, screens: 8, scrolls: 3 }, // baseline 15 / 16 / 9 / 4
+  j1: { taps: 10, keys: 20, screens: 6, scrolls: 3 }, // baseline 17 / 20 / 12 / 3
+  j2a: { taps: 5, keys: 14, screens: 5, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
+  j2b: { taps: 7, keys: 25, screens: 5, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
+  j3a: { taps: 5, keys: 14, screens: 5, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
+  j3b: { taps: 11, keys: 22, screens: 6, scrolls: 3 }, // baseline 17 / 22 / 10 / 4
+  j4: { taps: 9, keys: 16, screens: 6, scrolls: 3 }, // baseline 15 / 16 / 9 / 4
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
   j5c: { taps: 5, keys: 0, screens: 4, scrolls: 0 }, // from the check (baseline 4 from the signs)
-  j6a: { taps: 3, keys: 9, screens: 4, scrolls: 0 }, // baseline 4 / 9 / 4 / 1
-  j6b: { taps: 3, keys: 14, screens: 4, scrolls: 0 },
-  j6c: { taps: 3, keys: 11, screens: 4, scrolls: 0 }, // baseline 4 / 11 / 4 / 1
-  j7: { taps: 18, keys: 55, screens: 15, scrolls: 6 }, // baseline 25 / 55 / 18 / 7
+  j6a: { taps: 2, keys: 9, screens: 1, scrolls: 0 }, // baseline 4 / 9 / 4 / 1
+  j6b: { taps: 2, keys: 14, screens: 1, scrolls: 0 }, // baseline 3 / 14 / 4 / 0
+  j6c: { taps: 2, keys: 11, screens: 1, scrolls: 0 }, // baseline 4 / 11 / 4 / 1
+  j7: { taps: 14, keys: 55, screens: 6, scrolls: 5 }, // baseline 25 / 55 / 18 / 7
 };
 
 // The study's conditions (spec section 3.1): a 360 x 800 touch phone, in French.
@@ -82,7 +83,7 @@ journey('j1', 'first use, woman mode, ibuprofen', async (page, j) => {
   await j.tap(button(page, 'Regarder un produit'), 'regarder un produit');
   await pregnantAnswers(j);
   await j.tap(button(page, 'Enregistrer'), 'enregistrer profil', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await toResult(j);
@@ -94,7 +95,7 @@ journey('j2a', 'returning woman, one product', async (page, j) => {
   await j.begin('code screen');
   await unlock(j);
   await j.tap(button(page, 'Regarder un produit'), 'regarder un produit', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await toResult(j);
@@ -106,7 +107,7 @@ journey('j2b', 'returning woman, two products', async (page, j) => {
   await j.begin('code screen');
   await unlock(j);
   await j.tap(button(page, 'Regarder un produit'), 'regarder un produit', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await addProduct(j, 'paracetamol');
@@ -122,7 +123,7 @@ journey('j3a', 'relay, existing woman, one product', async (page, j) => {
   await j.begin('code screen');
   await unlock(j);
   await j.tap(savedProfiles(page).getByRole('button', { name: /^Awa/ }), 'choose Awa', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await toResult(j);
@@ -140,7 +141,7 @@ journey('j3b', 'relay, new woman, one product', async (page, j) => {
   await pregnantAnswers(j);
   // Saved, her check opens (S8).
   await j.tap(button(page, 'Enregistrer et regarder ses produits'), 'enregistrer profil', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await toResult(j);
@@ -154,7 +155,7 @@ journey('j4', 'passer-by at a depot, one product', async (page, j) => {
   await j.tap(button(page, 'Regarder sans enregistrer'), 'regarder sans enregistrer');
   await pregnantAnswers(j);
   await j.tap(button(page, 'Regarder ses produits'), 'regarder ses produits', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   await addProduct(j, 'ibuprofene');
   await toResult(j);
@@ -191,9 +192,7 @@ journey('j5b', 'danger from the start, one sign ticked, to a call', async (page,
 // check, the baseline's 4 counted from the signs screen).
 journey('j5c', 'danger sign ticked during a check, to a call', async (page, j) => {
   await womanWithProfile(page);
-  await button(page, 'Ajouter un médicament').click();
-  await page.getByRole('searchbox').fill('ibuprofene');
-  await addFirstCandidate(page);
+  await addOnCheck(page, 'ibuprofene');
   await j.begin('check');
   await toResult(j, { sign: 'Fièvre' });
   const main = page.getByRole('main');
@@ -235,7 +234,7 @@ journey('j7', 'pharmacist at the counter, 4 products, details opened', async (pa
   await j.tap(button(page, 'Regarder sans enregistrer'), 'regarder sans enregistrer');
   await pregnantAnswers(j);
   await j.tap(button(page, 'Regarder ses produits'), 'regarder ses produits', {
-    then: button(page, 'Ajouter un médicament'),
+    then: checkField(page),
   });
   // A strength typed is the one chosen; a strength asked otherwise, "Je ne sais pas".
   for (const name of PRESCRIPTION) await addProduct(j, name);

@@ -9,6 +9,7 @@ import { probeCheck } from '../test/check-probe.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { openSearchScreen } from '../test/search-screen.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -68,8 +69,8 @@ describe('Quick exit', () => {
 
   it('leaves Back nothing to show: each earlier entry gives the neutral screen', async () => {
     const { user } = await openAwasCheck();
-    await user.click(screen.getByRole('button', { name: 'Ajouter un remède' }));
-    await screen.findByRole('searchbox');
+    // The search screen, as the check's "Je ne trouve pas ce produit" opens it (SCRUM-56).
+    await openSearchScreen('Ajouter un remède');
 
     await user.click(screen.getByRole('button', { name: 'Quitter' }));
     await screen.findByRole('heading', { level: 1, name: 'Carnet' });

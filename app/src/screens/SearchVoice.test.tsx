@@ -11,6 +11,7 @@ import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { openSearchScreen } from '../test/search-screen.js';
 import { fakeSpeech, voicePackError, type FakeSpeechOptions } from '../test/voice.js';
 import { createVoiceService } from '../voice/voice-service.js';
 
@@ -59,7 +60,7 @@ async function openSearch(
     children: probe.element,
   });
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: list }));
+  await openSearchScreen(list);
   const field = await screen.findByRole('searchbox');
   return { user, field, probe, speech };
 }
