@@ -115,7 +115,7 @@ describe('parseSentenceBaseline', () => {
   it('reads the bars, and rejects a missing or non-numeric one', () => {
     expect(
       parseSentenceBaseline(
-        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9, "nonFoodRecall": 0.95 }',
       ),
     ).toEqual({
       precision: 0.95,
@@ -123,8 +123,13 @@ describe('parseSentenceBaseline', () => {
       backgroundFalseProducts: 0,
       backgroundCheckOffers: 0,
       offered: 0.9,
+      nonFoodRecall: 0.95,
     });
     for (const [text, key] of [
+      [
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
+        'nonFoodRecall',
+      ],
       [
         '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
         'offered',
@@ -134,11 +139,11 @@ describe('parseSentenceBaseline', () => {
         'backgroundCheckOffers',
       ],
       [
-        '{ "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
+        '{ "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9, "nonFoodRecall": 0.95 }',
         'precision',
       ],
       [
-        '{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
+        '{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9, "nonFoodRecall": 0.95 }',
         'precision',
       ],
       [
@@ -177,11 +182,44 @@ describe('evaluateSentences', () => {
       priority: 2,
       detail: '',
     },
+    {
+      id: 'bissap',
+      family: 'bissap',
+      kind: 'plant',
+      display: { fr: 'Bissap', en: 'Roselle' },
+      names: [{ text: 'bissap', lang: 'wo' }],
+      priority: 2,
+      detail: '',
+    },
   ]);
   const families = new Map([
     ['moringa', 'moringa'],
     ['kinkeliba', 'kinkeliba'],
+    ['bissap', 'bissap'],
   ]);
+
+  // Round 3 of the review of #68: a food is offered unticked by design, so
+  // the products that are no food have a recall of their own.
+  it('counts the foods named and offered apart from the other products', () => {
+    const report = evaluateSentences(
+      index,
+      families,
+      parseSentences(
+        [
+          '- { text: dama naan bissap, lang: wo, type: plain, expect: [{ kind: plant, id: bissap }] }',
+          '- { text: dama naan nebeday, lang: wo, type: plain, expect: [{ kind: plant, id: moringa }] }',
+        ].join('\n'),
+      ),
+    );
+    expect(report.overall).toMatchObject({
+      expected: 2,
+      right: 1,
+      offered: 2,
+      foodNamed: 1,
+      foodOffered: 1,
+      foodRight: 0,
+    });
+  });
 
   it('counts products right, false and missed, per language', () => {
     const report = evaluateSentences(
@@ -276,17 +314,31 @@ describe('failures', () => {
     backgroundFalseProducts: 0,
     backgroundCheckOffers: 0,
     offered: 0.9,
+    nonFoodRecall: 0.95,
   };
   it('says each bar not met, and a measure that is not a number', () => {
     expect(
-      failures({ precision: 1, recall: 0.9, offered: 1, background: 0, checks: 0 }, baseline),
+      failures(
+        { precision: 1, recall: 0.9, offered: 1, nonFoodRecall: 1, background: 0, checks: 0 },
+        baseline,
+      ),
     ).toEqual([]);
     expect(
-      failures({ precision: 0.9, recall: 0.8, offered: 0.8, background: 1, checks: 1 }, baseline),
-    ).toHaveLength(5);
+      failures(
+        { precision: 0.9, recall: 0.8, offered: 0.8, nonFoodRecall: 0.8, background: 1, checks: 1 },
+        baseline,
+      ),
+    ).toHaveLength(6);
     expect(
       failures(
-        { precision: Number.NaN, recall: 0.9, offered: 1, background: 0, checks: 0 },
+        {
+          precision: Number.NaN,
+          recall: 0.9,
+          offered: 1,
+          nonFoodRecall: 1,
+          background: 0,
+          checks: 0,
+        },
         baseline,
       ),
     ).toEqual(['precision is not a number (NaN)']);
@@ -315,7 +367,7 @@ describe('main', () => {
   }
 
   const BARS =
-    '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }';
+    '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9, "nonFoodRecall": 0.95 }';
 
   it('exits 0 when the bars are met', async () => {
     const { code, text } = await runWith(ONE, BARS);
@@ -426,12 +478,16 @@ describe('the committed sentence set', () => {
       expect(baseline.precision).toBeGreaterThanOrEqual(0.95);
       expect(baseline.recall).toBeGreaterThanOrEqual(0.85);
       expect(baseline.offered).toBeGreaterThanOrEqual(0.95);
+      expect(baseline.nonFoodRecall).toBeGreaterThanOrEqual(0.95);
       for (const tally of [report.overall, ...Object.values(report.perLang)]) {
         expect(tally.right / (tally.right + tally.false)).toBeGreaterThanOrEqual(
           baseline.precision,
         );
         expect(tally.right / tally.expected).toBeGreaterThanOrEqual(baseline.recall);
         expect(tally.offered / tally.expected).toBeGreaterThanOrEqual(baseline.offered);
+        expect(
+          (tally.right - tally.foodRight) / (tally.expected - tally.foodNamed),
+        ).toBeGreaterThanOrEqual(baseline.nonFoodRecall);
       }
     },
     PACK_TIMEOUT_MS,

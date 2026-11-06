@@ -40,22 +40,28 @@ function simplifyWord(word: string): string {
 
 /**
  * Lowercase, read the Wolof letters ñ as "ny" and ŋ as "ng" (the sounds French
- * spelling writes "gn" and "ng": "dañu", "danyu"), strip accents (ë and é are
+ * spelling writes "gn" and "ng": "dañu", "danyu") and the French œ and æ as
+ * "oe" and "ae" ("sœur", "soeur"), strip accents (ë and é are
  * e), turn apostrophes, hyphens and any other character that is not a letter
  * or a digit into spaces, collapse spaces and trim. The text as written, every
  * spelling kept: the order of names and their first letter are read on it
  * ("Cytotec" under C, "comprimé" before "gélule").
  */
 export function plainText(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFC')
-    .replaceAll('ñ', 'ny')
-    .replaceAll('ŋ', 'ng')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
+  return (
+    text
+      .toLowerCase()
+      .normalize('NFC')
+      .replaceAll('ñ', 'ny')
+      .replaceAll('ŋ', 'ng')
+      // The joined letters of French ("sœur", "cæcum"), which no decomposition splits.
+      .replaceAll('œ', 'oe')
+      .replaceAll('æ', 'ae')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+  );
 }
 
 /**

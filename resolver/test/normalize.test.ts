@@ -24,6 +24,17 @@ describe('plainText', () => {
   });
 });
 
+// Round 3 of the review of #68: the voice writes "sœur", the lists "soeur".
+describe('plainText: the joined letters', () => {
+  it('reads œ and æ as oe and ae, upper case too', () => {
+    expect(plainText('sœur')).toBe('soeur');
+    expect(plainText('SŒUR')).toBe('soeur');
+    expect(plainText('Cæcum Æ')).toBe('caecum ae');
+    expect(normalize('belle-sœur')).toBe(normalize('belle-soeur'));
+    expect(normalize('cœur')).toBe(normalize('coeur'));
+  });
+});
+
 describe('normalize: base rules', () => {
   it('removes accents, case, punctuation and extra spaces', () => {
     expect(normalize('  Kinkéliba ')).toBe('kinkeliba');

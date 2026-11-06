@@ -691,12 +691,13 @@ describe('productsInSentence: products named but maybe not taken', () => {
 
   // Round 2 of the review of #68: the person named before, then a pronoun.
   it('carries a person named before to a clause that speaks of her or him', () => {
+    // Shown from "pour", which starts a clause of its own since round 3.
     expect(read('c’est pour ma tante, elle prend du coartem')).toEqual([
       [
         'substances:artemether+lumefantrine',
         false,
         'other-person',
-        'c’est pour ma tante, elle prend du coartem',
+        'pour ma tante, elle prend du coartem',
       ],
     ]);
     for (const sentence of [
@@ -788,6 +789,111 @@ describe('productsInSentence: products named but maybe not taken', () => {
         sentence,
       ).toEqual([true]);
     }
+  });
+});
+
+// Round 3 of the review of #68: everyday phrases that unticked a product she
+// takes, and the joined letter of "sœur".
+describe('productsInSentence: round 3 of the review', () => {
+  /** Ticked, and the reason when unticked, of each product found; typed and heard. */
+  const both = (sentence: string) =>
+    [false, true].map((heard) =>
+      productsInSentence(index, sentence, { heard }).map((found) => [
+        found.checked,
+        found.clause?.reason,
+      ]),
+    );
+  const ticked = [[true, undefined]];
+
+  it('reads "sœur" as "soeur"', () => {
+    for (const sentence of [
+      'ma sœur prend du cytotec',
+      'ma sœur est malade, elle prend du coartem',
+      'ma belle-sœur prend du cytotec',
+      'MA SŒUR PREND DU CYTOTEC',
+    ]) {
+      expect(both(sentence), sentence).toEqual([
+        [[false, 'other-person']],
+        [[false, 'other-person']],
+      ]);
+    }
+  });
+
+  it('reads "avant" as a past only before a subject', () => {
+    for (const sentence of [
+      'je prends du fer avant le repas',
+      'je prends du doliprane avant de dormir',
+      'avant de manger je prends du coartem',
+    ]) {
+      expect(both(sentence), sentence).toEqual([ticked, ticked]);
+    }
+    for (const sentence of ['avant je prenais de la nivaquine', 'avant j’ai pris du coartem']) {
+      expect(both(sentence)[0], sentence).toEqual([[false, 'past']]);
+    }
+  });
+
+  it('reads Wolof "du" as a negation only before a Wolof verb or pronoun', () => {
+    for (const sentence of ['j’ai dû prendre du doliprane', 'j’ai du prendre du doliprane']) {
+      expect(both(sentence), sentence).toEqual([ticked, ticked]);
+    }
+    expect(both('du ma naan nebeday')[0]).toEqual([[false, 'negation']]);
+    expect(both('du naan nebeday')[0]).toEqual([[false, 'negation']]);
+  });
+
+  it('keeps a negation of a reason, a time or a condition out of the clause of the product', () => {
+    for (const sentence of [
+      'je prends du doliprane parce que je n ai pas dormi',
+      'je prends du doliprane car je n’arrive pas à dormir',
+      'je prends du doliprane quand je ne dors pas',
+      'je prends du fer pour ne pas être fatiguée',
+      'dama naan fer ndax amuma doole',
+    ]) {
+      expect(both(sentence)[0], sentence).toEqual(ticked);
+    }
+    // The negation of the product itself still counts.
+    expect(both('je ne prends pas de doliprane parce que j’ai peur')[0]).toEqual([
+      [false, 'negation'],
+    ]);
+    // A product for another person: "pour mon fils" still says it.
+    expect(both('je prends du doliprane pour mon fils')[0]).toEqual([[false, 'other-person']]);
+    expect(both('c’est pour ma mère, du doliprane')[0]).toEqual([[false, 'other-person']]);
+  });
+
+  it('reads no untaken product in a negation of another verb', () => {
+    for (const sentence of [
+      'le coartem ne marche pas',
+      'je n’ai pas fini mon coartem',
+      'je n’arrête pas de prendre du doliprane',
+      'dama naan doliprane xamuma dose bi',
+      'je ne me souviens pas du nom du coartem',
+    ]) {
+      expect(both(sentence)[0], sentence).toEqual(ticked);
+    }
+    expect(both('j’ai fini mon coartem')[0]).toEqual([[false, 'past']]);
+    expect(both('je n’ai jamais pris de cytotec')[0]).toEqual([[false, 'negation']]);
+    expect(both('je n’ai pas de doliprane')[0]).toEqual([[false, 'negation']]);
+    expect(both('j’ai pas pris de cytotec')[0]).toEqual([[false, 'negation']]);
+  });
+
+  it('reads "depuis" and "commencé" as a use now, heard or typed', () => {
+    for (const sentence of [
+      'je prends du coartem depuis la semaine dernière',
+      'j’ai commencé le coartem il y a deux jours',
+      'j’ai commencé le coartem il y a deux mois',
+      'depuis trois mois je prends du fer',
+    ]) {
+      expect(both(sentence), sentence).toEqual([ticked, ticked]);
+    }
+    expect(both('il y a deux mois j’ai pris du coartem')[0]).toEqual([[false, 'past']]);
+  });
+
+  it('starts a clause at a subject and its verb after a product, even with no punctuation', () => {
+    const [typed, heard] = both('je ne prends pas de cytotec je prends du doliprane');
+    expect(typed).toEqual([
+      [false, 'negation'],
+      [true, undefined],
+    ]);
+    expect(heard?.map((found) => found[0])).toEqual([false, true]);
   });
 });
 

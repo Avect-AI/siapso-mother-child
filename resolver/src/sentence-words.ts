@@ -553,6 +553,9 @@ const WOLOF_CONTEXT: readonly string[] = [
 /** The French and Wolof verbs said around a product: a clause that holds one says something of its own. */
 export const VERB_WORDS: readonly string[] = [...FRENCH_VERBS, ...WOLOF_VERBS];
 
+/** The Wolof verbs said around a product: "du" before one of them is a negation ("du naan"). */
+export const WOLOF_VERB_WORDS: readonly string[] = WOLOF_VERBS;
+
 /**
  * The words of a sentence that never name a product: they are not read alone
  * and a name is never read across them (except the linking and joining words
@@ -840,6 +843,172 @@ export const HEALTH_WORKER_WORDS: readonly string[] = [
   'lopitaan',
   'santé',
   'ordonnance',
+];
+
+// Round 3 of the review of #68.
+
+/**
+ * Words that start a clause of a reason, a time, a condition or a purpose
+ * ("parce que je n'ai pas dormi", "car", "quand", "si", "comme", "pour",
+ * Wolof "ndax"): what it says does not reach the product of the clause
+ * before, nor the other way; but "pour" and another person ("pour mon fils")
+ * still says the product before is that person's.
+ */
+export const CLAUSE_REASON_WORDS: readonly string[] = [
+  'parce',
+  'car',
+  'pour',
+  'quand',
+  'lorsque',
+  'si',
+  'comme',
+  'ndax',
+];
+
+/** The verbs of taking, having or getting a product: a negation of one says it is not taken. */
+export const TAKING_VERB_WORDS: readonly string[] = [
+  'prends',
+  'prend',
+  'prenons',
+  'prenez',
+  'prennent',
+  'pris',
+  'prise',
+  'prendre',
+  'prenais',
+  'prenait',
+  'prenne',
+  'bois',
+  'boit',
+  'boire',
+  'bu',
+  'buvais',
+  'buvait',
+  'avale',
+  'avalé',
+  'avaler',
+  'utilise',
+  'utilisé',
+  'utiliser',
+  'mets',
+  'met',
+  'mis',
+  'mettre',
+  'mange',
+  'mangé',
+  'manger',
+  'achète',
+  'acheté',
+  'acheter',
+  'donne',
+  'donné',
+  'donner',
+  'veux',
+  'veut',
+  'supporte',
+  'naan',
+  'naanu',
+  'jël',
+  'lekk',
+  'jox',
+  'jënd',
+];
+
+/**
+ * Verbs whose negation says nothing of taking: "le coartem ne marche pas",
+ * "je ne sais pas", "xamuma" (I do not know). With the verbs that stop a use
+ * (STOP_VERB_WORDS), negated: "je n'arrête pas", "je n'ai pas fini".
+ */
+export const OTHER_VERB_WORDS: readonly string[] = [
+  'marche',
+  'marchent',
+  'fonctionne',
+  'sais',
+  'sait',
+  'savais',
+  'souviens',
+  'rappelle',
+  'comprends',
+  'arrive',
+  'dors',
+  'dormi',
+  'dormir',
+  'xam',
+  'baax',
+  'neex',
+  'dox',
+  'gis',
+];
+
+/** Verbs that stop a use: negated, the use goes on ("je n'arrête pas de prendre", "je n'ai pas fini"). */
+export const STOP_VERB_WORDS: readonly string[] = [
+  'arrête',
+  'arrêté',
+  'arrêtée',
+  'arrêter',
+  'arrêtais',
+  'arrêtait',
+  'fini',
+  'finie',
+  'finis',
+  'finit',
+  'terminé',
+  'terminée',
+  'termine',
+  'stoppé',
+];
+
+/** Auxiliaries: "je n'ai pas pris" negates "pris", "je n'ai pas de fer" negates "ai". */
+export const AUXILIARY_WORDS: readonly string[] = [
+  'ai',
+  'as',
+  'a',
+  'avons',
+  'avez',
+  'ont',
+  'avais',
+  'avait',
+  'suis',
+  'es',
+  'est',
+  'sommes',
+  'sont',
+  'étais',
+  'était',
+];
+
+/** Pronouns between "ne" and its verb ("je ne me souviens pas", "je n'en prends pas"). */
+export const OBJECT_PRONOUN_WORDS: readonly string[] = [
+  'me',
+  'm',
+  'te',
+  't',
+  'se',
+  's',
+  'le',
+  'la',
+  'l',
+  'les',
+  'lui',
+  'leur',
+  'en',
+  'y',
+  'nous',
+  'vous',
+];
+
+/**
+ * Words of a use going on: with them, a time said is when it began, not a
+ * past use ("je prends du coartem depuis la semaine dernière", "j'ai commencé
+ * le coartem il y a deux mois").
+ */
+export const ONGOING_WORDS: readonly string[] = [
+  'depuis',
+  'commencé',
+  'commencée',
+  'commence',
+  'commencer',
+  'débuté',
 ];
 
 /** French and Wolof possessives: "mon mari", "sama jëkkër". */

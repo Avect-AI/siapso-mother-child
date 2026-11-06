@@ -7,7 +7,7 @@
 import { damerauLevenshtein } from './distance.js';
 import { compiledOf } from './index-build.js';
 import { matchStrength, type MatchStrength } from './match-strength.js';
-import { normalize } from './normalize.js';
+import { normalize, plainText } from './normalize.js';
 import { search } from './search.js';
 import { clauseMarks, type ClauseReason } from './sentence-clause.js';
 import {
@@ -101,6 +101,9 @@ const CLAUSE_WORDS_SHOWN = 4;
 function clauseAfter(tokens: readonly Token[], last: number): number | undefined {
   const next = tokens[last + 1];
   if (next === undefined || next.boundary || !CLAUSE_STARTS.has(next.norm)) return undefined;
+  // "il y a" goes on from the name as usual ("le coartem il y a deux jours"):
+  // round 3 of the review of #68.
+  if (next.norm === 'il' && tokens[last + 2]?.norm === 'y') return undefined;
   let end = next.end;
   for (let at = last + 2; at <= last + CLAUSE_WORDS_SHOWN; at += 1) {
     const token = tokens[at];
@@ -119,6 +122,8 @@ interface Token {
   said: string;
   start: number;
   end: number;
+  /** As written, accents and case aside (plainText): "ci" is not "si". */
+  plain: string;
   /** Normalised (normalize). */
   norm: string;
   /** Punctuation stands between this word and the one before ("doliprane, nivaquine"). */
@@ -148,6 +153,7 @@ function tokensOf(sentence: string): Token[] {
       start,
       end: start + text.length,
       norm: normalize(said),
+      plain: plainText(said),
       boundary: BOUNDARY.test(between) && !(decimal && /^[.,]$/u.test(between)),
     });
   }

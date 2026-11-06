@@ -6,11 +6,19 @@
 // not taken by the speaker now. It is offered unticked with that clause,
 // never dropped: she may still take it. Rules on closed word lists
 // (sentence-words.ts), no language model.
-import { normalize } from './normalize.js';
+import { normalize, plainText } from './normalize.js';
 import {
   AGO_TIME_WORDS,
+  AUXILIARY_WORDS,
   CLAUSE_JOIN_WORDS,
+  CLAUSE_REASON_WORDS,
   CLAUSE_RESET_WORDS,
+  OBJECT_PRONOUN_WORDS,
+  ONGOING_WORDS,
+  OTHER_VERB_WORDS,
+  STOP_VERB_WORDS,
+  TAKING_VERB_WORDS,
+  WOLOF_VERB_WORDS,
   HEALTH_WORKER_WORDS,
   IMPERSONAL_AFTER_IL,
   LAST_WORDS,
@@ -39,8 +47,9 @@ import {
 /** Why a product is maybe not taken by the speaker now. */
 export type ClauseReason = 'negation' | 'other-person' | 'past' | 'advice';
 
-/** A word of the sentence: normalised, and whether punctuation stands before it. */
+/** A word of the sentence: as written (plainText), normalised, and whether punctuation stands before it. */
 export interface ClauseWord {
+  plain: string;
   norm: string;
   boundary: boolean;
 }
@@ -96,6 +105,22 @@ const Y = normalize('y');
 const TELLING = setOf(TELLING_WORDS);
 const SPEAKER_OBJECT = setOf(SPEAKER_OBJECT_WORDS);
 const HEALTH_WORKERS = setOf(HEALTH_WORKER_WORDS);
+// Compared as written: normalised, Wolof "ci" (in) would read as French "si".
+const REASON_STARTS: ReadonlySet<string> = new Set(CLAUSE_REASON_WORDS.map(plainText));
+const POUR = plainText('pour');
+const TAKING = setOf(TAKING_VERB_WORDS);
+const OTHER_VERBS = setOf(OTHER_VERB_WORDS);
+const STOPS = setOf(STOP_VERB_WORDS);
+const AUXILIARIES = setOf(AUXILIARY_WORDS);
+const OBJECT_PRONOUNS = setOf(OBJECT_PRONOUN_WORDS);
+const ONGOING = setOf(ONGOING_WORDS);
+const WOLOF_VERBS = setOf(WOLOF_VERB_WORDS);
+const AVANT = normalize('avant');
+/** The French words of a negation; the other NEGATION_WORDS are Wolof ("duma", "amul"). */
+const FRENCH_NEGATIONS = setOf(['pas', 'jamais', 'rien', 'aucun', 'aucune']);
+const WOLOF_NEGATIONS = new Set([...NEGATIONS].filter((word) => !FRENCH_NEGATIONS.has(word)));
+/** The words that close "ne ...": "ne prends pas", "n'ai jamais", "ne prends plus". */
+const NEG_ADVERBS = setOf(['pas', 'jamais', 'plus', 'rien', 'point', 'aucun', 'aucune']);
 /** "il y a" and a time within this many words after it ("il y a trois mois"). */
 const AGO_WITHIN = 3;
 /** The reasons, the first one shown when a clause says several. */
@@ -123,14 +148,19 @@ function pastTimeAt(words: readonly ClauseWord[], at: number): boolean {
   return false;
 }
 
-/** A Wolof verb said in the negative: a verb of VERB_WORDS with a negative ending ("naanuma", "jëlul"). */
-function wolofNegative(word: string): boolean {
-  return NEGATIVE_ENDINGS.some((ending) => {
-    if (!word.endsWith(ending) || word.length <= ending.length) return false;
+/**
+ * The verb of a Wolof verb said in the negative, a verb of VERB_WORDS with a
+ * negative ending ("naanuma": naan, "jëlul": jël, "xamuma": xam), or undefined.
+ */
+function wolofNegativeStem(word: string): string | undefined {
+  for (const ending of NEGATIVE_ENDINGS) {
+    if (!word.endsWith(ending) || word.length <= ending.length) continue;
     const stem = word.slice(0, -ending.length);
+    if (VERBS.has(stem)) return stem;
     // "jëfandikoowuma": a glide may join the stem and the ending.
-    return VERBS.has(stem) || (stem.endsWith('w') && VERBS.has(stem.slice(0, -1)));
-  });
+    if (stem.endsWith('w') && VERBS.has(stem.slice(0, -1))) return stem.slice(0, -1);
+  }
+  return undefined;
 }
 
 /** How word `at` starts a clause: stopping what the one before said, going on from it, or not at all. */
@@ -145,6 +175,7 @@ function clauseStart(
   const before = words[at - 1]?.norm ?? '';
   if (
     RESETS.has(word.norm) ||
+    REASON_STARTS.has(word.plain) ||
     (word.norm === PART && before === A) ||
     (QUE.has(word.norm) && OTHER.has(before))
   ) {
@@ -152,6 +183,21 @@ function clauseStart(
   }
   if (word.boundary || JOINS.has(word.norm)) return 'join';
   return undefined;
+}
+
+/**
+ * Whether a subject and its verb start at word `at` ("je prends", "j'ai
+ * pris", "dama naan"), object pronouns and "ne" aside: for voice, a clause
+ * that already names a product and has its verb ends there, even with no
+ * punctuation (round 3 of the review of #68).
+ */
+function subjectAndVerbAt(words: readonly ClauseWord[], at: number): boolean {
+  if (!SUBJECTS.has(words[at]?.norm ?? '')) return false;
+  let next = at + 1;
+  while (PARTICLES.has(words[next]?.norm ?? '') || OBJECT_PRONOUNS.has(words[next]?.norm ?? '')) {
+    next += 1;
+  }
+  return VERBS.has(words[next]?.norm ?? '');
 }
 
 /** A person after a possessive, an adjective aside ("mon mari", "ma petite soeur", "sama doom"). */
@@ -174,6 +220,94 @@ interface Clause {
   pronoun: boolean;
   /** The first word shown with a product of this clause. */
   from: number;
+  /** The last word shown, when a clause after it says whose it is ("pour mon fils"). */
+  shownLast?: number;
+}
+
+/**
+ * The negations of one clause (round 3 of the review of #68): a negation
+ * counts unless the verb it negates is not one of taking ("le coartem ne
+ * marche pas", "xamuma"), and a verb that stops a use, negated, says the use
+ * goes on ("je n'arrête pas", "je n'ai pas fini"). "ne ... que" is "only".
+ */
+function negationsOf(
+  words: readonly ClauseWord[],
+  inName: readonly boolean[],
+  first: number,
+  last: number,
+): { counts: boolean; plus: boolean; stopsNegated: Set<number> } {
+  const word = (at: number): string =>
+    at >= first && at <= last && inName[at] !== true ? (words[at]?.norm ?? '') : '';
+  const stopsNegated = new Set<number>();
+  let counts = false;
+  let plus = false;
+  /** The verb a negation at `at` applies to, from word `from` on, pronouns aside; -1 for none. */
+  const verbFrom = (from: number): number => {
+    let at = from;
+    while (OBJECT_PRONOUNS.has(word(at))) at += 1;
+    return word(at) === '' ? -1 : at;
+  };
+  /** After an auxiliary, the past participle negated ("n'ai pas pris"); else the auxiliary. */
+  const participleAfter = (aux: number): number => {
+    for (let at = aux + 1; at <= aux + 2; at += 1) {
+      if (!NEG_ADVERBS.has(word(at))) continue;
+      const next = at + 1;
+      const verb = word(next);
+      return VERBS.has(verb) || OTHER_VERBS.has(verb) || STOPS.has(verb) || TAKING.has(verb)
+        ? next
+        : aux;
+    }
+    return aux;
+  };
+  /** Whether a negation of the verb at `verb` says the product is not taken. */
+  const judge = (verb: number) => {
+    const norm = verb < 0 ? '' : word(verb);
+    if (STOPS.has(norm)) {
+      stopsNegated.add(verb);
+      return;
+    }
+    if (OTHER_VERBS.has(norm)) return;
+    counts = true;
+  };
+  const particles: number[] = [];
+  for (let at = first; at <= last; at += 1) if (PARTICLES.has(word(at))) particles.push(at);
+  for (const at of particles) {
+    // "je ne prends que du fer": "only", unless a negation word says otherwise.
+    let adverb = false;
+    let que = false;
+    for (let after = at + 1; after <= last; after += 1) {
+      if (NEG_ADVERBS.has(word(after))) adverb = true;
+      if (QUE.has(word(after))) que = true;
+      if (word(after) === PLUS) plus = true;
+    }
+    if (que && !adverb) continue;
+    let verb = verbFrom(at + 1);
+    // "ne pas prendre": the infinitive after the negation word.
+    if (verb >= 0 && NEG_ADVERBS.has(word(verb))) verb = verbFrom(verb + 1);
+    else if (verb >= 0 && AUXILIARIES.has(word(verb))) verb = participleAfter(verb);
+    judge(verb);
+  }
+  for (let at = first; at <= last; at += 1) {
+    const here = word(at);
+    const next = words[at + 1]?.norm ?? '';
+    if (particles.length === 0 && FRENCH_NEGATIONS.has(here)) {
+      // Spoken without "ne": "j'ai pas pris", "ça marche pas", "pas de cytotec".
+      const before = word(at - 1);
+      if (AUXILIARIES.has(before)) judge(participleAfter(at - 1));
+      else if (VERBS.has(before) || OTHER_VERBS.has(before) || STOPS.has(before)) judge(at - 1);
+      else judge(-1);
+    } else if (WOLOF_NEGATIONS.has(here)) {
+      judge(verbFrom(at + 1));
+    } else if (here === DU && (DU_NEXT.has(next) || WOLOF_VERBS.has(next))) {
+      // Round 3: never before a French verb ("j'ai dû prendre").
+      judge(verbFrom(at + 1));
+    } else {
+      // "naanuma", "jëlul"; not "xamuma" (I do not know): the stem is the verb.
+      const stem = wolofNegativeStem(here);
+      if (stem !== undefined && !OTHER_VERBS.has(stem)) counts = true;
+    }
+  }
+  return { counts, plus: plus && counts, stopsNegated };
 }
 
 /** What the words first to last of one clause say, words of a name aside. */
@@ -185,43 +319,42 @@ function reasonsOf(
 ): { reasons: Set<ClauseReason>; own: boolean; person: boolean; pronoun: boolean } {
   const reasons = new Set<ClauseReason>();
   let own = false;
-  let particle = false;
-  let restrictive = false;
-  let negated = false;
   let otherPerson = false;
   let speaker = false;
   let pronoun = false;
   let telling = false;
   let toSpeaker = false;
   let healthWorker = false;
+  let ongoing = false;
+  let timePast = false;
+  const word = (at: number): string =>
+    at >= first && at <= last && inName[at] !== true ? (words[at]?.norm ?? '') : '';
+  const negation = negationsOf(words, inName, first, last);
   for (let at = first; at <= last; at += 1) {
-    const word = words[at]?.norm;
-    if (word === undefined || inName[at] === true) continue;
+    const here = word(at);
+    if (here === '') continue;
     const next = words[at + 1]?.norm ?? '';
-    if (SUBJECTS.has(word) || VERBS.has(word)) own = true;
-    if (pastTimeAt(words, at)) reasons.add('past');
-    if (THIRD_PERSON.has(word) && !(word === IL && IMPERSONAL.has(next))) pronoun = true;
-    if (TELLING.has(word)) telling = true;
-    if (HEALTH_WORKERS.has(word)) healthWorker = true;
-    if (SPEAKER_OBJECT.has(word) && !personAfter(words, at)) toSpeaker = true;
-    if (
-      NEGATIONS.has(word) ||
-      wolofNegative(word) ||
-      (word === DU && (DU_NEXT.has(next) || VERBS.has(next)))
-    ) {
-      negated = true;
-    }
-    if (PARTICLES.has(word)) particle = true;
-    else if (particle && QUE.has(word)) restrictive = true;
-    if (PAST.has(word) || (particle && word === PLUS)) reasons.add('past');
-    if ((POSSESSIVES.has(word) && personAfter(words, at)) || OTHER_PEOPLE.has(word)) {
+    if (SUBJECTS.has(here) || VERBS.has(here)) own = true;
+    if (ONGOING.has(here)) ongoing = true;
+    if (pastTimeAt(words, at)) timePast = true;
+    if (THIRD_PERSON.has(here) && !(here === IL && IMPERSONAL.has(next))) pronoun = true;
+    if (TELLING.has(here)) telling = true;
+    if (HEALTH_WORKERS.has(here)) healthWorker = true;
+    if (SPEAKER_OBJECT.has(here) && !personAfter(words, at)) toSpeaker = true;
+    // Round 3: "avant" is a past only before a subject ("avant je prenais"),
+    // not "avant le repas", "avant de manger"; a stop negated is no past.
+    const past =
+      PAST.has(here) && !negation.stopsNegated.has(at) && (here !== AVANT || SUBJECTS.has(next));
+    if (past || (negation.counts && negation.plus)) reasons.add('past');
+    if ((POSSESSIVES.has(here) && personAfter(words, at)) || OTHER_PEOPLE.has(here)) {
       otherPerson = true;
-    } else if (SPEAKER.has(word)) {
+    } else if (SPEAKER.has(here)) {
       speaker = true;
     }
   }
-  // "je ne prends que du fer" is "only", not a negation.
-  if (negated || (particle && !restrictive)) reasons.add('negation');
+  // A time said with "depuis" or "commencé" is when the use began.
+  if (timePast && !ongoing) reasons.add('past');
+  if (negation.counts) reasons.add('negation');
   if (otherPerson && !speaker) reasons.add('other-person');
   // Someone told her of it ("ma voisine m'a parlé du cytotec"), not a health worker.
   if (telling && toSpeaker && !healthWorker) reasons.add('advice');
@@ -238,6 +371,7 @@ function shownFrom(
   if (word === undefined || inName[clause.first] === true || clause.first === clause.last) {
     return clause.first;
   }
+  // A word of a reason or a time stays shown: "pour ma mère", "quand j'étais enceinte".
   const starts =
     RESETS.has(word.norm) || JOINS.has(word.norm) || word.norm === PART || QUE.has(word.norm);
   return starts ? clause.first + 1 : clause.first;
@@ -286,16 +420,35 @@ export function clauseMarks(
       clause.reasons.add('other-person');
     }
     if (person) personFrom = clause.from;
+    // Round 3: "pour" and another person says the product before is that
+    // person's ("je prends du doliprane pour mon fils").
+    if (
+      words[first]?.plain === POUR &&
+      clause.reasons.has('other-person') &&
+      before !== undefined &&
+      !before.reasons.has('other-person')
+    ) {
+      before.reasons.add('other-person');
+      before.shownLast = last;
+    }
     clauses.push(clause);
   };
   let first = 0;
   let start: 'reset' | 'join' = 'reset';
+  // Whether the clause so far names a product and has a verb of its own.
+  let hasName = false;
+  let hasVerb = false;
   for (let at = 1; at < words.length; at += 1) {
-    const kind = clauseStart(words, inName, at);
+    if (inName[at - 1] === true) hasName = true;
+    else if (VERBS.has(words[at - 1]?.norm ?? '')) hasVerb = true;
+    let kind = clauseStart(words, inName, at);
+    if (kind === undefined && hasName && hasVerb && subjectAndVerbAt(words, at)) kind = 'join';
     if (kind === undefined) continue;
     close(first, at - 1, start);
     first = at;
     start = kind;
+    hasName = false;
+    hasVerb = false;
   }
   if (words.length > 0) close(first, words.length - 1, start);
 
@@ -303,7 +456,9 @@ export function clauseMarks(
     const clause = clauses.find((each) => each.first <= name.first && name.first <= each.last);
     if (clause === undefined) return undefined;
     const reason = REASONS.find((each) => clause.reasons.has(each));
-    if (reason !== undefined) return { reason, first: clause.from, last: clause.last };
+    if (reason !== undefined) {
+      return { reason, first: clause.from, last: clause.shownLast ?? clause.last };
+    }
     // "sans paracétamol", "ni de l'ibuprofène": the name right after, articles aside.
     let at = name.first - 1;
     while (at > clause.first && ARTICLES.has(words[at]?.norm ?? '') && inName[at] !== true) {

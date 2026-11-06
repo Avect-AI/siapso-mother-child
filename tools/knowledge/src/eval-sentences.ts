@@ -76,6 +76,12 @@ export interface SentenceBaseline {
    * unticked by design (review of #68).
    */
   offered: number;
+  /**
+   * Minimum recall (ticked) of the products named that are no food, overall
+   * and in each language (round 3 of the review of #68): the foods, offered
+   * unticked by design, are counted apart.
+   */
+  nonFoodRecall: number;
 }
 
 export interface SentenceTally {
@@ -92,6 +98,12 @@ export interface SentenceTally {
   unticked: number;
   /** Products the sentences name that were offered, ticked or unticked. */
   offered: number;
+  /** Products named that were found as a food ("bissap": `alsoFood`), ticked or not. */
+  foodNamed: number;
+  /** Foods named that were offered. */
+  foodOffered: number;
+  /** Foods named that came ticked. */
+  foodRight: number;
   /** Products named but not taken. */
   notTaken: number;
   /** Products named but not taken that came ticked (counted in `false` too). */
@@ -220,6 +232,7 @@ export function parseSentenceBaseline(text: string): SentenceBaseline {
     backgroundFalseProducts: countIn(record, 'backgroundFalseProducts'),
     backgroundCheckOffers: countIn(record, 'backgroundCheckOffers'),
     offered: ratioIn(record, 'offered'),
+    nonFoodRecall: ratioIn(record, 'nonFoodRecall'),
   };
 }
 
@@ -243,6 +256,9 @@ function emptyTally(): SentenceTally {
     notTaken: 0,
     notTakenTicked: 0,
     notTakenUnticked: 0,
+    foodNamed: 0,
+    foodOffered: 0,
+    foodRight: 0,
     checksRight: 0,
     checksWrong: 0,
   };
@@ -296,11 +312,17 @@ export function evaluateSentences(
     let right = 0;
     let offered = 0;
     let checksRight = 0;
+    const food = { named: 0, offered: 0, right: 0 };
     const missed: string[] = [];
     const wantedOf = (product: ExpectedProduct): Set<string> =>
       new Set(alternativesOf(product).map((entry) => familyOf(families, entry)));
     for (const product of item.expect) {
       const wanted = wantedOf(product);
+      // A food is found as one ("bissap": alsoFood), ticked or not.
+      const isFood = found.some(
+        (candidate) => candidate.alsoFood === true && wanted.has(candidate.candidate.family),
+      );
+      if (isFood) food.named += 1;
       const at = left.findIndex((candidate) => wanted.has(candidate.candidate.family));
       const hit = at >= 0 ? left.splice(at, 1)[0] : undefined;
       if (hit === undefined) {
@@ -309,12 +331,17 @@ export function evaluateSentences(
         if (offer >= 0) {
           unticked.splice(offer, 1);
           offered += 1;
+          if (isFood) food.offered += 1;
         }
         if (checks.some((check) => wanted.has(check.candidate.family))) checksRight += 1;
         continue;
       }
       right += 1;
       offered += 1;
+      if (isFood) {
+        food.offered += 1;
+        food.right += 1;
+      }
       if (product.mg !== undefined) {
         strengths.said += 1;
         if (hit.strengthMg === product.mg) strengths.read += 1;
@@ -341,6 +368,9 @@ export function evaluateSentences(
       tally.missed += missed.length;
       tally.unticked += found.length - ticked.length;
       tally.offered += offered;
+      tally.foodNamed += food.named;
+      tally.foodOffered += food.offered;
+      tally.foodRight += food.right;
       tally.notTaken += item.notTaken?.length ?? 0;
       tally.notTakenTicked += notTakenTicked;
       tally.notTakenUnticked += notTakenUnticked;
@@ -400,6 +430,7 @@ export function failures(
     precision: number;
     recall: number;
     offered: number;
+    nonFoodRecall: number;
     background: number;
     checks: number;
   },
@@ -408,7 +439,7 @@ export function failures(
 ): string[] {
   const found: string[] = [];
   const prefix = label === '' ? '' : `${label}: `;
-  for (const key of ['precision', 'recall', 'offered'] as const) {
+  for (const key of ['precision', 'recall', 'offered', 'nonFoodRecall'] as const) {
     const value = measured[key];
     if (!Number.isFinite(value)) found.push(`${prefix}${key} is not a number (${String(value)})`);
     else if (value < baseline[key]) {
@@ -435,6 +466,11 @@ const LABEL_WIDTH = 13;
 /** Named products offered, ticked or to confirm, over the products named. */
 const offeredOf = (tally: SentenceTally): number =>
   tally.expected === 0 ? 1 : tally.offered / tally.expected;
+/** The recall (ticked) of the products named that are no food. */
+const nonFoodRecallOf = (tally: SentenceTally): number =>
+  tally.expected - tally.foodNamed === 0
+    ? 1
+    : (tally.right - tally.foodRight) / (tally.expected - tally.foodNamed);
 
 function row(label: string, tally: SentenceTally): string {
   const cells = [tally.sentences, tally.expected, tally.right, tally.false, tally.missed].map(
@@ -442,17 +478,19 @@ function row(label: string, tally: SentenceTally): string {
   );
   const checks = `${String(tally.checksRight)}/${String(tally.checksWrong)}`;
   const notTaken = `${String(tally.notTakenTicked)}/${String(tally.notTakenUnticked)}/${String(tally.notTaken)}`;
-  return `${label.padEnd(LABEL_WIDTH)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)} ${checks.padStart(7)} ${offeredOf(tally).toFixed(3).padStart(8)} ${notTaken.padStart(10)}`;
+  const foods = `${String(tally.foodOffered)}/${String(tally.foodNamed)}`;
+  return `${label.padEnd(LABEL_WIDTH)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)} ${checks.padStart(7)} ${offeredOf(tally).toFixed(3).padStart(8)} ${notTaken.padStart(10)} ${nonFoodRecallOf(tally).toFixed(3).padStart(8)} ${foods.padStart(6)}`;
 }
 
 function printReport(report: SentenceReport, out: (line: string) => void): void {
   const header = ['sentences', 'named', 'right', 'false', 'missed'];
   out(
-    `${'lang'.padEnd(LABEL_WIDTH)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)} ${'checks'.padStart(7)} ${'offered'.padStart(8)} ${'not taken'.padStart(10)}`,
+    `${'lang'.padEnd(LABEL_WIDTH)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)} ${'checks'.padStart(7)} ${'offered'.padStart(8)} ${'not taken'.padStart(10)} ${'non-food'.padStart(8)} ${'foods'.padStart(6)}`,
   );
   out(
     '(right and false: ticked; recall: named and ticked; offered: named and ticked or to confirm)',
   );
+  out('(non-food: recall of the products named that are no food; foods: offered/named)');
   out('(checks: names read from words the voice split, offered unticked: right/wrong)');
   out(
     '(not taken: named with a negation, by another person or as a past use: ticked (counted false)/unticked/named)',
@@ -570,7 +608,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
   );
   out(`p95 time of one sentence: ${percentile95(times).toFixed(3)} ms`);
   out(
-    `baseline: precision >= ${String(baseline.precision)}, recall (ticked) >= ${String(baseline.recall)} and offered >= ${String(baseline.offered)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}, background names to check <= ${String(baseline.backgroundCheckOffers)}`,
+    `baseline: precision >= ${String(baseline.precision)}, recall (ticked) >= ${String(baseline.recall)}, offered >= ${String(baseline.offered)} and non-food recall >= ${String(baseline.nonFoodRecall)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}, background names to check <= ${String(baseline.backgroundCheckOffers)}`,
   );
 
   const failed = [
@@ -579,6 +617,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
         precision: precisionOf(report.overall),
         recall: recallOf(report.overall),
         offered: offeredOf(report.overall),
+        nonFoodRecall: nonFoodRecallOf(report.overall),
         background: backgroundFalse,
         checks: backgroundChecks,
       },
@@ -590,6 +629,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
           precision: precisionOf(report.perLang[lang]),
           recall: recallOf(report.perLang[lang]),
           offered: offeredOf(report.perLang[lang]),
+          nonFoodRecall: nonFoodRecallOf(report.perLang[lang]),
           background: 0,
           checks: 0,
         },

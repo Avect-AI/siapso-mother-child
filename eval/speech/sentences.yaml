@@ -13,6 +13,8 @@
 #   expect: one item per product named: { kind, id } (any product of its
 #         family is right), or { any: [...] } when several families are
 #         equally right; mg when a strength is said with it.
+#   notTaken (round 3 of the review of #68): the products named but not
+#         taken, as in sentences-heldout.yaml: ticked, a false product.
 
 # French: one product.
 - {
@@ -1685,3 +1687,120 @@
 - { text: 'dama prendre spasfon', lang: mix, type: none, expect: [] }
 - { text: "j'ai pris smecta ak ndox", lang: mix, type: none, expect: [] }
 - { text: 'sama goro moo ma jox mburu', lang: mix, type: none, expect: [] }
+
+# Round 3 of the review of #68: everyday phrases that unticked a product she
+# takes, and "sœur" as the voice writes it (expect: taken; notTaken: not).
+- {
+    text: 'je prends du fer avant le repas',
+    lang: fr,
+    type: plain,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: 'je prends du doliprane avant de dormir',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'avant de manger je prends du coartem',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "j'ai dû prendre du doliprane",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "j'ai du prendre du doliprane",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'je prends du doliprane parce que je n ai pas dormi',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "je prends du doliprane car je n'arrive pas à dormir",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'le coartem ne marche pas',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "je n'ai pas fini mon coartem",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "je n'arrête pas de prendre du doliprane",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'je prends du coartem depuis la semaine dernière',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: "j'ai commencé le coartem il y a deux jours",
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'je ne prends pas de cytotec je prends du doliprane',
+    lang: fr,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'ma sœur prend du cytotec',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'ma sœur est malade, elle prend du coartem',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'ma belle-sœur prend du cytotec',
+    lang: fr,
+    type: none,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'dama naan fer ndax amuma doole',
+    lang: wo,
+    type: plain,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: 'dama naan doliprane xamuma dose bi',
+    lang: wo,
+    type: plain,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }

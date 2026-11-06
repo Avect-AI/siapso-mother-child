@@ -3,5 +3,6 @@
   "recall": 0.88,
   "backgroundFalseProducts": 0,
   "backgroundCheckOffers": 0,
-  "offered": 0.95
+  "offered": 0.95,
+  "nonFoodRecall": 0.95
 }
