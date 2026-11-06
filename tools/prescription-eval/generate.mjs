@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Renders the synthetic prescriptions to images (SCRUM-57 spike):
-//   node tools/prescription-eval/generate.mjs <out-dir> [count=24] [fonts-dir]
+//   node tools/prescription-eval/generate.mjs <out-dir> [count=24] [fonts-dir] [--fresh]
+// With --fresh, the fresh held-out set of fresh.mjs (fx01 to fx12) instead
+// of the development set.
 // For each prescription: <id>-scan.png (the clean sheet), then three phone
 // photos, <id>-photo.jpg, <id>-hard.jpg and <id>-dim.jpg, and truth.json
 // (what each one says). Needs the built pack (pnpm knowledge:build) and the
@@ -12,6 +14,7 @@ import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { freshSheetHtml, makeFreshRx } from './fresh.mjs';
 import { makeRx, sceneHtml, sheetHtml, VARIANTS } from './synth.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -19,11 +22,17 @@ const root = path.resolve(here, '../..');
 const require = createRequire(path.join(root, 'app/package.json'));
 const { chromium } = require('@playwright/test');
 
-const [outArg, countArg = '24', fontsArg] = process.argv.slice(2);
+// --fresh: the fresh held-out set (fresh.mjs) instead of the development set.
+const fresh = process.argv.includes('--fresh');
+const [outArg, countArg = '24', fontsArg] = process.argv.slice(2).filter((a) => a !== '--fresh');
 if (outArg === undefined) {
-  console.error('usage: node tools/prescription-eval/generate.mjs <out-dir> [count] [fonts-dir]');
+  console.error(
+    'usage: node tools/prescription-eval/generate.mjs <out-dir> [count] [fonts-dir] [--fresh]',
+  );
   process.exit(2);
 }
+const make = fresh ? makeFreshRx : makeRx;
+const sheet = fresh ? freshSheetHtml : sheetHtml;
 const out = path.resolve(outArg);
 const fonts = fontsArg === undefined ? undefined : path.resolve(fontsArg);
 const pack = JSON.parse(await readFile(path.join(root, 'app/public/pack/pack.json'), 'utf8'));
@@ -61,8 +70,8 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1100, height: 1560 } });
 const truth = [];
 for (let i = 0; i < Number(countArg); i++) {
-  const rx = makeRx(i, substancesOf);
-  await writeFile(path.join(out, `${rx.id}.html`), sheetHtml(rx));
+  const rx = make(i, substancesOf);
+  await writeFile(path.join(out, `${rx.id}.html`), sheet(rx));
   await page.goto(`${origin}/${rx.id}.html`);
   // These callbacks run in the browser page, not in Node.
   await page.evaluate(() => globalThis.document.fonts.ready);

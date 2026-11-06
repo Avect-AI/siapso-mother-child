@@ -1,0 +1,587 @@
+[
+  {
+    "id": "fx01",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": false,
+    "font": "Arial",
+    "printFont": "Times New Roman",
+    "patient": "Thiaba Kouyaté",
+    "age": 23,
+    "weeks": 29,
+    "date": "18/08/2026",
+    "dateWords": "18 août 2026",
+    "prescriber": "Dr Aïda Barry",
+    "region": "Tambacounda",
+    "district": "Pont",
+    "cabinet": "Polyclinique Bel Air",
+    "bp": "3009",
+    "items": [
+      {
+        "written": "Magné B6 cp",
+        "inBase": false,
+        "posology": "2 cp matin et soir",
+        "inline": true
+      },
+      {
+        "written": "Fer + Acide folique cp",
+        "product": "fer-acide-folique",
+        "inBase": true,
+        "posology": "1 cp le matin QSP 3 mois",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "fx02",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": true,
+    "font": "NothingYouCouldDo",
+    "printFont": "Arial",
+    "patient": "Mbissine Kouyaté",
+    "age": 27,
+    "weeks": 24,
+    "date": "04/08/2026",
+    "dateWords": "4 août 2026",
+    "prescriber": "Mme Siga Dabo, sage-femme",
+    "region": "Ziguinchor",
+    "district": "Boucotte",
+    "cabinet": "Polyclinique Bel Air",
+    "bp": "3532",
+    "items": [
+      {
+        "written": "Fer + Acide folique cp",
+        "product": "fer-acide-folique",
+        "inBase": true,
+        "posology": "1 cp/jour pendant 3 mois",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Doliprane 500 mg",
+        "product": "doliprane-500-mg-63368332",
+        "strengthMg": 500,
+        "inBase": true,
+        "posology": "2 cp x 3/j pendant 5 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "Albendazole 400 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique au 2e trimestre",
+        "inline": false
+      },
+      {
+        "written": "Quinine 300 mg cp",
+        "product": "quinine-generic",
+        "strengthMg": 300,
+        "inBase": true,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      },
+      {
+        "written": "Nivaquine 100 mg",
+        "product": "chloroquine-generic",
+        "strengthMg": 100,
+        "inBase": true,
+        "posology": "2 cp par semaine",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx03",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": false,
+    "font": "Verdana",
+    "printFont": "Times New Roman",
+    "patient": "Ndickou Tamba",
+    "age": 21,
+    "weeks": 27,
+    "date": "21/10/2026",
+    "dateWords": "21 octobre 2026",
+    "prescriber": "Pr Ousmane Senghor",
+    "region": "Saint-Louis",
+    "district": "Sor",
+    "cabinet": "Polyclinique des Mamelles",
+    "bp": "9216",
+    "items": [
+      {
+        "written": "Acide folique 5 mg",
+        "product": "acide-folique-ccd-5-mg-69448600",
+        "strengthMg": 5,
+        "inBase": true,
+        "posology": "1 cp le soir",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": true
+      },
+      {
+        "written": "Métronidazole 250 mg",
+        "product": "metronidazole-generic",
+        "strengthMg": 250,
+        "inBase": true,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      },
+      {
+        "written": "Néo-Codion sirop",
+        "product": "neo-codion-syrup",
+        "inBase": true,
+        "posology": "1 c. à soupe x 3/j",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "inBase": true,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Laroscorbine 1 g",
+        "product": "laroscorbine-1-g-69435752",
+        "strengthMg": 1000,
+        "inBase": true,
+        "posology": "1 cp effervescent le matin x 10 jours",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "fx04",
+    "set": "fresh",
+    "template": "polyclinic",
+    "handwriting": false,
+    "font": "Courier New",
+    "printFont": "Arial",
+    "patient": "Nianga Kouyaté",
+    "age": 18,
+    "weeks": 13,
+    "date": "20/03/2026",
+    "dateWords": "20 mars 2026",
+    "prescriber": "Dr Mamadou Kouyaté, gynécologue",
+    "region": "Dakar",
+    "district": "Liberté 6",
+    "cabinet": "Polyclinique des Mamelles",
+    "bp": "8158",
+    "items": [
+      {
+        "written": "Clamoxyl 1 g",
+        "product": "clamoxyl-1-g-64539416",
+        "strengthMg": 1000,
+        "inBase": true,
+        "posology": "1 cp matin et soir x 7 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Captopril 25 mg",
+        "product": "captopril-biogaran-25-mg-64801263",
+        "strengthMg": 25,
+        "inBase": true,
+        "posology": "1 cp x 2/j",
+        "upd": 2,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx05",
+    "set": "fresh",
+    "template": "polyclinic",
+    "handwriting": true,
+    "font": "ReenieBeanie",
+    "printFont": "Arial",
+    "patient": "Nianga Sidibé",
+    "age": 17,
+    "weeks": 35,
+    "date": "07/07/2026",
+    "dateWords": "7 juillet 2026",
+    "prescriber": "Dr Ndickou Baldé, médecin",
+    "region": "Kaolack",
+    "district": "Médina Baye",
+    "cabinet": "Polyclinique Bel Air",
+    "bp": "8001",
+    "items": [
+      {
+        "written": "Coartem 20/120 mg",
+        "product": "artemether-lumefantrine-generic",
+        "inBase": true,
+        "posology": "4 cp x 2/j pendant 3 jours",
+        "upd": 8,
+        "inline": true
+      },
+      {
+        "written": "Vogalène 7,5 mg",
+        "inBase": false,
+        "posology": "1 lyoc avant les repas",
+        "inline": true
+      },
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": true
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "inBase": true,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Vitamine B complexe",
+        "inBase": false,
+        "posology": "1 cp/j",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx06",
+    "set": "fresh",
+    "template": "polyclinic",
+    "handwriting": false,
+    "font": "Arial",
+    "printFont": "Arial",
+    "patient": "Mbissine Sidibé",
+    "age": 33,
+    "weeks": 23,
+    "date": "17/05/2026",
+    "dateWords": "17 mai 2026",
+    "prescriber": "Dr Ndickou Baldé, médecin",
+    "region": "Dakar",
+    "district": "Liberté 6",
+    "cabinet": "Polyclinique des Mamelles",
+    "bp": "5218",
+    "items": [
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": true
+      },
+      {
+        "written": "Aldomet 250 mg",
+        "inBase": false,
+        "posology": "1 cp x 3/j",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx07",
+    "set": "fresh",
+    "template": "stamped-table",
+    "handwriting": false,
+    "font": "Courier New",
+    "printFont": "Times New Roman",
+    "patient": "Mame Ndiaye",
+    "age": 25,
+    "weeks": 27,
+    "date": "09/09/2026",
+    "dateWords": "9 septembre 2026",
+    "prescriber": "Dr Ndickou Baldé, médecin",
+    "region": "Dakar",
+    "district": "Fann",
+    "cabinet": "Pharmacie Alioune",
+    "bp": "1045",
+    "items": [
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": false
+      },
+      {
+        "written": "Fansidar cp",
+        "product": "sp",
+        "inBase": true,
+        "posology": "3 cp en prise unique (TPI) devant l'agent",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Doliprane 500 mg",
+        "product": "doliprane-500-mg-63368332",
+        "strengthMg": 500,
+        "inBase": true,
+        "posology": "2 cp x 3/j pendant 5 jours",
+        "upd": 6,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "fx08",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": true,
+    "font": "Kalam",
+    "printFont": "Times New Roman",
+    "patient": "Mame Sarr",
+    "age": 23,
+    "weeks": 14,
+    "date": "07/08/2026",
+    "dateWords": "7 août 2026",
+    "prescriber": "Dr Ndickou Baldé, médecin",
+    "region": "Thiès",
+    "district": "Randoulène",
+    "cabinet": "Polyclinique du Fleuve",
+    "bp": "2120",
+    "items": [
+      {
+        "written": "Fansidar cp",
+        "product": "sp",
+        "inBase": true,
+        "posology": "3 cp en prise unique (TPI) devant l'agent",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": true
+      },
+      {
+        "written": "Aldomet 250 mg",
+        "inBase": false,
+        "posology": "1 cp x 3/j",
+        "inline": true
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "inBase": true,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Spéciafoldine 5 mg",
+        "product": "speciafoldine-5-mg-69630186",
+        "strengthMg": 5,
+        "inBase": true,
+        "posology": "1 cp/j pendant 1 mois",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "fx09",
+    "set": "fresh",
+    "template": "stamped-table",
+    "handwriting": false,
+    "font": "Courier New",
+    "printFont": "Times New Roman",
+    "patient": "Nianga Sidibé",
+    "age": 27,
+    "weeks": 18,
+    "date": "03/10/2026",
+    "dateWords": "3 octobre 2026",
+    "prescriber": "Dr Mamadou Kouyaté, gynécologue",
+    "region": "Dakar",
+    "district": "Fann",
+    "cabinet": "Pharmacie de la Médina",
+    "bp": "4998",
+    "items": [
+      {
+        "written": "Clamoxyl 1 g",
+        "product": "clamoxyl-1-g-64539416",
+        "strengthMg": 1000,
+        "inBase": true,
+        "posology": "1 cp matin et soir x 7 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "inBase": true,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx10",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": false,
+    "font": "Arial",
+    "printFont": "Arial",
+    "patient": "Siga Barry",
+    "age": 33,
+    "weeks": 21,
+    "date": "26/04/2026",
+    "dateWords": "26 avril 2026",
+    "prescriber": "Dr Aïda Barry",
+    "region": "Dakar",
+    "district": "Fann",
+    "cabinet": "Polyclinique Bel Air",
+    "bp": "9084",
+    "items": [
+      {
+        "written": "Tardyféron B9",
+        "product": "tardyferon-b9-64875192",
+        "inBase": true,
+        "posology": "1 cp/jour QSP 1 mois",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Kardégic 75 mg",
+        "product": "kardegic-75-mg-64755969",
+        "strengthMg": 75,
+        "inBase": true,
+        "posology": "1 sachet le midi",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Vitamine B complexe",
+        "inBase": false,
+        "posology": "1 cp/j",
+        "inline": true
+      },
+      {
+        "written": "Duphaston 10 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 10 jours",
+        "inline": false
+      },
+      {
+        "written": "Adalate LP 20 mg",
+        "inBase": false,
+        "posology": "1 cp matin et soir",
+        "inline": false
+      },
+      {
+        "written": "Calcium 500 mg",
+        "inBase": false,
+        "posology": "1 cp/j au repas",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "fx11",
+    "set": "fresh",
+    "template": "polyclinic",
+    "handwriting": true,
+    "font": "HomemadeApple",
+    "printFont": "Arial",
+    "patient": "Nianga Tamba",
+    "age": 35,
+    "weeks": 16,
+    "date": "26/10/2026",
+    "dateWords": "26 octobre 2026",
+    "prescriber": "Dr Mamadou Kouyaté, gynécologue",
+    "region": "Dakar",
+    "district": "Liberté 6",
+    "cabinet": "Polyclinique du Fleuve",
+    "bp": "9386",
+    "items": [
+      {
+        "written": "Ibuprofène 400 mg",
+        "product": "ibuprofen-generic",
+        "strengthMg": 400,
+        "inBase": true,
+        "posology": "1 cp x 2/j si douleur",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Amoxicilline 500 mg gél",
+        "product": "amoxicilline-almus-pharma-500-mg-68695334",
+        "strengthMg": 500,
+        "inBase": true,
+        "posology": "2 gél x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "fx12",
+    "set": "fresh",
+    "template": "hospital",
+    "handwriting": false,
+    "font": "Arial",
+    "printFont": "Arial",
+    "patient": "Thiaba Doucouré",
+    "age": 33,
+    "weeks": 22,
+    "date": "12/09/2026",
+    "dateWords": "12 septembre 2026",
+    "prescriber": "Pr Ousmane Senghor",
+    "region": "Saint-Louis",
+    "district": "Sor",
+    "cabinet": "Polyclinique des Mamelles",
+    "bp": "6487",
+    "items": [
+      {
+        "written": "Advil 400 mg",
+        "product": "advil-400-mg-63646874",
+        "strengthMg": 400,
+        "inBase": true,
+        "posology": "1 cp x 3/j après le repas",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": true
+      },
+      {
+        "written": "Tardyféron B9",
+        "product": "tardyferon-b9-64875192",
+        "inBase": true,
+        "posology": "1 cp/jour QSP 1 mois",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Fluconazole 150 mg gél",
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "inBase": true,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Primpéran 10 mg",
+        "inBase": false,
+        "posology": "1 cp avant les repas",
+        "inline": false
+      }
+    ]
+  }
+]

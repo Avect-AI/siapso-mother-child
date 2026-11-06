@@ -23,6 +23,7 @@ import {
   unitsPerDayOf,
 } from '../../app/src/domain/prescription-reading.js';
 import { addScores, emptyScore, rates, scoreReading } from './metrics.mjs';
+import { freshText } from './fresh.mjs';
 import { truthText } from './synth.mjs';
 
 export interface TruthItem {
@@ -45,7 +46,7 @@ export interface TruthRx {
    * tests use its text), so neither is held out any more; the set frozen and
    * never tuned on is `eval/prescription/fresh/` (README).
    */
-  set: 'dev' | 'heldout';
+  set: 'dev' | 'heldout' | 'fresh';
   template: string;
   /** Written in a handwriting-style font (a proxy only). */
   handwriting: boolean;
@@ -617,6 +618,7 @@ const ORDER = [
   'all',
   'dev',
   'heldout',
+  'fresh',
   'scan',
   'photo',
   'hard',
@@ -625,6 +627,59 @@ const ORDER = [
   'pdf-scan',
   'text',
 ];
+
+const HEADING = `${'source'.padEnd(30)}  ${'group'.padEnd(16)}  imgs  ${'recall'.padEnd(14)}  precis.  ${'false (part, warned / out)'.padEnd(24)}     strengths    units read   offered     kept   noise  header`;
+
+const COLUMNS =
+  'columns: recall and precision of the products of the pack; false products (part of a combination, of which with the warning that the line names more / read on a product outside the pack); strengths right/expected (wrong); units per day read right/expected (wrong); units offered for daily-maximum products right (wrong); products outside the pack kept as lines to add; noise: products read right that say their line names more; header: lines offered as typed or quoted that hold the patient, the prescriber, a place, the date or an age';
+
+/** The rows of one source, by set, then image, then kind of writing. */
+function report(name: string, summary: Summary, out: (line: string) => void): void {
+  const keys = [...summary.groups.keys()].sort((a, b) => {
+    const [pa = '', ka = ''] = a.split('/');
+    const [pb = '', kb = ''] = b.split('/');
+    return ORDER.indexOf(pa) - ORDER.indexOf(pb) || ka.localeCompare(kb);
+  });
+  for (const key of keys) {
+    const group = summary.groups.get(key);
+    if (group !== undefined) out(row(name, key, group));
+  }
+}
+
+/**
+ * Measures the reading on the fresh held-out set (eval/prescription/fresh/):
+ * its exact text, header and stamp included (freshText), and the OCR texts
+ * of its images in fresh/ocr/ when there are any. No bar: the set is read to
+ * report, never to set a rule on (README). Returns 0, or 1 for a folder
+ * that cannot be read.
+ */
+export async function mainFresh(
+  root: string,
+  out: (line: string) => void = console.log,
+  folder: string = path.join(root, 'eval', 'prescription', 'fresh'),
+): Promise<number> {
+  try {
+    const truth = parseTruth(await readFile(path.join(folder, 'truth.json'), 'utf8'));
+    const pack = buildPack(await loadContent(root));
+    const sources = new Map<string, OcrRow[]>([
+      [TEXT_SOURCE, truth.map((rx) => ({ id: rx.id, variant: 'text', text: freshText(rx) }))],
+    ]);
+    const ocr = path.join(folder, 'ocr');
+    const files = existsSync(ocr) ? (await readdir(ocr)).filter((f) => f.endsWith('.json')) : [];
+    for (const file of files.sort()) {
+      const text = await readFile(path.join(ocr, file), 'utf8');
+      sources.set(file.replace(/\.json$/, ''), parseRows(text, truth, file));
+    }
+    out(HEADING);
+    for (const [name, rows] of sources) report(name, scoreSource(pack, truth, rows), out);
+    if (files.length === 0) out('OCR: no text of the images yet (README, "Fresh held-out set")');
+    out(COLUMNS);
+    return 0;
+  } catch (error) {
+    out(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
+    return 1;
+  }
+}
 
 /**
  * Runs the evaluation of the folder `folder` (eval/prescription by default)
@@ -664,24 +719,14 @@ async function run(root: string, out: (line: string) => void, folder: string): P
     sources.set(file.replace(/\.json$/, ''), parseRows(text, truth, file));
   }
 
-  out(
-    `${'source'.padEnd(30)}  ${'group'.padEnd(16)}  imgs  ${'recall'.padEnd(14)}  precis.  ${'false (part, warned / out)'.padEnd(24)}     strengths    units read   offered     kept   noise  header`,
-  );
+  out(HEADING);
   const summaries = new Map<string, Summary>();
   const ms: number[] = [];
   for (const [name, rows] of sources) {
     const summary = scoreSource(pack, truth, rows);
     summaries.set(name, summary);
     ms.push(...summary.ms);
-    const keys = [...summary.groups.keys()].sort((a, b) => {
-      const [pa = '', ka = ''] = a.split('/');
-      const [pb = '', kb = ''] = b.split('/');
-      return ORDER.indexOf(pa) - ORDER.indexOf(pb) || ka.localeCompare(kb);
-    });
-    for (const key of keys) {
-      const group = summary.groups.get(key);
-      if (group !== undefined) out(row(name, key, group));
-    }
+    report(name, summary, out);
   }
 
   const outcomes = cases.map((item) => mustWarnOutcome(pack, item));
@@ -697,9 +742,7 @@ async function run(root: string, out: (line: string) => void, folder: string): P
   out(
     `reading time: median ${median(ms).toFixed(1)} ms, 90th percentile ${median(ms, 0.9).toFixed(1)} ms per page (${String(ms.length)} pages)`,
   );
-  out(
-    'columns: recall and precision of the products of the pack; false products (part of a combination, of which with the warning that the line names more / read on a product outside the pack); strengths right/expected (wrong); units per day read right/expected (wrong); units offered for daily-maximum products right (wrong); products outside the pack kept as lines to add; noise: products read right that say their line names more; header: lines offered as typed or quoted that hold the patient, the prescriber, a place, the date or an age',
-  );
+  out(COLUMNS);
 
   const failed = failures(summaries, baseline, outcomes, negativeOutcomes);
   for (const failure of failed) out(`FAIL: ${failure}`);

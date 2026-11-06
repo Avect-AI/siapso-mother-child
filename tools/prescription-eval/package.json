@@ -6,7 +6,8 @@
   "description": "Synthetic prescriptions and the evaluation of the prescription reading (SCRUM-57).",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "eval": "tsx run.ts"
+    "eval": "tsx run.ts",
+    "eval:fresh": "tsx run.ts --fresh"
   },
   "dependencies": {
     "@siapso/engine": "workspace:*",
