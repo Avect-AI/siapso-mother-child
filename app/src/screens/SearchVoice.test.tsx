@@ -287,11 +287,11 @@ describe('Search: saying a name', () => {
     });
   });
 
-  it('reads as nothing heard a transcript that repeats the names given', async () => {
-    const { user, field } = await openSearch('Ajouter un médicament', {
+  it('reads as nothing heard a transcript that repeats the names given, twice', async () => {
+    const { user, field, speech } = await openSearch('Ajouter un médicament', {
       installed: ['fr'],
       // The first six names given, as the decoder writes them again (more
-      // than one cluster of names said together).
+      // than one cluster of names said together), with and without them.
       transcript: `${VOICE_NAMES_PROMPT.split(', ').slice(0, 6).join(', ')}.`,
     });
     await user.click(mic());
@@ -302,6 +302,45 @@ describe('Search: saying a name', () => {
     ).toBeVisible();
     expect(field).toHaveValue('');
     expect(screen.queryByRole('group', { name: /Produits trouvés/ })).toBeNull();
+    expect(speech.client.transcribe).toHaveBeenCalledTimes(2);
+  });
+
+  // Round 3 of the review of #68: a list said in the prompt's order is no
+  // echo when the same audio, heard without the names, still says it.
+  it('hears an echo once more without the names, and keeps what it hears then', async () => {
+    const { user, speech } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcripts: ['Coartem, Advil, ibuprofène', 'Coartem, Advil et ibuprofène.'],
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    await screen.findByText(/^J'ai entendu : Coartem, Advil et ibuprofène/);
+    // The three products said, each to tick, never "nothing heard".
+    const group = await screen.findByRole('group', { name: /Produits trouvés/ });
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(3);
+    expect(speech.client.transcribe).toHaveBeenCalledTimes(2);
+    expect(speech.client.transcribe).toHaveBeenNthCalledWith(1, expect.any(Float32Array), {
+      language: 'fr',
+      context: VOICE_NAMES_PROMPT,
+    });
+    expect(speech.client.transcribe).toHaveBeenNthCalledWith(2, expect.any(Float32Array), {
+      language: 'fr',
+    });
+  });
+
+  it('says it heard nothing when the second hearing is empty', async () => {
+    const { user, speech } = await openSearch('Ajouter un médicament', {
+      installed: ['fr'],
+      transcripts: ['Cytotec,', ' ... '],
+    });
+    await user.click(mic());
+    await screen.findByText("J'écoute en français.");
+    await user.click(mic());
+    expect(
+      await screen.findByText("Je n'ai pas entendu de nom. Réessayez, ou écrivez le nom."),
+    ).toBeVisible();
+    expect(speech.client.transcribe).toHaveBeenCalledTimes(2);
   });
 
   it('lists the medicines too, one per family, when nothing matches in the medicines', async () => {

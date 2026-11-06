@@ -129,14 +129,21 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
     }
     try {
       const context = gate === 'speech' ? voiceContextFor(language) : undefined;
-      const { text } = await client.transcribe(samples, {
-        ...(language === undefined ? {} : { language }),
+      const plain = language === undefined ? {} : { language };
+      let { text } = await client.transcribe(samples, {
+        ...plain,
         ...(context === undefined ? {} : { context }),
       });
       if (mine !== attempt.current) return;
-      // The names given, repeated in their order: an echo, nothing heard.
-      const echo = context !== undefined && isPromptEcho(text, context, VOICE_NAME_CLUSTERS);
-      const heard = echo ? '' : cleanTranscript(text, latest.current.maxLength);
+      // The names given, repeated in their order: maybe an echo. Round 3 of
+      // the review of #68: the same audio is heard once more without them,
+      // and that is kept; nothing is heard only if it is empty or an echo too.
+      if (context !== undefined && isPromptEcho(text, context, VOICE_NAME_CLUSTERS)) {
+        ({ text } = await client.transcribe(samples, plain));
+        if (mine !== attempt.current) return;
+        if (isPromptEcho(text, context, VOICE_NAME_CLUSTERS)) text = '';
+      }
+      const heard = cleanTranscript(text, latest.current.maxLength);
       const candidates = heard === '' ? 0 : latest.current.countCandidates(heard);
       endUse();
       if (heard !== '') latest.current.onHeard(heard);

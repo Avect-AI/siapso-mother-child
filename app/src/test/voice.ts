@@ -61,6 +61,8 @@ export interface FakeSpeechOptions {
   startError?: Error;
   /** What the model hears (default "nebeday"), unless the test holds the transcription. */
   transcript?: string;
+  /** What the model hears at each transcription in turn, then `transcript`. */
+  transcripts?: string[];
   /** The transcription waits for finishTranscription or failTranscription. */
   holdTranscription?: boolean;
   /** What loading the model throws. */
@@ -94,6 +96,7 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
   for (const [url, bytes] of Object.entries(options.stored ?? {})) stored.set(url, bytes);
 
   let pending: Deferred<{ text: string; ms: number }> | undefined;
+  let transcriptions = 0;
   const client = {
     load: vi.fn(() =>
       options.loadError === undefined ? Promise.resolve() : Promise.reject(options.loadError),
@@ -103,7 +106,9 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
         pending = deferred();
         return pending.promise;
       }
-      return Promise.resolve({ text: options.transcript ?? 'nebeday', ms: 1200 });
+      const text = options.transcripts?.[transcriptions] ?? options.transcript ?? 'nebeday';
+      transcriptions += 1;
+      return Promise.resolve({ text, ms: 1200 });
     }),
     cancel: vi.fn(() => {
       pending?.reject(voicePackError('transcribe', 'The speech request was cancelled.'));
