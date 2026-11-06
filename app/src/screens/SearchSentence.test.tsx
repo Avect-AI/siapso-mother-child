@@ -219,6 +219,15 @@ describe('Search: a product maybe not taken, a food, a spelling undone', () => {
     expect(medicine).toBeChecked();
   });
 
+  it('offers unticked the longer name the words heard may be', async () => {
+    const { group } = await say("je bois une tisan de quinine qu'il y va", 'Ajouter un remède');
+    const [heard, maybe] = within(group).getAllByRole('checkbox');
+    expect(heard).not.toBeChecked();
+    expect(heard?.closest('label')).toHaveTextContent(/quinine/i);
+    expect(maybe).not.toBeChecked();
+    expect(maybe?.closest('label')).toHaveTextContent(new RegExp(`Ou peut-être${NBSP}: Kinkéliba`));
+  });
+
   it('says the spelling a word was read as', async () => {
     const { group } = await say('dama naan ibiporofen bi');
     expect(within(group).getByRole('checkbox').closest('label')).toHaveTextContent(

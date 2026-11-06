@@ -69,7 +69,8 @@ describe('sentenceReadingOf: what the voice heard', () => {
   });
 
   // The transcripts of the French voice given the names of the base, where
-  // "kinkéliba" was said (docs/voice.md): never a product ticked.
+  // "kinkéliba" was said (docs/voice.md): never a product ticked, and since
+  // the review of #68 kinkéliba offered too ("Ou peut-être").
   it('never ticks a product heard inside a garbled clause of a prompted transcript', () => {
     for (const heard of [
       "Je prends de la tisanne de quinine qu'il y va le matin.",
@@ -77,7 +78,13 @@ describe('sentenceReadingOf: what the voice heard', () => {
       "Je bois une tisan de quinine qu'il y ba.",
     ]) {
       const found = sentenceReadingOf(index, heard, 'product', 'voice');
-      expect(found?.length, heard).toBe(1);
+      expect(
+        found?.map((product) => [product.candidate.id, product.alternative]),
+        heard,
+      ).toEqual([
+        ['quinine-generic', undefined],
+        ['kinkeliba', true],
+      ]);
       expect(
         found?.filter((product) => product.checked),
         heard,

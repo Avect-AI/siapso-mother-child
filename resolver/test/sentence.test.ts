@@ -216,6 +216,14 @@ const index = buildIndex([
     { family: 'brand:inofer', substances: ['iron'] },
   ),
   product(
+    'quinine-generic',
+    [
+      { text: 'Quinine (générique)', lang: 'fr' },
+      { text: 'quinine', lang: 'inn', substance: 'quinine' },
+    ],
+    { family: 'substances:quinine', priority: 2, substances: ['quinine'] },
+  ),
+  product(
     'misoprostol-generic',
     [
       { text: 'Misoprostol (générique)', lang: 'fr' },
@@ -483,6 +491,29 @@ describe('productsInSentence: the words of a name the voice split', () => {
     // A name the sentence goes on from as usual stays ticked.
     const [plain] = productsInSentence(index, 'dama naan nivaquine ci suba', { heard: true });
     expect(plain?.checked).toBe(true);
+  });
+
+  // Review of #68: the words heard may be a longer name that starts with the
+  // same sounds ("quinine qu'il y va" for kinkéliba): offered too, unticked.
+  it('also offers the longer name the words heard may be, unticked', () => {
+    const found = productsInSentence(index, "je bois une tisane de quinine qu'il y va", {
+      heard: true,
+    });
+    expect(
+      found.map((product) => [
+        product.candidate.family,
+        product.checked,
+        product.heardAs,
+        product.alternative,
+      ]),
+    ).toEqual([
+      ['substances:quinine', false, "tisane de quinine qu'il y va", undefined],
+      ['kinkeliba', false, "tisane de quinine qu'il y va", true],
+    ]);
+    // Words that sound like no longer name: the name heard only.
+    expect(
+      productsInSentence(index, "je prends de la nivaquine qu'il y va le matin", { heard: true }),
+    ).toHaveLength(1);
   });
 
   // A FLEURS transcript: "l'invérée" sounds 1 letter off INOFER, but read as

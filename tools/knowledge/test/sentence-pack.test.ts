@@ -155,17 +155,21 @@ describe('the sentences of the team feedback', () => {
   // With the names of the base given to the French decoder, "Je bois une
   // tisane de kinkéliba." was heard so.
   it('offers to confirm, never ticked, a medicine heard before another clause', () => {
-    const [found, ...others] = productsInSentence(
-      index,
-      "Je bois une tisan de quinine qu'il y va.",
-      { heard: true },
-    );
-    expect(others).toEqual([]);
-    expect([found?.candidate.id, found?.checked, found?.heardAs]).toEqual([
-      'quinine-generic',
-      false,
+    const found = productsInSentence(index, "Je bois une tisan de quinine qu'il y va.", {
+      heard: true,
+    });
+    expect(
+      found.map((product) => [
+        product.candidate.id,
+        product.checked,
+        product.heardAs,
+        product.alternative,
+      ]),
+    ).toEqual([
       // "tisane de" names no remedy of its own: read with the name it carries.
-      "tisan de quinine qu'il y va",
+      ['quinine-generic', false, "tisan de quinine qu'il y va", undefined],
+      // Review of #68: and the longer name the words may be, "Ou peut-être".
+      ['kinkeliba', false, "tisan de quinine qu'il y va", true],
     ]);
   });
 

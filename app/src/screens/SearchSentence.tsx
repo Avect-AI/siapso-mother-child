@@ -46,7 +46,9 @@ export function SentenceProducts({
    * cytotec", review of #68), a food ("ail"), or a name that is also a common
    * word ("goro").
    */
-  const untickedBecause = (product: SentenceProduct): string[] => {
+  const untickedBecause = (product: SentenceProduct, name: string): string[] => {
+    // Another name the words heard may be ("quinine qu'il y va": kinkéliba).
+    if (product.alternative === true) return [t('search.sentenceMaybe', { name })];
     if (product.heardAs !== undefined) {
       return [t('search.sentenceCheckHeard', { words: product.heardAs })];
     }
@@ -79,7 +81,7 @@ export function SentenceProducts({
         ...(product.readAs === undefined
           ? []
           : [t('search.sentenceReadAs', { spelling: product.readAs })]),
-        ...untickedBecause(product),
+        ...untickedBecause(product, shown.name),
       ],
       checked: ticked[at] === true,
       onChange: (checked: boolean) => {

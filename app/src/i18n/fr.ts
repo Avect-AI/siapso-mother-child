@@ -463,6 +463,8 @@ export const fr = {
     sentenceCheckClause: 'À confirmer : « {words} »',
     // A name that is also a food ("ail", "gingembre"): offered unticked.
     sentenceFood: '« {word} » est aussi un aliment : cochez-le si vous le prenez comme remède.',
+    // A longer name the words heard may be ("quinine qu'il y va": kinkéliba).
+    sentenceMaybe: 'Ou peut-être : {name}',
     // The spelling a word was read with ("ibiprofen" for "ibiporofen").
     sentenceReadAs: 'Lu comme « {spelling} »',
     // Read by a screen reader: the list itself shows the names.

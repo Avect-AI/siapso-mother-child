@@ -46,6 +46,12 @@ export interface SentenceProduct {
    */
   heardAs?: string;
   /**
+   * Another name the words heard (`heardAs`) may be, offered with the name
+   * heard: a longer name starting with the same sounds ("quinine qu'il y va"
+   * may be kinkéliba). Offered unticked: "Ou peut-être".
+   */
+  alternative?: boolean;
+  /**
    * The clause that says it is maybe not taken by the speaker now, with a
    * negation ("pas de cytotec"), by or for another person ("mon mari prend du
    * coartem") or as a past use ("avant je prenais de la nivaquine"): offered
@@ -526,6 +532,36 @@ function nameSoundingLike(index: ResolverIndex, key: string): string | undefined
   return undefined;
 }
 
+/** The first sounds a longer name must share with a name heard before another clause. */
+const ALTERNATIVE_PREFIX = 3;
+/** The shortest longer name offered so. */
+const ALTERNATIVE_MIN_LENGTH = 6;
+
+/**
+ * The longer whole name the words heard may be, when a name was heard right
+ * before another clause ("quinine qu'il y va" for kinkéliba): a name whose
+ * sounds start as the name heard does, with at most half its sounds apart
+ * from the words heard joined; the closest one, or undefined.
+ */
+function longerNameSoundingLike(
+  index: ResolverIndex,
+  nameKey: string,
+  heardKey: string,
+): string | undefined {
+  const start = nameKey.slice(0, ALTERNATIVE_PREFIX);
+  let closest: { name: string; distance: number } | undefined;
+  for (const names of nameKeys(index).values()) {
+    for (const { key, name } of names) {
+      if (key.length < ALTERNATIVE_MIN_LENGTH || key.length <= nameKey.length) continue;
+      if (!key.startsWith(start)) continue;
+      const distance = damerauLevenshtein(heardKey, key);
+      if (distance > Math.floor(key.length / 2)) continue;
+      if (closest === undefined || distance < closest.distance) closest = { name, distance };
+    }
+  }
+  return closest?.name;
+}
+
 /**
  * What an article the voice may have moved gives the name after it, or
  * undefined: "d" and "l" elided before the next word ("d'Oli-Pran": d), and
@@ -719,6 +755,35 @@ export function productsInSentence(
         ...(strength === undefined ? {} : { strengthMg: strength.mg }),
         ...(reading.readAs === undefined ? {} : { readAs: reading.readAs }),
         ...(clauseEnd === undefined ? {} : { heardAs: sentence.slice(first.start, clauseEnd) }),
+      },
+    });
+    if (clauseEnd === undefined) continue;
+    // The longer name the words heard may be ("quinine qu'il y va": kinkéliba),
+    // offered too, unticked (review of #68).
+    let heardLast = reading.span.last;
+    while ((tokens[heardLast + 1]?.end ?? Infinity) <= clauseEnd) heardLast += 1;
+    // Joined, "y" said alone is the sound i, as normalize reads it in a word.
+    const heardKey = phoneticKey(
+      tokens
+        .slice(reading.span.last, heardLast + 1)
+        .map((token) => token.norm)
+        .join('')
+        .replaceAll('y', 'i'),
+    );
+    const longer = longerNameSoundingLike(index, phoneticKey(last.norm), heardKey);
+    const alternative = longer === undefined ? undefined : best(longer);
+    if (alternative === undefined || alternative.family === candidate.family) continue;
+    const heardAs = sentence.slice(first.start, clauseEnd);
+    products.push({
+      at: reading.span.first,
+      last: heardLast,
+      product: {
+        candidate: alternative,
+        strength: 'strong',
+        checked: false,
+        text: heardAs,
+        heardAs,
+        alternative: true,
       },
     });
   }

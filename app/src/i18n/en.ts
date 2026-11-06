@@ -381,6 +381,7 @@ export const en: Dictionary = {
     sentenceCheckClause: 'To confirm: "{words}"',
     sentenceFood: '"{word}" is also a food: tick it if you take it as a remedy.',
     sentenceReadAs: 'Read as "{spelling}"',
+    sentenceMaybe: 'Or maybe: {name}',
     sentenceFoundOne: 'One product found in the sentence: {name}.',
     sentenceFoundMany: '{count} products found in the sentence, the first: {name}.',
   },
