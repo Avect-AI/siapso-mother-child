@@ -5,6 +5,7 @@ import { COUNTRIES, type CountryCode } from '../config/emergency.js';
 import { searchKey, type CountryChoice } from '../domain/country.js';
 import { translate, useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
+import { useCountryOfUse } from '../state/country.js';
 import { visitState } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
 import { TextField } from '../ui/TextField.js';
@@ -19,11 +20,19 @@ export const COUNTRY_PATH = '/country';
  */
 export const COUNTRY_BACK = 'countryBack';
 
+/** The place of a country in the list: the ones the phone names first, in their order. */
+function rankOf(suggested: readonly CountryCode[], code: CountryCode): number {
+  const index = suggested.indexOf(code);
+  return index === -1 ? suggested.length : index;
+}
+
 /**
  * The country of use: the countries of the emergency numbers file
- * (config/emergency-numbers.json) by name, in the language of the screen, a
- * search field over their names in both languages (without case or
- * accents), then "Mon pays n'est pas dans la liste". Each country is a
+ * (config/emergency-numbers.json) by name, in the language of the screen
+ * (first, when the phone's language and time zone name two countries, those
+ * two, "Selon le téléphone"), a search field over their names in both
+ * languages (without case or accents), then "Mon pays n'est pas dans la
+ * liste". Each country is a
  * whole-width answer: one tap keeps it in the settings (it says nothing about
  * a profile: locked too, before the welcome too) and goes back, so who to
  * call shows its numbers at once. Opens at once, offline, without the code.
@@ -36,6 +45,9 @@ export function Country() {
   const [filter, setFilter] = useState('');
   // Read once: the entry it was opened on says where to go back.
   const [back] = useState(() => visitState()[COUNTRY_BACK] === true);
+  // The two countries the phone names, when its language and time zone disagree.
+  const { ask } = useCountryOfUse();
+  const suggested: readonly CountryCode[] = ask ?? [];
 
   const other = lang === 'fr' ? 'en' : 'fr';
   const collator = new Intl.Collator(lang, { sensitivity: 'base' });
@@ -44,7 +56,10 @@ export function Country() {
     name: t(`countries.${code}`),
     // Found by its name in the other language too ("Cabo Verde", "Cap-Vert").
     otherName: translate(other, `countries.${code}`),
-  })).sort((a, b) => collator.compare(a.name, b.name));
+  })).sort(
+    (a, b) =>
+      rankOf(suggested, a.code) - rankOf(suggested, b.code) || collator.compare(a.name, b.name),
+  );
   const wanted = searchKey(filter);
   const shown =
     wanted === ''
@@ -112,6 +127,12 @@ export function Country() {
                 <span className="country__label">
                   <span className="country__name">{name}</span>
                   {chosenMark(code)}
+                  {suggested.includes(code) ? (
+                    <>
+                      {' '}
+                      <span className="country__status">{t('country.suggested')}</span>
+                    </>
+                  ) : null}
                 </span>
               </Button>
             </li>

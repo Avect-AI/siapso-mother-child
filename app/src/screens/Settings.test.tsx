@@ -202,6 +202,19 @@ describe('Settings, country of use', () => {
     expect(await screen.findByText('Pays : autre pays')).toBeVisible();
   });
 
+  it('says the country is to choose when the language and the time zone of the phone disagree', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/settings',
+      phone: { languages: ['fr-SN'], timeZone: 'Africa/Bamako' },
+    });
+    expect(await screen.findByText('Pays : à choisir')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Choisir le pays' })).toHaveAttribute(
+      'href',
+      '#/country',
+    );
+  });
+
   it('says the country fixed by the deployment, with no way to change it', async () => {
     vi.stubGlobal('fetch', () => Promise.resolve(Response.json({ country: 'CI' })));
     await renderApp({ settings: { ...woman, country: 'GH' }, hash: '#/settings' });

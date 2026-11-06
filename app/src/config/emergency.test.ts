@@ -7,7 +7,11 @@ import {
   EMERGENCY_SERVICES,
   emergencyNumbersOf,
   isCountryCode,
+  isMedical,
+  NUMBER_CAVEATS,
+  SOURCE_KINDS,
   type EmergencyService,
+  type SourceKind,
 } from './emergency.js';
 
 /** The countries the team asked for first (2026-11-05), France for testing. */
@@ -39,16 +43,6 @@ const ASKED = [
   'FR',
 ];
 
-/** Where a page comes from: two pages of one publisher are one source. */
-function publisher(url: string): string {
-  const host = new URL(url).hostname.replace(/^www\./, '');
-  const labels = host.split('.');
-  const lastTwo = labels.slice(-2).join('.');
-  // Public suffixes of the sources: the publisher is the label before them.
-  const suffixes = ['gov.uk', 'gouv.fr', 'gc.ca', 'gov.gh', 'gov.ng', 'gov.gm', 'admin.ch'];
-  return suffixes.includes(lastTwo) && labels.length > 2 ? labels.slice(-3).join('.') : lastTwo;
-}
-
 const MEDICAL: readonly EmergencyService[] = ['samu', 'ambulance', 'emergency'];
 const FIRE: readonly EmergencyService[] = ['firefighters', 'civil-protection'];
 
@@ -58,6 +52,8 @@ function rank(service: EmergencyService): number {
   if (FIRE.includes(service)) return 1;
   return 2;
 }
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 describe('the emergency numbers file', () => {
   it('has each country asked for, once, by its ISO 3166-1 code', () => {
@@ -76,20 +72,40 @@ describe('the emergency numbers file', () => {
     expect(EMERGENCY_FILE.teamCheck).toMatch(/before a pilot/);
   });
 
-  it('gives each number at least two sources of two publishers, fetched on a known date', () => {
+  it('gives each number at least two sources of two publishers, each with its kind and the day it was fetched', () => {
     for (const country of EMERGENCY_FILE.countries) {
       for (const number of country.numbers) {
         const where = `${country.code} ${number.phone}`;
-        expect(number.checkedOn, where).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-        expect(Number.isNaN(Date.parse(number.checkedOn)), where).toBe(false);
         for (const source of number.sources) {
           expect(new URL(source.url).protocol, where).toBe('https:');
+          expect(source.publisher.trim(), where).not.toBe('');
+          expect(SOURCE_KINDS, where).toContain(source.kind);
+          expect(source.checkedOn, where).toMatch(DATE);
+          expect(Number.isNaN(Date.parse(source.checkedOn)), where).toBe(false);
+          if (source.pageUpdated !== undefined) expect(source.pageUpdated, where).toMatch(DATE);
           expect(source.says.trim(), where).not.toBe('');
         }
-        const publishers = new Set(number.sources.map((source) => publisher(source.url)));
+        const publishers = new Set(number.sources.map((source) => source.publisher));
         expect(publishers.size, where).toBeGreaterThanOrEqual(2);
       }
     }
+  });
+
+  it('gives each medical number at least one national source: the regulator, a ministry or the service itself', () => {
+    const national: readonly SourceKind[] = ['regulator', 'ministry', 'service'];
+    for (const country of EMERGENCY_FILE.countries) {
+      for (const number of country.numbers.filter(({ service }) => isMedical(service))) {
+        const kinds = number.sources.map((source) => source.kind);
+        expect(
+          kinds.some((kind) => national.includes(kind)),
+          `${country.code} ${number.phone}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('knows the medical services: the only ones that may be the first call of the screen', () => {
+    expect(EMERGENCY_SERVICES.filter(isMedical)).toEqual(MEDICAL);
   });
 
   it('holds short public service numbers only, each once in its country, never a personal number', () => {
@@ -103,12 +119,25 @@ describe('the emergency numbers file', () => {
     }
   });
 
-  it('puts the medical number first, then the fire brigade, and the police only with no medical number', () => {
+  it('puts the medical numbers first, then the fire brigade or civil protection, then the police', () => {
     for (const country of EMERGENCY_FILE.countries) {
       const ranks = country.numbers.map((number) => rank(number.service));
       expect(ranks, country.code).toEqual([...ranks].sort((a, b) => a - b));
-      if (ranks.includes(0)) expect(ranks, country.code).not.toContain(2);
     }
+  });
+
+  it('marks a number that may not work from every network', () => {
+    for (const country of EMERGENCY_FILE.countries) {
+      for (const number of country.numbers) {
+        if (number.caveat !== undefined)
+          expect(NUMBER_CAVEATS, country.code).toContain(number.caveat);
+      }
+    }
+    expect(emergencyNumbersOf('GM')[0]).toEqual({
+      service: 'ambulance',
+      phone: '116',
+      caveat: 'not-all-networks',
+    });
   });
 
   it('says why each number is left out', () => {
@@ -132,11 +161,18 @@ describe('the emergency numbers file', () => {
     }
   });
 
-  it('keeps France for testing, never found from the phone', () => {
+  it('names the weak time zones, which other countries may report as theirs: never enough alone', () => {
+    const zones = EMERGENCY_FILE.countries.flatMap((country) => country.timeZones);
+    expect(EMERGENCY_FILE.weakTimeZones).toEqual(['Africa/Abidjan', 'Africa/Lagos']);
+    for (const zone of EMERGENCY_FILE.weakTimeZones) expect(zones).toContain(zone);
+  });
+
+  it('keeps France to a choice by hand: never found from the phone', () => {
     expect(COUNTRIES.find((country) => country.code === 'FR')?.detect).toBe(false);
     expect(COUNTRIES.filter((country) => !country.detect).map((country) => country.code)).toEqual([
       'FR',
     ]);
+    expect(JSON.stringify(EMERGENCY_FILE)).not.toMatch(/for testing/i);
   });
 });
 
@@ -157,9 +193,32 @@ describe('emergency numbers by country', () => {
       { service: 'samu', phone: '185' },
       { service: 'firefighters', phone: '180' },
     ]);
+    // 999 is marked not operational in the numbering plan of the regulator.
     expect(emergencyNumbersOf('GH')).toEqual([
       { service: 'emergency', phone: '112' },
-      { service: 'emergency', phone: '999' },
+      { service: 'ambulance', phone: '193' },
+      { service: 'firefighters', phone: '192' },
+    ]);
+    expect(emergencyNumbersOf('BF')).toEqual([
+      { service: 'samu', phone: '15' },
+      { service: 'firefighters', phone: '18' },
+    ]);
+    expect(emergencyNumbersOf('CM')).toEqual([
+      { service: 'samu', phone: '119' },
+      { service: 'firefighters', phone: '118' },
+      { service: 'police', phone: '117' },
+    ]);
+  });
+
+  it('gives no medical number where none has a national source: the fire brigade and the police only', () => {
+    expect(emergencyNumbersOf('MG')).toEqual([
+      { service: 'firefighters', phone: '118' },
+      { service: 'police', phone: '117' },
+    ]);
+    expect(emergencyNumbersOf('TD')).toEqual([{ service: 'police', phone: '117' }]);
+    expect(emergencyNumbersOf('NE')).toEqual([
+      { service: 'firefighters', phone: '18' },
+      { service: 'police', phone: '17' },
     ]);
   });
 

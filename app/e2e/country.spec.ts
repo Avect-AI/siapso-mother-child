@@ -2,8 +2,9 @@
 // Who to call gives the national emergency numbers of the country where the
 // phone is used (app/src/config/emergency-numbers.json), found on the phone
 // itself, offline: the region of its language first, then its time zone. A
-// phone that says no country of the list gets no guessed number: the
-// country to choose comes first, and the place to go stays.
+// phone that says no country of the list gets no guessed number: where to go
+// first, then the country to choose; a phone whose language and time zone
+// name two countries is asked which.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import {
@@ -67,7 +68,7 @@ const PHONES = [
     timezoneId: 'Africa/Bamako',
     country: 'Mali',
     calls: [
-      { name: 'Appeler les urgences médicales (15)', href: 'tel:15' },
+      { name: "Appeler l'ambulance (15)", href: 'tel:15' },
       { name: 'Appeler les pompiers (18)', href: 'tel:18' },
     ],
   },
@@ -86,8 +87,9 @@ const PHONES = [
     timezoneId: 'Africa/Accra',
     country: 'Ghana',
     calls: [
-      { name: "Appeler le numéro d'urgence (112)", href: 'tel:112' },
-      { name: "Appeler le numéro d'urgence (999)", href: 'tel:999' },
+      { name: 'Appeler le 112 (police, pompiers, ambulance)', href: 'tel:112' },
+      { name: "Appeler l'ambulance (193)", href: 'tel:193' },
+      { name: 'Appeler les pompiers (192)', href: 'tel:192' },
     ],
   },
 ];
@@ -145,8 +147,9 @@ test.describe('a phone that says no country of the list', () => {
     await page.getByRole('button', { name: "C'est grave maintenant" }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
 
-    // Never a number of another country.
+    // Never a number of another country: where to go first, then the country to choose.
     await expect(page.locator('main a[href^="tel:"]')).toHaveCount(0);
+    await expect(page.locator('main .referral__go')).toHaveText(CIRCUIT_LINE);
     await expect(page.getByText("Appelez le numéro d'urgence de votre pays.")).toBeVisible();
     const choose = page.getByRole('link', { name: 'Choisir le pays' });
     await expect(choose).toHaveClass(/button--primary/);
@@ -188,5 +191,35 @@ test.describe('a phone that says no country of the list', () => {
     await unlock(page);
     await page.goto('/#/danger/call');
     await expect(page.getByRole('link', { name: 'Appeler le SAMU (1515)' })).toBeVisible();
+  });
+});
+
+test.describe('a phone whose language and time zone name two countries', () => {
+  // French (Senegal), in Bamako; on a small phone.
+  test.use({
+    locale: 'fr-SN',
+    timezoneId: 'Africa/Bamako',
+    viewport: { width: 360, height: 560 },
+  });
+
+  test('offline, who to call asks which country, then gives its numbers', async ({ page }) => {
+    await openOffline(page);
+    await page.goto('/#/danger/call');
+    await expect(page.getByRole('heading', { level: 1, name: 'Qui appeler' })).toBeVisible();
+
+    await expect(page.locator('main a[href^="tel:"]')).toHaveCount(0);
+    await expect(page.locator('main .referral__go')).toHaveText(CIRCUIT_LINE);
+    const question = page.getByRole('group', { name: 'Dans quel pays êtes-vous ?' });
+    await expect(question.getByRole('button')).toHaveText(['Sénégal', 'Mali']);
+    await expect(question.getByRole('link', { name: 'Autre pays' })).toBeVisible();
+    await expectInFirstScreen(page, question.getByRole('button', { name: 'Mali' }));
+    await expectNoSeriousViolation(page);
+    await expectThumbTargets(page);
+
+    await question.getByRole('button', { name: 'Mali' }).click();
+    const ambulance = page.getByRole('link', { name: "Appeler l'ambulance (15)" });
+    await expect(ambulance).toHaveAttribute('href', 'tel:15');
+    await expect(ambulance).toBeFocused();
+    await expect(page.getByText('Pays : Mali')).toBeVisible();
   });
 });

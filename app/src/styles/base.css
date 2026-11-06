@@ -2230,9 +2230,44 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 }
 
 /*
- * No number for the country of use: what to do, in bold, the country when it
- * is known, then the way to choose it, a whole-width box (the first action of
- * the screen when no contact is listed), never a guessed number.
+ * Where to go, said first when no medical number is sure to answer (none, or
+ * one that may not work from every network): the orientation at title size,
+ * as on the danger signs.
+ */
+.referral__go {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+/* A number that may not work from every network: ink and the triangle under its link. */
+.referral__caveat {
+  margin-top: var(--space-2);
+  overflow-wrap: break-word;
+}
+
+/* The numbers that are not medical, named as such above them. */
+.referral__others {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+/* The phone names two countries: the question, then one whole-width answer each. */
+.referral__ask {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.referral__ask-question {
+  font-weight: var(--font-weight-strong);
+}
+
+/*
+ * No number for the country of use: what to do, in bold, then the way to
+ * choose the country, a whole-width box (the first action of the screen when
+ * no country is known and no contact is listed), never a guessed number.
  */
 .referral__no-number {
   display: grid;

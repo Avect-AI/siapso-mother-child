@@ -52,7 +52,7 @@ export function Settings() {
   const focusAfter = useRef<Group | null>(null);
   // The deployment file's country, once read: it comes before any other.
   const [deployed, setDeployed] = useState<CountryCode | undefined>(undefined);
-  const { country, source } = useCountryOfUse(deployed);
+  const { country, source, ask } = useCountryOfUse(deployed);
   const countryLineId = useId();
 
   useEffect(() => {
@@ -71,7 +71,9 @@ export function Settings() {
       ? t(`countries.${country}`)
       : source === 'chosen'
         ? t('country.otherName')
-        : t('country.unknown');
+        : ask !== undefined
+          ? t('country.toChoose')
+          : t('country.unknown');
 
   const langToApply = pendingLang !== null && pendingLang !== settings.lang ? pendingLang : null;
   const modeToApply = pendingMode !== null && pendingMode !== settings.mode ? pendingMode : null;

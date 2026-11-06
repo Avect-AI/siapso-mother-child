@@ -718,18 +718,33 @@ export const fr = {
     emergencyLabel: "Numéros d'urgence",
     // The link that dials a public emergency number: the service named in the sentence, then the number.
     emergencyDial: 'Appeler {service} ({phone})',
-    // One per service of config/emergency-numbers.json, named in a sentence.
-    services: {
-      samu: 'le SAMU',
-      ambulance: 'les urgences médicales',
-      emergency: "le numéro d'urgence",
-      firefighters: 'les pompiers',
-      'civil-protection': 'la protection civile',
-      police: 'la police',
+    // The call link of each service of config/emergency-numbers.json. 112 and
+    // its kind say what they reach: the police, the fire brigade and the ambulance.
+    dialService: {
+      samu: 'Appeler le SAMU ({phone})',
+      ambulance: "Appeler l'ambulance ({phone})",
+      emergency: 'Appeler le {phone} (police, pompiers, ambulance)',
+      firefighters: 'Appeler les pompiers ({phone})',
+      'civil-protection': 'Appeler la protection civile ({phone})',
+      police: 'Appeler la police ({phone})',
     },
-    // No number for the country of use (unknown, or none in the app): the
-    // country to choose comes first, never a guessed number.
+    // A country with no medical number: its other numbers, named as such.
+    otherNumbers: 'Autres numéros (non médicaux)',
+    otherDial: '{service} : {phone}',
+    serviceName: {
+      firefighters: 'Pompiers',
+      'civil-protection': 'Protection civile',
+      police: 'Police',
+    },
+    caveats: {
+      'not-all-networks': 'Ce numéro peut ne pas marcher depuis tous les réseaux.',
+    },
+    // No country known: the country to choose comes first, never a guessed number.
     noNumber: "Appelez le numéro d'urgence de votre pays.",
+    // A known country with no number the app can give.
+    noConfirmed: "Aucun numéro d'urgence confirmé pour ce pays : {country}.",
+    // The language and the time zone of the phone name two countries: the person says which.
+    otherCountry: 'Autre pays',
     // The country whose emergency numbers are shown, and the way to change it.
     country: 'Pays : {country}',
     changeCountry: 'Changer le pays',
@@ -808,8 +823,11 @@ export const fr = {
     // A country the list does not have: who to call then shows no number.
     other: "Mon pays n'est pas dans la liste",
     chosen: 'Pays choisi',
+    // A country the phone's language or time zone names, offered first.
+    suggested: 'Selon le téléphone',
     unknown: 'inconnu',
     otherName: 'autre pays',
+    toChoose: 'à choisir',
   },
   // The countries of config/emergency-numbers.json, by ISO code.
   countries: {

@@ -8,13 +8,21 @@
 //      the list does not have;
 //   3. the region of the phone's language (navigator.languages, "fr-SN");
 //   4. the phone's time zone (Intl, "Africa/Dakar"), for a zone of one
-//      country only;
+//      country only, never a weak zone (Africa/Abidjan, Africa/Lagos: the tz
+//      database makes them the canonical zones of other countries too);
 //   5. else unknown: who to call then asks for the country and never shows a
 //      guessed number.
+// When the language and the time zone name two countries of the file, the
+// phone is not trusted with either: who to call asks which (`ask`).
 // A country of the file marked detect false (France, for testing) is never
 // found from the phone (3 and 4): many phones in West and Central Africa use
 // French (France) as their language.
-import { COUNTRIES, isCountryCode, type CountryCode } from '../config/emergency.js';
+import {
+  COUNTRIES,
+  isCountryCode,
+  WEAK_TIME_ZONES,
+  type CountryCode,
+} from '../config/emergency.js';
 
 /** What a person can choose: a country of the file, or another country (not in the list). */
 export type CountryChoice = CountryCode | 'other';
@@ -35,6 +43,8 @@ export interface CountryOfUse {
   country: CountryCode | null;
   /** Null: nothing gave a country. */
   source: CountrySource | null;
+  /** The language and the time zone name these two countries: the person says which. */
+  ask?: [CountryCode, CountryCode];
 }
 
 export function isCountryChoice(value: unknown): value is CountryChoice {
@@ -44,7 +54,11 @@ export function isCountryChoice(value: unknown): value is CountryChoice {
 /** The countries the phone may point to, with the zones that name each of them. */
 const DETECTED = COUNTRIES.filter((country) => country.detect);
 const BY_ZONE = new Map(
-  DETECTED.flatMap((country) => country.timeZones.map((zone) => [zone, country.code] as const)),
+  DETECTED.flatMap((country) =>
+    country.timeZones
+      .filter((zone) => !WEAK_TIME_ZONES.has(zone))
+      .map((zone) => [zone, country.code] as const),
+  ),
 );
 
 /**
@@ -67,7 +81,7 @@ export function countryOfLanguages(languages: readonly string[]): CountryCode | 
   return null;
 }
 
-/** The country of a time zone of one country of the file (zone.tab); none otherwise. */
+/** The country of a time zone of one country of the file (zone.tab), never a weak zone; none otherwise. */
 export function countryOfTimeZone(zone: string | undefined): CountryCode | null {
   return zone === undefined ? null : (BY_ZONE.get(zone) ?? null);
 }
@@ -75,7 +89,9 @@ export function countryOfTimeZone(zone: string | undefined): CountryCode | null 
 /**
  * The country of use, in the order above. `deployment` and `chosen` are read
  * as given (a value that is not a country of the file is ignored); `chosen`
- * "other" stops there: the person said her country is not in the list.
+ * "other" stops there: the person said her country is not in the list. A
+ * language and a time zone that name two countries give no country, and
+ * both to ask about.
  */
 export function countryOfUse({
   deployment,
@@ -90,8 +106,11 @@ export function countryOfUse({
   if (chosen === 'other') return { country: null, source: 'chosen' };
   if (isCountryCode(chosen)) return { country: chosen, source: 'chosen' };
   const spoken = countryOfLanguages(phone.languages);
-  if (spoken !== null) return { country: spoken, source: 'language' };
   const zoned = countryOfTimeZone(phone.timeZone);
+  if (spoken !== null && zoned !== null && spoken !== zoned) {
+    return { country: null, source: null, ask: [spoken, zoned] };
+  }
+  if (spoken !== null) return { country: spoken, source: 'language' };
   if (zoned !== null) return { country: zoned, source: 'time-zone' };
   return { country: null, source: null };
 }

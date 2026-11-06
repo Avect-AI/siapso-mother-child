@@ -4,14 +4,15 @@
 // links on every who to call screen (locked or not, in both modes, with or
 // without saved contacts), with the line "Allez au poste de santé ou au
 // centre de santé le plus proche.". A danger sign thus always leads to a
-// number to call, or, in a country with no number here, to the country to
-// choose and the place to go, even on a phone with no contact and no
-// deployment file.
+// number to call or a place to go, even on a phone with no contact and no
+// deployment file. Only a medical number (isMedical) is ever the first call
+// of the screen; the fire brigade and the police are said as such.
 //
 // The numbers are in emergency-numbers.json (CC BY 4.0, REUSE.toml), each
-// with its sources and the date they were fetched; a number whose sources
-// disagree, or that has fewer than two reliable sources, is left out there
-// with why. The country of use is found offline (domain/country.ts).
+// with its sources (publisher, kind, the day the page gives, the day it was
+// fetched); every medical number has a national source. A number whose
+// sources disagree, or that has too few sources, is left out there with why.
+// The country of use is found offline (domain/country.ts).
 //
 // A deployment replaces the numbers through its file
 // public/config/referral.json ("emergencyNumbers") and may fix the country
@@ -41,15 +42,53 @@ export const EMERGENCY_SERVICES: readonly EmergencyService[] = [
   'police',
 ];
 
+/** The services that send medical help: the only ones the first call of a screen may be. */
+const MEDICAL_SERVICES: readonly EmergencyService[] = ['samu', 'ambulance', 'emergency'];
+
+export function isMedical(service: EmergencyService): boolean {
+  return MEDICAL_SERVICES.includes(service);
+}
+
+/** What the person is told of a number: "not-all-networks", it may not work from every network. */
+export type NumberCaveat = 'not-all-networks';
+
+export const NUMBER_CAVEATS: readonly NumberCaveat[] = ['not-all-networks'];
+
 export interface BuiltInEmergencyNumber {
   service: EmergencyService;
   /** The number the phone dials, digits only. */
   phone: string;
+  caveat?: NumberCaveat;
 }
 
-/** A source of a number: the page fetched, and what it says. */
+/**
+ * Who publishes a source: the telecom regulator, a ministry or government
+ * office of the country, the emergency service itself (the three national
+ * kinds), another country's foreign ministry, a mobile operator, the press,
+ * or a compilation.
+ */
+export type SourceKind =
+  'regulator' | 'ministry' | 'service' | 'foreign-ministry' | 'operator' | 'press' | 'compilation';
+
+export const SOURCE_KINDS: readonly SourceKind[] = [
+  'regulator',
+  'ministry',
+  'service',
+  'foreign-ministry',
+  'operator',
+  'press',
+  'compilation',
+];
+
+/** A source of a number: the page fetched, who publishes it, and what it says. */
 export interface NumberSource {
   url: string;
+  publisher: string;
+  kind: SourceKind;
+  /** The day the page gives itself (updated or published), when it gives one. */
+  pageUpdated?: string;
+  /** The day the page was fetched. */
+  checkedOn: string;
   says: string;
 }
 
@@ -93,12 +132,15 @@ export type CountryCode = (typeof COUNTRY_CODES)[number];
 export interface EmergencyFile {
   about: string;
   teamCheck: string;
+  attribution: string[];
+  /** Zones other countries may report as theirs (canonical links in the tz database): never enough alone. */
+  weakTimeZones: string[];
   countries: {
     code: string;
     timeZones: string[];
     /** False: never found from the phone, only chosen by hand (France, for testing). */
     detect?: boolean;
-    numbers: (BuiltInEmergencyNumber & { checkedOn: string; sources: NumberSource[] })[];
+    numbers: (BuiltInEmergencyNumber & { sources: NumberSource[] })[];
     leftOut: { service: EmergencyService; phone?: string; why: string }[];
     notes: string[];
   }[];
@@ -123,8 +165,13 @@ export const COUNTRIES: readonly Country[] = EMERGENCY_FILE.countries.map((count
   code: country.code as CountryCode,
   timeZones: country.timeZones,
   detect: country.detect !== false,
-  numbers: country.numbers.map(({ service, phone }) => ({ service, phone })),
+  numbers: country.numbers.map(({ service, phone, caveat }) =>
+    caveat === undefined ? { service, phone } : { service, phone, caveat },
+  ),
 }));
+
+/** Zones other countries may report as theirs: a phone in them says no country alone. */
+export const WEAK_TIME_ZONES: ReadonlySet<string> = new Set(EMERGENCY_FILE.weakTimeZones);
 
 const BY_CODE = new Map<string, Country>(COUNTRIES.map((country) => [country.code, country]));
 

@@ -58,9 +58,14 @@ describe('the country of the time zone', () => {
   it('is the one country whose zone it is', () => {
     expect(countryOfTimeZone('Africa/Dakar')).toBe('SN');
     expect(countryOfTimeZone('Africa/Bamako')).toBe('ML');
-    expect(countryOfTimeZone('Africa/Abidjan')).toBe('CI');
     expect(countryOfTimeZone('Africa/Accra')).toBe('GH');
     expect(countryOfTimeZone('Africa/Lubumbashi')).toBe('CD');
+  });
+
+  it('is none for a weak zone: the tz database makes it the canonical zone of other countries too', () => {
+    // A phone in Senegal may report Africa/Abidjan, one in Benin Africa/Lagos.
+    expect(countryOfTimeZone('Africa/Abidjan')).toBeNull();
+    expect(countryOfTimeZone('Africa/Lagos')).toBeNull();
   });
 
   it('is none for a zone of no country of the file, of several countries, or no zone', () => {
@@ -99,10 +104,49 @@ describe('the country of use', () => {
     });
   });
 
-  it('then the region of the phone language', () => {
-    expect(countryOfUse({ phone: { languages: ['fr-ML'], timeZone: 'Africa/Dakar' } })).toEqual({
+  it('then the region of the phone language, when the time zone agrees or says nothing', () => {
+    expect(countryOfUse({ phone: { languages: ['fr-ML'], timeZone: 'Africa/Bamako' } })).toEqual({
       country: 'ML',
       source: 'language',
+    });
+    expect(countryOfUse({ phone: { languages: ['fr-ML'], timeZone: undefined } })).toEqual({
+      country: 'ML',
+      source: 'language',
+    });
+    expect(countryOfUse({ phone: { languages: ['fr-ML'], timeZone: 'UTC' } })).toEqual({
+      country: 'ML',
+      source: 'language',
+    });
+  });
+
+  it('asks when the language and the time zone name two countries: never one picked for her', () => {
+    expect(countryOfUse({ phone: { languages: ['fr-SN'], timeZone: 'Africa/Bamako' } })).toEqual({
+      country: null,
+      source: null,
+      ask: ['SN', 'ML'],
+    });
+    // The country chosen answers the question.
+    expect(
+      countryOfUse({ chosen: 'ML', phone: { languages: ['fr-SN'], timeZone: 'Africa/Bamako' } }),
+    ).toEqual({ country: 'ML', source: 'chosen' });
+  });
+
+  it('never decides on a weak zone, alone or against the language', () => {
+    expect(countryOfUse({ phone: { languages: ['fr'], timeZone: 'Africa/Abidjan' } })).toEqual({
+      country: null,
+      source: null,
+    });
+    expect(countryOfUse({ phone: { languages: ['fr-CI'], timeZone: 'Africa/Abidjan' } })).toEqual({
+      country: 'CI',
+      source: 'language',
+    });
+    expect(countryOfUse({ phone: { languages: ['fr-SN'], timeZone: 'Africa/Abidjan' } })).toEqual({
+      country: 'SN',
+      source: 'language',
+    });
+    expect(countryOfUse({ phone: { languages: ['en'], timeZone: 'Africa/Lagos' } })).toEqual({
+      country: null,
+      source: null,
     });
   });
 

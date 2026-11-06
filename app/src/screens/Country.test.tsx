@@ -131,6 +131,31 @@ describe('Country of use', () => {
     expect(screen.getByRole('heading', { level: 1, name: TITLE })).toBeVisible();
   });
 
+  it('puts first the two countries the phone names when its language and time zone disagree', async () => {
+    const user = userEvent.setup();
+    await renderApp({
+      settings: woman,
+      hash: '#/country',
+      phone: { languages: ['fr-SN'], timeZone: 'Africa/Bamako' },
+    });
+    await screen.findByRole('heading', { level: 1, name: TITLE });
+    const names = listed();
+    expect(names.slice(0, 2)).toEqual(['Sénégal', 'Mali']);
+    expect(names).toHaveLength(25);
+    expect(screen.getByRole('button', { name: 'Sénégal Selon le téléphone' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Mali Selon le téléphone' })).toBeVisible();
+    // The rest in the order of their names.
+    const rest = names.slice(2);
+    expect(rest).toEqual(
+      [...rest].sort((a, b) => new Intl.Collator('fr', { sensitivity: 'base' }).compare(a, b)),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Mali Selon le téléphone' }));
+    await waitFor(async () => {
+      expect((await getStoredSettings())?.country).toBe('ML');
+    });
+  });
+
   it('words the screen in English', async () => {
     await renderApp({
       settings: { lang: 'en', mode: 'woman', onboarded: true },
