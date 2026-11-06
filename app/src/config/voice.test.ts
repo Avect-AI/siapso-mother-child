@@ -31,7 +31,9 @@ describe('voice packs offered', () => {
 });
 
 // SCRUM-61: the names of the base given to the French decoder (docs/voice.md):
-// measured, 75 of 88 products ticked instead of 50, none ticked wrongly.
+// measured on synthetic voices, affirmative sentences (80 clips: 22 sentences
+// by 3 Windows voices, and 14 more), 75 of 88 products ticked instead of 50,
+// none ticked wrongly.
 describe('the names given to the decoder', () => {
   it('are on for the French voice, and never given to the Wolof one', () => {
     expect(VOICE_NAMES_PROMPT_ON).toBe(true);

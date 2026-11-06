@@ -7,7 +7,7 @@ How well does the app understand a spoken medicine or remedy name in French or W
 ## Status
 
 - Baseline on FLEURS (read general sentences, not product names): measured, see `results/`.
-- Products named inside a sentence (SCRUM-61): measured on 256 written sentences (`sentences.yaml`, `pnpm eval:sentences`, below), and checked by ear on a few French sentences said by Windows voices.
+- Products named inside a sentence (SCRUM-61): measured on a tuning set of 256 written sentences (`sentences.yaml`, `pnpm eval:sentences`, below), on a held-out set of 150 written sentences never tuned on (`sentences-heldout.yaml`, `pnpm eval:sentences:heldout`), and checked by ear on 80 synthetic clips (22 sentences said by 3 Windows voices, and 14 more).
 - Name accuracy after the resolver (top-1, top-3) on product and remedy names: **pending recordings**. No volunteer recording exists yet; the manifest is empty. The FLEURS figures say little about names, and the Wolof one may be optimistic (the fine-tune's training data lists FLEURS Wolof).
 
 ## Run it
@@ -55,21 +55,44 @@ It runs the same ONNX graphs as the browser with Transformers.js in Node: same f
 - `expect`: one item per product: `{ kind, id }` (any product of its family is right), or `{ any: [...] }` when several families are equally right (the amoxicillin boxes of several laboratories); `mg` when a strength is said with it, counted apart ("strengths said with a name found, read right").
 - The expectations are written from the registry, never from the output. An honest sentence that fails stays, as a recorded miss (the short form "para", a name cut short "dolipa", two changes from the name "amoksilin" and "paratamol", "vitamine c" alone; and for the strength, "500 mg de paracétamol" said before the name and "doliprane junni" in Wolof numbers); fix the rules, never the expectation.
 - The sentences are read as the voice heard them (`productsInSentence(index, text, { heard: true })`): a name read from words the voice split is offered unticked, to confirm; it never counts as found, and the `checks` column says how many such offers were right and wrong.
+- `offered`: the products named that are offered at all, ticked or to confirm. A remedy that is also a food ("bissap", "jinjeer", "ail") is offered unticked by design since the review of #68, so it counts as missed in the recall (ticked) and as offered here.
 - Background: the model's transcripts of general FLEURS sentences in `results/*.json` (400, French and Wolof, no product names) are read too: any product found there, ticked, is a false product, and any name offered to confirm there is counted apart.
-- `sentences-baseline.json`: the bars CI enforces, overall and in each language: precision at least 0.97, recall at least 0.95, no false product in the background and no name offered to confirm there (`backgroundCheckOffers`). Why: a false product is worse than a missed one (it is put before her, even if she confirms it), so the precision bar is the higher; both are above the floors set for the ticket (0.95 and 0.85) and below what was measured (precision 1.000, recall 0.980 overall, 0.968 at the lowest language) by about two products per language, so an honest new hard sentence can be added without lowering a bar, while a rule that adds a false product in a language, or loses three names, fails. Lower a bar only in a reviewed pull request that says why.
+- `sentences-baseline.json`: the bars CI enforces on the tuning set, overall and in each language: precision at least 0.97, recall (ticked) at least 0.88, offered at least 0.95, no false product in the background and no name offered to confirm there (`backgroundCheckOffers`). Why: a false product is worse than a missed one (it is put before her, even if she confirms it), so the precision bar is the higher; the offered bar keeps every product named in front of her. The recall bar was 0.95 until the review of #68: its foods offered unticked (13 of the 244 products named) took the ticked recall from 0.980 to 0.926 (0.895 in Wolof, where most of them are), every one of them still offered; 0.88 keeps about one product per language of margin. Lower a bar only in a reviewed pull request that says why.
 - It also prints the p95 time of one sentence (the 256 sentences and the 400 transcripts, which are much longer than the 80 characters the search field keeps).
 
-Measured on 2026-11-06 (256 sentences, 244 products named):
+These are tuning-set figures: the sentences were written by the developer who wrote the rules, and the rules were changed until they held, so they are optimistic. They measure that the rules hold, not how real speakers talk. Measured on 2026-11-06, after the review of #68 (256 sentences, 244 products named):
 
-| Set      | Sentences | Named | Right | False | Missed | Precision | Recall |
-| -------- | --------: | ----: | ----: | ----: | -----: | --------: | -----: |
-| fr       |       106 |   101 |    99 |     0 |      2 |     1.000 |  0.980 |
-| wo       |        98 |    95 |    92 |     0 |      3 |     1.000 |  0.968 |
-| mix      |        52 |    48 |    48 |     0 |      0 |     1.000 |  1.000 |
-| overall  |       256 |   244 |   239 |     0 |      5 |     1.000 |  0.980 |
-| misspelt |        60 |    65 |    61 |     0 |      4 |     1.000 |  0.938 |
+| Tuning set | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered |
+| ---------- | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: |
+| fr         |       106 |   101 |    95 |     0 |      6 |     1.000 |           0.941 |   0.980 |
+| wo         |        98 |    95 |    85 |     0 |     10 |     1.000 |           0.895 |   0.968 |
+| mix        |        52 |    48 |    46 |     0 |      2 |     1.000 |           0.958 |   1.000 |
+| overall    |       256 |   244 |   226 |     0 |     18 |     1.000 |           0.926 |   0.980 |
+| misspelt   |        60 |    65 |    61 |     0 |      4 |     1.000 |           0.938 |   0.938 |
 
-Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word). The sentences were written by the developer who wrote the rules, so these figures are optimistic: the set measures that the rules hold, not how real speakers talk. Sentences said by volunteers (protocol below) will tell.
+Before the review (foods ticked): recall 0.980 overall, 0.968 at the lowest language, the same precision. Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word).
+
+### Held-out set (review of #68)
+
+`sentences-heldout.yaml`: 150 sentences (74 French, 56 Wolof, 20 mixed) written and committed before the rules for products not taken, and never tuned on: they are measured once, with `pnpm eval:sentences:heldout`, which reports and sets no bar. Each has a `case`: `affirmative`, `negation`, `other-person` (taken by or given to another person), `past` (taken before and stopped), `food`, `list` (several products) or `question`. `expect` holds the products the speaker takes or asks about, and `notTaken` the products named but not taken: one of them ticked is a false product (it counts in the precision), offered unticked is right. Five of the 150 are the sentences of the review, which the unit tests also check.
+
+Measured once on 2026-11-06, as they came:
+
+| Held-out     | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered | Not taken: ticked / unticked / named |
+| ------------ | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: | -----------------------------------: |
+| fr           |        74 |    57 |    50 |     4 |      7 |     0.926 |           0.877 |   1.000 |                          4 / 27 / 31 |
+| wo           |        56 |    43 |    38 |     0 |      5 |     1.000 |           0.884 |   1.000 |                          0 / 22 / 22 |
+| mix          |        20 |    16 |    11 |     1 |      5 |     0.917 |           0.688 |   0.938 |                           1 / 9 / 10 |
+| overall      |       150 |   116 |    99 |     5 |     17 |     0.952 |           0.853 |   0.991 |                          5 / 58 / 63 |
+| affirmative  |        31 |    29 |    29 |     0 |      0 |     1.000 |           1.000 |   1.000 |                            0 / 0 / 0 |
+| negation     |        29 |     8 |     7 |     0 |      1 |     1.000 |           0.875 |   1.000 |                          0 / 26 / 26 |
+| other-person |        23 |     5 |     5 |     3 |      0 |     0.625 |           1.000 |   1.000 |                          3 / 16 / 19 |
+| past         |        18 |     2 |     2 |     2 |      0 |     0.500 |           1.000 |   1.000 |                          2 / 16 / 18 |
+| food         |        16 |    14 |     0 |     0 |     14 |     1.000 |           0.000 |   0.929 |                            0 / 0 / 0 |
+| list         |        17 |    40 |    38 |     0 |      2 |     1.000 |           0.950 |   1.000 |                            0 / 0 / 0 |
+| question     |        16 |    18 |    18 |     0 |      0 |     1.000 |           1.000 |   1.000 |                            0 / 0 / 0 |
+
+Without the five sentences of the review: precision 0.950 (95 right, 5 false), recall 0.848, not taken 5 ticked of 57. The five false products are products not taken that came ticked: another person the rules do not see ("la voisine m'a parlé du cytotec", where "m'" reads as given to her; "c'est pour ma mère, elle prend du kardégic" and "sama doom dafa am sibiru, je lui donne de la nivaquine", where the person is in the clause before, and the next clause has a subject of its own), and a past use said with a date only ("l'année dernière on m'a donné de la quinine", "il y a deux ans j'ai pris du cytotec"). Every negation came unticked. The foods are offered unticked as designed (one, "kola", is not found at all, and "neem" comes unticked as a common word). One wrong offer to confirm: "j'ai arrêté le fer il y a un mois" offers FERTIFOL as "Ou peut-être", unticked, as the clause guard reads "fer il y a un" as a longer name. Not fixed: the set is not tuned on; these are the next rules to write, with sentences of their own.
 
 ### Audio check (2026-11-06)
 
@@ -94,7 +117,7 @@ Fourteen French sentences said by the Windows voice Microsoft Hortense (System.S
 
 6 of 14 spoken sentences end with exactly the right products (4 of the 12 that name a product, and the 2 that name none; 8 of the 16 products said are offered), and no false product. Every miss comes from the voice, not from the reading: the French base model writes a name as French words ("douleur libraine", "risque à un", "King Kyliba", "Libu Profaine"), splits it ("co-artant", "d'olipranmille"), or changes a letter of a short name ("kinime").
 
-The set was then extended to 80 utterances (22 more sentences, each said by Hortense, Julie and Paul, OneCore voices, at -15 %, default and +20 % speaking rates) and measured twice more: with the words the voice split read joined, to confirm (before and after: 44 then 44 products ticked of 88, plus 9 to confirm, false ticked products from 2 to 0, no wrong offer), and with the names of the base given to the decoder, now on for the French voice (75 of 88 ticked instead of 50, none wrongly, FLEURS word error rate 30.0 % against 30.3 %, but "kinkéliba" heard as "quinine qu'il y va" three times, now offered to confirm, never ticked; a second prompt adding the remedies that sound like medicines did not remove it). Both are in `docs/voice.md`, Names heard in a sentence.
+The set was then extended to 80 clips: 22 more sentences, each said by 3 synthetic voices (Hortense, Julie and Paul, OneCore voices, at -15 %, default and +20 % speaking rates), so 66 clips, and the 14 above. All are affirmative sentences of synthetic voices: they say nothing of negations, of other people or of real speakers. They were measured twice more: with the words the voice split read joined, to confirm (before and after: 44 then 44 products ticked of 88, plus 9 to confirm, false ticked products from 2 to 0, no wrong offer), and with the names of the base given to the decoder, now on for the French voice (75 of 88 ticked instead of 50, none wrongly, FLEURS word error rate 30.0 % against 30.3 %, but "kinkéliba" heard as "quinine qu'il y va" three times, now offered to confirm, never ticked; a second prompt adding the remedies that sound like medicines did not remove it). Both are in `docs/voice.md`, Names heard in a sentence.
 
 ## Data layout
 
