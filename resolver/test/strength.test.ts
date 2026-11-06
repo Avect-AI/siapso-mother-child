@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it } from 'vitest';
-import { parseStrength } from '../src/index.js';
+import { parseStrength, strengthsOf } from '../src/index.js';
 
 describe('parseStrength', () => {
   it('reads a strength with a unit and normalises it to mg', () => {
@@ -152,6 +152,27 @@ describe('parseStrength', () => {
     expect(parseStrength('doliprane 2 cps')).toEqual({ text: 'doliprane 2 cps' });
     // A strength then a count stays the strength.
     expect(parseStrength('doliprane 1000 x 8')).toMatchObject({ strengthMg: 1000 });
+    expect(parseStrength('aspirine 12 x 500')).toMatchObject({ strengthMg: 500 });
+  });
+
+  it('keeps the first number as the strength when it is more than 12: "x" then the count of a box (review of #71)', () => {
+    expect(parseStrength('aspirine 100 x 120')).toMatchObject({ strengthMg: 100 });
+    expect(parseStrength('kardegic 75 x 90')).toMatchObject({ strengthMg: 75 });
+    expect(parseStrength('doliprane 500 x 1000')).toMatchObject({ strengthMg: 500 });
+    expect(parseStrength('doliprane 13 x 500')).toMatchObject({ strengthMg: 13 });
+    // With a unit after "x", the number after it is the strength whatever the count.
+    expect(parseStrength('doliprane 30 x 500 mg')).toMatchObject({ strengthMg: 500, unit: 'mg' });
+  });
+
+  it('lists every strength of a text, each as it is read alone', () => {
+    expect(strengthsOf('aspirine 75 mg ou 500 mg')).toEqual([
+      { strengthMg: 75, unit: 'mg' },
+      { strengthMg: 500, unit: 'mg' },
+    ]);
+    expect(strengthsOf('aspirine 2 x 50 mg')).toEqual([{ strengthMg: 50, unit: 'mg' }]);
+    expect(strengthsOf('doliprane 1000 x 8')).toEqual([{ strengthMg: 1000 }]);
+    expect(strengthsOf('aspirine 1 cp x 3')).toEqual([]);
+    expect(strengthsOf('aspirine')).toEqual([]);
   });
 
   it('says the unit written, and none for a bare number', () => {

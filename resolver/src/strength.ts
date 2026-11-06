@@ -94,11 +94,16 @@ const COUNT_BEFORE = /(?:^|[\s,;(])(?:bo[iî]tes?\s+de|fois|x)\s*$/u;
 
 /**
  * A number without a unit then "x" and another number ("2 x 500 mg", "2 × 500"):
- * the first is a count when the second has a unit or is larger; otherwise the
- * second is ("doliprane 1000 x 8").
+ * the first is a count of units taken when the second has a unit, or when the
+ * first is at most MAX_TIMES and the second is larger; otherwise the first is
+ * the strength and the second a count ("doliprane 1000 x 8", "kardegic 75 x
+ * 90", the count of a box).
  */
 const TIMES_NUMBER =
   /^\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(microgrammes?|milligrammes?|grammes?|mcg|µg|mg|g)?(?![\p{L}\d])/u;
+
+/** The most units taken at once that a number before "x" may count ("2 x 500"). */
+const MAX_TIMES = 12;
 
 /** A word without its accents, as the counts above are written. */
 function plain(word: string): string {
@@ -125,6 +130,38 @@ function countAfter(after: string, value: number): boolean {
  */
 export function parseStrength(query: string): ParsedQuery {
   const lower = numberWordsToDigits(query.toLowerCase());
+  for (const { start, length, strengthMg, unit } of strengthsIn(lower)) {
+    const rest = lower.slice(0, start) + ' ' + lower.slice(start + length);
+    return {
+      text: rest.replace(/\s+/g, ' ').trim(),
+      strengthMg,
+      ...(unit === undefined ? {} : { unit }),
+    };
+  }
+  return { text: query };
+}
+
+/** A strength read in a query: its value in mg and the unit written, if any. */
+export interface ReadStrength {
+  strengthMg: number;
+  unit?: StrengthUnit;
+}
+
+/**
+ * Every strength of a query, in order, each read as parseStrength reads the
+ * first ("aspirine 75 mg ou 500 mg" has two; "aspirine 2 x 50 mg" has one,
+ * 50 mg, the 2 a count).
+ */
+export function strengthsOf(query: string): ReadStrength[] {
+  return [...strengthsIn(numberWordsToDigits(query.toLowerCase()))].map(({ strengthMg, unit }) =>
+    unit === undefined ? { strengthMg } : { strengthMg, unit },
+  );
+}
+
+/** The strengths of a lower-case query with its number words in digits, where each is. */
+function* strengthsIn(
+  lower: string,
+): Generator<{ start: number; length: number; strengthMg: number; unit?: StrengthUnit }> {
   // The number after a count and "x" is the strength, even with no unit ("2 x 500").
   let afterCount = -1;
   for (const found of lower.matchAll(STRENGTH)) {
@@ -142,19 +179,19 @@ export function parseStrength(query: string): ParsedQuery {
     const times = unit === undefined ? TIMES_NUMBER.exec(after) : null;
     if (times !== null) {
       const [, next = '', nextUnit] = times;
-      if (nextUnit !== undefined || Number.parseFloat(next.replace(',', '.')) > amount) {
+      const larger = Number.parseFloat(next.replace(',', '.')) > amount;
+      if (nextUnit !== undefined || (amount <= MAX_TIMES && larger)) {
         afterCount = start + whole.length + times[0].indexOf(next);
         continue;
       }
     }
     const value = amount * factorOf(unit);
     if (!Number.isFinite(value) || value <= 0) continue;
-    const rest = lower.slice(0, start) + ' ' + after;
-    return {
-      text: rest.replace(/\s+/g, ' ').trim(),
+    yield {
+      start,
+      length: whole.length,
       strengthMg: Math.round(value * 1e6) / 1e6,
       ...(unit === undefined ? {} : { unit: unitOf(unit) }),
     };
   }
-  return { text: query };
 }
