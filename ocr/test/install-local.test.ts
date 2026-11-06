@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 // @vitest-environment node
-import { existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   PINNED_MODELS,
+  PINNED_TEXTS,
   checkDetectionSettings,
   dictionaryOf,
   pdfjsCopies,
+  pinnedText,
 } from '../scripts/install-local.mjs';
 import { PDFJS_VERSION, PDF_FILES } from '../src/ocr-pack.js';
 
@@ -100,5 +105,82 @@ describe('the pdf.js files of the pack', () => {
       'licenses/pdfjs-dist-wasm-LICENSE_PDFJS_OPENJPEG.txt',
     ]);
     for (const [, from] of copies) expect(existsSync(path.join(pdfjsDir, from)), from).toBe(true);
+  });
+});
+
+describe('the licence texts taken from their projects', () => {
+  const ortDir = path.dirname(
+    path.dirname(createRequire(import.meta.url).resolve('onnxruntime-web')),
+  );
+
+  it('pins each text by the full commit of its repository, its size and its SHA-256', () => {
+    for (const text of Object.values(PINNED_TEXTS)) {
+      expect(text.commit).toMatch(/^[0-9a-f]{40}$/);
+      expect(text.url).toBe(
+        `https://raw.githubusercontent.com/${text.repo}/${text.commit}/${text.file}`,
+      );
+      expect(text.sha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(text.bytes).toBeGreaterThan(0);
+      expect(text.path.startsWith('licenses/')).toBe(true);
+    }
+  });
+
+  it("ships PaddleOCR's own licence, and ONNX Runtime's licence and third-party notices", () => {
+    expect(PINNED_TEXTS.paddleocr).toMatchObject({
+      repo: 'PaddlePaddle/PaddleOCR',
+      file: 'LICENSE',
+      path: 'licenses/paddleocr-LICENSE.txt',
+    });
+    expect(PINNED_TEXTS.onnxruntime).toMatchObject({
+      repo: 'microsoft/onnxruntime',
+      file: 'LICENSE',
+      path: 'licenses/onnxruntime-web-LICENSE.txt',
+    });
+    expect(PINNED_TEXTS.onnxruntimeNotices).toMatchObject({
+      repo: 'microsoft/onnxruntime',
+      file: 'ThirdPartyNotices.txt',
+      path: 'licenses/onnxruntime-ThirdPartyNotices.txt',
+    });
+  });
+
+  it('takes the texts of ONNX Runtime at the commit the installed onnxruntime-web was built from', () => {
+    const built = readFileSync(path.join(ortDir, '__commit.txt'), 'utf8').trim();
+    expect(PINNED_TEXTS.onnxruntime.commit).toBe(built);
+    expect(PINNED_TEXTS.onnxruntimeNotices.commit).toBe(built);
+  });
+
+  it('reads a text from a local folder when it is there, checked by its hash', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'siapso-ocr-texts-'));
+    try {
+      const body = 'Apache License\n';
+      const pinned = {
+        ...PINNED_TEXTS.paddleocr,
+        bytes: body.length,
+        sha256: createHash('sha256').update(body).digest('hex'),
+      };
+      await mkdir(path.join(dir, 'licenses'), { recursive: true });
+      await writeFile(path.join(dir, 'licenses', 'paddleocr-LICENSE.txt'), body);
+      const network = vi.fn();
+      expect((await pinnedText(pinned, dir, network)).toString()).toBe(body);
+      expect(network).not.toHaveBeenCalled();
+      await writeFile(path.join(dir, 'licenses', 'paddleocr-LICENSE.txt'), 'another text');
+      await expect(pinnedText(pinned, dir, network)).rejects.toThrow(/not the pinned file/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('downloads it at the pinned commit otherwise, and refuses another text', async () => {
+    const body = 'MIT License\n';
+    const pinned = {
+      ...PINNED_TEXTS.onnxruntime,
+      bytes: body.length,
+      sha256: createHash('sha256').update(body).digest('hex'),
+    };
+    const network = vi.fn(() => Promise.resolve(new Response(body)));
+    expect((await pinnedText(pinned, undefined, network)).toString()).toBe(body);
+    expect(network).toHaveBeenCalledWith(pinned.url);
+    const changed = vi.fn(() => Promise.resolve(new Response('MIT License, changed\n')));
+    await expect(pinnedText(pinned, undefined, changed)).rejects.toThrow(/not the pinned file/);
   });
 });
