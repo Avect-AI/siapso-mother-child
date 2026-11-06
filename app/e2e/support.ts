@@ -89,6 +89,17 @@ export async function onboard(page: Page, mode: Mode, lang: Lang = 'fr', code: s
   await expectStart(page, mode, lang);
 }
 
+/**
+ * A new profile saved in accompanied mode opens her check (SCRUM-56, S8):
+ * her check named, then Back to the list of profiles.
+ */
+export async function herCheckThenProfiles(page: Page, pseudonym: string) {
+  await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
+  await expect(page.locator('.check__profile')).toContainText(pseudonym);
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+}
+
 /** Records in clear, store by store, as the version before SCRUM-39 kept them. */
 export interface BeforeUpdate {
   settings?: Record<string, unknown>;

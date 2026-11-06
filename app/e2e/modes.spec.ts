@@ -4,7 +4,15 @@
 // everything at once. The codes here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, expectStart, expectWelcome, makeCode, onboard, unlock } from './support.js';
+import {
+  CODE,
+  expectStart,
+  expectWelcome,
+  herCheckThenProfiles,
+  makeCode,
+  onboard,
+  unlock,
+} from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -126,9 +134,9 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await page.getByRole('textbox', { name: 'Surnom' }).fill('Ndeye');
   await fillProfile(page);
+  await herCheckThenProfiles(page, 'Ndeye');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: 'Ndeye' })).toBeVisible();
-  await expect(page.getByText('Profil enregistré : Ndeye.')).toBeVisible();
   await expectNoSeriousViolation(page);
 
   // Her check and its result, then the quick exit.
@@ -152,9 +160,9 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   }
   await expectNoSeriousViolation(page);
 
-  // Back through every entry of the visit (the signs, the check, the list,
-  // the welcome): never the result, the check or the list.
-  for (let step = 0; step < 4; step += 1) {
+  // Back through every entry of the visit (the signs, the check, the list and
+  // welcome): never the result, the check or the list.
+  for (let step = 0; step < 3; step += 1) {
     await page.goBack();
     await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
     const text = await pageText(page);

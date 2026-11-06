@@ -54,7 +54,7 @@ function option(groupName: string | RegExp, name: string | RegExp) {
 
 async function openForm(settings: Settings, hash = '#/profile') {
   await renderApp({ settings, hash });
-  return screen.findByRole('button', { name: 'Enregistrer' });
+  return screen.findByRole('button', { name: /^Enregistrer/ });
 }
 
 beforeEach(() => {
@@ -303,12 +303,11 @@ describe('ProfileEdit: validation', () => {
 
     await user.click(option(/^Enceinte/, 'Oui'));
     expect(within(group(/^Enceinte/)).queryByText('Répondez oui ou non.')).toBeNull();
-    expect(
-      within(group('Terme de la grossesse')).getByText('Choisissez une réponse.'),
-    ).toBeVisible();
-
-    await user.click(option('Terme de la grossesse', 'En semaines'));
+    // Weeks by default (SCRUM-56): their number is what is missing now.
+    expect(option('Terme de la grossesse', 'En semaines')).toBeChecked();
     const weeks = screen.getByRole('textbox', { name: 'Nombre de semaines' });
+    expect(weeks).toHaveAttribute('aria-invalid', 'true');
+
     await user.type(weeks, '50');
     expect(weeks).toHaveAccessibleDescription(/Écrivez un nombre entier de 0 à 42\./);
     expect(screen.queryByText(/^Environ/)).toBeNull();
@@ -401,7 +400,7 @@ describe('ProfileEdit: what is typed is never cut', () => {
     await user.click(option('Terme de la grossesse', 'Je ne sais pas'));
     await user.click(option(/^Allaite/, 'Non'));
     await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer et regarder ses produits' }));
 
     expect(pseudonym).toHaveAccessibleDescription(/Ce surnom est déjà sur ce téléphone/);
     expect(pseudonym).toHaveFocus();
@@ -918,12 +917,13 @@ describe('ProfileEdit: situations and modes', () => {
     await openForm(woman);
 
     const situations = within(group('Situations de longue durée')).getAllByRole('checkbox');
+    // "None" first, set apart (SCRUM-56, S6), then the four situations.
     expect(situations.map((box) => box.closest('label')?.textContent)).toEqual([
+      'Aucune de ces situations',
       'VIH, avec cotrimoxazole',
       'Traitement contre la tuberculose',
       "Traitement contre l'épilepsie",
       "Ancienne césarienne (cicatrice sur l'utérus)",
-      'Aucune de ces situations',
     ]);
   });
 
@@ -947,7 +947,8 @@ describe('ProfileEdit: situations and modes', () => {
     expect(withHiv[1]).toEqual([]);
     await user.click(screen.getByRole('button', { name: HIDDEN_SITUATIONS }));
     expect(screen.getByRole('checkbox', { name: 'VIH, avec cotrimoxazole' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'VIH, avec cotrimoxazole' })).toHaveFocus();
+    // The focus goes to the first answer shown: "none", which comes first.
+    expect(screen.getByRole('checkbox', { name: 'Aucune de ces situations' })).toHaveFocus();
 
     // The same profile with no situation: the same screen.
     await saveProfile(stored({ conditions: [] }));
@@ -983,9 +984,9 @@ describe('ProfileEdit: situations and modes', () => {
     await user.click(option('Terme de la grossesse', 'Je ne sais pas'));
     await user.click(option(/^Allaite/, 'Non'));
     await user.click(screen.getByRole('checkbox', { name: 'Drépanocytose' }));
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer et regarder ses produits' }));
 
-    await screen.findByText(/^Profil enregistré/);
+    await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" });
     const profiles = await listProfiles();
     expect(profiles.map((p) => p.pseudonym)).toEqual(['Awa', 'Femme 2']);
     expect(profiles[1]).toMatchObject({ term: { kind: 'unknown' }, conditions: ['sickle-cell'] });
@@ -1107,13 +1108,13 @@ describe('ProfileEdit: storage', () => {
     await user.click(option('Terme de la grossesse', 'Je ne sais pas'));
     await user.click(option(/^Allaite/, 'Non'));
     await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
-    const save = screen.getByRole('button', { name: 'Enregistrer' });
+    const save = screen.getByRole('button', { name: 'Enregistrer et regarder ses produits' });
 
     // Two clicks in the same task, before any render.
     save.click();
     save.click();
 
-    await screen.findByText(/^Profil enregistré/);
+    await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" });
     expect(await listProfiles()).toHaveLength(1);
   });
 
@@ -1135,6 +1136,121 @@ describe('ProfileEdit: storage', () => {
     );
     expect(option(/^Enceinte/, 'Oui')).toBeChecked();
     expect(screen.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  });
+});
+
+describe('ProfileEdit: lighter answers (SCRUM-56, P3)', () => {
+  it('asks the term in weeks once she is pregnant, the weeks field taking the focus (S5)', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    expect(screen.queryByRole('group', { name: 'Terme de la grossesse' })).toBeNull();
+
+    await user.click(option(/^Enceinte/, 'Oui'));
+
+    expect(option('Terme de la grossesse', 'En semaines')).toBeChecked();
+    // The other ways stay answers, one tap away.
+    for (const other of ['Date des dernières règles', 'En mois', 'Je ne sais pas']) {
+      expect(option('Terme de la grossesse', other)).not.toBeChecked();
+    }
+    expect(screen.getByRole('textbox', { name: 'Nombre de semaines' })).toHaveFocus();
+    await user.keyboard('26');
+    expect(screen.getByText('Environ 26 semaines')).toBeVisible();
+    await user.click(option('Terme de la grossesse', 'En mois'));
+    expect(option('Terme de la grossesse', 'En mois')).toBeChecked();
+    expect(screen.queryByRole('textbox', { name: 'Nombre de semaines' })).toBeNull();
+  });
+
+  it('moves no focus when "Oui" is chosen with the keyboard', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    const no = option(/^Enceinte/, 'Non');
+    no.focus();
+
+    await user.keyboard('{ArrowLeft}');
+
+    expect(option(/^Enceinte/, 'Oui')).toBeChecked();
+    expect(option(/^Enceinte/, 'Oui')).toHaveFocus();
+    expect(option('Terme de la grossesse', 'En semaines')).toBeChecked();
+  });
+
+  it('keeps the way the term was given when "Enceinte" is answered again', async () => {
+    const user = userEvent.setup();
+    await openForm(woman);
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.click(option('Terme de la grossesse', 'Date des dernières règles'));
+    await user.click(option(/^Enceinte/, 'Je ne sais pas'));
+    await user.click(option(/^Enceinte/, 'Oui'));
+
+    expect(option('Terme de la grossesse', 'Date des dernières règles')).toBeChecked();
+  });
+
+  it('gives "Aucune de ces situations" first, set apart, before the situations (S6)', async () => {
+    await openForm(woman);
+
+    const situations = screen.getByRole('group', { name: 'Situations de longue durée' });
+    const boxes = within(situations).getAllByRole('checkbox');
+    expect(boxes[0]).toHaveAccessibleName('Aucune de ces situations');
+    expect(boxes[0]?.closest('label')).toHaveClass('option--none-first');
+    expect(boxes.length).toBeGreaterThan(1);
+    // Never ticked for her: an explicit answer.
+    expect(boxes[0]).not.toBeChecked();
+  });
+
+  it('selects the pseudonym offered when its field takes the focus, so typing takes its place (S9)', async () => {
+    await saveProfile(stored());
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/profile/new' });
+    const name = await screen.findByRole('textbox', { name: 'Surnom' });
+    expect(name).toHaveValue('Femme 2');
+
+    await user.click(name);
+    await user.keyboard('Coumba');
+
+    expect(name).toHaveValue('Coumba');
+  });
+
+  it('keeps the caret where she taps in a pseudonym she typed', async () => {
+    await saveProfile(stored());
+    const user = userEvent.setup();
+    await openForm(woman);
+    const name = screen.getByRole('textbox', { name: 'Surnom' });
+    expect(name).toHaveValue('Awa');
+
+    await user.click(name);
+    await user.keyboard('a');
+
+    expect(name).not.toHaveValue('a');
+  });
+
+  it('opens her check once a new profile is saved in accompanied mode (S8)', async () => {
+    await saveProfile(stored());
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/profile/new' });
+    await screen.findByRole('button', { name: /^Enregistrer/ });
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.keyboard('24');
+    await user.click(option(/^Ce terme date de quand/, "Aujourd'hui"));
+    await user.click(option(/^Allaite/, 'Non'));
+    await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer et regarder ses produits' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    expect(screen.getByText(/Femme 2/)).toBeVisible();
+    expect((await listProfiles()).map((p) => p.pseudonym)).toEqual(['Awa', 'Femme 2']);
+  });
+
+  it('asks the day of the weeks for a profile saved in accompanied mode, never chosen for her', async () => {
+    const user = userEvent.setup();
+    await renderApp({ settings: accompanied, hash: '#/profile/new' });
+    await screen.findByRole('button', { name: /^Enregistrer/ });
+    await user.click(option(/^Enceinte/, 'Oui'));
+    await user.keyboard('24');
+
+    expect(option(/^Ce terme date de quand/, "Aujourd'hui")).not.toBeChecked();
+    expect(option(/^Ce terme date de quand/, 'Un autre jour')).not.toBeChecked();
   });
 });
 

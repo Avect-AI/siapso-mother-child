@@ -204,6 +204,7 @@ export function CheckboxGroup({
   error,
   options,
   none,
+  noneFirst = false,
   question = false,
   concealed,
 }: {
@@ -212,6 +213,11 @@ export function CheckboxGroup({
   error?: string | undefined;
   options: readonly CheckboxOption[];
   none?: CheckboxOption;
+  /**
+   * "None of these" first, set apart by a hairline under it, when it is the
+   * answer expected most of the time (the situations of a profile).
+   */
+  noneFirst?: boolean;
   question?: boolean;
   concealed?: string | undefined;
 }) {
@@ -241,10 +247,16 @@ export function CheckboxGroup({
           </div>
         ) : (
           <div className="options">
+            {none && noneFirst ? box(none, answer, 'option--none-first', first) : null}
             {options.map((option, index) =>
-              box(option, answer, undefined, index === 0 ? first : undefined),
+              box(
+                option,
+                answer,
+                undefined,
+                index === 0 && !(none && noneFirst) ? first : undefined,
+              ),
             )}
-            {none
+            {none && !noneFirst
               ? box(none, answer, 'option--none', options.length === 0 ? first : undefined)
               : null}
           </div>

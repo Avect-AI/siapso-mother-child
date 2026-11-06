@@ -221,6 +221,40 @@ describe('Check', () => {
     expect(probe.current().profileId).toBe('a');
   });
 
+  it('lets the situations answered be seen with one tap, "none" as any other, the same screen before it (SCRUM-56)', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa', conditions: [] }));
+    await saveProfile(
+      profileOf({ id: 'b', pseudonym: 'Fatou', conditions: ['hiv-cotrimoxazole'] }),
+    );
+    await renderApp({ settings: accompanied, hash: '#/', packLoader: loaderOf(pack) });
+    const user = userEvent.setup();
+    const open = async (name: string) => {
+      // Back to the list of profiles by the band, from a check.
+      const home = screen.queryByRole('link', { name: 'Carnet' });
+      if (home !== null) await user.click(home);
+      const list = await screen.findByRole('list', {
+        name: 'Profils enregistrés sur ce téléphone',
+      });
+      await user.click(within(list).getByRole('button', { name: new RegExp(`^${name} `) }));
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" });
+      return within(document.querySelector('.check__profile') as HTMLElement);
+    };
+
+    const awa = await open('Awa');
+    // Before any tap the line is the same whatever she answered: one says HIV.
+    const before = document.querySelector('.check__profile')?.textContent?.replace('Awa', '');
+    await user.click(awa.getByRole('button', { name: 'Situations : touchez pour les afficher' }));
+    expect(awa.getByText('Situations : aucune')).toBeVisible();
+
+    const fatou = await open('Fatou');
+    expect(document.querySelector('.check__profile')?.textContent?.replace('Fatou', '')).toBe(
+      before,
+    );
+    expect(document.body.textContent).not.toMatch(/VIH/);
+    await user.click(fatou.getByRole('button', { name: 'Situations : touchez pour les afficher' }));
+    expect(fatou.getByText('Situations : VIH, avec cotrimoxazole')).toBeVisible();
+  });
+
   it('asks first whether the baby is born when her term is past 42 weeks, and lists nothing', async () => {
     await saveProfile(
       profileOf({

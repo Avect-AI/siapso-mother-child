@@ -267,8 +267,14 @@ export function termFromForm(form: ProfileForm, todayIso: string): TermInput | u
  * old one: the day is asked again (`asksDay`: accompanied mode, or her own
  * profile being edited); a new profile of her own keeps its default, today.
  */
-export function typedWeeks(form: ProfileForm, weeks: string, asksDay: boolean): ProfileForm {
-  return asksDay ? { ...form, weeks, weeksDay: null, weeksGivenOn: '' } : { ...form, weeks };
+export function typedWeeks(
+  form: ProfileForm,
+  weeks: string,
+  asksDay: boolean,
+  /** The day offered for a new number, shown chosen and one tap from another (a passer-by: today). */
+  offeredDay: WeeksDay | null = null,
+): ProfileForm {
+  return asksDay ? { ...form, weeks, weeksDay: offeredDay, weeksGivenOn: '' } : { ...form, weeks };
 }
 
 /**

@@ -22,14 +22,16 @@ import {
 
 /** taps / keys / screens / scrolls each journey may take at most. */
 const BUDGETS: Record<string, Budget> = {
-  // SCRUM-56 P1, the welcome in one screen: 17 taps and 12 screens before.
-  j1: { taps: 14, keys: 20, screens: 9, scrolls: 3 },
+  // SCRUM-56 P1, the welcome in one screen: 17 taps and 12 screens before;
+  // P3, lighter profile answers: 14 taps before.
+  j1: { taps: 12, keys: 20, screens: 9, scrolls: 3 },
   // SCRUM-56 P2, the code opens at its length: one tap less ("Ouvrir") at each opening.
   j2a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
   j2b: { taps: 11, keys: 25, screens: 11, scrolls: 1 },
   j3a: { taps: 7, keys: 14, screens: 8, scrolls: 0 },
-  j3b: { taps: 16, keys: 22, screens: 10, scrolls: 4 },
-  j4: { taps: 14, keys: 16, screens: 9, scrolls: 4 },
+  // P3: a new profile opens her check, weeks by default, "Aujourd'hui" for a passer-by.
+  j3b: { taps: 13, keys: 22, screens: 9, scrolls: 3 },
+  j4: { taps: 11, keys: 16, screens: 9, scrolls: 3 },
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
   j5c: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
@@ -128,17 +130,12 @@ journey('j3b', 'relay, new woman, one product', async (page, j) => {
   await j.begin('code screen');
   await unlock(j);
   await j.tap(button(page, 'Ajouter un profil'), 'ajouter un profil');
-  // The default pseudonym replaced: one long press selects it, then the name.
-  const pseudonym = page.getByRole('textbox', { name: 'Surnom' });
-  j.taps += 1;
-  await pseudonym.click();
-  await pseudonym.press('ControlOrMeta+a');
-  await j.type(pseudonym, 'Coumba', 'pseudonym');
+  // The pseudonym offered is selected by the tap that gives its field the focus
+  // (SCRUM-56, S9): the name typed takes its place.
+  await j.type(page.getByRole('textbox', { name: 'Surnom' }), 'Coumba', 'pseudonym');
   await pregnantAnswers(j);
-  await j.tap(button(page, 'Enregistrer'), 'enregistrer profil', {
-    then: page.getByText('Profil enregistré : Coumba.'),
-  });
-  await j.tap(savedProfiles(page).getByRole('button', { name: /^Coumba/ }), 'choose Coumba', {
+  // Saved, her check opens (S8).
+  await j.tap(button(page, 'Enregistrer et regarder ses produits'), 'enregistrer profil', {
     then: button(page, 'Ajouter un médicament'),
   });
   await addProduct(j, 'ibuprofene');

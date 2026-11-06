@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
-import { onboard, unlock } from './support.js';
+import { herCheckThenProfiles, onboard, unlock } from './support.js';
 
 /**
  * Taps the way a thumb does on the mobile project (clicks on desktop) and
@@ -114,9 +114,9 @@ test('an accompanying person creates a profile from a last period date and a bre
   await page.getByRole('textbox', { name: 'Âge en mois' }).fill('14');
   await answer(page, /^Né avant terme/, 'Je ne sais pas').click();
   await page.getByText('Drépanocytose').click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
 
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await herCheckThenProfiles(page, 'Femme 1');
   // Stored sealed: its random id and the sealed record, nothing readable.
   const stored = await page.evaluate(
     () =>

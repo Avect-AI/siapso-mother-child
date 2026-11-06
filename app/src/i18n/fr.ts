@@ -291,6 +291,8 @@ export const fr = {
     },
     noCondition: 'Aucune de ces situations',
     save: 'Enregistrer',
+    // A new profile in accompanied mode: saved, then her check opens (SCRUM-56).
+    saveAndCheck: 'Enregistrer et regarder ses produits',
     saveFailed: "Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
     // Deleting one profile and its history, after a last yes. Never red: not a danger sign.
     delete: 'Supprimer ce profil',
@@ -358,6 +360,11 @@ export const fr = {
   check: {
     // A passer-by: said instead of a pseudonym.
     quick: "Femme de passage : rien n'est enregistré",
+    // The situations answered for her, behind one tap whatever they are (one says HIV).
+    situationsHidden: 'Situations : touchez pour les afficher',
+    situationsShort: 'Situations',
+    situationsNone: 'Situations : aucune',
+    situationsList: 'Situations : {names}',
     // Woman mode: what she takes herself; accompanied mode: what the woman takes.
     titleWoman: 'Ce que vous prenez',
     titleAccompanied: "Ce qu'elle prend",

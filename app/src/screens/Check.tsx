@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import type { CheckedItem } from '@siapso/engine';
+import type { CheckedItem, ConditionId } from '@siapso/engine';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { latestHistoryAt } from '../data/history.js';
@@ -7,6 +7,7 @@ import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { profileSummary } from '../domain/profile-summary.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
+import { joinNames } from '../domain/result-view.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
@@ -125,6 +126,47 @@ function Item({
  * (OutdatedTerm), and nothing can be added or looked at until the profile is
  * updated.
  */
+/**
+ * The situations answered for her, under who the check is for, so a "none"
+ * ticked by reflex can be seen and put right (SCRUM-56, the safety review):
+ * behind one tap whatever was answered, as on the profile screen, since one
+ * of them says HIV and showing "none" alone would tell the others apart. Hidden
+ * again at every new showing of the check.
+ */
+function SituationsLine({ conditions }: { conditions: readonly ConditionId[] }) {
+  const t = useT();
+  const lang = useLang();
+  const [shown, setShown] = useState(false);
+  if (!shown) {
+    return (
+      // One word on screen, beside the term, so the line takes no room of its own;
+      // its name says what a tap does.
+      <Button
+        variant="quiet"
+        className="check__situations"
+        aria-label={t('check.situationsHidden')}
+        onClick={() => {
+          setShown(true);
+        }}
+      >
+        {t('check.situationsShort')}
+      </Button>
+    );
+  }
+  return (
+    <span className="check__situations-shown">
+      {conditions.length === 0
+        ? t('check.situationsNone')
+        : t('check.situationsList', {
+            names: joinNames(
+              conditions.map((id) => t(`profile.condition.${id}`)),
+              lang,
+            ),
+          })}
+    </span>
+  );
+}
+
 export function Check() {
   const t = useT();
   const lang = useLang();
@@ -292,7 +334,8 @@ export function Check() {
                 {' '}
                 <span>{t(line.key, line.vars)}</span>
               </Fragment>
-            ))}
+            ))}{' '}
+            <SituationsLine key={profile.profile.id} conditions={profile.profile.conditions} />
           </p>
         )}
       </div>

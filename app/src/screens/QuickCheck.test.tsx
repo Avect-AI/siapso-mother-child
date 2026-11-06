@@ -96,6 +96,25 @@ describe('Regarder sans enregistrer', () => {
     expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
   });
 
+  it('takes her weeks as given today, an answer shown and one tap from "Un autre jour" (SCRUM-56, S7)', async () => {
+    const { user } = await openQuick();
+
+    await user.click(option(/^Enceinte/, 'Oui'));
+    // The term in weeks by default, the field ready to type in (S5).
+    expect(option('Terme de la grossesse', 'En semaines')).toBeChecked();
+    expect(screen.getByRole('textbox', { name: 'Nombre de semaines' })).toHaveFocus();
+    await user.keyboard('24');
+
+    expect(option(/^Ce terme date de quand/, "Aujourd'hui")).toBeChecked();
+    expect(option(/^Ce terme date de quand/, 'Un autre jour')).not.toBeChecked();
+    await user.click(option(/^Allaite/, 'Non'));
+    await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
+    await user.click(screen.getByRole('button', { name: 'Regarder ses produits' }));
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+  });
+
   it('checks a passer-by with the term rules of a profile, and keeps no profile and no history', async () => {
     const { user, probe } = await openQuick();
     await answer(user, '24');

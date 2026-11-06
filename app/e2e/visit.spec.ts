@@ -6,7 +6,7 @@
 // about. The codes and pseudonyms here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectStart, onboard, seedBeforeUpdate, unlock } from './support.js';
+import { expectStart, herCheckThenProfiles, onboard, seedBeforeUpdate, unlock } from './support.js';
 
 // Whole journeys with accessibility scans of long forms: on a loaded runner
 // they can take longer than the 30 s default.
@@ -38,8 +38,8 @@ async function addProfile(page: Page, pseudonym: string) {
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await page.getByRole('textbox', { name: 'Surnom' }).fill(pseudonym);
   await answerPregnant(page, '20');
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByText(`Profil enregistré : ${pseudonym}.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
+  await herCheckThenProfiles(page, pseudonym);
 }
 
 /** From the check: a remedy found by its name, confirmed. */

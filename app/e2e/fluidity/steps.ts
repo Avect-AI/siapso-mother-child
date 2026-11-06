@@ -4,7 +4,7 @@
 // Common answers: code 2468 tapped on the keypad, pregnant at 24 weeks given
 // today, not breastfeeding, no long-term situation.
 import type { Locator, Page } from '@playwright/test';
-import { CODE, onboard } from '../support.js';
+import { CODE, herCheckThenProfiles, onboard } from '../support.js';
 import type { Journey } from './meter.js';
 
 export const WEEKS = 24;
@@ -47,7 +47,7 @@ export async function relayWithProfiles(page: Page): Promise<void> {
     await page.getByRole('textbox', { name: 'Surnom' }).fill(name);
     await fillPregnant(page);
     await button(page, 'Enregistrer').click();
-    await page.getByText(`Profil enregistré : ${name}.`).waitFor();
+    await herCheckThenProfiles(page, name);
   }
 }
 

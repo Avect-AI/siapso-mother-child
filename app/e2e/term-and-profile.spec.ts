@@ -4,7 +4,7 @@
 // one profile can be deleted, and the danger signs now are asked afresh.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock } from './support.js';
+import { herCheckThenProfiles, onboard, unlock } from './support.js';
 
 const DAY_MS = 86_400_000;
 
@@ -116,6 +116,7 @@ test('the list marks an outdated profile, and "still pregnant" asks for the term
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await pregnantProfile(page, 38, 'Bineta');
+  await herCheckThenProfiles(page, 'Bineta');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
     'Bineta Environ 38 semaines',
@@ -159,6 +160,7 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await unknownTermProfile(page);
+  await herCheckThenProfiles(page, 'Femme 1');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: /^Femme 1/ })).toBeVisible();
 
@@ -295,7 +297,7 @@ test('a pseudonym is used once on the phone, and a long one is refused, never cu
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await pregnantProfile(page, 12, 'Awa');
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await herCheckThenProfiles(page, 'Awa');
 
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   const pseudonym = page.getByRole('textbox', { name: 'Surnom' });
@@ -320,13 +322,13 @@ test('a double tap on save makes one profile', async ({ page }) => {
   // Two clicks in the same task, before the page can render.
   await page.evaluate(() => {
     const save = [...document.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Enregistrer',
+      (button) => button.textContent === 'Enregistrer et regarder ses produits',
     );
     save?.click();
     save?.click();
   });
 
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   expect(await storedAll(page, 'profiles')).toHaveLength(1);
 });
 
@@ -337,7 +339,7 @@ test('one profile is deleted with its history after a last yes; the others stay'
   for (const name of ['Awa', 'Binta']) {
     await page.getByRole('button', { name: 'Ajouter un profil' }).click();
     await pregnantProfile(page, 20, name);
-    await expect(page.getByText(new RegExp(`^Profil enregistré\\s: ${name}\\.$`))).toBeVisible();
+    await herCheckThenProfiles(page, name);
   }
   // A result for Awa, kept in the history of the phone.
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });

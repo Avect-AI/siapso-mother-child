@@ -239,6 +239,7 @@ export const en: Dictionary = {
     },
     noCondition: 'None of these situations',
     save: 'Save',
+    saveAndCheck: 'Save and look up her products',
     saveFailed: 'This profile could not be saved on this phone. Try again.',
     delete: 'Delete this profile',
     deleteTitle: 'Delete the profile {name}?',
@@ -298,6 +299,10 @@ export const en: Dictionary = {
   },
   check: {
     quick: 'Woman passing by: nothing is saved',
+    situationsHidden: 'Situations: tap to show them',
+    situationsShort: 'Situations',
+    situationsNone: 'Situations: none',
+    situationsList: 'Situations: {names}',
     titleWoman: 'What you are taking',
     titleAccompanied: 'What she is taking',
     loading: 'Loading.',

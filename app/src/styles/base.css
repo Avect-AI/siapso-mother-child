@@ -557,6 +557,16 @@ a {
   border-top: 1px solid var(--color-rule);
 }
 
+/* In the same list as the answers it stands for (the situations): the air of its hairline under it. */
+.options > .option--none-first {
+  margin-bottom: var(--space-4);
+}
+
+/* A wrapper for a question's events only: the question keeps its place in the layout. */
+.profile__answer {
+  display: contents;
+}
+
 /*
  * Large text on a narrow phone: when the answers are narrower than 13rem
  * (that is, past about 160 percent text at 360 px), the mark goes above the
@@ -2369,9 +2379,29 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 }
 
 /* Who the check is for and where she stands: one line each. */
+/*
+ * Who the check is for: one line each, but "Situations" (a quiet button) sits
+ * at the end of the last line while it fits, so it takes no row of its own.
+ */
 .check__profile {
-  display: grid;
-  gap: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+}
+
+.check__profile > span {
+  flex: 1 0 100%;
+}
+
+.check__profile > span:has(+ .check__situations) {
+  flex: 0 1 auto;
+}
+
+.check__profile > .check__situations {
+  flex: 0 0 auto;
+  min-height: var(--touch-target);
 }
 
 /*
