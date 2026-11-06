@@ -48,7 +48,7 @@ No real prescription and no real person: `tools/prescription-eval/` generates th
 - **Layouts** (A5, 1100 px wide): a health post form with the national header ("RÉPUBLIQUE DU SÉNÉGAL", "Un Peuple - Un But - Une Foi", the ministry, the medical region, the health district, the health post); a private practice letterhead; a maternity form with a table "Médicament | Posologie". Two to six products, posology on the same line after a colon or on the next line, a signature, a round stamp that overlaps the last lines on a third of them. Fonts: Arial, Times New Roman, Courier New, Calibri, Verdana.
 - **Handwriting proxy.** One prescription in three has its patient line and products in a handwriting-style font (Caveat, Reenie Beanie, Homemade Apple, Nothing You Could Do, Kalam; OFL or Apache-2.0), in blue ink, each line slightly turned and shifted. **This is only a proxy**: a font repeats the same letter shapes, never crosses out, never abbreviates, never runs words together the way a hurried prescriber does. It tells which engine copes better with irregular script, not how real handwriting reads.
 - **Conditions.** Each prescription as a clean scan (PNG), and as three phone photos on a table: "photo" (1200 x 1600, turned 3 degrees, tilted 6, slight blur, JPEG 75), "hard" (900 x 1200, turned 8 degrees, tilted 14 and 6, blur 1.3 px, a shadow across, noise, JPEG 50), "dim" (1200 x 1600, half the light, low contrast, warm cast, noise, JPEG 60).
-- **Size.** A development set of 24 prescriptions (16 printed, 8 handwriting proxy; 88 product lines, 62 of them in the pack), 96 images; then a held-out set of 12 more (8 printed, 4 proxy; 45 lines, 33 in the pack), 48 images, read once after the reading rules were set. The committed generator reproduces the development set exactly (same products and the same pixels of every scan).
+- **Size.** A development set of 24 prescriptions (16 printed, 8 handwriting proxy; 88 product lines, 62 of them in the pack), 96 images; then a held-out set of 12 more (8 printed, 4 proxy; 45 lines, 33 in the pack), 48 images, meant to be read once after the reading rules were set. It did not stay held out: rule 1 of section 4.3 was added after its first reading (section 4.5), and phase 1 (PR #70) set further rules and unit tests on its texts, so its figures are no held-out measure. PR #70 adds a fresh held-out set (`eval/prescription/fresh/`: 12 prescriptions with new seeds and new layouts, frozen before the reading was run on it), never tuned on but designed around the cases of the review of PR #70; its OCR measure is pending. The committed generator reproduces the development set exactly (same products and the same pixels of every scan).
 
 ### 4.2 Engines tried
 
@@ -113,7 +113,7 @@ Development set (24 prescriptions):
 | Tesseract fast fra+eng, single block, flat-field | 100 / 100 | 97.4 / 100 | 59.0 / 92.0 | 94.9 / 100 | 87.8 / 98.6 | 56.5 / 85.2 | 11 | 122 / 12 | 80 of 104 |
 | **PaddleOCR PP-OCRv5 mobile, Latin** | **100 / 100** | **100 / 100** | **100 / 100** | **100 / 100** | **100 / 100** | **91.3 / 100** | **0** | **162 / 0** | **99 of 104** |
 
-Held-out set (12 prescriptions, read once with the rules above):
+Held-out set (12 prescriptions, read with the rules above; rule 1 of section 4.3 was added after its first reading, see below, so these are not held-out figures):
 
 | Engine | Printed, all conditions (88 lines) | Handwriting proxy (44 lines) | False products | Strengths: right / wrong |
 | --- | --- | --- | --- | --- |
@@ -166,7 +166,7 @@ A real handwritten prescription in a PDF is a scan: it has no text layer, whatev
 ### 4.8 What the numbers do not say
 
 - The set is synthetic and its degradations are simulated (CSS blur and perspective, JPEG): no motion blur, folds, creases, carbon copies, faded thermal paper, coloured stamps over the text, fingers in the picture. Real prescriptions will read worse.
-- The reading rules were tuned on the development set; the held-out set checks them on new prescriptions from the same generator, not on new layouts or new writers.
+- The reading rules were tuned on the development set and, after its first reading, on the held-out set too (rule 1 of section 4.3, then the rules of PR #70): neither measures the reading on prescriptions it was not set on. The fresh held-out set of PR #70 has new seeds and layouts, but the same catalog and no new writers.
 - Handwriting was not measured: the fonts stand for it only in shape.
 - Phone timings are throttled laptop timings; memory is the laptop renderer's. Both are measured on real phones before shipping (section 10).
 - The inputs measured are image files and PDFs. The camera itself (in the page with `getUserMedia`, or the phone's camera app through `<input type="file" capture="environment">`) was not measured: the spike had no phone camera. Headless Chromium 156 offers `ImageCapture`; what a phone's rear camera gives through it is measured in section 10.
