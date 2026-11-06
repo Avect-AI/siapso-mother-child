@@ -32,7 +32,8 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT INT TERM
 
 # This test also runs inside a local CI run: it must not inherit its settings.
-unset LOCAL_CI_TMPDIR LOCAL_CI_LOGS LOCAL_CI_CACHE LOCAL_CI_REUSE LOCAL_CI_NODE_MIRROR PLAYWRIGHT_BROWSERS_PATH
+unset LOCAL_CI_TMPDIR LOCAL_CI_LOGS LOCAL_CI_CACHE LOCAL_CI_REUSE LOCAL_CI_NODE_MIRROR PLAYWRIGHT_BROWSERS_PATH \
+  VITEST_MAX_WORKERS
 
 TAB="$(printf '\t')"
 JOBS='Text hygiene
@@ -58,7 +59,8 @@ cat >"$work/bin/fake-tool" <<'FAKE'
 #!/usr/bin/env sh
 name="${0##*/}"
 call="$name $*"
-printf '%s [CI=%s] [at %s]\n' "$call" "${CI:-}" "$(git rev-parse HEAD 2>/dev/null || echo none)" >>"$FAKE/calls"
+printf '%s [CI=%s] [at %s] [vitest workers=%s]\n' "$call" "${CI:-}" "$(git rev-parse HEAD 2>/dev/null || echo none)" \
+  "${VITEST_MAX_WORKERS:-}" >>"$FAKE/calls"
 # A copy of this tool in a fake Node release answers the version of the release.
 if [ "$call" = 'node --version' ] && [ -f "${0%/*}/VERSION" ]; then cat "${0%/*}/VERSION"; exit 0; fi
 case "$call" in
@@ -514,6 +516,9 @@ for step in 'pnpm install --frozen-lockfile' 'shellcheck tools/github/merge-pr.s
   if ! called "$s" "$step"; then fail "$s: runs \"$step\""; fi
 done
 if ! grep -q '^reuse .*lint \[' "$work/$s/fake/calls"; then fail "$s: runs reuse lint"; fi
+if ! grep -q '^pnpm test:coverage \[.*\[vitest workers=2\]$' "$work/$s/fake/calls"; then
+  fail "$s: runs the unit tests with at most 2 Vitest workers"
+fi
 if ! grep -q '^node tools/ci/check-playwright-image.mjs --browsers .*browsers \[' "$work/$s/fake/calls"; then
   fail "$s: checks the local Playwright browsers folder"
 fi

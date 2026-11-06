@@ -28,8 +28,9 @@
 #   which must stay complete); REUSE lint runs on a git archive export on
 #   Windows (node_modules paths are too long there); the end-to-end tests run
 #   with the browsers Playwright installed on this machine, not in the
-#   Playwright image, with --workers=2 by default; the report of a failed
-#   end-to-end run is kept with the logs instead of being uploaded.
+#   Playwright image, with --workers=2 by default; Vitest runs at most 2
+#   workers (VITEST_MAX_WORKERS); the report of a failed end-to-end run is
+#   kept with the logs instead of being uploaded.
 # - A status is posted on the head commit only after its job ran: success when
 #   every step passed, failure otherwise (the first failed step is named).
 #   Its description says "Local run on <host>, <UTC time> (GitHub Actions
@@ -74,6 +75,11 @@ unset SSLKEYLOGFILE
 # GitHub Actions sets CI in every job; Playwright and pnpm read it.
 CI=true
 export CI
+# At most 2 Vitest workers, as for Playwright: one per core (Vitest's default)
+# made the 5 and 10 second limits of the unit tests fail on a machine short of
+# memory. Vitest reads VITEST_MAX_WORKERS; set it to change the number.
+VITEST_MAX_WORKERS="${VITEST_MAX_WORKERS:-2}"
+export VITEST_MAX_WORKERS
 
 # --- The steps ----------------------------------------------------------------
 
