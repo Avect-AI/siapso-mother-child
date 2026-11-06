@@ -332,9 +332,10 @@ describe('Confirm: the strength on the box', () => {
     await user.click(within(question).getByRole('radio', { name: 'Je ne sais pas' }));
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(await backOnCheck()).toBeVisible();
-    expect(probe.current().items).toMatchObject([
-      { ref: { kind: 'product', id: expect.stringMatching(/^clamoxyl-/) }, strengthUnknown: true },
-    ]);
+    const [added, ...others] = probe.current().items;
+    expect(others).toEqual([]);
+    expect(added?.ref.kind === 'product' ? added.ref.id : '').toMatch(/^clamoxyl-/);
+    expect(added?.strengthUnknown).toBe(true);
   });
 
   it('says so when the strength typed is not that of the only box (advilmed 200)', async () => {
