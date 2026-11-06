@@ -3,7 +3,7 @@
 // seen in the SCRUM-57 spike (docs/superpowers/specs/2026-11-05-prescription-scan-design.md,
 // section 4.3). Synthetic lines only: no real prescription, no real person.
 import type { Pack } from '@siapso/engine';
-import { normalize } from '@siapso/resolver';
+import { normalize, parseStrength } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
@@ -13,6 +13,7 @@ import {
   type PrescriptionProduct,
 } from './prescription-reading.js';
 import { PLACE_NAMES } from './prescription-words.js';
+import { needsUnitsPerDay, strengthChoiceOf } from './search-index.js';
 
 let pack: Pack;
 
@@ -581,6 +582,76 @@ describe('readPrescription: strengths, posology and units per day', () => {
     expect(row.unitsPerDayOffer).toBe(6);
   });
 
+  it.each([
+    ['Doliprane 1 cp x 3/j', undefined],
+    ['Paracétamol 2 cp x 3/j', undefined],
+    ['Amoxicilline 2 gél x 2/j', undefined],
+    ['Paracétamol 3 x 1 g', undefined],
+    ['Doliprane 1000 mg x 3/j', 1000],
+    ['Doliprane 500 mg 2 cpx3/j pendant 5 jours', 500],
+    ['Doliprane 1 000 mg', 1000],
+    ['Acide folique 400 microg', undefined],
+    ['Acide folique 400 µ g', undefined],
+    ['Cytotec 200 yg', undefined],
+    ['Cytotec 200 mcg', undefined],
+    ['Cytotec 200 microgrammes', undefined],
+    ['Cytotec 200 μg', undefined],
+    // A number glued to a stray letter is a misread: "z50 mg" was 250 mg.
+    ['Métronidazole z50 mg', undefined],
+  ])('reads the strength of "%s" as %s mg: never a count, micrograms or a misread', (line, mg) => {
+    expect(only([line]).strengthMg).toBe(mg);
+  });
+
+  it('keeps the posology of a table row out of the name: the query and the strength question', () => {
+    const product = only(['Doliprane 1 cp x 3/j']);
+    expect(product.query).toBe('Doliprane');
+    expect(product.posology).toBe('1 cp x 3/j');
+    expect(product.unitsPerDayOffer).toBe(3);
+  });
+
+  it('gives the strength question the strength proposed, never the posology or micrograms', () => {
+    for (const line of [
+      '1. Doliprane 1000 mg cp',
+      '2. Doliprane 1 cp x 3/j',
+      '3. Doliprane 1 000 mg',
+      '4. Acide folique 400 microg',
+      '5. Cytotec 200 µg',
+      '6. Néo-Codion sirop',
+    ]) {
+      const product = only([line]);
+      const choice = strengthChoiceOf(pack, product.candidate, product.strengthQuery);
+      expect(parseStrength(product.strengthQuery).strengthMg, line).toBe(product.strengthMg);
+      if (product.strengthMg === undefined && !/sirop/.test(line)) {
+        expect(choice?.preselected ?? null, line).toBeNull();
+      }
+    }
+    const doliprane = only(['1. Doliprane 1000 mg cp']);
+    expect(strengthChoiceOf(pack, doliprane.candidate, doliprane.strengthQuery)?.preselected).toBe(
+      'candidate',
+    );
+    // A form still chooses among the products of a family: "Néo-Codion sirop".
+    const syrup = only(['6. Néo-Codion sirop']);
+    expect(strengthChoiceOf(pack, syrup.candidate, syrup.strengthQuery)?.preselected).toBe(
+      strengthChoiceOf(pack, syrup.candidate, 'Néo-Codion sirop')?.preselected,
+    );
+  });
+
+  it('never proposes the box of another strength than micrograms read: "Acide folique 400 microg"', () => {
+    const product = only(['Acide folique 400 microg']);
+    const components = pack.products.find((p) => p.id === product.ref.id)?.components ?? [];
+    expect(components.map((c) => c.strengthMg)).not.toContain(5);
+  });
+
+  it('still asks how many per day when the posology gives no plain count', () => {
+    const product = only(['1. Doliprane 1000 mg cp', '2 cp x 2 à 3/j']);
+    expect(product.posology).toBe('2 cp x 2 à 3/j');
+    expect(product.unitsPerDayOffer).toBeUndefined();
+    expect(product.asksUnitsPerDay).toBe(true);
+    expect(needsUnitsPerDay(pack, product.ref)).toBe(true);
+    // Metronidazole has no daily-maximum rule: no question.
+    expect(only(['2. Flagyl 500 mg cp', '1 cp x 2/j']).asksUnitsPerDay).toBe(false);
+  });
+
   it('gives no dose and no units for an unclear posology', () => {
     expect(only(['1. Doliprane 1000 mg cp', 'si douleur']).unitsPerDayOffer).toBeUndefined();
     expect(only(['1. Doliprane 1000 mg cp']).unitsPerDayOffer).toBeUndefined();
@@ -612,6 +683,33 @@ describe('unitsPerDayOf', () => {
       expect(unitsPerDayOf(text)).toBeUndefined();
     },
   );
+
+  it.each([
+    '2 cp x 2 à 3/j',
+    '1 à 2 cp x 3/j',
+    '1-2 cp x 3/j',
+    '1 ou 2 cp x 3/j',
+    '1 cp matin et 2 cp le soir',
+    '1 cp matin et soir, 2 cp le midi',
+    '1 cp/j pendant 3 j puis 2 cp/j',
+    '1 cp x 2/j puis 2 cp x 3/j',
+    '1/2 cp x 2/j',
+    '½ cp x 2/j',
+    '0,5 cp x 2/j',
+    'un demi cp x 2/j',
+    '1 cp x 3/j, max 4 cp/j',
+    '1 cp x 3/j maximum',
+  ])('gives nothing for a range, a change, a fraction, several counts or a maximum: %s', (text) => {
+    expect(unitsPerDayOf(text)).toBeUndefined();
+  });
+
+  it.each([
+    ['2 cp * 3 / j', 6],
+    ['2 cp matin et 2 cp le soir', 4],
+    ['1 cp le matin et 1 cp le soir', 2],
+  ])('reads a plain count written another way: %s is %d', (text, units) => {
+    expect(unitsPerDayOf(text)).toBe(units);
+  });
 });
 
 describe('readPrescription: short names of combinations', () => {

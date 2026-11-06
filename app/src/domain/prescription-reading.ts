@@ -17,6 +17,7 @@
 import type { Pack } from '@siapso/engine';
 import {
   damerauLevenshtein,
+  formWords,
   namedSubstances,
   normalize,
   parseStrength,
@@ -47,14 +48,25 @@ export interface PrescriptionProduct {
   lineIndex: number;
   /**
    * The name part of the line, as read, without its list mark and its
-   * posology: the text the confirm screen reads as if typed (strength
-   * question, missing substances), and the one "Corriger" puts in the search.
+   * posology (after a colon, or after the name in a table row): the text
+   * "Corriger" puts in the search, and the text of the line offered as
+   * typed. The strength question reads `strengthQuery`.
    */
   query: string;
   /** How clearly the line names it: `strong` says to compare with the box. */
   match: 'strong' | 'very-strong';
-  /** The strength the line gives, in mg, proposed and never imposed; undefined when none (or in micrograms). */
+  /**
+   * The strength the line gives, in mg, proposed and never imposed;
+   * undefined when none, in micrograms, or when it may be misread.
+   */
   strengthMg: number | undefined;
+  /**
+   * What the strength question reads as if typed (`strengthChoiceOf`): the
+   * form words of the line and the strength proposed, never the posology
+   * or a strength in micrograms, so a count is never preselected as a
+   * strength.
+   */
+  strengthQuery: string;
   /**
    * The posology read with the product (after a colon, on the lines under
    * it, or after the name in a table row). Shown, quoted, only with the units
@@ -67,6 +79,12 @@ export interface PrescriptionProduct {
    * (needsUnitsPerDay), after she ticks it; undefined otherwise.
    */
   unitsPerDayOffer: number | undefined;
+  /**
+   * Whether a daily-maximum rule watches the product (needsUnitsPerDay): the
+   * list then asks how many per day once it is ticked, whether a count is
+   * offered or not.
+   */
+  asksUnitsPerDay: boolean;
   /**
    * The substances the line names that the product lacks (substance ids,
    * sorted): a combination read in part ("SP" read as pyrimethamine alone,
@@ -253,9 +271,23 @@ function onlyQualifiers(query: string): boolean {
 const POSOLOGY_START =
   /^(\d+([.,]\d+)?|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c|cuilleres?|cuill|lyoc|ovules?|gouttes?|amp|ampoules?|suppo|injections?|bouffees?)\b|^(pendant|matin|midi|soir|si|qsp|jusqu|a prendre|prendre|dormir|au coucher|x\s*\d|renouveler|\d+\s*(fois|x)\b)/;
 
-/** A count and a unit inside a line: where the posology of a table row starts. */
+/**
+ * A count and a unit inside a line: where the posology of a table row
+ * starts ("2 cp x 3/j", "1 gél", "2 cpx3/j"). A count has one or two digits:
+ * "Doliprane 1000 cp" is the strength of the box and its form.
+ */
 const POSOLOGY_INSIDE =
-  /(?<![\p{L}\d.,/])(\d+|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c\.|cuilleres?|lyoc|ovules?|gouttes?|ampoules?)(?![\p{L}])/u;
+  /(?<![\p{L}\d.,/])(\d{1,2}|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c\.|cuilleres?|lyoc|ovules?|gouttes?|ampoules?)(?=$|[^\p{L}]|x\s*\d)/u;
+
+/** Where a posology starts in a name part: a count and a unit, a count times ("3 x 1 g"), or "x 3/j". */
+const POSOLOGY_CUT = new RegExp(
+  [
+    POSOLOGY_INSIDE.source,
+    String.raw`(?<![\p{L}\d.,/])\d{1,2}\s*[x*]\s*(?=\d)`,
+    String.raw`(?<![\p{L}])[x*]\s*\d+\s*(?:\/|par)\s*j`,
+  ].join('|'),
+  'u',
+);
 
 /** The words of a posology: a line made mostly of them is a posology line. */
 const POSOLOGY_WORDS: ReadonlySet<string> = new Set(
@@ -292,12 +324,47 @@ const PRODUCT_HINT =
 const LIST_MARK = /^\s*(\(?\d{1,2}\s*[.)/,-]|[-*•°>]|[a-z]\))\s*/i;
 /** A line that starts with a list number or a bullet, then a letter. */
 const MARKED = /^\s*(\(?\d{1,2}\s*[.),]?\s*\p{L}|[-*•]\s*\p{L})/u;
-/** A strength in micrograms (or as the OCR reads µ): never a strength in mg here. */
-const MICROGRAMS = /\d\s*(µg|μg|ug|mcg|pg|microgrammes?)(?![\p{L}])/iu;
+/**
+ * A unit of micrograms after a number, as written or as the OCR reads it:
+ * "µg", "μg", "µ g", "ug", "yg", "mcg", "microg", "microgrammes" (and "pg").
+ */
+const MICROGRAM_UNIT =
+  /(?<=\d)\s*(?:(?:µ|μ|u|y|mc|micro)\s*g(?:r(?:ammes?)?)?|pg|microgrammes?)(?![\p{L}])/giu;
+/** A strength in micrograms: never a strength in mg here, so nothing is preselected. */
+const MICROGRAMS = new RegExp(MICROGRAM_UNIT.source, 'iu');
+
+/**
+ * A strength that may be misread, so none is proposed (she is asked): a
+ * number glued to a few stray letters before its unit ("z50 mg" was 250
+ * mg), or a number then a group of three digits that may be a thousand or
+ * a count and a strength ("1 500 mg").
+ */
+const UNSURE_STRENGTH =
+  /(?<![\p{L}])\p{L}{1,4}\d+(?:[.,]\d+)?\s*(?:mg|g|ml)(?![\p{L}])|(?<![\d.,])\d{1,3}[ \u00a0\u202f]\d{3}(?!\d)/u;
 
 /** The part of a line before an inline posology (a colon). */
 function namePartOf(line: string): string {
   return line.split(/\s:\s|:\s|\s:(?=\S)/)[0] ?? line;
+}
+
+/** A round thousand written with a space ("1 000 mg") as one number. */
+function thousandsJoined(text: string): string {
+  return text.replace(/(?<![\d.,])(\d{1,3})[ \u00a0\u202f](000)(?!\d)/g, '$1$2');
+}
+
+/**
+ * The name of a product line: the part before a colon, without the
+ * posology a table row puts after the name ("Doliprane 1 cp x 3/j" is
+ * "Doliprane"), a round thousand as one number. What the search, the
+ * strength and the query read.
+ */
+function nameOf(line: string): string {
+  const name = namePartOf(line);
+  const text = folded(name);
+  const cut = POSOLOGY_CUT.exec(text);
+  // Positions hold only when folding kept one character for each.
+  const kept = cut === null || text.length !== name.length ? name : name.slice(0, cut.index);
+  return thousandsJoined(kept).trim();
 }
 
 /** Whether a line leaves a name open for the next one: an unclosed bracket, or a final "+", "," or "et". */
@@ -761,12 +828,33 @@ function gluedStrengthSplit(line: string): string {
   );
 }
 
-/** Units per day from a posology, when it says them plainly ("2 cp x 3/j" is 6); undefined otherwise. */
+/**
+ * What makes a posology unclear, so no count is offered (she types it): a
+ * range ("2 à 3", "1-2", "1 ou 2"), a change ("puis"), a fraction ("1/2",
+ * "½", "0,5 cp", "demi"), or a maximum.
+ */
+const UNCLEAR_POSOLOGY =
+  /\d\s*(?:a|-|–|ou)\s*\d|\bpuis\b|\bmax(?:imum)?\b|\bdemie?\b|½|\d\s*\/\s*\d|\d[.,]\d\s*(?:cp|gel|sachet|c\b|lyoc|ovule|comprime)/;
+
+/** A count of units in a posology ("2 cp", "1 sachet"). */
+const COUNT =
+  /(\d+)\s*(?:cps?|gel|gelules?|sachets?|c\b|cuilleres?|lyoc|ovules?|gouttes?|comprimes?)/g;
+
+/**
+ * Units per day from a posology, when it says them plainly ("2 cp x 3/j" is
+ * 6, "2 cp * 3 / j" too); undefined otherwise, and for a range, a change, a
+ * fraction, a maximum or two different counts ("1 cp matin et 2 cp le
+ * soir"): she then says how many, as for a typed name.
+ */
 export function unitsPerDayOf(text: string): number | undefined {
-  const t = plain(text).replace(/(\d)\s*[x*]\s*(\d)/g, '$1 x $2');
+  const t = plain(text)
+    .replace(/\*/g, ' x ')
+    .replace(/(\d)\s*x\s*(\d)/g, '$1 x $2');
   if (/semaine|mois\b.*\bfois|tous les \d+ jours/.test(t) && !/par jour|\/j/.test(t)) {
     return undefined;
   }
+  if (UNCLEAR_POSOLOGY.test(t)) return undefined;
+  if (new Set([...t.matchAll(COUNT)].map((count) => count[1])).size > 1) return undefined;
   let m =
     /(\d+)\s*(cp|gel|gelules?|sachets?|c|lyoc|ovules?|comprimes?)?\.?\s*(a soupe|a cafe)?\s*x\s*(\d+)\s*(\/|par)\s*j/.exec(
       t,
@@ -893,12 +981,12 @@ function posologyOf(line: string, next: readonly { text: string }[]): string | u
   }
   if (below.length > 0) return below.join(' ');
   // A table row: the posology after the name, from its first count and unit.
-  const folded = line.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
-  const inside = POSOLOGY_INSIDE.exec(folded);
+  const text = folded(line);
+  const inside = POSOLOGY_INSIDE.exec(text);
   if (inside === null) return undefined;
   // The same position in the line as read when folding kept one character for
   // each (a precomposed text, as the OCR gives), else the whole row.
-  return folded.length === line.length ? line.slice(inside.index).trim() : line.trim();
+  return text.length === line.length ? line.slice(inside.index).trim() : line.trim();
 }
 
 /**
@@ -952,8 +1040,10 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     // looks like a product (a strength, a form word).
     if (header.start !== undefined && !marked && !PRODUCT_HINT.test(p)) return;
     if (isPosology(plain(counted)) || isPosology(p)) return;
-    const namePart = namePartOf(line).trim();
-    const query = namePartOf(unmarked).trim();
+    // The name without its posology; micrograms written as the resolver reads
+    // them ("400 microg" is "400 µg"), so it prefers a box of that strength.
+    const namePart = nameOf(line).replace(MICROGRAM_UNIT, ' µg');
+    const query = nameOf(unmarked);
     const chosen = bestOf(pack, namePart) ?? aliasOf(pack, vocabulary, namePart);
     if (chosen === undefined) {
       // A numbered line of two letters or more, or a line that looks like a
@@ -1014,6 +1104,10 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     const missingSubstances = [...named].filter((id) => !held.has(id)).sort();
     const posology = posologyOf(line, joined.slice(at + 1));
     const units = posology === undefined ? undefined : unitsPerDayOf(posology);
+    const asksUnitsPerDay = needsUnitsPerDay(pack, ref);
+    // No strength in micrograms, and none that may be misread: she is asked.
+    const unsure = MICROGRAMS.test(namePart) || UNSURE_STRENGTH.test(namePart);
+    const strengthMg = unsure ? undefined : parseStrength(namePart).strengthMg;
     const product: PrescriptionProduct = {
       ref,
       candidate,
@@ -1021,9 +1115,14 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       lineIndex,
       query,
       match,
-      strengthMg: MICROGRAMS.test(namePart) ? undefined : parseStrength(namePart).strengthMg,
+      strengthMg,
+      strengthQuery: [
+        ...formWords(namePart),
+        ...(strengthMg === undefined ? [] : [`${String(strengthMg)} mg`]),
+      ].join(' '),
       posology,
-      unitsPerDayOffer: needsUnitsPerDay(pack, ref) ? units : undefined,
+      unitsPerDayOffer: asksUnitsPerDay ? units : undefined,
+      asksUnitsPerDay,
       missingSubstances,
       extraSubstances: candidate.kind === 'product' ? extraOf(held).sort() : [],
       namesMore: !explainsEveryPart(pack, vocabulary, namePart, candidate, held),
