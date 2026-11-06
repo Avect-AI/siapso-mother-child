@@ -17,7 +17,9 @@
 //   threaded.{mjs,wasm}) of the installed onnxruntime-web, which must be
 //   ORT_WEB_VERSION of ocr/src/ocr-pack.ts (the speech worker's version).
 // - pdf/<version>/: pdf.js (pdf.min.mjs, pdf.worker.min.mjs) of the installed
-//   pdfjs-dist, which must be PDFJS_VERSION.
+//   pdfjs-dist, which must be PDFJS_VERSION, and its WebAssembly decoders of
+//   scanned images (wasm/jbig2.wasm for JBIG2 and CCITT, wasm/openjpeg.wasm
+//   for JPEG 2000), with their licences.
 // - licenses/ and NOTICE.md; ocr-pack.json with every file's size and SHA-256.
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -90,6 +92,25 @@ export function checkDetectionSettings(ymlText) {
       );
     }
   }
+}
+
+/**
+ * The files of the installed pdfjs-dist the pack carries: [path in the pack,
+ * path in the package]. The two decoders come with the licences pdf.js ships
+ * for them (PDFium's JBIG2 decoder, OpenJPEG, and pdf.js's own wrappers).
+ */
+export function pdfjsCopies(version) {
+  return [
+    [`pdf/${version}/pdf.min.mjs`, 'build/pdf.min.mjs'],
+    [`pdf/${version}/pdf.worker.min.mjs`, 'build/pdf.worker.min.mjs'],
+    [`pdf/${version}/wasm/jbig2.wasm`, 'wasm/jbig2.wasm'],
+    [`pdf/${version}/wasm/openjpeg.wasm`, 'wasm/openjpeg.wasm'],
+    ['licenses/pdfjs-dist-LICENSE.txt', 'LICENSE'],
+    ['licenses/pdfjs-dist-wasm-LICENSE_JBIG2.txt', 'wasm/LICENSE_JBIG2'],
+    ['licenses/pdfjs-dist-wasm-LICENSE_PDFJS_JBIG2.txt', 'wasm/LICENSE_PDFJS_JBIG2'],
+    ['licenses/pdfjs-dist-wasm-LICENSE_OPENJPEG.txt', 'wasm/LICENSE_OPENJPEG'],
+    ['licenses/pdfjs-dist-wasm-LICENSE_PDFJS_OPENJPEG.txt', 'wasm/LICENSE_PDFJS_OPENJPEG'],
+  ];
 }
 
 function sha256(bytes) {
@@ -226,12 +247,9 @@ async function main() {
   for (const name of ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']) {
     await copy(`runtime/${ortVersion}/${name}`, path.join(ort.dir, 'dist', name));
   }
-  for (const name of ['pdf.min.mjs', 'pdf.worker.min.mjs']) {
-    await copy(`pdf/${pdfVersion}/${name}`, path.join(pdfjs.dir, 'build', name));
-  }
+  for (const [to, from] of pdfjsCopies(pdfVersion)) await copy(to, path.join(pdfjs.dir, from));
   const apache = await readFile(path.join(root, 'LICENSES', 'Apache-2.0.txt'), 'utf8');
   await put('licenses/paddleocr-models-LICENSE.txt', apache);
-  await copy('licenses/pdfjs-dist-LICENSE.txt', path.join(pdfjs.dir, 'LICENSE'));
   // The npm package carries no licence file; its package.json says MIT, as
   // github.com/microsoft/onnxruntime/blob/main/LICENSE.
   await put('licenses/onnxruntime-web-LICENSE.txt', mitLicence('Microsoft Corporation'));
@@ -244,6 +262,7 @@ async function main() {
 - Text recognition model: \`${rec.repo}\` (revision \`${rec.revision}\`), PaddleOCR PP-OCRv5 mobile Latin recognition, ${rec.licence} (declared on its Hugging Face card): \`licenses/paddleocr-models-LICENSE.txt\`. PaddlePaddle's own ONNX export, unchanged (\`models/rec-latin.onnx\`); \`models/dict-latin.json\` lists the characters of its \`inference.yml\`.
 - ONNX Runtime Web ${ort.version} (\`runtime/\`), ${ort.licence}, Copyright (c) Microsoft Corporation: \`licenses/onnxruntime-web-LICENSE.txt\`. The reading worker of the app bundles its JavaScript.
 - pdf.js (pdfjs-dist ${pdfjs.version}, \`pdf/\`), ${pdfjs.licence}, Mozilla Foundation and the pdf.js contributors: \`licenses/pdfjs-dist-LICENSE.txt\`.
+- pdf.js's decoders of scanned images, from the same package: \`pdf/${pdfVersion}/wasm/jbig2.wasm\` (JBIG2 and CCITT fax, the JBIG2 decoder of PDFium, BSD-3-Clause and Apache-2.0, Copyright 2014 The PDFium Authors: \`licenses/pdfjs-dist-wasm-LICENSE_JBIG2.txt\`; pdf.js's build of it, Apache-2.0, Mozilla Foundation: \`licenses/pdfjs-dist-wasm-LICENSE_PDFJS_JBIG2.txt\`) and \`pdf/${pdfVersion}/wasm/openjpeg.wasm\` (JPEG 2000, OpenJPEG, BSD-2-Clause, Universite catholique de Louvain and the OpenJPEG authors: \`licenses/pdfjs-dist-wasm-LICENSE_OPENJPEG.txt\`; pdf.js's build of it, BSD-2-Clause, Mozilla Foundation: \`licenses/pdfjs-dist-wasm-LICENSE_PDFJS_OPENJPEG.txt\`).
 `,
   );
 
@@ -256,7 +275,7 @@ async function main() {
     .sort((a, b) => a.path.localeCompare(b.path));
   const manifest = {
     id,
-    licence: 'Apache-2.0 AND MIT',
+    licence: 'Apache-2.0 AND MIT AND BSD-3-Clause AND BSD-2-Clause',
     models: {
       detection: { repo: det.repo, revision: det.revision, licence: det.licence },
       recognition: { repo: rec.repo, revision: rec.revision, licence: rec.licence },

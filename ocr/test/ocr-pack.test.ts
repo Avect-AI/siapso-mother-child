@@ -31,6 +31,8 @@ const FILES: Record<string, Uint8Array> = {
   [RUNTIME_FILES.wasm]: bytes(3000, 5),
   [PDF_FILES.api]: bytes(400, 6),
   [PDF_FILES.worker]: bytes(900, 7),
+  [PDF_FILES.jbig2]: bytes(100, 8),
+  [PDF_FILES.openjpeg]: bytes(240, 9),
   'NOTICE.md': new TextEncoder().encode('# Notices'),
 };
 
@@ -96,9 +98,12 @@ describe('the pack layout', () => {
       mjs: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.mjs`,
       wasm: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.wasm`,
     });
+    // With the WebAssembly decoders of scanned images: JBIG2 and CCITT, JPEG 2000.
     expect(PDF_FILES).toEqual({
       api: `pdf/${PDFJS_VERSION}/pdf.min.mjs`,
       worker: `pdf/${PDFJS_VERSION}/pdf.worker.min.mjs`,
+      jbig2: `pdf/${PDFJS_VERSION}/wasm/jbig2.wasm`,
+      openjpeg: `pdf/${PDFJS_VERSION}/wasm/openjpeg.wasm`,
     });
     expect(MODEL_FILES).toEqual({
       detection: 'models/det.onnx',
@@ -149,7 +154,13 @@ describe('ocrPackInfo', () => {
   });
 
   it('refuses a manifest that lacks a model, the runtime or pdf.js', async () => {
-    for (const missing of [MODEL_FILES.detection, RUNTIME_FILES.wasm, PDF_FILES.worker]) {
+    for (const missing of [
+      MODEL_FILES.detection,
+      RUNTIME_FILES.wasm,
+      PDF_FILES.worker,
+      PDF_FILES.jbig2,
+      PDF_FILES.openjpeg,
+    ]) {
       const files = manifest().files.filter((f) => f.path !== missing);
       const json = manifest({ files, totalBytes: files.reduce((s, f) => s + f.bytes, 0) });
       vi.stubGlobal('fetch', fakeFetch(served({}, json)).fetch);

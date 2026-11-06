@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 // Synthetic PDF files made at test time, so no PDF is committed: pages of
 // text lines in Helvetica (a text layer, as a prescription printed from a
-// clinic's software), a page with a drawing and no text (as a scan), and the
-// same text protected by a password (standard security handler, revision 2,
-// RC4 40 bits: the oldest scheme, which every reader knows). Fake content only.
+// clinic's software), a page with a drawing and no text (as a scan), pages
+// with a scanned image (the CCITT Group 4, JBIG2 and JPEG 2000 streams of
+// fixtures/, README.md there), and the same text protected by a password
+// (standard security handler, revision 2, RC4 40 bits: the oldest scheme,
+// which every reader knows). Fake content only.
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { deflateSync } from 'node:zlib';
 
 /** A line of text at a height on the page, in points from the bottom. */
 export interface PdfLine {
@@ -12,6 +16,23 @@ export interface PdfLine {
   x: number;
   y: number;
   size?: number;
+  /** Not painted (text render mode 3), as the text layer a scanner adds over its image. */
+  invisible?: boolean;
+}
+
+/** An image XObject painted on the page. */
+export interface PdfImage {
+  /** The entries of its dictionary but /Length (size, colour space, filter and its parameters). */
+  dict: string;
+  data: Uint8Array;
+  /** Where it is painted, in points: x, y, width, height; the whole A4 page by default. */
+  rect?: readonly [number, number, number, number];
+}
+
+/** A page: text lines, an image under them, or both. */
+export interface PdfPage {
+  lines?: readonly PdfLine[];
+  image?: PdfImage;
 }
 
 const latin1 = (text: string) =>
@@ -33,10 +54,12 @@ function contentOf(lines: readonly PdfLine[]): string {
   return lines
     .map(
       (l) =>
-        `BT /F1 ${String(l.size ?? 14)} Tf ${String(l.x)} ${String(l.y)} Td (${pdfString(l.text)}) Tj ET`,
+        `BT /F1 ${String(l.size ?? 14)} Tf ${l.invisible === true ? '3 Tr ' : ''}${String(l.x)} ${String(l.y)} Td (${pdfString(l.text)}) Tj ET`,
     )
     .join('\n');
 }
+
+const A4: readonly [number, number, number, number] = [0, 0, 595, 842];
 
 function rc4(key: Uint8Array, data: Uint8Array): Uint8Array {
   const s = Array.from({ length: 256 }, (_, i) => i);
@@ -76,10 +99,21 @@ function padded(password: string): Uint8Array {
   return out;
 }
 
+function isLines(page: readonly PdfLine[] | PdfPage): page is readonly PdfLine[] {
+  return Array.isArray(page);
+}
+
 const hex = (bytes: Uint8Array) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-/** The PDF bytes of `pages` (each a list of lines), optionally with a user password. */
-export function makePdf(pages: readonly (readonly PdfLine[])[], password?: string): Uint8Array {
+/**
+ * The PDF bytes of `pages` (each a list of lines, or a page with an image),
+ * optionally with a user password. A page given as an empty list of lines
+ * is a drawing with no text.
+ */
+export function makePdf(
+  pages: readonly (readonly PdfLine[] | PdfPage)[],
+  password?: string,
+): Uint8Array {
   const id = md5(latin1('siapso synthetic test pdf'));
   const permissions = -4;
   let fileKey: Uint8Array | undefined;
@@ -99,22 +133,43 @@ export function makePdf(pages: readonly (readonly PdfLine[])[], password?: strin
     const salt = Uint8Array.from([num & 255, (num >> 8) & 255, (num >> 16) & 255, 0, 0]);
     return rc4(md5(fileKey, salt).subarray(0, 10), data);
   };
-  const kids = pages.map((_, i) => `${String(4 + i * 2)} 0 R`).join(' ');
+  // Each page takes three objects: the page, its content and its image (an
+  // empty dictionary when it has none).
+  const kids = pages.map((_, i) => `${String(4 + i * 3)} 0 R`).join(' ');
   objects.push('<< /Type /Catalog /Pages 2 0 R >>');
   objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${String(pages.length)} >>`);
   objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
   const streams = new Map<number, Uint8Array>();
-  pages.forEach((lines, i) => {
-    const pageNum = 4 + i * 2;
+  pages.forEach((spec, i) => {
+    const { lines = [], image }: PdfPage = isLines(spec) ? { lines: spec } : spec;
+    const pageNum = 4 + i * 3;
     const contentNum = pageNum + 1;
+    const imageNum = pageNum + 2;
+    const xobjects = image === undefined ? '' : ` /XObject << /Im1 ${String(imageNum)} 0 R >>`;
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${String(contentNum)} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >>${xobjects} >> /Contents ${String(contentNum)} 0 R >>`,
     );
     const drawing =
-      lines.length === 0 ? '0.2 0.2 0.2 rg 60 500 300 80 re f\n80 400 m 400 420 l S' : '';
-    const body = encrypt(contentNum, latin1(contentOf(lines) + drawing));
+      lines.length === 0 && image === undefined
+        ? '0.2 0.2 0.2 rg 60 500 300 80 re f\n80 400 m 400 420 l S'
+        : '';
+    const [x, y, w, h] = image?.rect ?? A4;
+    const painted =
+      image === undefined
+        ? ''
+        : `q ${String(w)} 0 0 ${String(h)} ${String(x)} ${String(y)} cm /Im1 Do Q\n`;
+    const body = encrypt(contentNum, latin1(painted + contentOf(lines) + drawing));
     streams.set(contentNum, body);
     objects.push(`<< /Length ${String(body.length)} >>`);
+    if (image === undefined) {
+      objects.push('<< >>');
+    } else {
+      const data = encrypt(imageNum, image.data);
+      streams.set(imageNum, data);
+      objects.push(
+        `<< /Type /XObject /Subtype /Image ${image.dict} /Length ${String(data.length)} >>`,
+      );
+    }
   });
   let encryptNum: number | undefined;
   if (owner !== undefined && user !== undefined) {
@@ -165,3 +220,45 @@ export const PRINTED_PAGE: PdfLine[] = [
   { text: '2. Fer + Acide folique cp', x: 60, y: 580 },
   { text: 'Signature et cachet', x: 380, y: 200 },
 ];
+
+const fixture = (name: string) =>
+  new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)));
+
+/**
+ * The synthetic prescription of fixtures/ (1240 x 1754 pixels, A4 at
+ * 150 dpi) in CCITT Group 4, as an office scanner writes a page.
+ */
+export function ccittScan(): PdfImage {
+  return {
+    dict: '/Width 1240 /Height 1754 /ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /CCITTFaxDecode /DecodeParms << /K -1 /Columns 1240 /Rows 1754 >>',
+    data: fixture('scan-g4.ccitt'),
+  };
+}
+
+/** The same page as an embedded JBIG2 stream (a generic region coded with MMR). */
+export function jbig2Scan(): PdfImage {
+  return {
+    dict: '/Width 1240 /Height 1754 /ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /JBIG2Decode',
+    data: fixture('scan-mmr.jbig2'),
+  };
+}
+
+/** The page at half size in JPEG 2000 (620 x 877 pixels, grey). */
+export function jpxScan(): PdfImage {
+  return {
+    dict: '/Width 620 /Height 877 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /JPXDecode',
+    data: fixture('scan.j2k'),
+  };
+}
+
+/**
+ * A white image of `width` x `height` pixels, 1 bit, with Flate: a few
+ * kilobytes in the file, as many pixels once decoded.
+ */
+export function flateImage(width: number, height: number): PdfImage {
+  const raw = new Uint8Array(Math.ceil(width / 8) * height).fill(0xff);
+  return {
+    dict: `/Width ${String(width)} /Height ${String(height)} /ColorSpace /DeviceGray /BitsPerComponent 1 /Filter /FlateDecode`,
+    data: new Uint8Array(deflateSync(raw, { level: 9 })),
+  };
+}

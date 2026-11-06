@@ -40,10 +40,17 @@ export const RUNTIME_FILES = {
   wasm: `runtime/${ORT_WEB_VERSION}/ort-wasm-simd-threaded.wasm`,
 } as const;
 
-/** pdf.js, under its version for the same reason: its API and its worker code. */
+/**
+ * pdf.js, under its version for the same reason: its API, its worker code,
+ * and the WebAssembly decoders of the images a scanner puts in a PDF:
+ * JBIG2 and CCITT fax (jbig2.wasm, from PDFium) and JPEG 2000 (openjpeg.wasm,
+ * from OpenJPEG), which pdf.js 6 decodes with nothing else.
+ */
 export const PDF_FILES = {
   api: `pdf/${PDFJS_VERSION}/pdf.min.mjs`,
   worker: `pdf/${PDFJS_VERSION}/pdf.worker.min.mjs`,
+  jbig2: `pdf/${PDFJS_VERSION}/wasm/jbig2.wasm`,
+  openjpeg: `pdf/${PDFJS_VERSION}/wasm/openjpeg.wasm`,
 } as const;
 
 /** The models and the characters the recognition model reads. */

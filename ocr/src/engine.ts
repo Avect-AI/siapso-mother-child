@@ -8,7 +8,7 @@ import * as ort from 'onnxruntime-web/wasm';
 import { recognitionAlphabet } from './ctc.js';
 import { MAX_SIDE, checkFile, scaledSize } from './limits.js';
 import { MODEL_FILES, OcrPackError, PDF_FILES, RUNTIME_FILES } from './ocr-pack.js';
-import { readPdf, type PdfPageLike, type PdfjsLike } from './pdf.js';
+import { packDecoders, readPdf, type PdfPageLike, type PdfjsLike } from './pdf.js';
 import { readRaster, type OcrEngine } from './pipeline.js';
 import type { OcrSource } from './protocol.js';
 import type { Raster } from './raster.js';
@@ -242,6 +242,10 @@ export async function readInput(
   const result = await readPdf(reader, new Uint8Array(await input.arrayBuffer()), {
     readScan: async (page) => readRaster(await drawPage(page), engine, alphabet, { onProgress }),
     CanvasFactory: OffscreenCanvasFactory,
+    // The image decoders of scans, from the pack in the cache: never fetched.
+    BinaryDataFactory: packDecoders((path) =>
+      readInstalledFile(new URL(path, loaded.baseUrl).href),
+    ),
   });
   return {
     lines: result.lines,

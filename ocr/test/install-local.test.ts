@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: MIT
 // @vitest-environment node
+import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PINNED_MODELS, checkDetectionSettings, dictionaryOf } from '../scripts/install-local.mjs';
+import {
+  PINNED_MODELS,
+  checkDetectionSettings,
+  dictionaryOf,
+  pdfjsCopies,
+} from '../scripts/install-local.mjs';
+import { PDFJS_VERSION, PDF_FILES } from '../src/ocr-pack.js';
 
 const REC_YML = `Global:
   model_name: latin_PP-OCRv5_mobile_rec
@@ -69,5 +78,27 @@ describe('checkDetectionSettings', () => {
     expect(() => {
       checkDetectionSettings(DET_YML.replace('resize_long: 960', 'resize_long: 736'));
     }).toThrow(/resize_long/);
+  });
+});
+
+describe('the pdf.js files of the pack', () => {
+  const pdfjsDir = path.dirname(createRequire(import.meta.url).resolve('pdfjs-dist/package.json'));
+
+  it('copies every pdf.js file the worker reads, its decoders of scanned images included', () => {
+    const copied = pdfjsCopies(PDFJS_VERSION).map(([to]) => to);
+    for (const file of Object.values(PDF_FILES)) expect(copied).toContain(file);
+  });
+
+  it('ships the licence of each decoder with it, and takes every file from the installed pdfjs-dist', () => {
+    const copies = pdfjsCopies(PDFJS_VERSION);
+    const licences = copies.map(([to]) => to).filter((to) => to.startsWith('licenses/'));
+    expect(licences).toEqual([
+      'licenses/pdfjs-dist-LICENSE.txt',
+      'licenses/pdfjs-dist-wasm-LICENSE_JBIG2.txt',
+      'licenses/pdfjs-dist-wasm-LICENSE_PDFJS_JBIG2.txt',
+      'licenses/pdfjs-dist-wasm-LICENSE_OPENJPEG.txt',
+      'licenses/pdfjs-dist-wasm-LICENSE_PDFJS_OPENJPEG.txt',
+    ]);
+    for (const [, from] of copies) expect(existsSync(path.join(pdfjsDir, from)), from).toBe(true);
   });
 });

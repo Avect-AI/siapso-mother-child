@@ -9,6 +9,14 @@ export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 /** Above this a photo is refused before it is decoded. */
 export const MAX_PIXELS = 40_000_000;
 
+/**
+ * Above this an image inside a PDF is left out by pdf.js and the PDF
+ * refused as too large: pdf.js decodes such an image at full size, four
+ * bytes a pixel (80 MB here), before the page is drawn at MAX_SIDE. An A4
+ * page scanned at 400 dpi has 15.5 megapixels.
+ */
+export const MAX_PDF_IMAGE_PIXELS = MAX_PIXELS / 2;
+
 /** The long side of the image the reading works on. */
 export const MAX_SIDE = 2000;
 

@@ -1,21 +1,30 @@
 // SPDX-License-Identifier: MIT
-// A prescription sent as a PDF: the text layer when the PDF has one (printed
-// from a clinic's software), read with pdf.js, three pages at most; a page
-// without text (a scan in a PDF) is handed to the OCR. pdf.js comes from the
-// reading pack and is handed in, so the same code runs in the worker and,
-// with the legacy build of the same version, in the tests. pdf.js opens an
-// untrusted file: no XFA, no scripting (the pack has no pdf.sandbox and no
-// annotation layer is drawn), no font faces, no system fonts, no WebAssembly
-// decoders and no fetch of any kind (the bytes are given; no cMap, font or
-// wasm URL is set). pdf.js 6 has no eval path at all (`isEvalSupported` is
-// gone). docs/threat-model.md.
-import { OcrPackError } from './ocr-pack.js';
+// A prescription sent as a PDF, read with pdf.js, three pages at most: the
+// text layer of a page printed from a clinic's software; the OCR for a page
+// a scanner made (a scan in a PDF), merged with its text layer when it has
+// one (a typed footer, or the scanner's own invisible reading, never taken
+// alone). pdf.js comes from the reading pack and is handed in, so the same
+// code runs in the worker and, with the legacy build of the same version,
+// in the tests. pdf.js opens an untrusted file: no XFA, no scripting (the
+// pack has no pdf.sandbox and no annotation layer is drawn), no font faces,
+// no system fonts, an image of more than MAX_PDF_IMAGE_PIXELS left out (and
+// the PDF refused as too large), and no fetch of any kind: the bytes are
+// given, no cMap, font or ICC address is set, and its WebAssembly image
+// decoders come from the pack through packDecoders. pdf.js 6 has no eval
+// path at all (`isEvalSupported` is gone). docs/threat-model.md.
+import { MAX_PDF_IMAGE_PIXELS } from './limits.js';
+import { OcrPackError, PDF_FILES } from './ocr-pack.js';
 
 /** A PDF is read up to its third page. */
 export const MAX_PDF_PAGES = 3;
 
-/** A page with fewer characters than this in its text layer is read as a scan. */
-export const MIN_TEXT_CHARS = 20;
+/**
+ * A page whose images cover more than this share of it is read by the OCR
+ * too, whatever its text layer says: a scan with a typed footer, or with the
+ * invisible text layer a scanner adds (its own reading, never trusted alone).
+ * A logo or a stamp covers far less.
+ */
+export const LARGE_IMAGE_SHARE = 0.25;
 
 /** What readPdf uses of a text item of pdf.js (a marked content item has no `str`). */
 export interface PdfTextItemLike {
@@ -25,8 +34,15 @@ export interface PdfTextItemLike {
   height?: number;
 }
 
+/** The drawing operations of a page, as pdf.js lists them. */
+export interface PdfOperatorList {
+  fnArray: ArrayLike<number>;
+  argsArray: ArrayLike<unknown>;
+}
+
 export interface PdfPageLike {
   getTextContent(): Promise<{ items: readonly unknown[] }>;
+  getOperatorList(): Promise<PdfOperatorList>;
   getViewport(options: { scale: number }): { width: number; height: number };
   render(options: { canvasContext: unknown; viewport: unknown; background?: string }): {
     promise: Promise<void>;
@@ -45,11 +61,50 @@ export interface PdfjsLike {
     promise: Promise<PdfDocumentLike>;
     destroy(): Promise<void>;
   };
+  /** The codes of the drawing operations (pdf.js `OPS`). */
+  OPS: Readonly<Record<string, number>>;
+}
+
+/**
+ * The folder pdf.js is told its WebAssembly decoders are in: not an address
+ * it could fetch. pdf.js reads the decoders through the BinaryDataFactory it
+ * is given (packDecoders), and only when a decoder fails does it import a
+ * JavaScript fallback from this folder, which then fails at once, with no
+ * request (an unknown scheme), and leaves that image out.
+ */
+export const PDF_WASM_URL = 'siapso-ocr-pack:/pdf/wasm/';
+
+/** The decoders pdf.js may ask for, by file name, and where the pack has them. */
+const DECODERS = new Map<string, string>([
+  ['jbig2.wasm', PDF_FILES.jbig2],
+  ['openjpeg.wasm', PDF_FILES.openjpeg],
+]);
+
+/**
+ * pdf.js's BinaryDataFactory (its getDocument option) for a place with no
+ * document and no fetch: pdf.js asks it for its JBIG2 and CCITT decoder
+ * (jbig2.wasm) and its JPEG 2000 decoder (openjpeg.wasm), and `read` gives
+ * the bytes of that file of the pack (its path in the pack), from the cache
+ * only in the worker. Anything else pdf.js may ask for (a cMap, a standard
+ * font, the colour or script engines) is refused, never fetched.
+ */
+export function packDecoders(read: (path: string) => Promise<ArrayBuffer | Uint8Array>): unknown {
+  return class PackDecoders {
+    async fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
+      const path = kind === 'wasmUrl' ? DECODERS.get(filename) : undefined;
+      if (path === undefined) {
+        throw new Error(`pdf.js asked for ${kind} ${filename}, which is not in the reading pack.`);
+      }
+      return new Uint8Array(await read(path));
+    }
+  };
 }
 
 export interface PdfReadOptions {
   /** Reads a page with no text layer (draws it and runs the OCR). */
   readScan: (page: PdfPageLike) => Promise<string[]>;
+  /** pdf.js's reader of its image decoders: packDecoders over the pack's files. */
+  BinaryDataFactory: unknown;
   signal?: AbortSignal;
   /** pdf.js's canvas factory where there is no document (a worker): OffscreenCanvas. */
   CanvasFactory?: unknown;
@@ -105,6 +160,136 @@ export function linesFromTextItems(items: readonly unknown[]): string[] {
     .filter((line) => line !== '');
 }
 
+const fold = (line: string) =>
+  line.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/**
+ * A strength (500 mg, 1 g, 5 ml, 100 000 UI, 2 %) or a form (cp, gelule,
+ * sirop, ampoule...): what a line naming a product of a prescription has,
+ * and a footer or a header has not. Matched on the line without accents.
+ */
+const PRODUCT_LIKE =
+  /\d\s*(?:mg|g|mcg|ug|µg|μg|ml|l|ui|u\.i\.|%)(?![a-z])|\b(?:cp|cpr|comprimes?|gel|gelules?|caps|capsules?|sirop|sachets?|amp|ampoules?|inj|injectable|suppo|suppositoires?|pommade|creme|gouttes?|flacon|collyre|ovules?|patch)\b/;
+
+/** Whether one of `lines` reads like a product of a prescription. */
+export function hasProductLine(lines: readonly string[]): boolean {
+  return lines.some((line) => PRODUCT_LIKE.test(fold(line)));
+}
+
+/**
+ * The lines of a page read both ways: its text layer, then the lines the
+ * OCR read that the text layer does not already give (each typed line
+ * stands for one line read, letter case, accents and spaces apart).
+ */
+export function mergeLines(typed: readonly string[], read: readonly string[]): string[] {
+  const left = new Map<string, number>();
+  for (const line of typed) left.set(fold(line), (left.get(fold(line)) ?? 0) + 1);
+  const added = read.filter((line) => {
+    const count = left.get(fold(line)) ?? 0;
+    if (count === 0) return true;
+    left.set(fold(line), count - 1);
+    return false;
+  });
+  return [...typed, ...added];
+}
+
+const determinant = (m: ArrayLike<number>) =>
+  Math.abs((m[0] ?? 0) * (m[3] ?? 0) - (m[1] ?? 0) * (m[2] ?? 0));
+
+const isMatrix = (value: unknown): value is ArrayLike<number> =>
+  typeof value === 'object' && value !== null && (value as ArrayLike<number>).length === 6;
+
+/**
+ * The share of the page (`pageArea`, in its units) its images cover, from
+ * its drawing operations: each image is the unit square under the current
+ * transform, so it covers the area its determinant gives (clipping aside).
+ * Over 1 when images overlap; that is enough to tell a scan from a logo.
+ */
+export function imageShare(
+  list: PdfOperatorList,
+  ops: Readonly<Record<string, number>>,
+  pageArea: number,
+): number {
+  const op = (name: string) => ops[name] ?? -1;
+  // Only the scale of the transform matters for areas: determinants multiply.
+  const stack: number[] = [];
+  let scale = 1;
+  let covered = 0;
+  for (let i = 0; i < list.fnArray.length; i++) {
+    const fn = list.fnArray[i];
+    const args = (list.argsArray[i] ?? []) as unknown[];
+    if (fn === op('save') || fn === op('paintFormXObjectBegin')) {
+      stack.push(scale);
+      if (fn === op('paintFormXObjectBegin') && isMatrix(args[0])) scale *= determinant(args[0]);
+    } else if (fn === op('restore') || fn === op('paintFormXObjectEnd')) {
+      scale = stack.pop() ?? 1;
+    } else if (fn === op('transform')) {
+      scale *= determinant(args as ArrayLike<number>);
+    } else if (
+      fn === op('paintImageXObject') ||
+      fn === op('paintInlineImageXObject') ||
+      fn === op('paintImageMaskXObject') ||
+      fn === op('paintSolidColorImageMask')
+    ) {
+      covered += scale;
+    } else if (fn === op('paintImageXObjectRepeat')) {
+      const [, scaleX, scaleY, positions] = args as [
+        unknown,
+        number | undefined,
+        number | undefined,
+        ArrayLike<number> | undefined,
+      ];
+      covered += scale * Math.abs((scaleX ?? 0) * (scaleY ?? 0)) * ((positions?.length ?? 0) / 2);
+    } else if (fn === op('paintImageMaskXObjectRepeat')) {
+      const [, a, b, c, d, positions] = args as [
+        unknown,
+        number | undefined,
+        number | undefined,
+        number | undefined,
+        number | undefined,
+        ArrayLike<number> | undefined,
+      ];
+      covered +=
+        scale *
+        determinant([a ?? 0, b ?? 0, c ?? 0, d ?? 0, 0, 0]) *
+        ((positions?.length ?? 0) / 2);
+    } else if (
+      fn === op('paintImageMaskXObjectGroup') ||
+      fn === op('paintInlineImageXObjectGroup')
+    ) {
+      const images = (fn === op('paintImageMaskXObjectGroup') ? args[0] : args[1]) ?? [];
+      for (const image of images as { transform?: unknown }[]) {
+        if (isMatrix(image.transform)) covered += scale * determinant(image.transform);
+      }
+    }
+  }
+  return pageArea > 0 ? covered / pageArea : 0;
+}
+
+/** What pdf.js says when it leaves out an image larger than maxImageSize (pdf.js 6.4.299). */
+const IMAGE_LEFT_OUT = 'Image exceeded maximum allowed size and was removed.';
+
+/**
+ * Watches pdf.js's warnings while a PDF is read (pdf.js parses in this very
+ * thread, and says them with console.warn): `onWarning` gets each, and they
+ * are not printed. Returns the function that stops watching. One reading at
+ * a time: the reading worker reads in order.
+ */
+function watchWarnings(onWarning: (message: string) => void): () => void {
+  const original = console.warn;
+  console.warn = (...args: unknown[]) => {
+    const [first] = args;
+    if (typeof first === 'string' && first.startsWith('Warning: ')) {
+      onWarning(first);
+      return;
+    }
+    original.apply(console, args);
+  };
+  return () => {
+    console.warn = original;
+  };
+}
+
 function stopIfCancelled(signal: AbortSignal | undefined): void {
   if (signal?.aborted === true) throw new OcrPackError('cancelled', 'The reading was cancelled.');
 }
@@ -121,9 +306,31 @@ function openError(error: unknown): OcrPackError {
 }
 
 /**
- * Reads the PDF `bytes` (handed over: pdf.js may detach them): the text
- * layer of each of its first three pages, or the OCR for a page without one.
- * Rejects with OcrPackError `pdf-password`, `pdf-damaged` or `cancelled`.
+ * Whether a page with a text layer `typed` is read by the OCR too: when no
+ * line of it reads like a product, or when its images cover more than
+ * LARGE_IMAGE_SHARE of it (a scan). A page that cannot be listed is read too.
+ */
+async function needsOcr(
+  page: PdfPageLike,
+  typed: readonly string[],
+  pdfjs: PdfjsLike,
+): Promise<boolean> {
+  if (!hasProductLine(typed)) return true;
+  const { width, height } = page.getViewport({ scale: 1 });
+  try {
+    return imageShare(await page.getOperatorList(), pdfjs.OPS, width * height) > LARGE_IMAGE_SHARE;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Reads the PDF `bytes` (handed over: pdf.js may detach them), its first
+ * three pages: the text layer of a typed page; the OCR for a page with no
+ * text, no line like a product, or a large image, merged with its text layer
+ * (mergeLines). Rejects with OcrPackError `pdf-password`, `pdf-damaged`,
+ * `too-large` (an image of more than MAX_PDF_IMAGE_PIXELS, which pdf.js
+ * leaves out: a page would be missing) or `cancelled`.
  */
 export async function readPdf(
   pdfjs: PdfjsLike,
@@ -132,19 +339,35 @@ export async function readPdf(
 ): Promise<PdfRead> {
   const { readScan, signal } = options;
   stopIfCancelled(signal);
+  let leftOut = false;
+  const stopWatching = watchWarnings((message) => {
+    if (message.includes(IMAGE_LEFT_OUT)) leftOut = true;
+  });
+  const stopIfLeftOut = () => {
+    if (leftOut) {
+      throw new OcrPackError('too-large', 'An image of the PDF is too large for this phone.');
+    }
+  };
   const task = pdfjs.getDocument({
     data: bytes,
     enableXfa: false,
     disableFontFace: true,
     useSystemFonts: false,
+    // The decoders of scanned images (JBIG2, CCITT fax, JPEG 2000) are
+    // WebAssembly: pdf.js asks BinaryDataFactory for them (the pack's files,
+    // from the cache only), never the network; PDF_WASM_URL is no address.
     useWorkerFetch: false,
-    useWasm: false,
+    useWasm: true,
+    wasmUrl: PDF_WASM_URL,
+    BinaryDataFactory: options.BinaryDataFactory,
     isOffscreenCanvasSupported: true,
     disableAutoFetch: true,
     disableStream: true,
     disableRange: true,
     stopAtErrors: false,
-    verbosity: 0,
+    // Larger images are left out with a warning, which watchWarnings sees.
+    maxImageSize: MAX_PDF_IMAGE_PIXELS,
+    verbosity: 1,
     ...(options.CanvasFactory === undefined ? {} : { CanvasFactory: options.CanvasFactory }),
   });
   try {
@@ -167,16 +390,22 @@ export async function readPdf(
       } catch (error) {
         throw openError(error);
       }
-      if (text.join('').replace(/\s/g, '').length >= MIN_TEXT_CHARS) {
-        lines.push(...text);
-      } else {
+      const scan = await needsOcr(page, text, pdfjs);
+      stopIfLeftOut();
+      if (scan) {
+        // Drawn afresh for the OCR: what was listed to decide is let go first.
+        page.cleanup();
         scanned += 1;
-        lines.push(...(await readScan(page)));
+        lines.push(...mergeLines(text, await readScan(page)));
+        stopIfLeftOut();
+      } else {
+        lines.push(...text);
       }
       page.cleanup();
     }
     return { lines, pages, scanned };
   } finally {
+    stopWatching();
     await task.destroy().catch(() => undefined);
   }
 }
