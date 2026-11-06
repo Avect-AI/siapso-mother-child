@@ -12,7 +12,12 @@
 // level of the possible match, which cappedEvaluation may only lower.
 import { levelRank, maxLevel, type CheckedItem, type Evaluation, type Pack } from '@siapso/engine';
 import { parseStrength, search, type Candidate } from '@siapso/resolver';
-import { productFamilyOf, searchIndexOf, strengthChoiceOf } from './search-index.js';
+import {
+  productDoseRangeOf,
+  productFamilyOf,
+  searchIndexOf,
+  strengthChoiceOf,
+} from './search-index.js';
 
 /**
  * How clearly a name names its possible match: `very-strong` (the whole name,
@@ -122,7 +127,12 @@ export function withPossibleMatches(
     const strength = strengthOf(best);
     if (strength === 'weak' && options.declined?.(item) === true) return;
     let added: CheckedItem = { ref: { kind: best.kind, id: best.id } };
-    if (best.kind === 'product' && !strengthGiven(pack, best, text)) {
+    // A box whose dose the confirm screen asks by a range (generic aspirin) is
+    // never read in one she did not give: its dose is not given, said so.
+    if (
+      best.kind === 'product' &&
+      (!strengthGiven(pack, best, text) || productDoseRangeOf(pack, best.id) !== undefined)
+    ) {
       added = { ...added, strengthUnknown: true };
     }
     const key = keyOf(pack, added);

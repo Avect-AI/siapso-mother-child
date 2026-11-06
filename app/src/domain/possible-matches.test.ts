@@ -239,6 +239,20 @@ describe('withPossibleMatches', () => {
     expect(net.items[1]).toEqual({ ref: { kind: 'plant', id: 'castor-oil' } });
   });
 
+  it('reads generic aspirin a name looks like with its dose not given, whatever number it says', () => {
+    for (const text of [
+      'aspirin protect 100',
+      'aspirine bayer 75',
+      'aspirine du rhone 500',
+      'aspirinne',
+    ]) {
+      expect(withPossibleMatches(pack, [typed(text)]).items[1], text).toEqual({
+        ref: { kind: 'product', id: 'aspirin-generic' },
+        strengthUnknown: true,
+      });
+    }
+  });
+
   it('reads the strength as unknown when the name typed does not give it', () => {
     const net = withPossibleMatches(pack, [typed('doliprane')]);
     expect(net.items[1]).toMatchObject({ strengthUnknown: true, ref: { kind: 'product' } });

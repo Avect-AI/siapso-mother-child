@@ -287,6 +287,8 @@ export interface ResultExtras {
   writtenOf?: (item: CheckedItem) => string | undefined;
   /** Whether the voice heard the name of an item (its written text, or its unrecognised text). */
   saidOf?: (item: CheckedItem) => boolean;
+  /** Whether she answered "Plus de 100 mg" to the dose of a box (named with it). */
+  aboveOf?: (item: CheckedItem) => boolean;
 }
 
 interface Scope extends ResultExtras {
@@ -340,7 +342,8 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
     }
     // A box whose dose is asked by a range says it: why an aspirin card applies or not.
     const shown = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
-    return [{ name: keepUnits(bandedName(pack, item, shown, lang, scope.t)), typed: false }];
+    const above = scope.aboveOf?.(item) === true;
+    return [{ name: keepUnits(bandedName(pack, item, shown, lang, scope.t, above)), typed: false }];
   });
   return names.length === 0 ? [{ name: scope.t(`level.${finding.level}`), typed: false }] : names;
 }

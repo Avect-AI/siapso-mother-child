@@ -393,16 +393,17 @@ function ConfirmForm({
   const anotherBox =
     (plan?.kind === 'askReplace' || plan?.kind === 'askBand') && sameBox === OTHER_BOX;
 
+  // "Plus de 100 mg" for the box "yes" writes: answered now, or with the box kept.
+  const writesAbove = band === ABOVE || (target !== null && check.aboveOf(target.item));
+  const aboveOf = (item: CheckedItem) =>
+    item === writes ? writesAbove : check.items.includes(item) && check.aboveOf(item);
   // A box is named with the range it is read in, where she decides ("plus de 100 mg").
   const nameOf = (item: CheckedItem) => {
     const name = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
-    const ranged =
-      item.ref.kind === 'product' && productDoseRangeOf(pack, item.ref.id) !== undefined;
-    if (ranged && item.strengthUnknown === true) return t('check.nameUnknown', { name });
-    return bandedName(pack, item, name, lang, t);
+    return bandedName(pack, item, name, lang, t, aboveOf(item));
   };
   // The range of the box "yes" is about: "100 mg ou moins", "Plus de 100 mg".
-  const shownBand = writes === null ? undefined : doseBandOf(pack, writes);
+  const shownBand = writes === null ? undefined : doseBandOf(pack, writes, writesAbove);
   // A number read in the text the box was found by, shown beside its dose question.
   const readNumber = parseStrength(query).strengthMg !== undefined;
   const shown =
@@ -519,6 +520,7 @@ function ConfirmForm({
       ...(family === undefined ? {} : { family }),
       ...(anotherBox ? { anotherBox: true } : {}),
       ...(dropsRange === null ? {} : { replacing: dropsRange.item }),
+      ...(writesAbove ? { above: true } : {}),
       ...(written === undefined ? {} : { written }),
       ...(written !== undefined && said ? { said: true } : {}),
     });

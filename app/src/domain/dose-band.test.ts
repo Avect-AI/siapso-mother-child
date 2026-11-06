@@ -20,39 +20,54 @@ const translator =
 const t = translator('fr');
 
 describe('doseBandOf', () => {
-  it('reads "100 mg ou moins" from the range said, "Plus de 100 mg" from a box asked with none', () => {
+  it('reads "100 mg ou moins" from the range said, "Plus de 100 mg" only when she answered it', () => {
     expect(doseBandOf(pack, { ...aspirin, strengthAtMostMg: 100 })).toEqual({
       kind: 'at-most',
       mg: 100,
     });
-    expect(doseBandOf(pack, aspirin)).toEqual({ kind: 'above', mg: 100 });
+    expect(doseBandOf(pack, aspirin, true)).toEqual({ kind: 'above', mg: 100 });
+    // A box listed without that answer (a long-term one, an older check) says no range.
+    expect(doseBandOf(pack, aspirin)).toBeUndefined();
   });
 
   it('says no range for "Je ne sais pas", a box with a strength or a remedy', () => {
-    expect(doseBandOf(pack, { ...aspirin, strengthUnknown: true })).toBeUndefined();
+    expect(doseBandOf(pack, { ...aspirin, strengthUnknown: true }, true)).toBeUndefined();
     expect(
-      doseBandOf(pack, { ref: { kind: 'product', id: 'kardegic-75-mg-64755969' } }),
+      doseBandOf(pack, { ref: { kind: 'product', id: 'kardegic-75-mg-64755969' } }, true),
     ).toBeUndefined();
-    expect(doseBandOf(pack, { ref: { kind: 'plant', id: 'moringa' } })).toBeUndefined();
+    expect(doseBandOf(pack, { ref: { kind: 'plant', id: 'moringa' } }, true)).toBeUndefined();
   });
 });
 
 describe('the words of a dose range', () => {
   it('says it on a line of its own and after the name in a sentence', () => {
     // Each strength is held to its unit by a no-break space.
-    expect(doseBandLine(t, { kind: 'at-most', mg: 100 }, 'fr')).toBe('100 mg ou moins');
-    expect(doseBandLine(t, { kind: 'above', mg: 100 }, 'fr')).toBe('Plus de 100 mg');
-    expect(bandedName(pack, aspirin, 'Aspirine (générique)', 'fr', t)).toBe(
-      'Aspirine (générique), plus de 100 mg',
+    expect(doseBandLine(t, { kind: 'at-most', mg: 100 }, 'fr')).toBe('100\u00a0mg ou moins');
+    expect(doseBandLine(t, { kind: 'above', mg: 100 }, 'fr')).toBe('Plus de 100\u00a0mg');
+    expect(bandedName(pack, aspirin, 'Aspirine (générique)', 'fr', t, true)).toBe(
+      'Aspirine (générique), plus de 100\u00a0mg',
     );
+    // Without that answer, no range is said.
+    expect(bandedName(pack, aspirin, 'Aspirine (générique)', 'fr', t)).toBe('Aspirine (générique)');
     expect(
       bandedName(pack, { ...aspirin, strengthAtMostMg: 100 }, 'Aspirine (générique)', 'fr', t),
-    ).toBe('Aspirine (générique), 100 mg ou moins');
+    ).toBe('Aspirine (générique), 100\u00a0mg ou moins');
+    // "Je ne sais pas", or a box a name typed looks like: its dose not given, said.
     expect(
       bandedName(pack, { ...aspirin, strengthUnknown: true }, 'Aspirine (générique)', 'fr', t),
-    ).toBe('Aspirine (générique)');
-    expect(bandedName(pack, aspirin, 'Aspirin (generic)', 'en', translator('en'))).toBe(
-      'Aspirin (generic), more than 100 mg',
+    ).toBe('Aspirine (générique), dosage non précisé');
+    // A box with a strength keeps its name.
+    expect(
+      bandedName(
+        pack,
+        { ref: { kind: 'product', id: 'kardegic-75-mg-64755969' }, strengthUnknown: true },
+        'KARDEGIC',
+        'fr',
+        t,
+      ),
+    ).toBe('KARDEGIC');
+    expect(bandedName(pack, aspirin, 'Aspirin (generic)', 'en', translator('en'), true)).toBe(
+      'Aspirin (generic), more than 100\u00a0mg',
     );
   });
 });
@@ -74,6 +89,9 @@ describe('lowDoseTyped: a low dose chosen for her only from a typed "50 to 100 m
     // The count before "x" is never the strength.
     ['aspirine 2 x 500 mg', false],
     ['aspirine 2 x 50 mg', true],
+    // Two strengths: which one is on the box is not said.
+    ['aspirine 75 mg ou 500 mg', false],
+    ['aspirine 75 mg 100 mg', false],
     ['aspirine', false],
   ];
   for (const [query, low] of rows) {

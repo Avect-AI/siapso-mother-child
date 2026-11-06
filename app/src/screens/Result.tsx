@@ -619,13 +619,18 @@ export function Result() {
         lang,
         t,
         evaluated.conditions,
-        { possible: evaluated.possible, writtenOf: check.writtenOf, saidOf: check.saidOf },
+        {
+          possible: evaluated.possible,
+          writtenOf: check.writtenOf,
+          saidOf: check.saidOf,
+          aboveOf: check.aboveOf,
+        },
       );
     } catch (failure) {
       console.warn('The result could not be shown', failure);
       return 'failed';
     }
-  }, [evaluated, pack, mode, lang, t, check.writtenOf, check.saidOf]);
+  }, [evaluated, pack, mode, lang, t, check.writtenOf, check.saidOf, check.aboveOf]);
 
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
@@ -708,6 +713,7 @@ export function Result() {
                 ...(item.strengthAtMostMg === undefined
                   ? {}
                   : { strengthAtMostMg: item.strengthAtMostMg }),
+                ...(check.aboveOf(item) ? { doseAbove: true } : {}),
               },
             ];
           });

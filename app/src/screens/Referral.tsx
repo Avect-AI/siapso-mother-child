@@ -5,6 +5,7 @@ import { Link, useLocation } from 'wouter';
 import { EMERGENCY_NUMBERS } from '../config/emergency.js';
 import { loadReferral, loadSavedContacts, type LoadedReferral } from '../data/referral.js';
 import { dialNameOf, phoneGroups, telHref } from '../domain/contacts.js';
+import { dangerProductsOf, type DangerProduct } from '../domain/danger-products.js';
 import { bandedName } from '../domain/dose-band.js';
 import { keepUnits, type InstructionSource } from '../domain/result-view.js';
 import { displayOf } from '../domain/search-index.js';
@@ -24,15 +25,6 @@ import { UNLOCK_PATH } from './Neutral.js';
 
 /** The route of who to call, under the danger signs. */
 export const CALL_PATH = '/danger/call';
-
-/** A product or remedy of a result's danger, as the item refers to it (shown by name). */
-interface DangerProduct {
-  kind: 'product' | 'plant';
-  id: string;
-  strengthUnknown?: true;
-  /** The dose range said ("100 mg ou moins"), named with the product. */
-  strengthAtMostMg?: number;
-}
 
 /**
  * What the screen was opened with: the signs ticked, and the instruction to
@@ -68,33 +60,6 @@ function instructionOf(value: unknown): InstructionSource | null {
   return typeof message === 'string' && message !== '' ? { message } : null;
 }
 
-/** The products of the state: product or plant references only, each once. */
-function productsOf(value: unknown): DangerProduct[] {
-  if (!Array.isArray(value)) return [];
-  const products: DangerProduct[] = [];
-  for (const entry of value as unknown[]) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const { kind, id, strengthUnknown, strengthAtMostMg } = entry as Record<string, unknown>;
-    if ((kind !== 'product' && kind !== 'plant') || typeof id !== 'string' || id === '') continue;
-    const atMost =
-      typeof strengthAtMostMg === 'number' &&
-      Number.isFinite(strengthAtMostMg) &&
-      strengthAtMostMg > 0
-        ? strengthAtMostMg
-        : undefined;
-    if (products.some((p) => p.kind === kind && p.id === id && p.strengthAtMostMg === atMost)) {
-      continue;
-    }
-    products.push({
-      kind,
-      id,
-      ...(strengthUnknown === true ? { strengthUnknown: true as const } : {}),
-      ...(atMost === undefined ? {} : { strengthAtMostMg: atMost }),
-    });
-  }
-  return products;
-}
-
 /**
  * The history entry's state: the signs (strings only), the instruction and
  * the products of a danger, when given in this visit (an entry left before a
@@ -107,7 +72,7 @@ function openedWith(): Opened {
       ? [...new Set(signs.filter((s): s is string => typeof s === 'string'))]
       : [],
     instruction: instructionOf(instruction),
-    products: productsOf(products),
+    products: dangerProductsOf(products),
     productDanger: productDanger === true,
     epoch: typeof epoch === 'string' ? epoch : undefined,
     withoutCode: withoutCode === true,
@@ -289,7 +254,7 @@ export function Referral() {
           };
           const name = displayOf(pack, item.ref, lang, product.strengthUnknown === true).name;
           // A box whose dose is asked by a range says it, as on the result.
-          return keepUnits(bandedName(pack, item, name, lang, t));
+          return keepUnits(bandedName(pack, item, name, lang, t, product.doseAbove === true));
         });
   // A danger from a product, no sign ticked: never called a danger sign.
   const levelLabel =

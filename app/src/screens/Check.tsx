@@ -285,9 +285,11 @@ export function Check() {
       : displayOf(pack, item.ref, lang, item.strengthUnknown === true);
   // A box whose dose is asked by a range is named with it: "Aspirine (générique), plus de 100 mg".
   const namedOf = (item: CheckedItem): string =>
-    pack === null ? shownOf(item).name : bandedName(pack, item, shownOf(item).name, lang, t);
+    pack === null
+      ? shownOf(item).name
+      : bandedName(pack, item, shownOf(item).name, lang, t, check.aboveOf(item));
   const bandOf = (item: CheckedItem): string | undefined => {
-    const band = pack === null ? undefined : doseBandOf(pack, item);
+    const band = pack === null ? undefined : doseBandOf(pack, item, check.aboveOf(item));
     return band === undefined ? undefined : doseBandLine(t, band, lang);
   };
   // In a sentence of the app ("... est ajouté à la liste."), a name she typed is quoted.

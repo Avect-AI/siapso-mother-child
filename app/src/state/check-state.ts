@@ -105,6 +105,8 @@ export interface CheckState {
    * labelled "Vous avez dit", not "Vous avez écrit".
    */
   saidOf: (item: CheckedItem) => boolean;
+  /** Whether she answered "Plus de 100 mg" to the dose of a box listed with no range (generic aspirin). */
+  aboveOf: (item: CheckedItem) => boolean;
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
@@ -147,6 +149,11 @@ export interface AddOptions {
    * read another way (a dose range dropped for the more cautious reading).
    */
   replacing?: CheckedItem;
+  /**
+   * She answered "Plus de 100 mg" to the dose of this box (generic aspirin),
+   * said with its name; without it, a box written with no range says none.
+   */
+  above?: boolean;
 }
 
 /**
@@ -181,6 +188,8 @@ interface CheckData {
   declined: Readonly<Record<string, true>>;
   /** The items whose name the voice heard (written, or the unrecognised text), by refKey. */
   said: Readonly<Record<string, true>>;
+  /** The boxes listed with no range whose dose she answered "Plus de ...", by refKey. */
+  above: Readonly<Record<string, true>>;
   /** The unfinished lists of the other women of the visit, by profile id. */
   others: Readonly<Record<string, KeptList>>;
   /** The passer-by's answers, when the check is hers. */
@@ -188,7 +197,10 @@ interface CheckData {
 }
 
 /** A list waiting while another woman is looked at: its items and what was said about them. */
-type KeptList = Pick<CheckData, 'items' | 'lists' | 'families' | 'written' | 'declined' | 'said'>;
+type KeptList = Pick<
+  CheckData,
+  'items' | 'lists' | 'families' | 'written' | 'declined' | 'said' | 'above'
+>;
 
 type Action =
   | { type: 'start'; profileId: string }
@@ -216,6 +228,7 @@ const EMPTY: CheckData = {
   written: {},
   declined: {},
   said: {},
+  above: {},
   others: {},
   quick: null,
 };
@@ -235,8 +248,8 @@ function switched(state: CheckData, profileId: string, quick: Profile | null): C
   const left = state.profileId;
   let others = without(state.others, profileId);
   if (left !== null && state.quick?.id !== left && state.items.length > 0) {
-    const { items, lists, families, written, declined, said } = state;
-    others = { ...others, [left]: { items, lists, families, written, declined, said } };
+    const { items, lists, families, written, declined, said, above } = state;
+    others = { ...others, [left]: { items, lists, families, written, declined, said, above } };
   }
   const kept = quick === null ? state.others[profileId] : undefined;
   return { ...EMPTY, ...kept, profileId, quick, others };
@@ -314,7 +327,14 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
   // Heard or typed, as it was last confirmed.
   const said =
     options.said === true ? { ...base.said, [key]: true as const } : without(base.said, key);
-  const state = { ...base, lists, families, written, declined, said };
+  // "Plus de ..." goes with the box listed without a range, as it was last confirmed.
+  const plain =
+    item.ref.kind === 'product' &&
+    item.strengthAtMostMg === undefined &&
+    item.strengthUnknown !== true;
+  let above = base.above;
+  if (plain) above = options.above === true ? { ...above, [key]: true } : without(above, key);
+  const state = { ...base, lists, families, written, declined, said, above };
   const same = identity(item, families);
   const replacing = options.replacing;
   const replaced =
@@ -490,6 +510,7 @@ export function useCheckStore(): CheckState {
     written,
     declined,
     said,
+    above,
     others,
     quick,
   } = data;
@@ -508,6 +529,13 @@ export function useCheckStore(): CheckState {
     [declined],
   );
   const saidOf = useCallback((item: CheckedItem) => said[refKey(item.ref)] === true, [said]);
+  const aboveOf = useCallback(
+    (item: CheckedItem) =>
+      item.strengthAtMostMg === undefined &&
+      item.strengthUnknown !== true &&
+      above[refKey(item.ref)] === true,
+    [above],
+  );
   return useMemo(
     () => ({
       profileId,
@@ -531,6 +559,7 @@ export function useCheckStore(): CheckState {
       writtenOf,
       declinedOf,
       saidOf,
+      aboveOf,
       clearChanged,
       setSigns,
       clearSigns,
@@ -558,6 +587,7 @@ export function useCheckStore(): CheckState {
       writtenOf,
       declinedOf,
       saidOf,
+      aboveOf,
       clearChanged,
       setSigns,
       clearSigns,

@@ -264,6 +264,25 @@ describe('useCheckStore', () => {
     expect(other.current.items).toEqual([{ ...aspirin, strengthUnknown: true }, low]);
   });
 
+  it('remembers "Plus de 100 mg" only when she answered it, for the box listed without a range', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    act(() => {
+      result.current.add(aspirin, { above: true });
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(true);
+    // Another box with a range leaves it as it was answered.
+    act(() => {
+      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(true);
+    // The same box written again without that answer: no longer said.
+    act(() => {
+      result.current.add(aspirin);
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(false);
+  });
+
   it('puts an item in the place of the one it replaces, when she said it is the same box', () => {
     const { result } = renderHook(() => useCheckStore());
     const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
