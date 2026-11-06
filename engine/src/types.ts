@@ -237,6 +237,16 @@ export interface CheckedItem {
    * such strengths, the max-dose-not-computable note can apply.
    */
   strengthUnknown?: boolean;
+  /**
+   * The strength on the box is at most this many mg, as the user answered
+   * a dose question by a range ("100 mg ou moins" for a box the pack has
+   * no strength for, such as generic aspirin). A component of unknown
+   * strength (none in the pack, or strengthUnknown) is then read as at most
+   * this value: a strengthAboveMg rule at or above it does not apply, one
+   * below it still does. A strength the pack knows is read as it is, and a
+   * daily maximum still reads the strength as not known.
+   */
+  strengthAtMostMg?: number;
 }
 export interface EvaluationContext {
   pregnancy?: PregnancyContext;

@@ -133,8 +133,9 @@ function byRuleId(a: Reminder, b: Reminder): number {
 /**
  * Refuses values that would silently change a result: a baby age that is not
  * a finite number of at least 0, a unit count that is not a finite number
- * greater than 0 (NaN would make every comparison false), or a strengthUnknown
- * that is not a boolean.
+ * greater than 0 (NaN would make every comparison false), a strengthUnknown
+ * that is not a boolean, or a strengthAtMostMg that is not a finite number
+ * greater than 0 (a string would silently keep a threshold rule off).
  */
 function checkContextNumbers(context: EvaluationContext): void {
   const babyAgeWeeks = context.breastfeeding?.babyAgeWeeks;
@@ -155,6 +156,15 @@ function checkContextNumbers(context: EvaluationContext): void {
     if (unknown !== undefined && typeof unknown !== 'boolean') {
       throw new TypeError(
         `items[${String(index)}].strengthUnknown must be a boolean, not ${typeof unknown}`,
+      );
+    }
+    const atMost: unknown = item.strengthAtMostMg;
+    if (
+      atMost !== undefined &&
+      !(typeof atMost === 'number' && Number.isFinite(atMost) && atMost > 0)
+    ) {
+      throw new RangeError(
+        `items[${String(index)}].strengthAtMostMg must be a finite number greater than 0: ${typeof atMost === 'number' ? String(atMost) : typeof atMost}`,
       );
     }
   });

@@ -106,6 +106,8 @@ export const REQUEST_SCHEMA = {
               unitsPerDay: { type: 'number', exclusiveMinimum: 0, maximum: 1000 },
               longTerm: { type: 'boolean' },
               strengthUnknown: { type: 'boolean' },
+              // A dose answered by a range: at most this many mg (engine CheckedItem).
+              strengthAtMostMg: { type: 'number', exclusiveMinimum: 0, maximum: 100000 },
             },
           },
         },

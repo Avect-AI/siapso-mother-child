@@ -49,7 +49,9 @@ export function substanceMatches(pack: Pack, substanceId: string, subject: Subje
  *
  * With strengthAboveMg and a substance subject, the component must also be
  * stronger than that value; a component of unknown strength still matches,
- * and so does every component of an item whose strength the user does not know.
+ * and so does every component of an item whose strength the user does not know,
+ * unless the user said the strength is at most a value the rule does not
+ * exceed (CheckedItem.strengthAtMostMg).
  */
 export function itemMatches(
   pack: Pack,
@@ -63,8 +65,11 @@ export function itemMatches(
   const components = productOf(pack, item)?.components ?? [];
   return components.some((c) => {
     if (!substanceMatches(pack, c.substance, subject)) return false;
+    if (strengthAboveMg === undefined) return true;
     const strength = strengthOf(item, c);
-    return strengthAboveMg === undefined || strength === undefined || strength > strengthAboveMg;
+    if (strength !== undefined) return strength > strengthAboveMg;
+    const atMost = item.strengthAtMostMg;
+    return atMost === undefined || atMost > strengthAboveMg;
   });
 }
 

@@ -292,6 +292,10 @@ components:
                     type: boolean
                   strengthUnknown:
                     type: boolean
+                  strengthAtMostMg:
+                    type: number
+                    exclusiveMinimum: 0
+                    maximum: 100000
             signs:
               type: array
               maxItems: 64

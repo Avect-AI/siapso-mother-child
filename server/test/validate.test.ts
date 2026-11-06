@@ -15,6 +15,8 @@ function valid(): Record<string, unknown> {
         { ref: { kind: 'product', id: 'ibuprofen-400' }, unitsPerDay: 3, longTerm: false },
         { ref: { kind: 'plant', id: 'neem' }, strengthUnknown: true },
         { ref: { kind: 'unrecognised', text: 'a herbal tea' } },
+        // "100 mg ou moins": a dose answered by a range (generic aspirin).
+        { ref: { kind: 'product', id: 'aspirin-generic' }, strengthAtMostMg: 100 },
       ],
       signs: ['bleeding'],
     },
@@ -86,6 +88,9 @@ describe('validateRequest', () => {
       [['context', 'items', 0, 'ref', 'kind'], 'brand'],
       [['context', 'items', 0, 'ref', 'id'], 'Not An Id!'],
       [['context', 'items', 1, 'strengthUnknown'], 'yes'],
+      [['context', 'items', 3, 'strengthAtMostMg'], 0],
+      [['context', 'items', 3, 'strengthAtMostMg'], -100],
+      [['context', 'items', 3, 'strengthAtMostMg'], '100'],
       [['context', 'items'], new Array<unknown>(100).fill({ ref: { kind: 'plant', id: 'neem' } })],
       [['context', 'signs'], [12]],
     ];
