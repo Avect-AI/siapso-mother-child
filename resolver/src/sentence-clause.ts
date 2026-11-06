@@ -8,8 +8,19 @@
 // (sentence-words.ts), no language model.
 import { normalize } from './normalize.js';
 import {
+  AGO_TIME_WORDS,
   CLAUSE_JOIN_WORDS,
   CLAUSE_RESET_WORDS,
+  HEALTH_WORKER_WORDS,
+  IMPERSONAL_AFTER_IL,
+  LAST_WORDS,
+  PAST_STATE_WORDS,
+  PAST_TIME_WORDS,
+  PAST_WOLOF_WORDS,
+  PREVIOUS_WORDS,
+  SPEAKER_OBJECT_WORDS,
+  TELLING_WORDS,
+  THIRD_PERSON_WORDS,
   NEGATION_PARTICLES,
   NEGATION_WORDS,
   NEXT_NAME_NEGATION_WORDS,
@@ -26,7 +37,7 @@ import {
 } from './sentence-words.js';
 
 /** Why a product is maybe not taken by the speaker now. */
-export type ClauseReason = 'negation' | 'other-person' | 'past';
+export type ClauseReason = 'negation' | 'other-person' | 'past' | 'advice';
 
 /** A word of the sentence: normalised, and whether punctuation stands before it. */
 export interface ClauseWord {
@@ -70,8 +81,47 @@ const PART = normalize('part');
 const A = normalize('à');
 const DU = normalize('du');
 const ARTICLES = setOf(['le', 'la', 'les', 'l', 'un', 'une', 'de', 'd', 'du', 'des']);
+const LAST = setOf(LAST_WORDS);
+const PAST_TIMES = setOf(PAST_TIME_WORDS);
+const AGO_TIMES = setOf(AGO_TIME_WORDS);
+const PREVIOUS = setOf(PREVIOUS_WORDS);
+const PAST_STATES = setOf(PAST_STATE_WORDS);
+const PAST_WOLOF = setOf(PAST_WOLOF_WORDS);
+const PREGNANCY = setOf(['grossesse', 'grossesses']);
+const PREGNANT = normalize('enceinte');
+const THIRD_PERSON = setOf(THIRD_PERSON_WORDS);
+const IMPERSONAL = setOf(IMPERSONAL_AFTER_IL);
+const IL = normalize('il');
+const Y = normalize('y');
+const TELLING = setOf(TELLING_WORDS);
+const SPEAKER_OBJECT = setOf(SPEAKER_OBJECT_WORDS);
+const HEALTH_WORKERS = setOf(HEALTH_WORKER_WORDS);
+/** "il y a" and a time within this many words after it ("il y a trois mois"). */
+const AGO_WITHIN = 3;
 /** The reasons, the first one shown when a clause says several. */
-const REASONS: readonly ClauseReason[] = ['past', 'negation', 'other-person'];
+const REASONS: readonly ClauseReason[] = ['past', 'negation', 'other-person', 'advice'];
+
+/**
+ * A past said by a time at word `at`: "dernier" next to a time ("l'an
+ * dernier", "la dernière fois"), "il y a" and a time ("il y a trois mois"),
+ * "première" next to "grossesse", "étais" before "enceinte", Wolof "weesu"
+ * or "daaw".
+ */
+function pastTimeAt(words: readonly ClauseWord[], at: number): boolean {
+  const word = words[at]?.norm ?? '';
+  const before = words[at - 1]?.norm ?? '';
+  const next = words[at + 1]?.norm ?? '';
+  if (PAST_WOLOF.has(word)) return true;
+  if (LAST.has(word) && (PAST_TIMES.has(before) || PAST_TIMES.has(next))) return true;
+  if (PREVIOUS.has(word) && (PREGNANCY.has(before) || PREGNANCY.has(next))) return true;
+  if (PAST_STATES.has(word) && next === PREGNANT) return true;
+  if (word === IL && next === Y && words[at + 2]?.norm === A) {
+    for (let ahead = at + 3; ahead < at + 3 + AGO_WITHIN; ahead += 1) {
+      if (AGO_TIMES.has(words[ahead]?.norm ?? '')) return true;
+    }
+  }
+  return false;
+}
 
 /** A Wolof verb said in the negative: a verb of VERB_WORDS with a negative ending ("naanuma", "jëlul"). */
 function wolofNegative(word: string): boolean {
@@ -118,6 +168,10 @@ interface Clause {
   reasons: Set<ClauseReason>;
   /** A subject or a verb of its own. */
   own: boolean;
+  /** Another person is named in it ("ma mère", "sama doom"). */
+  person: boolean;
+  /** A third-person pronoun ("elle", "lui", "dafay") without the speaker named. */
+  pronoun: boolean;
   /** The first word shown with a product of this clause. */
   from: number;
 }
@@ -128,7 +182,7 @@ function reasonsOf(
   inName: readonly boolean[],
   first: number,
   last: number,
-): { reasons: Set<ClauseReason>; own: boolean } {
+): { reasons: Set<ClauseReason>; own: boolean; person: boolean; pronoun: boolean } {
   const reasons = new Set<ClauseReason>();
   let own = false;
   let particle = false;
@@ -136,11 +190,20 @@ function reasonsOf(
   let negated = false;
   let otherPerson = false;
   let speaker = false;
+  let pronoun = false;
+  let telling = false;
+  let toSpeaker = false;
+  let healthWorker = false;
   for (let at = first; at <= last; at += 1) {
     const word = words[at]?.norm;
     if (word === undefined || inName[at] === true) continue;
     const next = words[at + 1]?.norm ?? '';
     if (SUBJECTS.has(word) || VERBS.has(word)) own = true;
+    if (pastTimeAt(words, at)) reasons.add('past');
+    if (THIRD_PERSON.has(word) && !(word === IL && IMPERSONAL.has(next))) pronoun = true;
+    if (TELLING.has(word)) telling = true;
+    if (HEALTH_WORKERS.has(word)) healthWorker = true;
+    if (SPEAKER_OBJECT.has(word) && !personAfter(words, at)) toSpeaker = true;
     if (
       NEGATIONS.has(word) ||
       wolofNegative(word) ||
@@ -160,7 +223,9 @@ function reasonsOf(
   // "je ne prends que du fer" is "only", not a negation.
   if (negated || (particle && !restrictive)) reasons.add('negation');
   if (otherPerson && !speaker) reasons.add('other-person');
-  return { reasons, own };
+  // Someone told her of it ("ma voisine m'a parlé du cytotec"), not a health worker.
+  if (telling && toSpeaker && !healthWorker) reasons.add('advice');
+  return { reasons, own, person: otherPerson, pronoun: pronoun && !speaker };
 }
 
 /** The first word of a clause shown: without the word that starts it ("mais", "et"). */
@@ -201,9 +266,11 @@ export function clauseMarks(
     for (let at = first; at <= last; at += 1) inName[at] = true;
   }
   const clauses: Clause[] = [];
+  // Where the last other person was named ("c'est pour ma mère"), shown from there.
+  let personFrom: number | undefined;
   const close = (first: number, last: number, start: 'reset' | 'join') => {
-    const { reasons, own } = reasonsOf(words, inName, first, last);
-    const clause: Clause = { first, last, reasons, own, from: first };
+    const { reasons, own, person, pronoun } = reasonsOf(words, inName, first, last);
+    const clause: Clause = { first, last, reasons, own, person, pronoun, from: first };
     clause.from = shownFrom(words, inName, clause);
     const before = clauses.at(-1);
     // Words with no subject or verb of their own go on from the clause before.
@@ -212,6 +279,13 @@ export function clauseMarks(
       if (reasons.size === 0) clause.from = before.from;
       for (const reason of before.reasons) clause.reasons.add(reason);
     }
+    // Round 2 of the review of #68: a pronoun for the person named before
+    // ("..., elle prend", "..., je lui donne", "..., dafay naan").
+    if (!person && pronoun && personFrom !== undefined && !clause.reasons.has('other-person')) {
+      if (clause.reasons.size === 0) clause.from = personFrom;
+      clause.reasons.add('other-person');
+    }
+    if (person) personFrom = clause.from;
     clauses.push(clause);
   };
   let first = 0;

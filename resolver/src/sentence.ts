@@ -538,22 +538,40 @@ const ALTERNATIVE_PREFIX = 3;
 const ALTERNATIVE_MIN_LENGTH = 6;
 
 /**
+ * Whether the rest of a longer name, after the sounds it shares with the name
+ * heard, sounds like the next word said, letter for letter at one place at
+ * least ("kin|kélipa" and "k" of "qu'il"; not "fer|tifol" and "il").
+ */
+function restSoundsLike(key: string, nameKey: string, nextKey: string): boolean {
+  let shared = 0;
+  while (shared < key.length && key[shared] === nameKey[shared]) shared += 1;
+  const rest = key.slice(shared);
+  for (let at = 0; at < Math.min(rest.length, nextKey.length); at += 1) {
+    if (rest[at] === nextKey[at]) return true;
+  }
+  return false;
+}
+
+/**
  * The longer whole name the words heard may be, when a name was heard right
  * before another clause ("quinine qu'il y va" for kinkéliba): a name whose
  * sounds start as the name heard does, with at most half its sounds apart
- * from the words heard joined; the closest one, or undefined.
+ * from the words heard joined, and whose rest sounds like the next word said
+ * (round 2 of the review of #68: "fer il y a un" is not FERTIFOL); the
+ * closest one, or undefined.
  */
 function longerNameSoundingLike(
   index: ResolverIndex,
   nameKey: string,
   heardKey: string,
+  nextKey: string,
 ): string | undefined {
   const start = nameKey.slice(0, ALTERNATIVE_PREFIX);
   let closest: { name: string; distance: number } | undefined;
   for (const names of nameKeys(index).values()) {
     for (const { key, name } of names) {
       if (key.length < ALTERNATIVE_MIN_LENGTH || key.length <= nameKey.length) continue;
-      if (!key.startsWith(start)) continue;
+      if (!key.startsWith(start) || !restSoundsLike(key, nameKey, nextKey)) continue;
       const distance = damerauLevenshtein(heardKey, key);
       if (distance > Math.floor(key.length / 2)) continue;
       if (closest === undefined || distance < closest.distance) closest = { name, distance };
@@ -770,7 +788,8 @@ export function productsInSentence(
         .join('')
         .replaceAll('y', 'i'),
     );
-    const longer = longerNameSoundingLike(index, phoneticKey(last.norm), heardKey);
+    const nextKey = phoneticKey((tokens[reading.span.last + 1]?.norm ?? '').replaceAll('y', 'i'));
+    const longer = longerNameSoundingLike(index, phoneticKey(last.norm), heardKey, nextKey);
     const alternative = longer === undefined ? undefined : best(longer);
     if (alternative === undefined || alternative.family === candidate.family) continue;
     const heardAs = sentence.slice(first.start, clauseEnd);

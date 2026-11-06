@@ -232,6 +232,14 @@ const index = buildIndex([
     { family: 'substances:misoprostol', priority: 2, substances: ['misoprostol'] },
   ),
   product(
+    'fertifol',
+    [
+      { text: 'FERTIFOL 400 microgrammes, comprimé', lang: 'fr' },
+      { text: 'FERTIFOL', lang: 'brand' },
+    ],
+    { family: 'brand:fertifol', substances: ['folic-acid'] },
+  ),
+  product(
     'laroscorbine-sans-sucre',
     [
       { text: 'LAROSCORBINE 500 mg SANS SUCRE, comprimé à croquer', lang: 'fr' },
@@ -516,6 +524,14 @@ describe('productsInSentence: the words of a name the voice split', () => {
     ).toHaveLength(1);
   });
 
+  // Round 2 of the review of #68: "fer il y a un" offered FERTIFOL. The rest
+  // of the longer name must sound, letter for letter, like the next word said
+  // ("kin|kéliba" and "qu'il": k), else it is not offered.
+  it('offers a longer name only when its rest sounds like the next word said', () => {
+    const found = productsInSentence(index, "j'ai arrêté le fer il y a un mois", { heard: true });
+    expect(found.map((product) => product.candidate.family)).toEqual(['substances:iron']);
+  });
+
   // A FLEURS transcript: "l'invérée" sounds 1 letter off INOFER, but read as
   // "inver" it has 5 sounds only, too few to be one letter off a name.
   it('never reads words joined of fewer than 6 sounds as a name one letter off', () => {
@@ -671,6 +687,107 @@ describe('productsInSentence: products named but maybe not taken', () => {
     expect(read('mon mari prend du doliprane et moi je prends du doliprane aussi')).toEqual([
       ['brand:dolipran', true, undefined, undefined],
     ]);
+  });
+
+  // Round 2 of the review of #68: the person named before, then a pronoun.
+  it('carries a person named before to a clause that speaks of her or him', () => {
+    expect(read('c’est pour ma tante, elle prend du coartem')).toEqual([
+      [
+        'substances:artemether+lumefantrine',
+        false,
+        'other-person',
+        'c’est pour ma tante, elle prend du coartem',
+      ],
+    ]);
+    for (const sentence of [
+      'mon frère a mal, je lui donne du doliprane',
+      'mon mari a le palu. il prend de la nivaquine',
+      'sama doom dafa feebar, dafay naan nebeday',
+      'sama jëkkër dafa tawat, mu ngi naan coartem',
+    ]) {
+      expect(
+        read(sentence).map((found) => found.slice(1, 3)),
+        sentence,
+      ).toEqual([[false, 'other-person']]);
+    }
+    // She is named in the clause after the person: that one is hers.
+    expect(
+      read('mon mari a le palu, il prend de la nivaquine et moi du doliprane').map(
+        (found) => found[1],
+      ),
+    ).toEqual([false, true]);
+  });
+
+  it('carries no person without a pronoun for her or him, nor a pronoun alone', () => {
+    expect(read('ma mère est malade, je prends du doliprane').map((found) => found[1])).toEqual([
+      true,
+    ]);
+    expect(read('elle prend du coartem').map((found) => found[1])).toEqual([true]);
+    expect(read('dafa am feebar, mu naan nivaquine').map((found) => found[1])).toEqual([true]);
+    // "il y a" and "il faut" speak of nobody.
+    expect(read('ma soeur est là, il faut du doliprane').map((found) => found[1])).toEqual([true]);
+    // Given to her by that person: hers.
+    expect(read('sama yaay dafa sonn, dafa ma jox nebeday').map((found) => found[1])).toEqual([
+      true,
+    ]);
+  });
+
+  it('unticks a product another person only told her of or advised', () => {
+    for (const sentence of [
+      'ma cousine m’a parlé du moringa',
+      'on m’a conseillé le kinkéliba',
+      'le marabout m’a dit de boire du nebeday',
+      'sama xarit wax na ma ci coartem',
+      'sama yaay digal na ma kinkéliba',
+    ]) {
+      expect(
+        read(sentence).map((found) => found.slice(1, 3)),
+        sentence,
+      ).toEqual([[false, 'advice']]);
+    }
+    // A health worker's advice is a prescription; a product given is hers.
+    for (const sentence of [
+      'le docteur m’a dit de prendre du doliprane',
+      'la sage-femme m’a conseillé du fer',
+      'doktoor bi wax na ma ma naan nivaquine',
+      'ma voisine m’a donné du doliprane',
+    ]) {
+      expect(
+        read(sentence).map((found) => found[1]),
+        sentence,
+      ).toEqual([true]);
+    }
+  });
+
+  it('unticks a product taken before, said by a time', () => {
+    for (const sentence of [
+      'l’an dernier j’ai pris de la nivaquine',
+      'le mois dernier on m’a donné du coartem',
+      'il y a trois mois j’ai pris du coartem',
+      'il y a longtemps j’ai pris du cytotec',
+      'la dernière fois j’ai pris du coartem',
+      'pendant ma première grossesse on m’a donné du fer',
+      'lors de ma dernière grossesse on m’a donné la SP',
+      'quand j’étais enceinte de ma fille j’ai pris de la nivaquine',
+      'at bu weesu dama jël nivaquine',
+      'daaw dama naan nebeday',
+    ]) {
+      expect(
+        read(sentence).map((found) => found.slice(1, 3)),
+        sentence,
+      ).toEqual([[false, 'past']]);
+    }
+    // A time of a few days, or yesterday, is a use now.
+    for (const sentence of [
+      'il y a deux jours j’ai pris du doliprane',
+      'hier j’ai pris du coartem',
+      'le dernier comprimé de doliprane',
+    ]) {
+      expect(
+        read(sentence).map((found) => found[1]),
+        sentence,
+      ).toEqual([true]);
+    }
   });
 });
 

@@ -111,6 +111,28 @@ describe('the products named but maybe not taken', () => {
       ['artemether-lumefantrine-generic', true, undefined],
     ]);
   });
+
+  // Round 2 of the review of #68.
+  it('unticks a product of the person named before, told of by another, or of a past time', () => {
+    for (const sentence of [
+      "c'est pour mon oncle, il boit du kinkéliba",
+      "ma copine m'a parlé de l'advil",
+      "il y a six mois j'ai pris de l'amoxicilline",
+    ]) {
+      expect(
+        read(sentence).map((found) => found[1]),
+        sentence,
+      ).toEqual([false]);
+    }
+  });
+
+  it('never offers FERTIFOL for "fer" heard before "il y a"', () => {
+    expect(
+      productsInSentence(index, "j'ai arrêté le fer il y a un mois", { heard: true }).map(
+        (found) => found.candidate.id,
+      ),
+    ).toEqual(['iron-generic']);
+  });
 });
 
 describe('the sentences of the team feedback', () => {

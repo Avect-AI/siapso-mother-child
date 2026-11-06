@@ -735,6 +735,113 @@ export const PAST_WORDS: readonly string[] = [
   'woon',
 ];
 
+// Round 2 of the review of #68.
+
+/**
+ * A past said by a time: "l'an dernier", "le mois dernier", "la dernière
+ * fois", "ma dernière grossesse" (a word of LAST_WORDS next to one of
+ * PAST_TIME_WORDS), "il y a trois mois", "il y a longtemps" ("il y a" and a
+ * word of AGO_TIME_WORDS within three words: days and hours are a use now),
+ * "ma première grossesse" (PREVIOUS_WORDS next to "grossesse"), "quand
+ * j'étais enceinte", and Wolof "at bu weesu", "weer bu weesu" (gone by),
+ * "daaw" (last year). "hier" and "démb" (yesterday) say a use now.
+ */
+export const LAST_WORDS: readonly string[] = ['dernier', 'dernière', 'derniers', 'dernières'];
+export const PAST_TIME_WORDS: readonly string[] = [
+  'an',
+  'ans',
+  'année',
+  'années',
+  'mois',
+  'semaine',
+  'semaines',
+  'fois',
+  'grossesse',
+  'grossesses',
+];
+export const AGO_TIME_WORDS: readonly string[] = [
+  'an',
+  'ans',
+  'année',
+  'années',
+  'mois',
+  'semaine',
+  'semaines',
+  'longtemps',
+];
+export const PREVIOUS_WORDS: readonly string[] = [
+  'premier',
+  'première',
+  'autre',
+  'précédent',
+  'précédente',
+];
+export const PAST_STATE_WORDS: readonly string[] = ['étais', 'était'];
+export const PAST_WOLOF_WORDS: readonly string[] = ['weesu', 'daaw'];
+
+/**
+ * Third-person pronouns: in a clause after a person was named ("c'est pour ma
+ * mère, elle prend ...", "sama doom dafa feebar, dafay naan ..."), the
+ * product is that person's. "il" before "y" or "faut" names nobody.
+ */
+export const THIRD_PERSON_WORDS: readonly string[] = [
+  'il',
+  'elle',
+  'ils',
+  'elles',
+  'lui',
+  'leur',
+  'dafa',
+  'dafay',
+  'mu',
+  'muy',
+  'moo',
+  'mooy',
+];
+export const IMPERSONAL_AFTER_IL: readonly string[] = ['y', 'faut', 'fallait', 'faudra'];
+
+/**
+ * Verbs of telling and advising: with the speaker as object ("m'a parlé de",
+ * "m'a conseillé", "m'a dit de prendre", "wax na ma", "digal na ma"), someone
+ * told her of the product, which says nothing of her taking it; unless a
+ * health worker (HEALTH_WORKER_WORDS) said it, which is a prescription.
+ */
+export const TELLING_WORDS: readonly string[] = [
+  'parlé',
+  'parle',
+  'parler',
+  'conseillé',
+  'conseillée',
+  'conseille',
+  'conseiller',
+  'recommandé',
+  'recommandée',
+  'recommande',
+  'dit',
+  'disait',
+  'suggéré',
+  'proposé',
+  'wax',
+  'digal',
+];
+/** The speaker as the object of a verb: French me, m', Wolof ma. */
+export const SPEAKER_OBJECT_WORDS: readonly string[] = ['me', 'm', 'ma'];
+export const HEALTH_WORKER_WORDS: readonly string[] = [
+  'médecin',
+  'docteur',
+  'doktoor',
+  'sage',
+  'infirmier',
+  'infirmière',
+  'pharmacien',
+  'pharmacienne',
+  'hôpital',
+  'dispensaire',
+  'lopitaan',
+  'santé',
+  'ordonnance',
+];
+
 /** French and Wolof possessives: "mon mari", "sama jëkkër". */
 export const POSSESSIVE_WORDS: readonly string[] = [
   'mon',
