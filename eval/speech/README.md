@@ -7,7 +7,7 @@ How well does the app understand a spoken medicine or remedy name in French or W
 ## Status
 
 - Baseline on FLEURS (read general sentences, not product names): measured, see `results/`.
-- Products named inside a sentence (SCRUM-61): measured on a tuning set of 256 written sentences (`sentences.yaml`, `pnpm eval:sentences`, below), on a held-out set of 150 written sentences never tuned on (`sentences-heldout.yaml`, `pnpm eval:sentences:heldout`), and checked by ear on 80 synthetic clips (22 sentences said by 3 Windows voices, and 14 more).
+- Products named inside a sentence (SCRUM-61): measured on a tuning set of 256 written sentences (`sentences.yaml`, `pnpm eval:sentences`, below), on a first held-out set of 150 written sentences, now used (`sentences-heldout.yaml`, `pnpm eval:sentences:heldout`), on a second held-out set of 68 never tuned on (`sentences-heldout-2.yaml`, `pnpm eval:sentences:heldout-2`), and checked by ear on 80 synthetic clips (22 sentences said by 3 Windows voices, and 14 more).
 - Name accuracy after the resolver (top-1, top-3) on product and remedy names: **pending recordings**. No volunteer recording exists yet; the manifest is empty. The FLEURS figures say little about names, and the Wolof one may be optimistic (the fine-tune's training data lists FLEURS Wolof).
 
 ## Run it
@@ -72,13 +72,13 @@ These are tuning-set figures: the sentences were written by the developer who wr
 
 Before the review (foods ticked): recall 0.980 overall, 0.968 at the lowest language, the same precision. Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word).
 
-### Held-out set (review of #68)
+### Held-out set 1 (review of #68), now used
 
-`sentences-heldout.yaml`: 150 sentences (74 French, 56 Wolof, 20 mixed) written and committed before the rules for products not taken, and never tuned on: they are measured once, with `pnpm eval:sentences:heldout`, which reports and sets no bar. Each has a `case`: `affirmative`, `negation`, `other-person` (taken by or given to another person), `past` (taken before and stopped), `food`, `list` (several products) or `question`. `expect` holds the products the speaker takes or asks about, and `notTaken` the products named but not taken: one of them ticked is a false product (it counts in the precision), offered unticked is right. Five of the 150 are the sentences of the review, which the unit tests also check.
+`sentences-heldout.yaml`: 150 sentences (74 French, 56 Wolof, 20 mixed) written and committed before the rules for products not taken, and measured once, with `pnpm eval:sentences:heldout`, which reports and sets no bar. Its misses then led to the rules of round 2 of the review (another person named before, advice, a past said by a time, the "Ou peut-être" letter check): it is now a used set, no longer a held-out measure; held-out set 2 (below) is. Each has a `case`: `affirmative`, `negation`, `other-person` (taken by or given to another person), `past` (taken before and stopped), `food`, `list` (several products) or `question`. `expect` holds the products the speaker takes or asks about, and `notTaken` the products named but not taken: one of them ticked is a false product (it counts in the precision), offered unticked is right. Five of the 150 are the sentences of the review, which the unit tests also check.
 
-Measured once on 2026-11-06, as they came:
+Measured once on 2026-11-06, before round 2, as they came:
 
-| Held-out     | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered | Not taken: ticked / unticked / named |
+| Held-out 1   | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered | Not taken: ticked / unticked / named |
 | ------------ | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: | -----------------------------------: |
 | fr           |        74 |    57 |    50 |     4 |      7 |     0.926 |           0.877 |   1.000 |                          4 / 27 / 31 |
 | wo           |        56 |    43 |    38 |     0 |      5 |     1.000 |           0.884 |   1.000 |                          0 / 22 / 22 |
@@ -92,7 +92,28 @@ Measured once on 2026-11-06, as they came:
 | list         |        17 |    40 |    38 |     0 |      2 |     1.000 |           0.950 |   1.000 |                            0 / 0 / 0 |
 | question     |        16 |    18 |    18 |     0 |      0 |     1.000 |           1.000 |   1.000 |                            0 / 0 / 0 |
 
-Without the five sentences of the review: precision 0.950 (95 right, 5 false), recall 0.848, not taken 5 ticked of 57. The five false products are products not taken that came ticked: another person the rules do not see ("la voisine m'a parlé du cytotec", where "m'" reads as given to her; "c'est pour ma mère, elle prend du kardégic" and "sama doom dafa am sibiru, je lui donne de la nivaquine", where the person is in the clause before, and the next clause has a subject of its own), and a past use said with a date only ("l'année dernière on m'a donné de la quinine", "il y a deux ans j'ai pris du cytotec"). Every negation came unticked. The foods are offered unticked as designed (one, "kola", is not found at all, and "neem" comes unticked as a common word). One wrong offer to confirm: "j'ai arrêté le fer il y a un mois" offers FERTIFOL as "Ou peut-être", unticked, as the clause guard reads "fer il y a un" as a longer name. Not fixed: the set is not tuned on; these are the next rules to write, with sentences of their own.
+Without the five sentences of the review: precision 0.950 (95 right, 5 false), recall 0.848, not taken 5 ticked of 57. The five false products are products not taken that came ticked: another person the rules do not see ("la voisine m'a parlé du cytotec", where "m'" reads as given to her; "c'est pour ma mère, elle prend du kardégic" and "sama doom dafa am sibiru, je lui donne de la nivaquine", where the person is in the clause before, and the next clause has a subject of its own), and a past use said with a date only ("l'année dernière on m'a donné de la quinine", "il y a deux ans j'ai pris du cytotec"). Every negation came unticked. The foods are offered unticked as designed (one, "kola", is not found at all, and "neem" comes unticked as a common word). One wrong offer to confirm: "j'ai arrêté le fer il y a un mois" offers FERTIFOL as "Ou peut-être", unticked, as the clause guard reads "fer il y a un" as a longer name. These were the next rules to write, with sentences of their own (held-out set 2).
+
+After round 2 (a used set now, so an optimistic figure): precision 1.000, recall (ticked) 0.853, offered 0.991, 0 of the 63 products not taken ticked (other person 0 of 19, past 0 of 18), no FERTIFOL; still missed "sans paracétamol je n'arrive pas à dormir" (offered unticked) and "dama naan neem ak kola".
+
+### Held-out set 2 (round 2 of the review of #68)
+
+`sentences-heldout-2.yaml`: 68 sentences (43 French, 20 Wolof, 5 mixed) written and committed before the rules of round 2, without reading again the sentences held-out set 1 failed on, and never tuned on: another person named before, then a pronoun (`other-person`, 18), someone else who told her of a product, advised it or prescribed it (`advice`, 12: a neighbour, a friend, a relative or a healer only talks of it, not taken; a health worker prescribes it, taken), a past said by a time (`past`, 14), and sentences taken now (`affirmative`, 24, some with a time: "il y a deux jours", "hier soir", "démb"). `pnpm eval:sentences:heldout-2` reports it with no bar.
+
+Measured once on 2026-11-06, after the rules of round 2, as it came:
+
+| Held-out 2   | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered | Not taken: ticked / unticked / named |
+| ------------ | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: | -----------------------------------: |
+| fr           |        43 |    21 |    19 |     2 |      2 |     0.905 |           0.905 |   1.000 |                          2 / 22 / 24 |
+| wo           |        20 |    10 |    10 |     2 |      0 |     0.833 |           1.000 |   1.000 |                           2 / 9 / 11 |
+| mix          |         5 |     4 |     3 |     0 |      1 |     1.000 |           0.750 |   1.000 |                            0 / 2 / 2 |
+| overall      |        68 |    35 |    32 |     4 |      3 |     0.889 |           0.914 |   1.000 |                          4 / 33 / 37 |
+| affirmative  |        24 |    27 |    24 |     0 |      3 |     1.000 |           0.889 |   1.000 |                            0 / 0 / 0 |
+| other-person |        18 |     3 |     3 |     2 |      0 |     0.600 |           1.000 |   1.000 |                          2 / 14 / 16 |
+| past         |        14 |     0 |     0 |     2 |      0 |     0.000 |           1.000 |   1.000 |                          2 / 12 / 14 |
+| advice       |        12 |     5 |     5 |     0 |      0 |     1.000 |           1.000 |   1.000 |                            0 / 7 / 7 |
+
+The four false products are products not taken that came ticked: another person named by a first name only ("Awa est malade, elle prend du coartem", "Fatou dafa feebar, dafay naan doliprane"), a time the lists do not hold ("l'année passée"), and a past said in the clause before a clause with a subject of its own ("bi ma ëmbee woon sama taaw, dama naan nebeday"). Every product told of or advised by someone else came unticked, and every one prescribed by a health worker ticked. Missed (offered unticked): "depuis la semaine dernière je prends du fer" (a use since then, read as past), "j'ai commencé la nivaquine avec mon mari" (read as his), and the bissap of "je bois bissap ak kinkéliba" (a food, by design). Not fixed: the set is not tuned on.
 
 ### Audio check (2026-11-06)
 
