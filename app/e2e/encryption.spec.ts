@@ -149,12 +149,15 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   // Nothing of them is readable anywhere in storage.
   const dump = await dumpStorage(page);
   const everything = JSON.stringify(dump);
-  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT, old.givenOn, old.lmp]) {
+  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT]) {
     expect(everything, clear).not.toContain(clear);
   }
-  // Their situations and terms either, outside the knowledge pack (which names every situation).
+  // Their situations, terms and dates either, outside the knowledge pack (which
+  // names every situation, and dates its sources: one may be the day of her term).
   const theirs = JSON.stringify([personal(dump), dump.local, dump.session]);
   for (const clear of [
+    old.givenOn,
+    old.lmp,
     'hiv-cotrimoxazole',
     'sickle-cell',
     '"weeks"',
