@@ -104,7 +104,12 @@ export interface OcrPackInfo {
  * - `not-image`: the file is neither a photo nor a PDF;
  * - `too-large`: the file is too big for this phone (bytes or pixels);
  * - `pdf-password`: the PDF is protected by a password;
- * - `pdf-damaged`: the PDF cannot be opened.
+ * - `pdf-damaged`: the PDF cannot be opened;
+ * - `pdf-unsupported`: this PDF cannot be read safely here: the size of one
+ *   of its images cannot be read from the file (given by an object in an
+ *   object stream, JPEG data behind another filter), or the file takes too
+ *   long to check. Not `too-large`, which it may not be: the screen asks for
+ *   a photo of the paper for both.
  */
 export type OcrErrorReason =
   | 'unavailable'
@@ -118,7 +123,8 @@ export type OcrErrorReason =
   | 'not-image'
   | 'too-large'
   | 'pdf-password'
-  | 'pdf-damaged';
+  | 'pdf-damaged'
+  | 'pdf-unsupported';
 
 export class OcrPackError extends Error {
   readonly reason: OcrErrorReason;

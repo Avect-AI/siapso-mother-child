@@ -331,8 +331,9 @@ async function needsOcr(
  * three pages: the text layer of a typed page; the OCR for a page with no
  * text, no line like a product, or a large image, merged with its text layer
  * (mergeLines). Rejects with OcrPackError `pdf-password`, `pdf-damaged`,
- * `too-large` (an image of more than MAX_PDF_IMAGE_PIXELS, which pdf.js
- * leaves out: a page would be missing) or `cancelled`.
+ * `too-large` (an image or a mask of more than MAX_PDF_IMAGE_PIXELS),
+ * `pdf-unsupported` (an image size that cannot be read from the file, see
+ * pdf-images.ts) or `cancelled`.
  */
 export async function readPdf(
   pdfjs: PdfjsLike,
@@ -343,9 +344,15 @@ export async function readPdf(
   stopIfCancelled(signal);
   // First, from the file's bytes: pdf.js checks maxImageSize against the
   // painted image only, not its masks nor the size of JPEG data.
-  const oversized = oversizedImage(bytes, MAX_PDF_IMAGE_PIXELS);
-  if (oversized !== null) {
-    throw new OcrPackError('too-large', `The PDF is too large for this phone: ${oversized}.`);
+  const refused = oversizedImage(bytes, MAX_PDF_IMAGE_PIXELS);
+  if (refused?.reason === 'too-large') {
+    throw new OcrPackError('too-large', `The PDF is too large for this phone: ${refused.why}.`);
+  }
+  if (refused !== null) {
+    throw new OcrPackError(
+      'pdf-unsupported',
+      `This PDF cannot be read safely here: ${refused.why}.`,
+    );
   }
   let leftOut = false;
   const stopIfLeftOut = () => {

@@ -417,11 +417,24 @@ describe('readPdf: masks and image data larger than their image', () => {
       ]);
     await expect(read(sized('6000'))).rejects.toMatchObject({ reason: 'too-large' });
     expect((await read(sized('10'))).lines).toEqual(['read']);
-    // An object that is not in the file as such (in an object stream, or missing): refused.
-    const unreadable = makePdf([{ image: small('/SMask @0 0 R') }], undefined, [
+    // An object that is not in the file as such (missing, or in an object
+    // stream): refused, but not as too large, which it may not be.
+    const missing = makePdf([{ image: small('/SMask @0 0 R') }], undefined, [
       { ...softMask(1, 4000), dict: softMask(1, 4000).dict.replace('/Width 1', '/Width 999 0 R') },
     ]);
-    await expect(read(unreadable)).rejects.toMatchObject({ reason: 'too-large' });
+    await expect(read(missing)).rejects.toMatchObject({ reason: 'pdf-unsupported' });
+    // Object 12 in a compressed object stream, as PDF 1.5 writers put small objects.
+    const inObjectStream = makePdf([{ image: small('/SMask @0 0 R') }], undefined, [
+      { ...softMask(1, 4000), dict: softMask(1, 4000).dict.replace('/Width 1', '/Width 12 0 R') },
+      {
+        dict: '/Type /ObjStm /N 1 /First 5 /Filter /FlateDecode',
+        data: new Uint8Array(deflateSync(new TextEncoder().encode('12 0 6000'))),
+      },
+    ]);
+    await expect(read(inObjectStream)).rejects.toMatchObject({
+      reason: 'pdf-unsupported',
+      message: expect.stringMatching(/cannot be read safely here/) as string,
+    });
   });
 
   it('reads names written with escapes and no spaces, and a mask with no /Subtype', async () => {
@@ -461,12 +474,20 @@ describe('readPdf: masks and image data larger than their image', () => {
       data: jpeg,
     };
     await expect(read(makePdf([{ image: dct }]))).rejects.toMatchObject({ reason: 'too-large' });
-    // Compressed again before the JPEG decoder: its size cannot be read from the file.
-    const hidden = {
-      dict: '/Width 10 /Height 10 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/FlateDecode /DCTDecode]',
-      data: new Uint8Array(deflateSync(jpeg)),
-    };
-    await expect(read(makePdf([{ image: hidden }]))).rejects.toMatchObject({ reason: 'too-large' });
+    // Behind another filter: its size cannot be read from the file, so the
+    // PDF is not one to read safely here (not too large: it may not be).
+    for (const [filters, data] of [
+      ['[/FlateDecode /DCTDecode]', new Uint8Array(deflateSync(jpeg))],
+      ['[/ASCII85Decode /DCTDecode]', jpeg],
+    ] as const) {
+      const hidden = {
+        dict: `/Width 10 /Height 10 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter ${filters}`,
+        data,
+      };
+      await expect(read(makePdf([{ image: hidden }])), filters).rejects.toMatchObject({
+        reason: 'pdf-unsupported',
+      });
+    }
   });
 
   it('leaves inline images to pdf.js, which applies its limit to them and to inline masks', async () => {

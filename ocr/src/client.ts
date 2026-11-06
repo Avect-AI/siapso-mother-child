@@ -62,7 +62,7 @@ export interface OcrClient {
    * (an ImageBitmap, transferred: the page keeps no copy). One reading at a
    * time, in order. Rejects with OcrPackError: `unavailable` (pack not
    * installed; no worker is started and nothing is requested), `not-image`,
-   * `too-large`, `pdf-password`, `pdf-damaged`, `load`, `read`, `timeout`,
+   * `too-large`, `pdf-password`, `pdf-damaged`, `pdf-unsupported`, `load`, `read`, `timeout`,
    * `cancelled`.
    */
   read(input: Blob | ImageBitmap, options?: OcrReadOptions): Promise<OcrReading>;
