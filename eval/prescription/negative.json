@@ -1,0 +1,90 @@
+[
+  {
+    "lines": ["Pharmacie Guigon"],
+    "why": "A pharmacy stamp: never DOXYCYCLINE PHARMACIE CENTRALE DES ARMEES."
+  },
+  {
+    "lines": ["PHARMACIE DU POINT E"],
+    "why": "A pharmacy and a district of Dakar."
+  },
+  {
+    "lines": ["Visa du pharmacien"],
+    "why": "The pharmacist's stamp line."
+  },
+  {
+    "lines": ["Pédiatre"],
+    "why": "A prescriber's title: never EFFERALGAN PEDIATRIQUE."
+  },
+  {
+    "lines": ["SENEGA1"],
+    "why": "The national header as the OCR reads it: never Guiera senegalensis."
+  },
+  {
+    "lines": ["REPUBLIOUE DU SENEGA1"],
+    "why": "The national header with two misread letters."
+  },
+  {
+    "lines": ["Dutrict sanitaire de Koumpentoum"],
+    "why": "A header word with a slip (PaddleOCR, development set)."
+  },
+  {
+    "lines": ["Dakar, le 06/11/2026"],
+    "why": "A place and a date: never tamarind (dakhar)."
+  },
+  {
+    "lines": ["Thiès, le 3 novembre 2026"],
+    "why": "A place and a date with its month."
+  },
+  {
+    "lines": ["BP 5035 Dakar Fann"],
+    "why": "A postal address."
+  },
+  {
+    "lines": ["Hôpital régional de Thiès"],
+    "why": "A hospital header."
+  },
+  {
+    "lines": ["Polyclinique de la Médina"],
+    "why": "A clinic header and a district of Dakar."
+  },
+  {
+    "lines": ["Service de gynécologie-obstétrique"],
+    "why": "A hospital service."
+  },
+  {
+    "lines": ["Dr Awa Ndiaye, médecin"],
+    "why": "A prescriber line."
+  },
+  {
+    "lines": ["Mme Ndèye Gueye, sage-femme"],
+    "why": "A midwife line, hyphen and all."
+  },
+  {
+    "lines": ["06 novembre 2026"],
+    "why": "A date alone."
+  },
+  {
+    "lines": ["12 Rue Carnot"],
+    "why": "An address that starts with a number."
+  },
+  {
+    "lines": ["25 ans, Mme Fatou Diop"],
+    "why": "The age and name of the patient."
+  },
+  {
+    "lines": ["1. Dr Diop Pédiatre"],
+    "why": "A numbered prescriber line."
+  },
+  {
+    "lines": ["2. Mlle Awa Sow"],
+    "why": "A numbered patient line."
+  },
+  {
+    "lines": ["Fait à Saint-Louis"],
+    "why": "A place line."
+  },
+  {
+    "lines": ["Keur Madiabel"],
+    "why": "A village of the synthetic set."
+  }
+]

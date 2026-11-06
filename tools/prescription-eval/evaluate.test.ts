@@ -10,11 +10,14 @@ import {
   failures,
   main,
   mustWarnOutcome,
+  negativeOutcome,
   parseBaseline,
   parseMustWarn,
+  parseNegative,
   parseRows,
   parseTruth,
   scoreSource,
+  type Bars,
   type Baseline,
   type Summary,
   type TruthRx,
@@ -53,6 +56,17 @@ const rx = (patch: Partial<TruthRx> = {}): TruthRx => ({
   ],
   ...patch,
 });
+
+const BARS: Bars = {
+  recallPrint: 1,
+  recallHand: 0.9,
+  maxFalsePrint: 0,
+  maxSilentHand: 1,
+  maxWrongStrengthPrint: 0,
+  maxWrongOffersPrint: 0,
+  keptPrint: 1,
+  keptHand: 0.5,
+};
 
 describe('eval/prescription/truth.json', () => {
   it('is what the generator gives: the OCR texts were made from these prescriptions', async () => {
@@ -103,20 +117,34 @@ describe('parsing', () => {
   });
 
   it('reads the baseline and refuses a bar that is not a number in range', () => {
-    const ok = {
-      sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: 0, maxSilentHand: 0 } },
-    };
+    const ok = { sources: { text: BARS } };
     expect(parseBaseline(JSON.stringify(ok))).toEqual(ok);
+    const without = (key: keyof Bars) => ({
+      sources: { text: Object.fromEntries(Object.entries(BARS).filter(([name]) => name !== key)) },
+    });
     for (const bad of [
       { sources: {} },
-      {
-        sources: { text: { recallPrint: 1.2, recallHand: 1, maxFalsePrint: 0, maxSilentHand: 0 } },
-      },
-      { sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: -1, maxSilentHand: 0 } } },
-      { sources: { text: { recallPrint: 1, recallHand: 1, maxSilentHand: 0 } } },
+      { sources: { text: { ...BARS, recallPrint: 1.2 } } },
+      { sources: { text: { ...BARS, maxFalsePrint: -1 } } },
+      { sources: { text: { ...BARS, keptHand: 2 } } },
+      { sources: { text: { ...BARS, maxWrongStrengthPrint: 0.5 } } },
+      without('maxFalsePrint'),
+      without('maxWrongStrengthPrint'),
+      without('maxWrongOffersPrint'),
+      without('keptPrint'),
     ]) {
       expect(() => parseBaseline(JSON.stringify(bad)), JSON.stringify(bad)).toThrow(/baseline/);
     }
+  });
+
+  it('reads the negative cases and refuses one without lines', () => {
+    expect(parseNegative(JSON.stringify([{ lines: ['Pharmacie Guigon'], why: 'x' }]))).toHaveLength(
+      1,
+    );
+    expect(() => parseNegative(JSON.stringify([{ lines: [], why: 'x' }]))).toThrow(
+      /negative case 1/,
+    );
+    expect(() => parseNegative('[]')).toThrow(/no case/);
   });
 
   it('reads the must-warn cases and refuses one without lines or names', () => {
@@ -219,6 +247,31 @@ describe('scoreSource', () => {
   });
 });
 
+describe('scoreSource: header lines', () => {
+  it('counts a typed line or a quoted line that holds the patient, the prescriber, a place or the date', () => {
+    const truth = [rx({ district: 'Mbour', village: 'Ngaparou' })];
+    const clean = scoreSource(pack, truth, [
+      {
+        id: 'rx01',
+        variant: 'scan',
+        text: ['1. Doliprane 1000 mg cp', '2. Spasfon Lyoc 80 mg'].join('\n'),
+      },
+    ]).groups.get('all/print');
+    expect(clean?.headerOffered).toBe(0);
+    // A numbered line of a name the reading does not know is kept as typed:
+    // the evaluation knows the patient's name.
+    const unknown = [rx({ patient: 'Zeyna Kouyaté', district: 'Mbour', village: 'Ngaparou' })];
+    const leaked = scoreSource(pack, unknown, [
+      {
+        id: 'rx01',
+        variant: 'scan',
+        text: ['1. Doliprane 1000 mg cp', '5. Zeyna Kouyaté'].join('\n'),
+      },
+    ]).groups.get('all/print');
+    expect(leaked?.headerOffered).toBe(1);
+  });
+});
+
 describe('mustWarnOutcome', () => {
   it('says whole when the combination is read whole', () => {
     expect(
@@ -252,6 +305,37 @@ describe('mustWarnOutcome', () => {
     ).toBe('silent');
   });
 
+  it('says warned for a product that says what it holds more, and is never pre-ticked', () => {
+    expect(
+      mustWarnOutcome(pack, {
+        lines: ['Ténofovir Lamivudine'],
+        names: ['lamivudine', 'tenofovir'],
+        why: '',
+      }),
+    ).toBe('warned');
+    // A line that names more than its product, even what the base does not know.
+    expect(
+      mustWarnOutcome(pack, {
+        lines: ['Amoxicilline + acide clavulanique'],
+        names: ['amoxicillin', 'clavulanic-acid'],
+        why: '',
+      }),
+    ).toBe('warned');
+  });
+
+  it('says pre-ticked when a case that must be checked reads a product that may be pre-ticked', () => {
+    const sp = { lines: ['1. SP'], names: ['pyrimethamine', 'sulfadoxine'], why: '' };
+    expect(mustWarnOutcome(pack, { ...sp, preTick: false })).toBe('whole');
+    expect(
+      mustWarnOutcome(pack, {
+        lines: ['1. SP (Sulfadoxine Pyriméthamine)'],
+        names: ['pyrimethamine', 'sulfadoxine'],
+        why: '',
+        preTick: false,
+      }),
+    ).toBe('pre-ticked');
+  });
+
   it('says false for a product of another substance, and typed when only a typed line is offered', () => {
     expect(
       mustWarnOutcome(pack, { lines: ['1. Flagyl 500 mg cp'], names: ['sulfadoxine'], why: '' }),
@@ -265,10 +349,16 @@ describe('mustWarnOutcome', () => {
   });
 });
 
+describe('negativeOutcome', () => {
+  it('says clean when a line gives no product and no typed line, else what it gave', () => {
+    expect(negativeOutcome(pack, { lines: ['Pharmacie Guigon'], why: '' })).toBe('clean');
+    expect(negativeOutcome(pack, { lines: ['1. Doliprane 1000 mg cp'], why: '' })).toBe('product');
+    expect(negativeOutcome(pack, { lines: ['1. Spasfon Lyoc 80 mg'], why: '' })).toBe('typed');
+  });
+});
+
 describe('failures', () => {
-  const baseline: Baseline = {
-    sources: { text: { recallPrint: 1, recallHand: 0.9, maxFalsePrint: 0, maxSilentHand: 1 } },
-  };
+  const baseline: Baseline = { sources: { text: BARS } };
   /** A summary whose printed and handwritten totals are [expected, found, false products]. */
   const summaryOf = (print: [number, number, number], hand: [number, number, number]): Summary => {
     const summary: Summary = { groups: new Map(), ms: [] };
@@ -282,6 +372,7 @@ describe('failures', () => {
         offers: { right: 0, wrong: 0 },
         partialWarned: 0,
         rightWarned: 0,
+        headerOffered: 0,
       });
     }
     return summary;
@@ -322,6 +413,47 @@ describe('failures', () => {
     ]);
   });
 
+  it('fails on a wrong strength or a wrong count offered on printed pages, and on fewer lines kept', () => {
+    const summary = summaryOf([10, 10, 0], [10, 9, 1]);
+    const print = summary.groups.get('all/print');
+    const hand = summary.groups.get('all/hand');
+    if (print === undefined || hand === undefined) throw new Error('no groups');
+    print.score.strength = { expected: 5, right: 4, wrong: 1 };
+    print.offers = { right: 2, wrong: 1 };
+    print.score.outOfBase = { items: 4, kept: 3 };
+    hand.score.outOfBase = { items: 4, kept: 1 };
+    // Wrong strengths on handwritten pages have no bar: the proxy is noisy.
+    hand.score.strength = { expected: 5, right: 2, wrong: 3 };
+    expect(failures(new Map([['text', summary]]), baseline, [])).toEqual([
+      'text: 1 wrong strength on printed pages (at most 0)',
+      'text: 1 wrong count per day offered on printed pages (at most 0)',
+      'text: products outside the pack kept on printed pages 0.750 is below the baseline 1',
+      'text: products outside the pack kept on handwritten pages 0.250 is below the baseline 0.5',
+    ]);
+  });
+
+  it('fails on any header line offered, on printed or handwritten pages', () => {
+    const summary = summaryOf([10, 10, 0], [10, 9, 1]);
+    const hand = summary.groups.get('all/hand');
+    if (hand !== undefined) hand.headerOffered = 2;
+    expect(failures(new Map([['text', summary]]), baseline, [])).toEqual([
+      'text: 2 header lines offered as typed or quoted (at most 0)',
+    ]);
+  });
+
+  it('fails on a negative case that gives a product or a typed line', () => {
+    expect(failures(new Map(), { sources: {} }, [], ['clean', 'product', 'typed'])).toEqual([
+      'negative case 2 proposes a product',
+      'negative case 3 offers a line to add as typed',
+    ]);
+  });
+
+  it('fails on a must-warn case read as a product that may be pre-ticked', () => {
+    expect(failures(new Map(), { sources: {} }, ['pre-ticked'])).toEqual([
+      'must-warn case 1 reads a product that may be pre-ticked, though the line is unsure',
+    ]);
+  });
+
   it('fails for a source measured without a baseline, and for a baseline without its source', () => {
     expect(failures(new Map([['other', summaryOf([1, 1, 0], [1, 1, 0])]]), baseline, [])).toEqual([
       'other: no baseline',
@@ -355,7 +487,8 @@ describe('main', { timeout: 60_000 }, () => {
         },
       ]),
     );
-    const bars = { recallPrint: 1, recallHand: 0, maxFalsePrint: 0, maxSilentHand: 0 };
+    // The engine's text lost the product outside the pack: no bar on lines kept.
+    const bars = { ...BARS, recallHand: 0, maxSilentHand: 0, keptPrint: 0, keptHand: 0 };
     await writeFile(
       path.join(dir, 'baseline.json'),
       JSON.stringify({ sources: { text: bars, engine: bars } }),
