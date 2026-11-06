@@ -586,6 +586,44 @@ export function strengthChoiceOf(
   return { options, preselected, matching };
 }
 
+/** Two strengths in mg the same, whatever the rounding of a decimal. */
+function sameMg(a: number, b: number): boolean {
+  return Math.abs(a - b) < 1e-6;
+}
+
+/**
+ * The strength typed in the query, in mg, when no box of the candidate's
+ * family is known at it ("clamoxyl 3g"): neither a component of that strength
+ * nor that strength in its name (a syrup's "125 mg/5 ml" holds no strength in
+ * mg). Undefined when none is typed, when a box has it, or for a remedy. The
+ * confirm screen then says so and asks: the number is never dropped silently.
+ */
+export function strengthNotFoundOf(
+  pack: Pack,
+  candidate: ConfirmCandidate,
+  query: string,
+): number | undefined {
+  const typed = parseStrength(query).strengthMg;
+  if (typed === undefined || candidate.kind !== 'product') return undefined;
+  const members = [candidate.id, ...candidate.variants]
+    .map((id) => productOf(pack, id))
+    .filter((p): p is Product => p !== undefined);
+  const known = members.some(
+    (p) =>
+      p.components.some((c) => c.strengthMg !== undefined && sameMg(c.strengthMg, typed)) ||
+      [p.names.fr, p.names.en].some((name) => {
+        const named = parseStrength(name).strengthMg;
+        return named !== undefined && sameMg(named, typed);
+      }),
+  );
+  return known ? undefined : typed;
+}
+
+/** A strength in mg as the language writes it ("3000 mg", "0,4 mg"). */
+export function strengthText(mg: number, lang: Lang): string {
+  return milligrams(mg, lang);
+}
+
 /**
  * How a candidate is shown on the search screen, and on the confirm screen
  * until a strength is chosen. The product itself when its strength is chosen

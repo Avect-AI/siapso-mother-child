@@ -311,6 +311,43 @@ describe('Confirm: the strength on the box', () => {
     expect(row).not.toHaveTextContent(/\d+\s?mg/);
   });
 
+  it('asks the strength when the one typed is on no box, and says so (clamoxyl 3g)', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'clamoxyl 3g');
+
+    // Text matchers read each no-break space as a space.
+    expect(
+      screen.getByText(
+        "Aucune boîte de ce produit à 3000 mg n'est connue. Comparez avec le dosage écrit sur la boîte.",
+      ),
+    ).toBeVisible();
+    const question = screen.getByRole('group', { name: STRENGTH });
+    expect(
+      within(question)
+        .getAllByRole('radio')
+        .every((answer) => !(answer as HTMLInputElement).checked),
+    ).toBe(true);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(probe.current().items).toEqual([]);
+
+    await user.click(within(question).getByRole('radio', { name: 'Je ne sais pas' }));
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toMatchObject([
+      { ref: { kind: 'product', id: expect.stringMatching(/^clamoxyl-/) }, strengthUnknown: true },
+    ]);
+  });
+
+  it('says so when the strength typed is not that of the only box (advilmed 200)', async () => {
+    await confirmFirst('Ajouter un médicament', 'advilmed 200');
+
+    expect(
+      screen.getByText(
+        "Aucune boîte de ce produit à 200 mg n'est connue. Comparez avec le dosage écrit sur la boîte.",
+      ),
+    ).toBeVisible();
+    expect(product()).toHaveTextContent(/^ADVILMED 400 mg/);
+  });
+
   it('asks nothing of a brand whose strength no rule reads, its strength said not given (COVERSYL)', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'coversyl');
 

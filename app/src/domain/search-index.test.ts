@@ -17,6 +17,7 @@ import {
   productFamilyOf,
   searchIndexOf,
   strengthChoiceOf,
+  strengthNotFoundOf,
   strengthOptionLabel,
   strengthQuestionOf,
   substancesWithMaxDose,
@@ -161,6 +162,28 @@ describe('displayOf', () => {
     expect(displayOf(decimal, { kind: 'product', id: 'demo' }, 'en').detail).toBe(
       'Paracetamol 0.5 mg, Codeine 1000 mg',
     );
+  });
+});
+
+describe('strengthNotFoundOf', () => {
+  const notFound = (query: string) =>
+    strengthNotFoundOf(pack, first(query, 'product'), query);
+
+  it('gives the strength typed when no box of the family is known at it (clamoxyl 3g)', () => {
+    expect(notFound('clamoxyl 3g')).toBe(3000);
+    expect(notFound('advilmed 200')).toBe(200);
+  });
+
+  it('gives nothing when a box has it, in its components or in its name (a syrup)', () => {
+    expect(notFound('clamoxyl 1g')).toBeUndefined();
+    expect(notFound('advilmed 400')).toBeUndefined();
+    // CLAMOXYL 125 mg/5 ml holds no strength in mg: its name says it.
+    expect(notFound('clamoxyl 125')).toBeUndefined();
+  });
+
+  it('gives nothing when no strength is typed, or for a remedy', () => {
+    expect(notFound('clamoxyl')).toBeUndefined();
+    expect(strengthNotFoundOf(pack, first('nebeday', 'plant'), 'nebeday 3g')).toBeUndefined();
   });
 });
 

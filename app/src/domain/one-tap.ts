@@ -6,7 +6,8 @@
 // with its warning: a name close to the one typed, a local name nobody has
 // checked against the box, a name the voice heard that is not a whole name,
 // a substance the name typed says and the product lacks ("Codéine : ce
-// produit n'en contient pas"), the strength a rule reads, the daily count of
+// produit n'en contient pas"), a strength typed that no box has
+// ("clamoxyl 3g"), the strength a rule reads, the daily count of
 // a daily maximum, or a family already listed (is it the same box?).
 import type { CheckedItem, Pack } from '@siapso/engine';
 import type { Candidate } from '@siapso/resolver';
@@ -16,6 +17,7 @@ import {
   needsUnitsPerDay,
   productFamilyOf,
   strengthChoiceOf,
+  strengthNotFoundOf,
 } from './search-index.js';
 import { strengthNeed } from './strength-need.js';
 
@@ -44,6 +46,8 @@ export function oneTapItem(
     return listed ? null : { ref: { kind: 'plant', id: candidate.id } };
   }
   if (missingSubstancesOf(pack, candidate.id, query, 'fr').length > 0) return null;
+  // A strength typed that no box has ("clamoxyl 3g") is said and asked, never dropped.
+  if (strengthNotFoundOf(pack, candidate, query) !== undefined) return null;
   const ref = { kind: 'product' as const, id: candidate.id };
   // The daily count of a daily maximum is asked on the confirm screen.
   if (needsUnitsPerDay(pack, ref)) return null;

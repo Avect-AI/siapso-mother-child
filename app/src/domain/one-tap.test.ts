@@ -38,6 +38,13 @@ describe('one tap adds a product (SCRUM-56, S11, as the safety review set it)', 
     expect(item).not.toHaveProperty('strengthUnknown');
   });
 
+  it('asks first when the strength typed is on no box of the family, never dropping it (clamoxyl 3g)', () => {
+    expect(first('clamoxyl 3g').match).toBe('exact');
+    expect(tap('clamoxyl 3g')).toBeNull();
+    expect(tap('advilmed 200')).toBeNull();
+    expect(tap('advilmed 400')).not.toBeNull();
+  });
+
   it('keeps a family no rule reads the strength of with its strength not given, said so', () => {
     expect(tap('clamoxyl')).toMatchObject({ strengthUnknown: true });
   });

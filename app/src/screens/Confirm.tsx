@@ -14,8 +14,10 @@ import {
   needsUnitsPerDay,
   productFamilyOf,
   strengthChoiceOf,
+  strengthNotFoundOf,
   strengthOptionLabel,
   strengthQuestionOf,
+  strengthText,
   writtenNameOf,
   type ConfirmCandidate,
 } from '../domain/search-index.js';
@@ -253,6 +255,8 @@ function ConfirmForm({
   const query = entry.query ?? '';
   // Read once: the pack and the candidate do not change while the screen is open.
   const [choice] = useState(() => strengthChoiceOf(pack, candidate, query));
+  // A strength typed that no box of the family has ("clamoxyl 3g"): said, and the question asked.
+  const [notFound] = useState(() => strengthNotFoundOf(pack, candidate, query));
   // Nothing chosen for her, generic or brand, unless she typed the strength or the form.
   const [selected, setSelected] = useState<string | null>(() =>
     choice?.preselected === 'candidate' ? candidate.id : null,
@@ -276,12 +280,14 @@ function ConfirmForm({
 
   // The strength is asked only when a rule reads it (SCRUM-56, S10): always
   // for aspirin, once a daily count is given for paracetamol, never else.
-  // A strength typed in the name is chosen as before. Otherwise the product
-  // is kept with its strength not given, said on screen: never a silent strength.
+  // A strength typed in the name is chosen as before, and one that no box
+  // has is asked (notFound). Otherwise the product is kept with its strength
+  // not given, said on screen: never a silent strength.
   const [need] = useState<StrengthNeed>(() =>
     choice === null ? 'never' : strengthNeed(pack, membersOf(pack, candidate)),
   );
-  const deferred = choice !== null && choice.preselected === null && need !== 'always';
+  const deferred =
+    choice !== null && choice.preselected === null && need !== 'always' && notFound === undefined;
   // A daily maximum: the count comes first, in sight, and asks the strength once given.
   const unitsFirst = deferred && need === 'with-count';
   const notGiven: Chosen = { id: candidate.id, strengthUnknown: true };
@@ -588,6 +594,10 @@ function ConfirmForm({
         <Notice>
           {t('confirm.missingSubstances', { substances: upperFirst(joinNames(missing, lang)) })}
         </Notice>
+      )}
+
+      {notFound === undefined ? null : (
+        <Notice>{t('confirm.strengthNotFound', { strength: strengthText(notFound, lang) })}</Notice>
       )}
 
       {unitsFirst && askUnits ? unitsField : null}

@@ -417,6 +417,8 @@ export const en: Dictionary = {
     takesPlace: '{name}, strength not known, becomes {product} in the list.',
     missing: 'This product is not on this phone. Search again.',
     missingSubstances: '{substances}: not in this product. Compare with the name on the box.',
+    strengthNotFound:
+      'No box of this product at {strength} is known. Compare with the strength written on the box.',
   },
   result: {
     title: 'Result',

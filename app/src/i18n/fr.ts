@@ -503,6 +503,9 @@ export const fr = {
     // The name typed names a substance the product chosen does not have ("efferalgan codéine").
     missingSubstances:
       "{substances} : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
+    // The strength typed with the name is that of no box of the product ("clamoxyl 3g").
+    strengthNotFound:
+      "Aucune boîte de ce produit à {strength} n'est connue. Comparez avec le dosage écrit sur la boîte.",
   },
   result: {
     title: 'Résultat',
