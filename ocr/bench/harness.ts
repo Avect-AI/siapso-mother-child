@@ -89,6 +89,37 @@ const bench = {
     client?.release();
   },
 
+  /**
+   * Registers the app's service worker (sw.js, built from app/src/sw.ts over
+   * this page) and waits until it controls the page, as the app's first visit
+   * does.
+   */
+  async serviceWorker() {
+    await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    if (navigator.serviceWorker.controller === null) {
+      await new Promise((resolve) => {
+        navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+      });
+    }
+    return navigator.serviceWorker.controller !== null;
+  },
+
+  /** A script of this page as the page gets it now: its status and isolation headers. */
+  async script(url: string) {
+    const response = await fetch(url);
+    return {
+      status: response.status,
+      coop: response.headers.get('cross-origin-opener-policy'),
+      coep: response.headers.get('cross-origin-embedder-policy'),
+    };
+  },
+
+  /** The Cache API caches of the origin: the voice's are absent when no voice is installed. */
+  async cacheNames() {
+    return caches.keys();
+  },
+
   /** The same engine on the page thread, one thread (DevTools throttling applies here). */
   async loadPage() {
     const started = performance.now();

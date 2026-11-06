@@ -9,7 +9,7 @@ const port = Number(process.env['BENCH_PORT'] ?? 4181);
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'bench.spec.ts',
+  testMatch: ['bench.spec.ts', 'offline-worker.spec.ts'],
   reporter: 'list',
   workers: 1,
   use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${String(port)}` },
