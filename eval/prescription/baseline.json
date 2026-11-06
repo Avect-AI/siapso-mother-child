@@ -1,0 +1,25 @@
+{
+  "sources": {
+    "text": { "recallPrint": 1, "recallHand": 1, "maxFalsePrint": 0, "maxFalseHand": 0 },
+    "paddleocr": { "recallPrint": 1, "recallHand": 0.933, "maxFalsePrint": 0, "maxFalseHand": 0 },
+    "pdf-scanned-paddleocr": {
+      "recallPrint": 1,
+      "recallHand": 0.666,
+      "maxFalsePrint": 0,
+      "maxFalseHand": 0
+    },
+    "pdf-text-layer": { "recallPrint": 1, "recallHand": 1, "maxFalsePrint": 0, "maxFalseHand": 0 },
+    "tesseract-fast-fra-auto": {
+      "recallPrint": 0.73,
+      "recallHand": 0.445,
+      "maxFalsePrint": 0,
+      "maxFalseHand": 5
+    },
+    "tesseract-fast-fra-block-flat": {
+      "recallPrint": 0.852,
+      "recallHand": 0.47,
+      "maxFalsePrint": 2,
+      "maxFalseHand": 12
+    }
+  }
+}

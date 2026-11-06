@@ -1,0 +1,72 @@
+[
+  {
+    "lines": ["1. SP (Sulfadoxine", "Pyriméthamine)", "3 cp en une prise, TPI 2"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "A table cell wraps the name over two lines: read whole once the lines are joined, never pyrimethamine alone."
+  },
+  {
+    "lines": ["1. SP (Gsulfadofine Pyriméthamine) : 3 cp en une prise"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "Sulfadoxine misread as the OCR read it in the spike: read whole after the snap to the substance name."
+  },
+  {
+    "lines": ["2. SP (Sulfadox1ne Pyriméthamine)"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "A digit read inside the word: read whole."
+  },
+  {
+    "lines": ["1. Pyriméthamine 25 mg Sulfadox"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "Sulfadoxine cut short: the best the line gives is pyrimethamine alone, which must say the line also names sulfadoxine (the SP and cotrimoxazole rule reads sulfadoxine)."
+  },
+  {
+    "lines": ["3. Fer + Acide folique cp : 1 cp/jour pendant 3 mois"],
+    "names": ["folic-acid", "iron"],
+    "why": "The combination written whole: never iron alone or folic acid alone."
+  },
+  {
+    "lines": ["3. Fer +", "Acide folique cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "A line ending with a plus sign continues on the next one: read whole."
+  },
+  {
+    "lines": ["3. Fer + Acide fol1que cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "A digit read inside the word: read whole."
+  },
+  {
+    "lines": ["3. Fer + Ac. folique cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "Folic acid abbreviated: the best the line gives is iron alone, which must say the line also names folic acid."
+  },
+  {
+    "lines": ["4. ASAQ (Artésunate +", "Amodiaquine)"],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "A table cell wraps the name over two lines: read whole, never amodiaquine alone."
+  },
+  {
+    "lines": ["4. Amodiaquine (Artésun"],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "Artesunate cut short: amodiaquine alone must say the line also names artesunate."
+  },
+  {
+    "lines": ["5. Artéméther + Luméfant"],
+    "names": ["artemether", "lumefantrine"],
+    "why": "Lumefantrine cut short: read whole or with the warning."
+  },
+  {
+    "lines": ["6. Triméthoprime Sulfamét"],
+    "names": ["sulfamethoxazole", "trimethoprim"],
+    "why": "Sulfamethoxazole cut short: trimethoprim alone must say the line also names sulfamethoxazole (the SP and cotrimoxazole rule reads it)."
+  },
+  {
+    "lines": ["7. Paracétamol 500 mg cp Amoxicilline 500 mg"],
+    "names": ["amoxicillin", "paracetamol"],
+    "why": "Two product lines read as one: the product read must say the line also names the other substance, and the line is offered as typed."
+  },
+  {
+    "lines": ["8. Paracétamol + Codéine 500/30"],
+    "names": ["codeine", "paracetamol"],
+    "why": "A combination with codeine written by its substances: read whole or with the warning, never paracetamol alone silently."
+  }
+]
