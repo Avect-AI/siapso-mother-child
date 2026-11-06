@@ -12,6 +12,7 @@ import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
 import { fakeSpeech } from '../test/voice.js';
 import { createVoiceService, type VoiceService } from '../voice/voice-service.js';
+import { untilMidnight } from './Check.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -903,10 +904,21 @@ describe('Check to result', () => {
     // The danger signs present now come first, on the check (SCRUM-56, S13).
     await user.click(screen.getByRole('button', { name: 'Non, aucun de ces signes' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+    // On the check itself, under the answer (SCRUM-56, S15).
+    expect(await screen.findByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
+    expect(window.location.hash).toBe('#/check');
     // Kinkeliba has no rule and evidence 0: we do not know, never reassurance.
     expect(await screen.findByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toHaveClass(
       'level--unknown',
     );
+  });
+});
+
+describe('untilMidnight: her term read again at midnight (SCRUM-56, 8.3)', () => {
+  it('waits until just after the next midnight of the phone', () => {
+    expect(untilMidnight(new Date(2026, 10, 4, 23, 59, 30))).toBe(31_000);
+    expect(untilMidnight(new Date(2026, 10, 4, 0, 0, 0))).toBe(24 * 3600 * 1000 + 1000);
+    // The last day of a month too.
+    expect(untilMidnight(new Date(2026, 10, 30, 12, 0, 0))).toBe(12 * 3600 * 1000 + 1000);
   });
 });

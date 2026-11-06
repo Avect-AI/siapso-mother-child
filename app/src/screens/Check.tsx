@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, ConditionId } from '@siapso/engine';
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { latestHistoryAt } from '../data/history.js';
+import { checkEntryOf, latestHistoryAt, recordHistory } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { profileSummary } from '../domain/profile-summary.js';
@@ -10,7 +10,7 @@ import { bandedName, doseBandLine, doseBandOf } from '../domain/dose-band.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
 import { joinNames } from '../domain/result-view.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
-import type { Mode, Profile } from '../domain/types.js';
+import type { HistoryEntry, Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { activeProfile, useCheck, type CheckChange } from '../state/check-state.js';
@@ -18,14 +18,49 @@ import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
-import { flowEntry } from './check-flow.js';
 import { CheckSearch } from './CheckSearch.js';
 import { CheckSigns } from './CheckSigns.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+import { CheckResult, type ShownResult } from './Result.js';
 import { Typed } from './Typed.js';
 
 /** How long her profile may take to read before the screen says it is loading. */
 const CHECK_LOADING_DELAY_MS = 600;
+
+/** The milliseconds from `now` to the next midnight of the phone, and one more second. */
+export function untilMidnight(now: Date): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+  return next.getTime() - now.getTime();
+}
+
+/**
+ * A new reading of her profile and of the day (SCRUM-56, 8.3, her term kept
+ * current): when the page shows again and at midnight, the check reads them
+ * again (at unlock it is shown again, so it reads them then too).
+ */
+function useReading(): { reading: number; today: string } {
+  // Today from the phone's clock, handed to pure code.
+  const [now, setNow] = useState(() => ({ reading: 0, today: todayIso(new Date()) }));
+  const again = useCallback(() => {
+    setNow((before) => ({ reading: before.reading + 1, today: todayIso(new Date()) }));
+  }, []);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'hidden') again();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [again]);
+  useEffect(() => {
+    const timer = setTimeout(again, untilMidnight(new Date()));
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [now.reading, again]);
+  return now;
+}
 
 /** The last change to the list, said under it. */
 type Change =
@@ -192,8 +227,8 @@ export function Check() {
     today: string;
     lastAt: string | undefined;
   } | null>(null);
-  // Today from the phone's clock, once, handed to pure code.
-  const [today] = useState(() => todayIso(new Date()));
+  // A new reading of her profile and of the day: when the page shows again, at midnight.
+  const { reading, today } = useReading();
   const [failed, setFailed] = useState(false);
   const [change, setChange] = useState<Change | null>(null);
   // After a removal or an undo, the row whose button takes the focus (else the search field).
@@ -216,13 +251,48 @@ export function Check() {
   // True once the profile has taken a moment to read: the loading status speaks then.
   const slow = useLiveRegionReady(CHECK_LOADING_DELAY_MS);
 
-  // The danger signs present now are asked again at every showing of the
-  // check, with nothing chosen (a sign may have started since): an answer
-  // given before a result is not given again by coming back (SCRUM-56, P7).
+  // The danger signs answer is kept within this check only (SCRUM-56, S14):
+  // leaving the check (Back, the band, her profile, the list of profiles, a
+  // lock, the quick exit) forgets it, so it is asked again, nothing chosen.
   const { clearSigns } = check;
-  useEffect(() => {
-    clearSigns();
-  }, [clearSigns]);
+  useEffect(
+    () => () => {
+      clearSigns();
+    },
+    [clearSigns],
+  );
+
+  // Her answers as last read (her id and when her profile was saved).
+  const readAnswers = useRef<string | null>(null);
+
+  // One history entry per check (S15): the highest level shown during it,
+  // written in order (each write is the whole entry, under the same id).
+  const entry = useRef<HistoryEntry | undefined>(undefined);
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  const onShown = useCallback(
+    ({ evaluation, checked, signs }: ShownResult) => {
+      if (profileId === null) return;
+      const next = checkEntryOf(entry.current, {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        profileId,
+        evaluation,
+        items: checked,
+        signs,
+      });
+      // Nothing new to keep (a render again, a change of language).
+      if (entry.current !== undefined && JSON.stringify(next) === JSON.stringify(entry.current)) {
+        return;
+      }
+      entry.current = next;
+      writes.current = writes.current
+        .then(() => recordHistory(next))
+        .catch((failure: unknown) => {
+          console.warn('Evaluation not kept in the history on this device', failure);
+        });
+    },
+    [profileId],
+  );
 
   // What the confirm or search screen just did to the list (added, already
   // there, updated) is said once, after this screen is up, so the live region
@@ -265,6 +335,11 @@ export function Check() {
           return;
         }
         start(active.id);
+        // Her answers changed since the check read them (saved elsewhere meanwhile):
+        // the danger signs answer was about her as she was, so it is asked again (S14).
+        const before = readAnswers.current;
+        if (before !== null && before !== `${active.id}@${active.updatedAt}`) clearSigns();
+        readAnswers.current = `${active.id}@${active.updatedAt}`;
         // Today from the phone's clock, handed to pure code.
         setStored({ profile: active, today: todayIso(new Date()), lastAt });
       })
@@ -275,7 +350,7 @@ export function Check() {
     return () => {
       live = false;
     };
-  }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs]);
+  }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs, reading, clearSigns]);
 
   // Once the list itself has changed (a render for another reason, such as the
   // profile read meanwhile, must not move the focus on the list before it).
@@ -424,10 +499,16 @@ export function Check() {
           today={profile?.today ?? today}
           notBefore={notBefore}
           mode={mode}
-          onAnswer={() => {
-            // The result, one entry after this one: its way back comes here (check-flow.ts).
-            navigate('/result', { state: flowEntry({ stepsToCheck: 1 }) });
-          }}
+        />
+      )}
+      {/* The result under the answer (S15), worked out again at each change. */}
+      {empty || !check.signsGiven || profile === null ? null : (
+        <CheckResult
+          profile={profile.profile}
+          today={profile.today}
+          notBefore={notBefore}
+          passerBy={passerBy !== null}
+          onShown={onShown}
         />
       )}
     </main>

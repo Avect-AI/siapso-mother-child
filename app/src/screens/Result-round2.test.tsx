@@ -51,9 +51,9 @@ async function openResult(items: CheckedItem[], settings: Settings, signs: strin
     check.setSigns(signs);
   });
   act(() => {
-    window.location.hash = '#/result';
+    window.location.hash = '#/check';
   });
-  await screen.findByRole('heading', { level: 1, name: /^Résultat/ });
+  await screen.findByRole('heading', { level: 2, name: /^Résultat/ });
   await screen.findAllByRole('article');
   return userEvent.setup();
 }

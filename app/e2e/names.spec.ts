@@ -40,6 +40,8 @@ async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
   // The field has the focus: the name is typed at once.
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
+  // Once its rows are there: "not found" moves down as they come.
+  await expect(page.locator('.candidate').first()).toBeVisible();
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
 
   const lookalikes = page.getByRole('list', { name: `Ce nom ressemble à${NBSP}:` });
@@ -59,7 +61,7 @@ async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
 async function seeResult(page: Page) {
   // The danger signs present now, on the check (SCRUM-56, S13).
   await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
 }
 
 test('huile de ricin typed among the medicines at term with a scar: asked first, the danger stays', async ({

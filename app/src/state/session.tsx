@@ -237,7 +237,14 @@ export function SessionProvider({
   startUnlocked = false,
 }: SessionOptions & { children: ReactNode }) {
   const { settings, setSettings, storageTimeoutMs } = useApp();
-  const { reset, forgetOthers, forgetQuick, quick, profileId: checkProfileId } = useCheck();
+  const {
+    reset,
+    forgetOthers,
+    forgetQuick,
+    clearSigns,
+    quick,
+    profileId: checkProfileId,
+  } = useCheck();
   // Whether the check on screen is a passer-by's, read by the lock.
   const passerBy = useRef(false);
   useEffect(() => {
@@ -367,7 +374,9 @@ export function SessionProvider({
     if (draft.current?.key === PASSER_BY_DRAFT) draft.current = null;
     forgetOthers();
     forgetQuick();
-  }, [forgetOthers, forgetQuick]);
+    // The danger signs answer never comes back after a lock (SCRUM-56, S14).
+    clearSigns();
+  }, [forgetOthers, forgetQuick, clearSigns]);
 
   /**
    * Locks this tab only (its own two minutes are over): its keys are

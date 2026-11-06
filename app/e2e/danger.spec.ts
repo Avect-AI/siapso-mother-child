@@ -147,13 +147,19 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
   // The result leads with the danger.
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
   const fever = 'Allez au poste de santé maintenant pour faire un test.';
   await expect(page.getByRole('alert')).toContainText(fever);
   await expect(page.getByRole('article').first()).toHaveClass(/level--danger/);
 
-  // From Result.
-  await openDangerAndBack(page, 'Résultat');
+  // From the result, on the check: Back comes to the check, which was left, so the
+  // signs are asked again (SCRUM-56, S14); the fever answered again.
+  await openDangerAndBack(page, 'Ce que vous prenez');
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+  await question.getByText('Fièvre', { exact: true }).click();
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.locator('.check__danger')).toBeFocused();
 
   // Who to call, from the banner: the same instruction, the sign to say, the circuit.
   await page.getByRole('button', { name: 'Voir qui appeler' }).click();

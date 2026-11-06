@@ -20,6 +20,7 @@ beforeEach(async () => {
 const failure = vi.hoisted(() => ({
   evaluate: null as Error | null,
   getProfile: null as Error | null,
+  listProfiles: null as Error | null,
 }));
 
 vi.mock('@siapso/engine', async (importOriginal) => {
@@ -39,6 +40,10 @@ vi.mock('../data/profiles.js', async (importOriginal) => {
     ...profiles,
     getProfile: (id: string) =>
       failure.getProfile === null ? profiles.getProfile(id) : Promise.reject(failure.getProfile),
+    listProfiles: () =>
+      failure.listProfiles === null
+        ? profiles.listProfiles()
+        : Promise.reject(failure.listProfiles),
   };
 });
 
@@ -72,6 +77,7 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   failure.evaluate = null;
   failure.getProfile = null;
+  failure.listProfiles = null;
 });
 
 afterEach(() => {
@@ -110,11 +116,16 @@ async function openResult({
     check.setSigns(signs);
   });
   act(() => {
-    window.location.hash = '#/result';
+    window.location.hash = '#/check';
   });
-  // The hash change arrives as an event: wait for the result screen itself.
-  await screen.findByRole('heading', { level: 1, name: heading });
+  // The hash change arrives as an event: wait for the result on the check (SCRUM-56, S15).
+  await screen.findByRole('heading', { name: heading });
   return { probe, view, user: userEvent.setup() };
+}
+
+/** The result section of the check (its heading names it). */
+function resultSection(): HTMLElement {
+  return screen.getByRole('region', { name: /^Résultat/ });
 }
 
 describe('Result: a danger sign and a remedy we know nothing about', () => {
@@ -125,8 +136,12 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     // The danger: its level in text, then the instruction of the one danger
     // finding (the fever's own), announced from a region apart from the button.
     const goForTest = pack.messages.fr['danger-sign-fever']?.orientation ?? 'missing';
-    const instruction = await screen.findByRole('heading', { level: 2, name: goForTest });
+    const instruction = await screen.findByRole('heading', { level: 3, name: goForTest });
     expect(instruction).toBeVisible();
+    // A danger when the result first shows: the banner has the focus (SCRUM-56, S15).
+    await waitFor(() => {
+      expect(document.querySelector('.check__danger')).toHaveFocus();
+    });
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent(`Signe de danger ${goForTest}`);
     expect(within(alert).queryByRole('button')).toBeNull();
@@ -174,13 +189,11 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
       'Cet outil ne remplace pas un soignant.',
     ]);
 
-    // The banner's action is the one primary action; the way back is secondary.
-    expect(screen.getByRole('button', { name: 'Revenir à la liste' })).toHaveClass(
-      'button--secondary',
-    );
+    // No way back to the list: it is above, on the same screen; no primary action but who to call.
+    expect(screen.queryByRole('button', { name: 'Revenir à la liste' })).toBeNull();
     expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
 
-    // Kept in the history of the profile, every rule id with it.
+    // Kept in the history of the profile, at the level shown.
     await waitFor(async () => {
       expect(await listHistory('p1')).toHaveLength(1);
     });
@@ -194,10 +207,12 @@ describe('Result: a danger sign and a remedy we know nothing about', () => {
     expect(screen.getByRole('heading', { level: 2, name: goForTest })).toBeVisible();
     expect(await screen.findByText('Aucun contact enregistré sur ce téléphone.')).toBeVisible();
 
-    // Back to the same result: the same check is not recorded a second time.
+    // Back to the check: it was left, so the signs are asked again (S14); one entry still.
     window.history.back();
-    expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
-    await screen.findAllByRole('article');
+    expect(
+      await screen.findByRole('heading', { level: 2, name: /^Avez-vous un de ces signes/ }),
+    ).toBeVisible();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Résultat' })).toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(await listHistory('p1')).toHaveLength(1);
   });
@@ -301,10 +316,10 @@ describe('Result: a name typed as not recognised that looks like a known one', (
       check.setSigns([]);
     });
     act(() => {
-      window.location.hash = '#/result';
+      window.location.hash = '#/check';
     });
 
-    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+    await screen.findByRole('heading', { level: 2, name: 'Résultat' });
     expect(await screen.findAllByRole('article')).toHaveLength(5);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/ressemble à/)).toBeNull();
@@ -327,7 +342,7 @@ describe('Result: a name typed as not recognised that looks like a known one', (
       check.setSigns([]);
     });
     act(() => {
-      window.location.hash = '#/result';
+      window.location.hash = '#/check';
     });
 
     const card = await screen.findByRole('article', { name: /Misoprostol \(générique\)$/ });
@@ -507,7 +522,7 @@ describe('Result: accompanied mode', () => {
     await openResult({ items: [ADVIL], settings: accompanied });
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Résultat pour Awa' }),
+      await screen.findByRole('heading', { level: 2, name: 'Résultat pour Awa' }),
     ).toBeVisible();
     const card = await screen.findByRole('article');
     await openWhy(card);
@@ -526,7 +541,7 @@ describe('Result: accompanied mode', () => {
     expect(
       within(card).getAllByText('Base de données publique des médicaments (BDPM)'),
     ).toHaveLength(1);
-    expect(screen.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: 'Rappels' })).toBeVisible();
     // One finding: no summary, the card says it all.
     expect(screen.queryByRole('list', { name: 'Résumé' })).toBeNull();
   });
@@ -566,8 +581,8 @@ describe('Result: accompanied mode', () => {
   });
 });
 
-describe('Result: one finding, the way back', () => {
-  it('shows the orientation as the clearest line, and goes back to the list with the items', async () => {
+describe('Result: one finding, on the check under the list (SCRUM-56, S15)', () => {
+  it('shows the orientation as the clearest line, under the list it keeps, the heading focused', async () => {
     await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } }));
     const probe = probeCheck();
     await renderApp({
@@ -594,21 +609,22 @@ describe('Result: one finding, the way back', () => {
       ),
     ).toHaveClass('result-card__orientation');
     expect(screen.queryByRole('alert')).toBeNull();
-    const back = screen.getByRole('button', { name: 'Revenir à la liste' });
-    expect(back).toHaveClass('button--primary');
-    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
-
-    await user.click(back);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    // Not a danger: the result's heading takes the focus at its first showing (a button press).
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'Résultat' })).toHaveFocus();
+    });
+    // The list stays above: no way back to it, no primary action.
+    expect(screen.queryByRole('button', { name: 'Revenir à la liste' })).toBeNull();
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
+    expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('ADVIL');
+    expect(window.location.hash).toBe('#/check');
     expect(probe.current().items).toEqual([ADVIL]);
-    // Back went back to the check entry: neither the result nor the signs are stacked on top.
+    // One entry for the check: Back leaves it.
     window.history.back();
     expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
   });
 
-  it('goes to the check when there is no item to evaluate', async () => {
+  it('sends the old address of the result screen to the check', async () => {
     await saveProfile(profileOf());
     await renderApp({ settings: woman, hash: '#/result', packLoader: loaderOf(pack) });
 
@@ -659,7 +675,7 @@ describe('Result: the term it was worked out on', () => {
     await openResult({ items: [KINKELIBA] });
 
     await screen.findByRole('article');
-    expect(screen.getByText('Allaite, bébé de 3 mois')).toBeVisible();
+    expect(within(resultSection()).getByText('Allaite, bébé de 3 mois')).toBeVisible();
     expect(screen.queryByText(/semaines à venir/)).toBeNull();
   });
 
@@ -692,7 +708,7 @@ describe('Result: the term it was worked out on', () => {
     // Codeine late in pregnancy has a card of its own (live test round 2): the breastfeeding one is the other.
     const cards = await screen.findAllByRole('article');
     expect(
-      screen.getByText(
+      within(resultSection()).getByText(
         /la date du téléphone est avant un jour où l'application a déjà servi\. Le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
       ),
     ).toBeVisible();
@@ -700,7 +716,7 @@ describe('Result: the term it was worked out on', () => {
     expect(
       cards.filter((card) => within(card).queryByText('Règle : codeine-breastfeeding') !== null),
     ).toHaveLength(1);
-    expect(screen.queryByText(/^Allaite, bébé de/)).toBeNull();
+    expect(within(resultSection()).queryByText(/^Allaite, bébé de/)).toBeNull();
   });
 
   it('says "votre bébé" in the clock notice in woman mode', async () => {
@@ -718,7 +734,7 @@ describe('Result: the term it was worked out on', () => {
     await openResult({ items: [ADVIL] });
 
     await screen.findByRole('article');
-    expect(screen.getByText('Grossesse possible, terme inconnu')).toBeVisible();
+    expect(within(resultSection()).getByText('Grossesse possible, terme inconnu')).toBeVisible();
   });
 
   it('reads a term that may be past the birth with breastfeeding too, and says so', async () => {
@@ -878,8 +894,8 @@ describe('Result: what a reader in a hurry sees first', () => {
     const call = within(card).getByRole('link', { name: 'Voir qui appeler' });
     expect(call).toHaveAttribute('href', '#/danger/call');
     expect(call).toHaveClass('button--quiet');
-    // The one primary action stays the way back.
-    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    // Never a primary action: the check has none below the danger level.
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
   });
 
   it('keeps the evidence, sources and rules of a card behind one "Pourquoi ?" in accompanied mode', async () => {
@@ -928,12 +944,12 @@ describe('Result: waiting and failures, never a blank screen', () => {
     expect(screen.queryByRole('article')).toBeNull();
   });
 
-  it('says so when no pack could be loaded, with the way back', async () => {
+  it('says so when no pack could be loaded, the list kept above it', async () => {
     await saveProfile(profileOf());
     await openResult({ items: [KINKELIBA], packLoader: noPack });
 
-    expect(await screen.findByText(/pas encore sur ce téléphone/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Revenir à la liste' })).toBeVisible();
+    expect(await within(resultSection()).findByText(/pas encore sur ce téléphone/)).toBeVisible();
+    expect(screen.queryByRole('article')).toBeNull();
   });
 
   it.each([
@@ -942,17 +958,13 @@ describe('Result: waiting and failures, never a blank screen', () => {
   ])('says the result could not be given when the engine throws %s', async (_name, error) => {
     failure.evaluate = error;
     await saveProfile(profileOf());
-    const { user } = await openResult({ items: [KINKELIBA] });
+    await openResult({ items: [KINKELIBA] });
 
-    expect(
-      await screen.findByText("Le résultat n'a pas pu être donné. Revenez à la liste."),
-    ).toBeVisible();
+    expect(await screen.findByText("Le résultat n'a pas pu être donné.")).toBeVisible();
     expect(screen.queryByRole('article')).toBeNull();
     expect(await listHistory('p1')).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Revenir à la liste' }));
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    // The list stays above it, on the same screen.
+    expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('Kinkéliba');
   });
 
   it('says the result could not be given when the profile cannot be turned into a context', async () => {
@@ -960,21 +972,20 @@ describe('Result: waiting and failures, never a blank screen', () => {
     await saveProfile(profileOf({ longTermItems: [{ ...ADVIL, unitsPerDay: 0 }] }));
     await openResult({ items: [KINKELIBA] });
 
-    expect(
-      await screen.findByText("Le résultat n'a pas pu être donné. Revenez à la liste."),
-    ).toBeVisible();
+    expect(await screen.findByText("Le résultat n'a pas pu être donné.")).toBeVisible();
   });
 
-  it('says so when the profile cannot be read, and when it is no longer there', async () => {
-    failure.getProfile = new Error('storage refused');
+  it('shows no result when her profile cannot be read, and says so', async () => {
+    failure.listProfiles = new Error('storage refused');
     await saveProfile(profileOf());
-    await openResult({ items: [KINKELIBA] });
+    await openResult({ items: [KINKELIBA], heading: /^Ce que vous prenez/ });
     expect(await screen.findByText(/Les profils n'ont pas pu être lus/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Revenir à la liste' })).toBeVisible();
+    expect(screen.queryByRole('region', { name: /^Résultat/ })).toBeNull();
+    expect(await listHistory('p1')).toEqual([]);
   });
 
-  it('says so when the profile of the check is no longer on the phone', async () => {
-    await openResult({ items: [KINKELIBA] });
-    expect(await screen.findByText(/Ce profil n'est plus sur ce téléphone/)).toBeVisible();
+  it('opens her profile when the profile of the check is no longer on the phone', async () => {
+    await openResult({ items: [KINKELIBA], heading: /^Mon profil$/ });
+    expect(screen.queryByRole('region', { name: /^Résultat/ })).toBeNull();
   });
 });

@@ -31,15 +31,18 @@ function upperFirst(text: string): string {
  * ticked, every sign one tap away), then "Voir le résultat" with the signs
  * ticked. Never preselected, never read from an earlier answer: a box left
  * unticked is never read as none, and the list needs at least one sign.
- * What is ticked goes into the check as it changes (so the browser's Forward
- * to a result reads it); `onAnswer` follows an answer given.
+ *
+ * The answer given stays for this check (S14): a line in its place says it
+ * ("Signes de danger maintenant : aucun"), with "Changer", which clears it
+ * (the result is hidden) and asks the question again with nothing chosen.
+ * The check forgets it when it is left, when her answers change and at every
+ * lock (check-state.ts).
  */
 export function CheckSigns({
   profile,
   today,
   notBefore,
   mode,
-  onAnswer,
 }: {
   /** Her profile as the check reads it; null when it could not be read (every group). */
   profile: Profile | null;
@@ -47,14 +50,13 @@ export function CheckSigns({
   /** A day the app has already seen (the check's), for where her term stands. */
   notBefore: string | undefined;
   mode: Mode;
-  /** The answer is in the check: what comes next (the result). */
-  onAnswer: () => void;
 }) {
   const t = useT();
   const lang = useLang();
   const { pack, packError } = useApp();
-  const { setSigns, clearSigns } = useCheck();
+  const { signs, signsGiven, setSigns, clearSigns } = useCheck();
   const titleId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // "Oui, au moins un": the list to tick is open.
@@ -66,13 +68,15 @@ export function CheckSigns({
   const [attempts, setAttempts] = useState(0);
   // A ref, not state: two taps in the same task give one answer.
   const answered = useRef(false);
+  // "Changer" pressed: the question takes the focus once it is back.
+  const askAgain = useRef(false);
 
-  // The list open: what is ticked is the check's answer as it changes; nothing ticked is no answer.
+  // The question back after "Changer": its heading takes the focus.
   useEffect(() => {
-    if (!open) return;
-    if (ticked.length === 0) clearSigns();
-    else setSigns(ticked);
-  }, [open, ticked, setSigns, clearSigns]);
+    if (signsGiven || !askAgain.current) return;
+    askAgain.current = false;
+    headingRef.current?.focus();
+  }, [signsGiven]);
 
   // "Oui, au moins un" (a button press: WCAG 3.2.2) gives the focus to the first sign of the list.
   useEffect(() => {
@@ -115,13 +119,45 @@ export function CheckSigns({
     if (answered.current) return;
     answered.current = true;
     setSigns([]);
-    onAnswer();
   };
 
   const seeAll = () => {
     revealedFrom.current = groups;
     setAll(true);
   };
+
+  // The answer given, kept for this check: said in a line with "Changer".
+  if (signsGiven) {
+    const words = signs.flatMap((id) => {
+      const sign = listed.find((s) => s.id === id);
+      return sign === undefined ? [] : [lowerFirst(sign.label[lang])];
+    });
+    return (
+      <div className="check__signs check__signs--answered">
+        <p className="check__signs-answer">
+          {words.length === 0
+            ? t('signs.answeredNone')
+            : t('signs.answeredSome', { signs: words.join(', ') })}
+        </p>
+        <Button
+          variant="quiet"
+          className="check__signs-change"
+          aria-label={t('signs.changeNamed')}
+          onClick={() => {
+            // Asked again, nothing chosen: the result is hidden until a new answer.
+            answered.current = false;
+            askAgain.current = true;
+            setOpen(false);
+            setTicked([]);
+            setAttempts(0);
+            clearSigns();
+          }}
+        >
+          {t('signs.change')}
+        </Button>
+      </div>
+    );
+  }
 
   // Without a pack there is no list to answer: the result says what is missing.
   if (pack === null) {
@@ -146,7 +182,7 @@ export function CheckSigns({
 
   return (
     <section className="check__signs" aria-labelledby={titleId}>
-      <h2 id={titleId} tabIndex={-1}>
+      <h2 id={titleId} ref={headingRef} tabIndex={-1}>
         {title}
       </h2>
       {open ? null : (
@@ -231,7 +267,6 @@ export function CheckSigns({
                 }
                 answered.current = true;
                 setSigns(ticked);
-                onAnswer();
               }}
             >
               {t('signs.seeResult')}

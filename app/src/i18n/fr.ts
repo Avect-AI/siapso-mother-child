@@ -527,9 +527,11 @@ export const fr = {
     titleFor: 'Résultat pour {name}',
     // A passer-by checked without a profile: nothing of it is kept.
     titleQuick: 'Résultat, sans enregistrer',
+    // The result on the check, worked out again as the list changes: its new level, said once.
+    levelNow: 'Résultat mis à jour : {level}',
     loading: 'Le résultat se prépare.',
-    failed: "Le résultat n'a pas pu être donné. Revenez à la liste.",
-    profileMissing: "Ce profil n'est plus sur ce téléphone. Revenez à la liste.",
+    // The list stays above the result on the check (SCRUM-56): no way back to name.
+    failed: "Le résultat n'a pas pu être donné.",
     // The overview of the cards, most urgent first, when there are several.
     summary: 'Résumé',
     // Default orientation of each level (spec section 10), when a message gives none.
@@ -811,6 +813,11 @@ export const fr = {
     listHint: 'Cochez chaque signe présent maintenant.',
     listError:
       'Cochez au moins un signe présent maintenant, ou répondez : Non, aucun de ces signes.',
+    // The answer kept within the check (SCRUM-56, S14), above the result.
+    answeredNone: 'Signes de danger maintenant : aucun',
+    answeredSome: 'Signes de danger maintenant : {signs}',
+    change: 'Changer',
+    changeNamed: 'Changer la réponse sur les signes de danger',
     showAll: 'Voir tous les signes',
     loading: 'La liste se prépare.',
     seeResult: 'Voir le résultat',

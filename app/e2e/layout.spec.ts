@@ -638,7 +638,7 @@ test.describe('at 360 px with text at 200 percent', () => {
     await add(page, 'kinkeliba');
     // The danger signs present now, on the check (SCRUM-56, S13).
     await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: /^Résultat/ })).toBeVisible();
     // The banner names its instruction once: no group named by the same words.
     await expect(page.locator('.danger-banner[role="group"]')).toHaveCount(0);
     await expectNoSeriousViolation(page);
@@ -666,5 +666,43 @@ test.describe('at 360 px with text at 200 percent', () => {
     await page.setViewportSize({ width: 320, height: 800 });
     expect(await cutWords(page, '.result-summary')).toEqual([]);
     expect(await cutWords(page, '.result-card__orientation')).toEqual([]);
+  });
+});
+
+test.describe('the check with its result, at 320 x 640 with text at 200 percent (SCRUM-56, S15)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test('never scrolls sideways, keeps 48 px targets, and brings a danger into view', async ({
+    page,
+  }) => {
+    await onboard(page, 'woman');
+    await pregnantAt(page, 30);
+    await add(page, 'kinkeliba');
+    await largeText(page);
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+    await page.getByText('Fièvre', { exact: true }).click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+
+    // The danger takes the focus and its instruction comes into view.
+    await expect(page.locator('.check__danger')).toBeFocused();
+    await expect(page.locator('.check__danger .danger-banner__head')).toBeInViewport();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    const small = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('main a, main button, main input')]
+        .filter((el) => !(el instanceof HTMLInputElement && el.closest('label.option')))
+        .filter((el) => !el.closest('.sr-only'))
+        .map((el) => ({
+          text: el.textContent || el.getAttribute('type'),
+          box: el.getBoundingClientRect(),
+        }))
+        .filter(({ box }) => box.width > 0 && (box.width < 48 || box.height < 48))
+        .map(({ text }) => text),
+    );
+    expect(small).toEqual([]);
+    expect(await cutWords(page, '.check__result .result-card__title')).toEqual([]);
+    await expectNoSeriousViolation(page);
   });
 });

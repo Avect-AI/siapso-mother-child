@@ -609,10 +609,11 @@ describe('Who to call, from a result', () => {
       for (const item of items) check.add(item);
       check.setSigns(signs);
     });
+    // The result is on the check, under the answer (SCRUM-56, S15).
     act(() => {
-      window.location.hash = '#/result';
+      window.location.hash = '#/check';
     });
-    await screen.findByRole('heading', { level: 1, name: 'Résultat' });
+    await screen.findByRole('heading', { level: 2, name: 'Résultat' });
     return view;
   }
 
@@ -665,7 +666,8 @@ describe('Who to call, from a result', () => {
     await openResult([CASTOR], []);
     const user = userEvent.setup();
     const instruction = pack.messages.fr['castor-oil-term-uterine-scar']?.orientation ?? 'missing';
-    expect(await screen.findByRole('heading', { level: 2, name: instruction })).toBeVisible();
+    // In the result section of the check, under its heading (SCRUM-56, S15).
+    expect(await screen.findByRole('heading', { level: 3, name: instruction })).toBeVisible();
 
     // The banner's action (the castor oil card offers the same way, live test round 2).
     const calls = screen.getAllByRole('button', { name: 'Voir qui appeler' });

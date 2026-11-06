@@ -194,7 +194,7 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   // The danger signs present now, on the check (SCRUM-56, S13).
   await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(
-    page.getByRole('heading', { level: 1, name: `Résultat pour ${AMINATA}` }),
+    page.getByRole('heading', { level: 2, name: `Résultat pour ${AMINATA}` }),
   ).toBeVisible();
 
   // Her profile opens with her answers; her situations show at a tap only.

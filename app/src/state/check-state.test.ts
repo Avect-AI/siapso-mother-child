@@ -401,38 +401,114 @@ describe('useCheckStore', () => {
     expect(result.current.signsGiven).toBe(false);
   });
 
-  it('asks the signs again once the list changes: the answer was about the list as it was', () => {
+  it('keeps the signs answer within the check when the list changes (SCRUM-56, S14)', () => {
     const { result } = renderHook(() => useCheckStore());
-    const answered = () => {
-      act(() => {
-        result.current.setSigns(['fever']);
-      });
-      expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
-    };
     act(() => {
       result.current.start('p1');
+      result.current.setSigns(['fever']);
     });
-    answered();
     act(() => {
       result.current.add(paracetamol);
     });
-    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
-    answered();
+    expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
     act(() => {
       result.current.remove(0);
     });
-    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
-    answered();
+    expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
     act(() => {
       result.current.restore(0, paracetamol);
     });
-    expect(result.current).toMatchObject({ signs: [], signsGiven: false });
-    // The same item given again changes nothing: the answer stays.
-    answered();
+    expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
     act(() => {
-      result.current.add(paracetamol);
+      result.current.add(moringa);
     });
-    expect(result.current.signsGiven).toBe(true);
+    expect(result.current).toMatchObject({ signs: ['fever'], signsGiven: true });
+  });
+
+  describe('forgets the signs answer at every trigger of the check state (SCRUM-56, S14)', () => {
+    /** A check for `p1` with a product and the answer "fever". */
+    function answered() {
+      const hook = renderHook(() => useCheckStore());
+      act(() => {
+        hook.result.current.start('p1');
+        hook.result.current.add(paracetamol);
+        hook.result.current.setSigns(['fever']);
+      });
+      expect(hook.result.current.signsGiven).toBe(true);
+      return hook.result;
+    }
+    const forgotten = { signs: [], signsGiven: false };
+
+    it('another woman chosen', () => {
+      const result = answered();
+      act(() => {
+        result.current.start('p2');
+      });
+      expect(result.current).toMatchObject(forgotten);
+      // Coming back to her: her list, the answer asked again.
+      act(() => {
+        result.current.start('p1');
+      });
+      expect(result.current).toMatchObject({ items: [paracetamol], ...forgotten });
+    });
+
+    it('a passer-by looked up', () => {
+      const result = answered();
+      act(() => {
+        result.current.startQuick(profileOf({ id: 'quick-1' }));
+      });
+      expect(result.current).toMatchObject(forgotten);
+    });
+
+    it("the passer-by's answers changed", () => {
+      const { result } = renderHook(() => useCheckStore());
+      const passerBy = profileOf({ id: 'quick-1' });
+      act(() => {
+        result.current.startQuick(passerBy);
+        result.current.add(paracetamol);
+        result.current.setSigns([]);
+      });
+      expect(result.current.signsGiven).toBe(true);
+      act(() => {
+        result.current.updateQuick({ ...passerBy, breastfeeding: true, babyAgeWeeks: 2 });
+      });
+      expect(result.current).toMatchObject({ items: [paracetamol], ...forgotten });
+    });
+
+    it('the passer-by let go (a lock, a change of mode)', () => {
+      const { result } = renderHook(() => useCheckStore());
+      act(() => {
+        result.current.startQuick(profileOf({ id: 'quick-1' }));
+        result.current.add(paracetamol);
+        result.current.setSigns(['fever']);
+        result.current.forgetQuick();
+      });
+      expect(result.current).toMatchObject(forgotten);
+    });
+
+    it('her profile deleted', () => {
+      const result = answered();
+      act(() => {
+        result.current.forget('p1');
+      });
+      expect(result.current).toMatchObject(forgotten);
+    });
+
+    it('the quick exit (reset)', () => {
+      const result = answered();
+      act(() => {
+        result.current.reset();
+      });
+      expect(result.current).toMatchObject(forgotten);
+    });
+
+    it('the check left, a lock, "Changer" or "Oui, au moins un" (clearSigns), the list kept', () => {
+      const result = answered();
+      act(() => {
+        result.current.clearSigns();
+      });
+      expect(result.current).toMatchObject({ items: [paracetamol], ...forgotten });
+    });
   });
 
   it('forgets the signs answer on clearSigns, keeping the list', () => {

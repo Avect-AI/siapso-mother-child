@@ -147,7 +147,7 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await addFirstCandidate(page);
   // The danger signs present now, on the check (SCRUM-56, S13).
   await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat pour Ndeye' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat pour Ndeye' })).toBeVisible();
 
   await page.getByRole('banner').getByRole('button', { name: 'Quitter' }).click();
 
@@ -158,9 +158,10 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   }
   await expectNoSeriousViolation(page);
 
-  // Back through every entry of the visit (the check, which asks the signs
-  // since SCRUM-56, then the list and welcome): never the result, the check or the list.
-  for (let step = 0; step < 2; step += 1) {
+  // Back through every entry of the visit (since SCRUM-56 the check, with its
+  // signs and result, is one entry; then the list and welcome): never the result,
+  // the check or the list.
+  for (let step = 0; step < 1; step += 1) {
     await page.goBack();
     await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
     const text = await pageText(page);

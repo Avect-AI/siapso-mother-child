@@ -138,18 +138,17 @@ test('a depot keeper checks a passer-by without a profile, and nothing is kept',
   await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Résultat, sans enregistrer' }),
+    page.getByRole('heading', { level: 2, name: 'Résultat, sans enregistrer' }),
   ).toBeVisible();
   // An anti-inflammatory at 24 weeks, as for a profile.
   await expect(
-    page.getByRole('heading', { level: 2, name: /^À montrer avant la prochaine prise/ }),
+    page.getByRole('heading', { level: 3, name: /^À montrer avant la prochaine prise/ }),
   ).toBeVisible();
   await expectNoSeriousViolation(page);
   expect(await countIn(page, 'profiles')).toBe(0);
   expect(await countIn(page, 'history')).toBe(0);
 
-  // The way back leads to the list of profiles, never to her answers.
-  await page.getByRole('button', { name: 'Revenir à la liste' }).click();
+  // The way back leads to the list of profiles, never to her answers (the result is on the check).
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
 });

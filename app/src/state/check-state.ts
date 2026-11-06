@@ -8,7 +8,8 @@
 //
 // In accompanied mode a visit goes from woman to woman: the unfinished list
 // of each woman waits in memory while another one is looked at, and comes
-// back when she is chosen again (her danger signs are asked again). Those
+// back when she is chosen again (her danger signs are asked again; within one
+// check the answer is kept while products are added or taken off). Those
 // lists are forgotten at every lock and at the quick exit; the list on
 // screen follows the check (kept across an auto-lock with the screen held,
 // forgotten at the quick exit). A passer-by can be looked up without a
@@ -370,15 +371,15 @@ function withoutSigns(state: CheckData): CheckData {
 }
 
 /**
- * A change to the list asks the signs again: the answer given was about the
- * list as it was (a sign that started since must not be read as none).
+ * The danger signs answer is kept within one check (SCRUM-56, S14, a change
+ * of the rule of the implementation design, section 2): adding or taking off
+ * a product does not ask it again. It is forgotten when another woman or a
+ * passer-by is looked at, when the passer-by's answers change or she is let
+ * go, at the quick exit (reset), and on clearSigns: the check screen calls it
+ * when it is left and when her answers change, the session at every lock,
+ * "Changer" and "Oui, au moins un" when the question is asked again.
  */
 function reduce(state: CheckData, action: Action): CheckData {
-  const next = reduceList(state, action);
-  return next.items === state.items ? next : withoutSigns(next);
-}
-
-function reduceList(state: CheckData, action: Action): CheckData {
   switch (action.type) {
     case 'start':
       if (state.profileId === action.profileId) return state;

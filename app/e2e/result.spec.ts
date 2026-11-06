@@ -44,7 +44,7 @@ const womanAt = (page: Page, weeks: number) => pregnantAt(page, weeks, 'woman');
 async function seeResult(page: Page) {
   // The danger signs present now, on the check (SCRUM-56, S13).
   await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: /^Résultat/ })).toBeVisible();
 }
 
 /** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56), confirmed. */
@@ -66,7 +66,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   await expect(card.locator('.result-card__level')).toHaveText(
     'À montrer avant la prochaine prise',
   );
-  await expect(card.getByRole('heading', { level: 2 })).toHaveAccessibleName(
+  await expect(card.getByRole('heading', { level: 3 })).toHaveAccessibleName(
     'À montrer avant la prochaine prise. Ibuprofène (générique)',
   );
   await expect(card.locator('.result-card__orientation')).toHaveText(
@@ -91,11 +91,33 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   );
   await expectNoSeriousViolation(page);
 
-  // Back keeps the list, so a forgotten product can be added.
-  await page.getByRole('button', { name: 'Revenir à la liste' }).click();
+  // On the check (SCRUM-56, S15): the list above, a forgotten product added at
+  // once, the answer kept (S14), the result worked out again.
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText(
     'Ibuprofène (générique)',
   );
+  await add(page, 'kinkeliba');
+  await expect(page.getByRole('article')).toHaveCount(2);
+  await expect(page.getByText(/^Signes de danger maintenant\s: aucun$/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toHaveCount(0);
+  expect(new URL(page.url()).hash).toBe('#/check');
+});
+
+test('a danger is seen: a product that makes one after a first result takes the focus to the banner', async ({
+  page,
+}) => {
+  await womanAt(page, 30);
+  await add(page, 'kinkeliba');
+  await seeResult(page);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  // Misoprostol at 30 weeks: a danger. The banner speaks, takes the focus and comes into view.
+  await add(page, 'cytotec');
+  const banner = page.locator('.check__danger');
+  await expect(banner).toBeFocused();
+  await expect(banner).toBeInViewport();
+  await expect(page.getByRole('alert')).toContainText('Danger');
+  await expectNoSeriousViolation(page);
 });
 
 test('kinkeliba without a danger sign: we do not know, and who to show it to', async ({ page }) => {
@@ -137,7 +159,7 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
   await expect(card.locator('.result-card__meta')).toContainText(
     'Notices de médicaments des États-Unis (openFDA), documents en anglais',
   );
-  await expect(page.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 3, name: 'Rappels' })).toBeVisible();
   await expectNoSeriousViolation(page);
 
   // Long source records (a DOI, a label set id) break instead of widening the page.

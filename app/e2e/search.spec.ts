@@ -103,17 +103,23 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   ).toBeVisible();
   await tabTo(page, page.getByRole('button', { name: 'Non, aucun de ces signes' }));
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  // The result on the check, its heading focused (SCRUM-56, S15).
+  const result = page.getByRole('heading', { level: 2, name: 'Résultat' });
+  await expect(result).toBeFocused();
   await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
   await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
-  // Back from the result asks the signs again, nothing chosen ("now" may have changed).
-  await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  // "Changer" by keyboard: asked again, nothing chosen.
+  await tabTo(
+    page,
+    page.getByRole('button', { name: 'Changer la réponse sur les signes de danger' }),
+  );
+  await page.keyboard.press('Enter');
+  await expect(result).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Oui, au moins un' })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
-  // Back from the check goes home: no step of the search is stacked behind it.
+  // Back from the check goes home: no step of the check is stacked behind it.
   await page.goBack();
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });

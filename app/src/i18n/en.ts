@@ -430,9 +430,9 @@ export const en: Dictionary = {
     title: 'Result',
     titleFor: 'Result for {name}',
     titleQuick: 'Result, without saving',
+    levelNow: 'Result updated: {level}',
     loading: 'The result is being prepared.',
-    failed: 'The result could not be given. Go back to the list.',
-    profileMissing: 'This profile is no longer on this phone. Go back to the list.',
+    failed: 'The result could not be given.',
     summary: 'Summary',
     orientation: {
       danger: 'Go to the health post now.',
@@ -640,6 +640,11 @@ export const en: Dictionary = {
     someNow: 'Yes, at least one',
     listHint: 'Tick each sign present now.',
     listError: 'Tick at least one sign present now, or answer: No, none of these signs.',
+    // The answer kept within the check (SCRUM-56, S14), above the result.
+    answeredNone: 'Danger signs now: none',
+    answeredSome: 'Danger signs now: {signs}',
+    change: 'Change',
+    changeNamed: 'Change the answer about the danger signs',
     showAll: 'See all the signs',
     loading: 'The list is being prepared.',
     seeResult: 'See the result',

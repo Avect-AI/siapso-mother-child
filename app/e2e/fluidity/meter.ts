@@ -53,6 +53,12 @@ export interface ResultFacts {
   firstCardTop: number | null;
   /** Whether the level of the first finding is in the first screen. */
   levelInFirstScreen: boolean | null;
+  /**
+   * Whether the level of the first finding is wholly in view as the page
+   * stands once the result shows (SCRUM-56: on the check, the result is
+   * brought into view when it first shows).
+   */
+  levelInView: boolean | null;
   cards: number;
   /** The length of the page, in screens. */
   pageScreens: number;
@@ -67,6 +73,7 @@ export function resultFacts(page: Page): Promise<ResultFacts> {
     return {
       firstCardTop: box ? Math.round(box.top + scrollY) : null,
       levelInFirstScreen: level ? level.bottom + scrollY <= innerHeight : null,
+      levelInView: level ? level.top >= 0 && level.bottom <= innerHeight : null,
       cards: document.querySelectorAll('main article').length,
       pageScreens: Number((document.documentElement.scrollHeight / innerHeight).toFixed(2)),
     };

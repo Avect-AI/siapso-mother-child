@@ -20,7 +20,6 @@ import { ProfileEdit, profileScreenKey, type ProfileTarget } from './screens/Pro
 import { Profiles } from './screens/Profiles.js';
 import { QUICK_PATH, QuickCheck } from './screens/QuickCheck.js';
 import { CALL_PATH, Referral } from './screens/Referral.js';
-import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
 import { Settings } from './screens/Settings.js';
 import { Status } from './screens/Status.js';
@@ -334,8 +333,8 @@ function Screens() {
   }, [key]);
 
   if (screen === null) return <Redirect to="/" replace />;
-  // The danger signs present now are asked on the check (SCRUM-56, S13): an old link goes there.
-  if (screen === 'signs') return <Redirect to="/check" replace />;
+  // The danger signs and the result are on the check (SCRUM-56, S13 and S15): an old link goes there.
+  if (screen === 'signs' || screen === 'result') return <Redirect to="/check" replace />;
   if (screen === 'loading') return null;
   if (screen === 'unlocked') return <AfterUnlock />;
   if (screen === 'unlock' && location !== UNLOCK_PATH) return <LockAway location={location} />;
@@ -402,7 +401,6 @@ function Screens() {
       {screen === 'confirm' && check?.screen === 'confirm' ? (
         <Confirm key={key} kind={check.kind} />
       ) : null}
-      {screen === 'result' ? <Result /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}
         message={t('autoLock.soon')}

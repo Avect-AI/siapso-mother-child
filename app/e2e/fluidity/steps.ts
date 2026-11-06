@@ -152,7 +152,7 @@ export async function openEveryWhy(j: Journey): Promise<void> {
  */
 export async function toResult(j: Journey, { sign }: { sign?: string } = {}): Promise<void> {
   const { page } = j;
-  const result = page.getByRole('heading', { level: 1, name: /^Résultat/ });
+  const result = page.getByRole('heading', { level: 2, name: /^Résultat/ });
   if (sign === undefined) {
     await j.tap(button(page, 'Non, aucun de ces signes'), 'non aucun signe', { then: result });
     return;

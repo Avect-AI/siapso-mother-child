@@ -5,7 +5,7 @@
 // a tab that missed the message cannot write her profile back. The code here
 // is made up.
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, expectWelcome, makeCode, onboard, unlock } from './support.js';
+import { addOnCheck, CODE, expectWelcome, makeCode, onboard, unlock } from './support.js';
 
 function answer(page: Page, question: string | RegExp, label: string) {
   return page.getByRole('group', { name: question }).getByText(label, { exact: true });
@@ -247,4 +247,29 @@ test('a tab that missed the erase cannot write her profile under the next code e
   expect(await storedProfiles(page)).toBe(0);
   await page.getByRole('link', { name: 'Mon profil' }).click();
   await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+});
+
+test('a lock while two tabs are open forgets the danger signs answer of a check (SCRUM-56, S14)', async ({
+  page,
+}) => {
+  await page.clock.install();
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+  await addOnCheck(page, 'kinkeliba');
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  const result = page.getByRole('heading', { level: 2, name: 'Résultat' });
+  await expect(result).toBeVisible();
+
+  // Another tab open, then two minutes without a touch: every tab locks.
+  const other = await secondTab(page);
+  await other.clock.fastForward('02:01');
+  await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  await unlock(page);
+
+  // Her check given back with its list; the answer never comes back after a lock.
+  await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toBeVisible();
+  await expect(result).toHaveCount(0);
 });
