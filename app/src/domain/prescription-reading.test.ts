@@ -449,6 +449,72 @@ describe('readPrescription: lines that are not products', () => {
   });
 });
 
+describe('readPrescription: posology words at the start of a product name', () => {
+  // Final round of the review of PR 70: "si" of the posology words matched
+  // the start of "Sintrom", and the line was dropped as a posology.
+  it.each([
+    ['1. Sintrom 4 mg', 'Sintrom 4 mg'],
+    ['Sintrom 4 mg 1 cp/j', 'Sintrom 4 mg'],
+    ['1. Simvastatine 20 mg', 'Simvastatine 20 mg'],
+    ['1. Siklos 1000 mg', 'Siklos 1000 mg'],
+    ['1. Silymarine 140 mg', 'Silymarine 140 mg'],
+    ['1. Sirop Toplexil', 'Sirop Toplexil'],
+  ])('keeps %s, a product outside the base, as typed', (line, text) => {
+    expect(readPrescription(pack, [line]).typed.map((t) => t.text)).toEqual([text]);
+  });
+
+  it.each([
+    ['Sirop Doliprane 2,4 %', 'paracetamol'],
+    ['Siga Doliprane 1000 mg', 'paracetamol'],
+    ['Sira Paracétamol 500 mg', 'paracetamol'],
+    ['Coartem Ngor', 'artemether+lumefantrine'],
+    ['Coura Ngor Coartem', 'artemether+lumefantrine'],
+  ])('reads %s', (line, substances) => {
+    expect(substancesOf(only([line]).ref.id)).toBe(substances);
+  });
+
+  it('reads or keeps a product whose name starts like any posology word', () => {
+    const starts = [
+      'pendant',
+      'matin',
+      'midi',
+      'soir',
+      'si',
+      'qsp',
+      'jusqu',
+      'prendre',
+      'dormir',
+      'renouveler',
+      'une',
+      'un',
+      'deux',
+      'trois',
+      'le',
+      'la',
+      'en',
+      'ou',
+      'au',
+      'x',
+      'c',
+    ];
+    const lost: string[] = [];
+    for (const start of starts) {
+      const name = `${start.charAt(0).toUpperCase()}${start.slice(1)}orvane`;
+      for (const line of [`${name} 20 mg`, `1. ${name} 20 mg`, `1. ${name}`]) {
+        const reading = readPrescription(pack, [line]);
+        if (reading.products.length === 0 && reading.typed.length === 0) lost.push(line);
+      }
+    }
+    expect(lost).toEqual([]);
+  });
+
+  it('never warns that a name before a brand is a garbled substance: "Zeyna Doliprane 1000 mg"', () => {
+    const product = only(['Zeyna Doliprane 1000 mg']);
+    expect(product.missingSubstances).toEqual([]);
+    expect(mayBePreTicked(product)).toBe(true);
+  });
+});
+
 describe('readPrescription: cleaning', () => {
   it('drops a list number whose dot was lost: "2 Acide folique 5 mg" is 5 mg, never 2', () => {
     const product = only(['2 Acide folique 5 mg', '1 cp le soir']);

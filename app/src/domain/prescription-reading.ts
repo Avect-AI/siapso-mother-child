@@ -207,7 +207,8 @@ const HEADER_DATA: readonly RegExp[] = [
 const AGE_IN_YEARS = /\b\d{1,3}\s*ans\b/g;
 /** "6 mois" is an age when the line says no posology ("pendant 3 mois" is one). */
 const AGE_IN_MONTHS = /\b\d{1,2}\s*mois\b/;
-const SAYS_POSOLOGY = /\b(pendant|qsp|durant|pour|par|jusqu|cp|gel|sachets?)\b|\/\s*j|x\s*\d/;
+const SAYS_POSOLOGY =
+  /\b(pendant|qsp|durant|pour|par|jusqu|cp|gel|sachets?)\b|\/\s*j|(?<![a-z])x\s*\d/;
 /** "M. Ndao": a title, in capitals as written. */
 const MISTER = /(?<![\p{L}])M[.,]?\s+\p{Lu}\p{Ll}|(?<![\p{L}])M\.\s*\p{Lu}/u;
 /** The names of PERSON_NAMES, folded, by their length: one or two letters count only in capitals. */
@@ -397,26 +398,41 @@ function cutHeader(
   if (first === undefined) return { kept: tidy(blank), data, marked };
   const hint = (part: string) => PRODUCT_HINT.test(plain(part));
   const before = tidy(blank.slice(0, first.start));
-  if (lettersOf(before) >= 2 && (marked || hint(before))) return { kept: before, data, marked };
+  if (lettersOf(before) >= 2 && (marked || hint(before) || namesTheBase(vocabulary, before))) {
+    return { kept: before, data, marked };
+  }
   let rest = blank.slice(first.end).replace(/^[\s:;,]+/u, '');
   const mark = BEFORE_LIST_MARK.exec(rest);
   if (mark !== null) rest = rest.slice(mark[0].length);
   const listed = LIST_START.test(rest);
   const after = tidy(rest.replace(/^[\s.-]+(?!\d)/u, ''));
-  // A title, or a numbered line whose header part comes first, goes on when
-  // what follows names something of the base ("Mme Fatou Diop Coartem",
-  // "1. Médicament Doliprane"): never for the rest of a header ("4 Région
-  // médicale de Diourbel").
-  const namesBase =
-    [...folded(after).matchAll(/[\p{L}\d]+/gu)].some((word) => vocabulary.packWords.has(word[0])) ||
-    tokensOf(after).some((token) => ALIASES[token] !== undefined);
-  const goesOn = namesBase && (first.kind === 'title' || (marked && lettersOf(before) < 2));
+  // What follows names something of the base ("Mme Fatou Diop Coartem",
+  // "1. Médicament Doliprane", "Coura Ngor Coartem"): it is read.
+  const goesOn = namesTheBase(vocabulary, after);
   if (after !== '' && (listed || hint(after) || goesOn)) {
     const inner = cutHeader(after.replace(LIST_MARK, ''), marked || listed, vocabulary, names);
     const mark = inner.mark ?? (listed ? LIST_MARK.exec(after)?.[0] : undefined);
     return { kept: inner.kept, data: data || inner.data, marked: inner.marked, mark };
   }
   return { kept: '', data, marked };
+}
+
+/**
+ * Whether a part of a line names something of the base: a word of its names
+ * (not a laboratory or qualifier word, not a posology word: "Coartem", "Fer
+ * + Acide folique") or a short name ("SP"). Such a part is read, before or
+ * after a header part ("Coartem Ngor", "Mme Fatou Coartem"); the rest of a
+ * header never is ("4 Région médicale de Diourbel").
+ */
+function namesTheBase(vocabulary: Vocabulary, part: string): boolean {
+  return (
+    [...folded(part).matchAll(/[\p{L}\d]+/gu)].some(
+      (word) =>
+        vocabulary.packWords.has(word[0]) &&
+        !QUALIFIERS.has(normalize(word[0])) &&
+        !POSOLOGY_WORDS.has(word[0]),
+    ) || tokensOf(part).some((token) => ALIASES[token] !== undefined)
+  );
 }
 
 /** A label before a name: of the patient, of the prescriber ("Nom et prénom :", "Mme", "Dr"). */
@@ -462,7 +478,7 @@ function onlyQualifiers(query: string): boolean {
 
 /** A posology line: it starts with a count and a unit, or with a posology word. */
 const POSOLOGY_START =
-  /^(\d+([.,]\d+)?|une?|deux|trois|1\/2)\s*(cp|cps|comprimes?|gel|gelules?|sachets?|c|cuilleres?|cuill|lyoc|ovules?|gouttes?|amp|ampoules?|suppo|injections?|bouffees?)\b|^(pendant|matin|midi|soir|si|qsp|jusqu|a prendre|prendre|dormir|au coucher|x\s*\d|renouveler|\d+\s*(fois|x)\b)/;
+  /^(?:(?:\d+(?:[.,]\d+)?|1\/2)\s*|(?:une?|deux|trois)\s+)(?:cp|cps|comprimes?|gel|gelules?|sachets?|c|cuilleres?|cuill|lyoc|ovules?|gouttes?|amp|ampoules?|suppo|injections?|bouffees?)\b|^(?:pendant|matin|midi|soir|si|qsp|jusqu|a prendre|prendre|dormir|au coucher|renouveler)(?![a-z])|^x\s*\d|^\d+\s*(?:fois|x)\b/;
 
 /**
  * A count and a unit inside a line: where the posology of a table row
@@ -1167,7 +1183,7 @@ function strayNumber(t: string): boolean {
 
 /** A count of units in a posology ("2 cp", "1 sachet"). */
 const COUNT =
-  /(\d+)\s*(?:cps?|gel|gelules?|sachets?|c\b|cuilleres?|lyoc|ovules?|gouttes?|comprimes?)/g;
+  /(\d+)\s*(?:cps?|gel|gelules?|sachets?|c\b|cuilleres?|lyoc|ovules?|gouttes?|comprimes?)(?![a-wyz])/g;
 
 /**
  * Units per day from a posology, when it says them plainly ("2 cp x 3/j" is
@@ -1552,12 +1568,33 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       ...completingSubstances(vocabulary, certain),
     ]);
     for (const id of abbreviated(namePart)) if (context.has(id)) guessed.add(id);
+    // A word that resembles a substance only by some of its letters in order
+    // counts next to a substance word of the product read, where the other
+    // half of a combination is written ("ulfaderne Pyriméthamine",
+    // "Cartécunote + Amodiaquine"): never a name before a brand ("Zeyna
+    // Doliprane" is no codeine).
+    const lineWords = normalize(namePart).split(' ');
+    const heldWords = [...held].flatMap((id) => vocabulary.wordsOfSubstance.get(id) ?? []);
+    const besideSubstance = (word: string) =>
+      lineWords.some(
+        (w, k) =>
+          w === word &&
+          [lineWords[k - 1], lineWords[k + 1]].some(
+            (near) =>
+              near !== undefined &&
+              heldWords.some(
+                (h) => h === near || (near.length >= 5 && damerauLevenshtein(near, h) <= 2),
+              ),
+          ),
+      );
     for (const word of context.size > 0 ? unexplainedWords(pack, namePart, candidate) : []) {
       for (const id of context) {
         const words = vocabulary.wordsOfSubstance.get(id) ?? [];
         const resembles = (name: string) =>
           name.startsWith(word) ||
-          (word.length >= SUBSTANCE_WORD && sharedInOrder(word, name) >= RESEMBLANCE);
+          (word.length >= SUBSTANCE_WORD &&
+            sharedInOrder(word, name) >= RESEMBLANCE &&
+            besideSubstance(word));
         if (words.some(resembles)) guessed.add(id);
       }
     }
