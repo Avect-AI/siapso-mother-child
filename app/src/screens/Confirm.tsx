@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import type { CheckedItem, Pack } from '@siapso/engine';
+import type { CheckedItem, Pack, Product } from '@siapso/engine';
 import { normalize, type EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useRef, useState, type SubmitEvent } from 'react';
 import { Redirect, useLocation } from 'wouter';
@@ -19,6 +19,7 @@ import {
   writtenNameOf,
   type ConfirmCandidate,
 } from '../domain/search-index.js';
+import { strengthNeed, type StrengthNeed } from '../domain/strength-need.js';
 import { parseUnits, stepUnits } from '../domain/units.js';
 import { useLang, useT, useTNodes, type MessageKey } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
@@ -34,6 +35,17 @@ import { Typed } from './Typed.js';
 
 /** The radio value of "I do not know"; never a product id (ids have no colon). */
 const DONT_KNOW = ':dont-know';
+
+/** The units typed while the strength waits for a count (a daily maximum, no strength typed). */
+const FIRST_UNITS = 'first';
+
+/** The products of the candidate's family, the boxes the strength question would offer. */
+function membersOf(pack: Pack, candidate: ConfirmCandidate): Product[] {
+  return [candidate.id, ...candidate.variants].flatMap((id) => {
+    const product = pack.products.find((p) => p.id === id);
+    return product === undefined ? [] : [product];
+  });
+}
 
 /**
  * Units per day: a field with a step down and a step up on each side, for a
@@ -262,10 +274,32 @@ function ConfirmForm({
   const formRef = useRef<HTMLFormElement>(null);
   const family = candidate.kind === 'product' ? candidate.family : undefined;
 
+  // The strength is asked only when a rule reads it (SCRUM-56, S10): always
+  // for aspirin, once a daily count is given for paracetamol, never else.
+  // A strength typed in the name is chosen as before. Otherwise the product
+  // is kept with its strength not given, said on screen: never a silent strength.
+  const [need] = useState<StrengthNeed>(() =>
+    choice === null ? 'never' : strengthNeed(pack, membersOf(pack, candidate)),
+  );
+  const deferred = choice !== null && choice.preselected === null && need !== 'always';
+  // A daily maximum: the count comes first, in sight, and asks the strength once given.
+  const unitsFirst = deferred && need === 'with-count';
+  const notGiven: Chosen = { id: candidate.id, strengthUnknown: true };
+  // Only for a box that will be listed apart: a count changed on a listed one asks nothing.
+  const apart = (() => {
+    if (!unitsFirst) return false;
+    const kind = planOf(pack, candidate, notGiven, check.items).kind;
+    return kind === 'new' || (kind === 'ask' && sameBox === OTHER_BOX);
+  })();
+  const firstCount = parseUnits(unitsTyped[FIRST_UNITS] ?? '');
+  const countGiven = apart && firstCount.ok && firstCount.units !== undefined;
+  const asked = choice !== null && (!deferred || countGiven);
+
   // The product "yes" is about, or null while the strength question is not answered.
   let chosen: Chosen | null = { id: candidate.id, strengthUnknown: false };
   if (choice !== null) {
-    if (selected === DONT_KNOW) chosen = { id: candidate.id, strengthUnknown: true };
+    if (!asked) chosen = notGiven;
+    else if (selected === DONT_KNOW) chosen = notGiven;
     else chosen = selected === null ? null : { id: selected, strengthUnknown: false };
   }
   const plan = chosen === null ? null : planOf(pack, candidate, chosen, check.items);
@@ -315,10 +349,14 @@ function ConfirmForm({
     candidate.kind === 'product'
       ? missingSubstancesOf(pack, chosen?.id ?? candidate.id, query, lang).map(lowerFirst)
       : [];
-  // Asked once the product is known: the strength first, then how many a day.
-  const askUnits = writes !== null && !waitsForSameBox && needsUnitsPerDay(pack, writes.ref);
+  // Asked once the product is known: the strength first, then how many a day;
+  // under a daily maximum with no strength typed, the count first (above).
+  const askUnits = unitsFirst
+    ? !waitsForSameBox
+    : writes !== null && !waitsForSameBox && needsUnitsPerDay(pack, writes.ref);
   let unitsKey = '';
-  if (target !== null) unitsKey = `listed:${String(target.index)}`;
+  if (unitsFirst) unitsKey = FIRST_UNITS;
+  else if (target !== null) unitsKey = `listed:${String(target.index)}`;
   else if (replaced !== null) unitsKey = `replaces:${String(replaced.index)}:${chosen?.id ?? ''}`;
   else if (chosen !== null) unitsKey = `new:${chosen.id}:${String(chosen.strengthUnknown)}`;
   // A box taking the place of the one listed without strength starts from its count.
@@ -403,6 +441,7 @@ function ConfirmForm({
   // A long list with the strength typed: those boxes first, the others on demand.
   const collapsed =
     choice !== null &&
+    asked &&
     !allShown &&
     choice.options.length > LONG_LIST &&
     choice.matching.length > 0 &&
@@ -410,7 +449,7 @@ function ConfirmForm({
   const listed = choice === null ? [] : collapsed ? choice.matching : choice.options;
   // A product of a long family: "yes" held at the bottom of the screen while
   // the question (even shortened) and the units scroll.
-  const longList = (choice?.options.length ?? 0) > LONG_LIST;
+  const longList = asked && choice.options.length > LONG_LIST;
   const options =
     choice === null
       ? []
@@ -466,6 +505,16 @@ function ConfirmForm({
       />
     );
   }
+
+  const unitsField = (
+    <UnitsField
+      value={unitsText}
+      error={unitsError}
+      onChange={(value) => {
+        setUnitsTyped((typed) => ({ ...typed, [unitsKey]: value }));
+      }}
+    />
+  );
 
   let yes: MessageKey = candidate.kind === 'product' ? 'confirm.yesProduct' : 'confirm.yesPlant';
   if (target !== null) yes = askUnits ? 'confirm.changeUnits' : 'confirm.backToList';
@@ -541,7 +590,9 @@ function ConfirmForm({
         </Notice>
       )}
 
-      {choice === null ? null : (
+      {unitsFirst && askUnits ? unitsField : null}
+
+      {choice === null || !asked ? null : (
         <RadioGroup
           question
           legend={t(asks.legend)}
@@ -572,15 +623,7 @@ function ConfirmForm({
 
       {sameBoxQuestion}
 
-      {askUnits ? (
-        <UnitsField
-          value={unitsText}
-          error={unitsError}
-          onChange={(value) => {
-            setUnitsTyped((typed) => ({ ...typed, [unitsKey]: value }));
-          }}
-        />
-      ) : null}
+      {!unitsFirst && askUnits ? unitsField : null}
 
       <p className="sr-only confirm__announce" role="status">
         {announced}

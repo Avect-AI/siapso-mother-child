@@ -45,13 +45,22 @@ async function confirmFirst(list: 'Ajouter un médicament' | 'Ajouter un remède
   await user.click(await screen.findByRole('button', { name: list }));
   await user.type(await screen.findByRole('searchbox'), query);
   const candidates = await screen.findByRole('list');
-  await user.click(within(candidates).getAllByRole('button')[0] as HTMLElement);
+  // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).
+  expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+  await user.keyboard('{Enter}');
   await screen.findByRole('button', { name: 'Non, chercher encore' });
   return { user, probe };
 }
 
 function product() {
   return document.querySelector('.confirm__product');
+}
+
+/** A daily count given with the "+" key, `n` times (the strength of paracetamol is then asked). */
+async function giveCount(user: ReturnType<typeof userEvent.setup>, n: number) {
+  for (let i = 0; i < n; i += 1) {
+    await user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
+  }
 }
 
 async function backOnCheck() {
@@ -184,8 +193,28 @@ describe('Confirm: units per day', () => {
 });
 
 describe('Confirm: the strength on the box', () => {
-  it('asks which strength of a brand, with none chosen for her, and refuses yes without an answer', async () => {
+  it('adds a brand without asking its strength while no daily count is given (SCRUM-56, S10)', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'doliprane');
+
+    // No rule reads the strength of paracetamol without a daily count.
+    expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
+    // Never a silent strength: said not given.
+    expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non connu$/);
+    // The daily count stays in sight, blank for "I do not know".
+    const units = screen.getByRole('textbox', { name: UNITS });
+    expect(units).toHaveValue('');
+    expect(units).toHaveAccessibleDescription(/Laissez vide si vous ne savez pas\.$/);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'doliprane-100-mg-66057393' }, strengthUnknown: true },
+    ]);
+  });
+
+  it('asks the strength once a daily count is given, none chosen for her, and refuses yes without an answer', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 1);
 
     const question = screen.getByRole('group', { name: STRENGTH });
     expect(question).toHaveAccessibleDescription(
@@ -199,9 +228,9 @@ describe('Confirm: the strength on the box', () => {
     expect(within(question).queryByRole('radio', { name: /DOLIPRANE/ })).toBeNull();
     expect(answers.at(-1)).toHaveAccessibleName('Je ne sais pas');
     expect(answers.at(-1)?.closest('label')).toHaveClass('option--none');
-    // Until she answers, the brand and its substance, no strength, and no units asked yet.
+    // Until she answers, the brand and its substance, no strength; the count stays.
     expect(product()).toHaveTextContent(/^DOLIPRANEParacétamol$/);
-    expect(screen.queryByRole('textbox', { name: UNITS })).toBeNull();
+    expect(screen.getByRole('textbox', { name: UNITS })).toHaveValue('1');
     expect(document.querySelector('.confirm__adding')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
@@ -221,17 +250,46 @@ describe('Confirm: the strength on the box', () => {
     await user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
     expect(
       within(document.querySelector('.units') as HTMLElement).getByRole('status'),
-    ).toHaveTextContent('1 unité par jour');
+    ).toHaveTextContent('2 unités par jour');
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([
-      { ref: { kind: 'product', id: 'doliprane-1000-mg-60234100' }, unitsPerDay: 1 },
+      { ref: { kind: 'product', id: 'doliprane-1000-mg-60234100' }, unitsPerDay: 2 },
     ]);
   });
 
-  it('keeps the brand with its strength unknown when she does not know it', async () => {
+  it('lets the question go again when the count is taken off, the strength then not given', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 1);
+    await user.click(screen.getByRole('radio', { name: `1000${NBSP}mg, comprimé` }));
+
+    await user.click(screen.getByRole('button', { name: 'Une unité de moins' }));
+
+    expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
+    expect(product()).toHaveTextContent(/Dosage non connu$/);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'doliprane-100-mg-66057393' }, strengthUnknown: true },
+    ]);
+  });
+
+  it('asks the strength of aspirin without a count: a rule reads it (ASPEGIC, KARDEGIC)', async () => {
+    await confirmFirst('Ajouter un médicament', 'kardegic');
+
+    const question = screen.getByRole('group', { name: STRENGTH });
+    expect(
+      within(question)
+        .getAllByRole('radio')
+        .every((answer) => !(answer as HTMLInputElement).checked),
+    ).toBe(true);
+    expect(within(question).getAllByRole('radio').at(-1)).toHaveAccessibleName('Je ne sais pas');
+  });
+
+  it('keeps the brand with its strength unknown and the count when she does not know it', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 3);
 
     await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
     expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non connu$/);
@@ -239,7 +297,11 @@ describe('Confirm: the strength on the box', () => {
 
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([
-      { ref: { kind: 'product', id: 'doliprane-100-mg-66057393' }, strengthUnknown: true },
+      {
+        ref: { kind: 'product', id: 'doliprane-100-mg-66057393' },
+        unitsPerDay: 3,
+        strengthUnknown: true,
+      },
     ]);
     const row = within(screen.getByRole('list', { name: 'Produits ajoutés' })).getByRole(
       'listitem',
@@ -249,21 +311,12 @@ describe('Confirm: the strength on the box', () => {
     expect(row).not.toHaveTextContent(/\d+\s?mg/);
   });
 
-  it('offers "I do not know" for a brand with no generic of its substance (COVERSYL)', async () => {
+  it('asks nothing of a brand whose strength no rule reads, its strength said not given (COVERSYL)', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'coversyl');
 
-    const question = screen.getByRole('group', { name: STRENGTH });
-    expect(
-      within(question)
-        .getAllByRole('radio')
-        .map((r) => r.getAttribute('value')),
-    ).toEqual([
-      'coversyl-2-5-mg-69475939',
-      'coversyl-5-mg-63849839',
-      'coversyl-10-mg-68391071',
-      ':dont-know',
-    ]);
-    await user.click(within(question).getByRole('radio', { name: 'Je ne sais pas' }));
+    expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: UNITS })).toBeNull();
+    expect(product()).toHaveTextContent(/Dosage non connu$/);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
@@ -289,6 +342,7 @@ describe('Confirm: the strength on the box', () => {
 
   it('says the product chosen once she has settled on it, not at every move', async () => {
     const { user } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 1);
 
     expect(product()).not.toHaveAttribute('aria-live');
     const announcer = document.querySelector('.confirm__announce');
@@ -311,8 +365,10 @@ describe('Confirm: the strength on the box', () => {
     expect(checked[0]?.getAttribute('value')).toMatch(/^doliprane-1000-mg-/);
   });
 
-  it('asks the strength of a generic as of a brand: nothing chosen, the strength first', async () => {
+  it('asks the strength of a generic as of a brand, once a count is given: nothing chosen', async () => {
     const { user, probe } = await confirmFirst('Ajouter un médicament', 'paracetamol');
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    await giveCount(user, 2);
 
     const answers = screen.getAllByRole('radio');
     expect(answers.every((answer) => !(answer as HTMLInputElement).checked)).toBe(true);
@@ -330,7 +386,11 @@ describe('Confirm: the strength on the box', () => {
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([
-      { ref: { kind: 'product', id: 'paracetamol-generic' }, strengthUnknown: true },
+      {
+        ref: { kind: 'product', id: 'paracetamol-generic' },
+        unitsPerDay: 2,
+        strengthUnknown: true,
+      },
     ]);
   });
 
@@ -343,26 +403,25 @@ describe('Confirm: the strength on the box', () => {
     expect(checked.map((radio) => radio.getAttribute('value'))).toEqual(['neo-codion-syrup']);
   });
 
-  it('asks the form when the answers are forms, not strengths (Néo-Codion)', async () => {
-    const { user } = await confirmFirst('Ajouter un médicament', 'Neo-Codion');
+  it('asks no form when no rule reads it, the box said not given (Néo-Codion, SCRUM-56)', async () => {
+    const { user, probe } = await confirmFirst('Ajouter un médicament', 'Neo-Codion');
 
     expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
-    const question = screen.getByRole('group', {
-      name: `Quelle forme est écrite sur la boîte${NBSP}?`,
-    });
-    expect(question).toHaveAccessibleDescription(
-      `Sur la boîte${NBSP}: comprimé, sirop, gélule ou autre.`,
-    );
-    expect(within(question).getByRole('radio', { name: 'comprimé enrobé' })).toBeVisible();
-    expect(within(question).getByRole('radio', { name: 'sirop' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(
-      within(question).getByText('Choisissez une forme, ou « Je ne sais pas ».'),
-    ).toBeVisible();
+      screen.queryByRole('group', { name: `Quelle forme est écrite sur la boîte${NBSP}?` }),
+    ).toBeNull();
+    expect(product()).toHaveTextContent(/Dosage non connu$/);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await backOnCheck()).toBeVisible();
+    expect(probe.current().items).toEqual([
+      expect.objectContaining({ strengthUnknown: true }) as CheckedItem,
+    ]);
   });
 
   it('never shows the database capitals in an answer', async () => {
-    await confirmFirst('Ajouter un médicament', 'doliprane');
+    const { user } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 1);
 
     const question = screen.getByRole('group', { name: STRENGTH });
     expect(
@@ -440,7 +499,8 @@ describe('Confirm: a long list of strengths (live test round 2)', () => {
   });
 
   it('holds "Oui, c\'est ce produit" in reach under a long list (no strength typed)', async () => {
-    await confirmFirst('Ajouter un médicament', 'doliprane');
+    const { user } = await confirmFirst('Ajouter un médicament', 'doliprane');
+    await giveCount(user, 1);
 
     expect(
       within(screen.getByRole('group', { name: STRENGTH })).getAllByRole('radio').length,
@@ -531,7 +591,8 @@ describe('Confirm: a product already listed', () => {
     await user.click(screen.getByRole('button', { name: 'Ajouter un médicament' }));
     await user.type(await screen.findByRole('searchbox'), 'paracetamol 500');
     const candidates = await screen.findByRole('list', { name: 'Propositions' });
-    await user.click(within(candidates).getAllByRole('button')[0] as HTMLElement);
+    expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+    await user.keyboard('{Enter}');
 
     expect(
       await screen.findByText('Paracétamol 500 mg (générique) est déjà dans la liste.'),
@@ -557,7 +618,8 @@ describe('Confirm: a product already listed', () => {
     await user.click(screen.getByRole('button', { name: 'Ajouter un remède' }));
     await user.type(await screen.findByRole('searchbox'), 'kinkeliba');
     const candidates = await screen.findByRole('list', { name: 'Propositions' });
-    await user.click(within(candidates).getAllByRole('button')[0] as HTMLElement);
+    expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+    await user.keyboard('{Enter}');
 
     expect(await screen.findByText('Kinkéliba est déjà dans la liste.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Revenir à la liste' }));
@@ -591,7 +653,7 @@ describe('Confirm: opened directly', () => {
     });
     const user = userEvent.setup();
 
-    expect(await screen.findByRole('group', { name: STRENGTH })).toBeVisible();
+    expect(await screen.findByRole('textbox', { name: UNITS })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Non, chercher encore' }));
 
     expect(await screen.findByRole('searchbox')).toHaveValue('');
@@ -659,7 +721,9 @@ async function searchAgain(user: ReturnType<typeof userEvent.setup>, query: stri
   await user.click(await screen.findByRole('button', { name: 'Ajouter un médicament' }));
   await user.type(await screen.findByRole('searchbox'), query);
   const candidates = await screen.findByRole('list', { name: 'Propositions' });
-  await user.click(within(candidates).getAllByRole('button')[0] as HTMLElement);
+  // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).
+  expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
+  await user.keyboard('{Enter}');
   await screen.findByRole('button', { name: 'Non, chercher encore' });
 }
 
@@ -692,7 +756,6 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
   it('asks whether it is the same box; "the same" keeps the known strength and its finding', async () => {
     const { user, probe } = await listEfferalgan1000Times4();
     await searchAgain(user, 'efferalgan');
-    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
 
     const sameBox = screen.getByRole('group', { name: SAME_BOX });
     expect(
@@ -717,7 +780,6 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
   it('adds another box of unknown strength when it is not the same', async () => {
     const { user, probe } = await listEfferalgan1000Times4();
     await searchAgain(user, 'efferalgan');
-    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
     await user.click(
       within(screen.getByRole('group', { name: SAME_BOX })).getByRole('radio', {
         name: 'Non, une autre boîte',
@@ -737,7 +799,6 @@ describe('Confirm: "I do not know" for a family already listed with a known stre
   it('refuses yes until she says whether it is the same box', async () => {
     const { user, probe } = await listEfferalgan1000Times4();
     await searchAgain(user, 'efferalgan');
-    await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     const sameBox = screen.getByRole('group', { name: SAME_BOX });
@@ -752,9 +813,9 @@ describe('Confirm: a known strength for a family listed with its strength unknow
 
   async function listEfferalganUnknownTwice() {
     const flow = await confirmFirst('Ajouter un médicament', 'efferalgan');
+    // The count first: the strength is then asked, and not known.
+    await giveCount(flow.user, 2);
     await flow.user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
-    await flow.user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
-    await flow.user.click(screen.getByRole('button', { name: 'Une unité de plus' }));
     await flow.user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     await backOnCheck();
     await searchAgain(flow.user, 'efferalgan 500');
