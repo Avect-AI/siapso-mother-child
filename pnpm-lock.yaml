@@ -397,6 +397,21 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
 
+  tools/prescription-eval:
+    dependencies:
+      '@siapso/engine':
+        specifier: workspace:*
+        version: link:../../engine
+      '@siapso/pack-tools':
+        specifier: workspace:*
+        version: link:../knowledge
+      '@siapso/resolver':
+        specifier: workspace:*
+        version: link:../../resolver
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+
 packages:
 
   '@adobe/css-tools@4.5.0':

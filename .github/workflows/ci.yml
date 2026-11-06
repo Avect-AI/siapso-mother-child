@@ -56,6 +56,11 @@ jobs:
         run: git fetch --no-tags --depth=1 origin +refs/heads/main:refs/remotes/origin/main
       - run: pnpm knowledge:check
       - run: pnpm eval:resolver
+      # The prescription reading on the OCR texts of the synthetic set
+      # (eval/prescription/): no false product on printed pages for the
+      # engine the app ships, no recall below the baseline, no combination
+      # read in part without its warning.
+      - run: pnpm eval:prescription
       # pnpm build is the demo build (Vite mode demo, app/.env.demo, into
       # app/dist-demo): it accepts the unsigned pack and is never published.
       # CI does not sign packs: the release workflow will, with a protected
