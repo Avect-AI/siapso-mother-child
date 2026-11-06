@@ -218,5 +218,34 @@
     "lines": ["SP (Sulfadoxine", "3 cp en une prise", "Pyriméthamine)"],
     "names": ["pyrimethamine", "sulfadoxine"],
     "why": "The posology cell beside the first line of a wrapped name: SP alone, never SP and MALOCIDE."
+  },
+  {
+    "lines": ["1. Antar codéine 400 mg"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "ANTARENE CODEINE garbled: never the codeine generic alone, which drops ibuprofen (review of PR 70, round 2).",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Anta codéine 400"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "Antarène cut to a first name: still read, and never codeine alone.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Klipai codéine 300"],
+    "names": ["codeine", "paracetamol"],
+    "why": "KLIPAL garbled: never codeine alone, which drops paracetamol and its daily maximum.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Ixpim tramadol 37,5"],
+    "names": ["paracetamol", "tramadol"],
+    "why": "IXPRIM garbled: never tramadol alone.",
+    "preTick": false
+  },
+  {
+    "lines": ["2. Antarene codeine 200"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "ANTARENE CODEINE without accents: the brand, both substances, never codeine alone."
   }
 ]

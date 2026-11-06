@@ -86,5 +86,13 @@
   {
     "lines": ["Keur Madiabel"],
     "why": "A village of the synthetic set."
+  },
+  {
+    "lines": ["3. Mbissine Faye"],
+    "why": "A numbered patient line: a name the base does not know and a family name (review of PR 70, round 2)."
+  },
+  {
+    "lines": ["4. Zeyna Ndiaye"],
+    "why": "A numbered patient line with a family name."
   }
 ]
