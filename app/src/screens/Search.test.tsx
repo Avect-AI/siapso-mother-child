@@ -339,6 +339,24 @@ describe('Search', () => {
     });
   });
 
+  it('moves to the other list once when two clicks come in the same task', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'kinkeliba');
+    const other = await screen.findByRole('button', { name: 'Chercher parmi les remèdes' });
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    act(() => {
+      other.click();
+      other.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ajouter un remède' }),
+    ).toBeVisible();
+    const moves = replace.mock.calls.filter(([, , url]) => String(url).endsWith('/search/plant'));
+    expect(moves).toHaveLength(1);
+  });
+
   it('keeps what was typed when coming back from the confirm screen', async () => {
     const { user, field } = await openSearch('Ajouter un remède');
     await user.type(field, 'nebeday');

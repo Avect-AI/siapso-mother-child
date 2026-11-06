@@ -188,6 +188,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   // The voice screen, the text in the field kept on this entry for the way
   // back (the letters typed just before the tap included).
   const toVoiceScreen = () => {
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
   };
@@ -348,6 +349,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   };
 
   const lookInOtherList = () => {
+    if (!leave()) return;
     navigate(searchPath(OTHER[kind]), {
       replace: true,
       state: flowEntry({ stepsToCheck: entry.stepsToCheck, query: text }),
