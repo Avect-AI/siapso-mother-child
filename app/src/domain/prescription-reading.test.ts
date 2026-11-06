@@ -3,6 +3,7 @@
 // seen in the SCRUM-57 spike (docs/superpowers/specs/2026-11-05-prescription-scan-design.md,
 // section 4.3). Synthetic lines only: no real prescription, no real person.
 import type { Pack } from '@siapso/engine';
+import { normalize } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
@@ -11,6 +12,7 @@ import {
   unitsPerDayOf,
   type PrescriptionProduct,
 } from './prescription-reading.js';
+import { PLACE_NAMES } from './prescription-words.js';
 
 let pack: Pack;
 
@@ -101,6 +103,113 @@ describe('readPrescription: lines that are not products', () => {
       for (const b of last) {
         expect(readPrescription(pack, [`Nom et prénom : ${a} ${b}`]).products).toEqual([]);
         expect(readPrescription(pack, [`${a} ${b}`]).products, `${a} ${b}`).toEqual([]);
+      }
+    }
+  });
+
+  it.each([
+    'Pharmacie Guigon',
+    'PHARMACIE DU POINT E',
+    'Visa du pharmacien',
+    'Pédiatre',
+    'Pédiatrie',
+    'SENEGA1',
+    'REPUBLIOUE DU SENEGA1',
+    'MINISTERE DE LA SANTE',
+    'Dutrict sanitaire de Koumpentoum',
+    'Dakar, le 06/11/2026',
+    'Thiès, le 3 novembre 2026',
+    'BP 5035 Dakar Fann',
+    'Hôpital régional de Thiès',
+    'HOPITAL PRINCIPAL DE DAKAR',
+    'Polyclinique de la Médina',
+    'Service de gynécologie-obstétrique',
+    'Dr Awa Ndiaye, médecin',
+    'Mme Ndèye Gueye, sage-femme',
+    'Médecin chef',
+    'Dakar',
+    'Fann',
+    'Point E',
+    'Saint-Louis',
+    'Keur Madiabel',
+    'Bamako',
+    'Pharmacie centrale',
+  ])(
+    'proposes nothing and keeps nothing for a pharmacy, hospital, place or date line: %s',
+    (line) => {
+      expect(readPrescription(pack, [line])).toEqual({ products: [], typed: [] });
+    },
+  );
+
+  it.each([
+    '06 novembre 2026',
+    '12 Rue Carnot',
+    '14 Avenue Bourguiba',
+    'Villa 12, Cité Keur Gorgui',
+    '25 ans, Mme Fatou Diop',
+    '1. Dr Diop Pédiatre',
+    '2. Mlle Awa Sow',
+    '3. Madame Coumba Fall',
+    '4. 06/11/2026',
+    '5. Fatou Ndiaye, 25 ans',
+    '6. M. Cheikh Ndao',
+  ])('never offers a line of a date, an address, an age or a person as typed: %s', (line) => {
+    expect(readPrescription(pack, [line])).toEqual({ products: [], typed: [] });
+  });
+
+  it('reads the product of a line the prescriber or the stamp was joined to, and never offers that part', () => {
+    const fluconazole = readPrescription(pack, ['4. Fluconazole 150 mg gél Dr Ba']);
+    expect(fluconazole.products.map((p) => substancesOf(p.ref.id))).toEqual(['fluconazole']);
+    expect(fluconazole.products[0]?.query).toBe('Fluconazole 150 mg gél');
+    // The line quoted under it holds no name read from the paper.
+    expect(fluconazole.products[0]?.line).toBe('4. Fluconazole 150 mg gél');
+    expect(fluconazole.typed).toEqual([]);
+    // A product outside the base joined to the stamp is kept, without the stamp.
+    const { typed } = readPrescription(pack, ['5. Spasfon Lyoc 80 mg CLINIQUE DE LA PAIX']);
+    expect(typed.map((t) => t.text)).toEqual(['Spasfon Lyoc 80 mg']);
+  });
+
+  it('never takes a form word for a header word one slip away ("sachet" is no "cachet")', () => {
+    expect(readPrescription(pack, ['Smecta sachet']).typed.map((t) => t.text)).toEqual([
+      'Smecta sachet',
+    ]);
+    expect(only(['Aspégic 500 1 sachet x 3/j']).ref.id).toMatch(/^aspegic-/);
+  });
+
+  it('never takes a single laboratory or qualifier word for a product', () => {
+    for (const line of [
+      '1. Pédiatrique',
+      '2. Pharmacie centrale',
+      '3. Forte',
+      '4. LP',
+      '5. Enfant',
+    ]) {
+      expect(readPrescription(pack, [line]).products, line).toEqual([]);
+    }
+  });
+
+  it('never reads a place as a product or a remedy, and no place is a name of the base', () => {
+    const names = new Set(
+      [
+        ...pack.plants.flatMap((p) => [p.names.fr, p.names.en, ...p.localNames.map((l) => l.text)]),
+        ...pack.products.flatMap((p) => [p.names.fr, ...p.brands]),
+      ].flatMap((name) => normalize(name).split(' ')),
+    );
+    for (const place of PLACE_NAMES) {
+      for (const word of normalize(place).split(' ')) {
+        if (word.length > 2) expect(names.has(word), `${place}: ${word}`).toBe(false);
+      }
+      expect(readPrescription(pack, [place]).products, place).toEqual([]);
+      expect(readPrescription(pack, [`Fait à ${place}`]).products, place).toEqual([]);
+    }
+  });
+
+  it('proposes nothing for patient lines written with a title', () => {
+    for (const a of ['Fatou', 'Awa', 'Aminata', 'Bineta', 'Rokhaya', 'Seynabou']) {
+      for (const b of ['Ndiaye', 'Diop', 'Fall', 'Mbaye', 'Cissé', 'Thiam']) {
+        for (const line of [`Mlle ${a} ${b}`, `Madame ${a} ${b}`, `Patiente : ${a} ${b}`]) {
+          expect(readPrescription(pack, [line]), line).toEqual({ products: [], typed: [] });
+        }
       }
     }
   });

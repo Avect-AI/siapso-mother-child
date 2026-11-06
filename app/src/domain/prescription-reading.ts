@@ -25,7 +25,14 @@ import {
   type Candidate,
 } from '@siapso/resolver';
 import { strengthOf } from './possible-matches.js';
-import { ABBREVIATIONS, QUALIFIER_SUBSTANCE_WORDS } from './prescription-words.js';
+import {
+  ABBREVIATIONS,
+  HEADER_PHRASES,
+  HEADER_WORDS,
+  PLACE_NAMES,
+  QUALIFIER_SUBSTANCE_WORDS,
+  QUALIFIER_WORDS,
+} from './prescription-words.js';
 import { needsUnitsPerDay, productFamilyOf, searchIndexOf } from './search-index.js';
 
 /** A product or a remedy of the base read on a line of the prescription. */
@@ -129,24 +136,117 @@ export function mayBePreTicked(product: PrescriptionProduct): boolean {
   );
 }
 
-/** Lowercase, accents and marks gone, spaces collapsed: what the line rules read. */
-function plain(text: string): string {
+/**
+ * Lowercase, accents and marks gone, a hyphen between two letters a space
+ * ("sage-femme"): one character for each character of a precomposed text.
+ */
+function folded(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
-    .replace(/[|_]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .replace(/(?<=\p{L})-(?=\p{L})/gu, ' ');
+}
+
+/** Lowercase, accents and marks gone, spaces collapsed: what the line rules read. */
+function plain(text: string): string {
+  return folded(text).replace(/[|_]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** Words of the header, the patient line, the prescriber and the stamp (see HEADER_WORDS). */
+const NOT_PRODUCT = new RegExp(`\\b(${[...HEADER_WORDS, ...HEADER_PHRASES].join('|')})\\b`);
+const HEADER_WORD_SET: ReadonlySet<string> = new Set(HEADER_WORDS);
+/** Header words long enough to be known with one slip ("sachet" is no "cachet"). */
+const LONG_HEADER_WORDS = HEADER_WORDS.filter((word) => word.length >= 7);
+const PLACES = new RegExp(
+  `(?<![\\p{L}])(${PLACE_NAMES.map((place) => folded(place).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}])`,
+  'u',
+);
+/** The letters the OCR reads as digits in a header word ("SENEGA1", "REPUBL1QUE"). */
+const HEADER_LETTERS: Readonly<Record<string, string>> = { '0': 'o', '3': 'e', '5': 's', '8': 'b' };
+
+/**
+ * What says a line is of a person, a date or an address, never of a product:
+ * such a line is never offered as typed (the patient's name must never
+ * reach an output). On the folded line.
+ */
+const HEADER_DATA: readonly RegExp[] = [
+  // A date: "06/11/2026", "6.11.26".
+  /(?<!\d)\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*(?:\d{4}|\d{2})(?!\d)/,
+  // A month: "06 novembre 2026", "3 nov.".
+  /\b(janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre)\b/,
+  /\b\d{1,2}\s+(janv|fevr|avr|juil|sept|oct|nov|dec)\b/,
+  // An address.
+  /\b(rue|avenue|boulevard|bd|bp|villa|cite|immeuble|lotissement)\b/,
+  // An age.
+  /\b\d{1,3}\s*ans\b/,
+  // A title before a name.
+  /(?<![\p{L}])(mme|mlle|mlles|madame|mademoiselle|monsieur|dr|docteur|pr|professeur)(?![\p{L}])/u,
+];
+/** "6 mois" is an age when the line says no posology ("pendant 3 mois" is one). */
+const AGE_IN_MONTHS = /\b\d{1,2}\s*mois\b/;
+const SAYS_POSOLOGY = /\b(pendant|qsp|durant|pour|par|jusqu|cp|gel|sachets?)\b|\/\s*j|x\s*\d/;
+/** "M. Ndao": a title, in capitals as written. */
+const MISTER = /(?<![\p{L}])M\.\s*\p{Lu}/u;
+
+/** Whether a word of a folded line is a header word, as written or as the OCR misreads it. */
+function isHeaderWord(word: string): boolean {
+  if (HEADER_WORD_SET.has(word)) return true;
+  if (!/\p{L}/u.test(word)) return false;
+  for (const letter of ['l', 'i']) {
+    const mapped = word.replace(/[0358]/g, (d) => HEADER_LETTERS[d] ?? d).replaceAll('1', letter);
+    if (HEADER_WORD_SET.has(mapped)) return true;
+    if (
+      mapped.length >= 7 &&
+      LONG_HEADER_WORDS.some(
+        (header) =>
+          Math.abs(header.length - mapped.length) <= 1 && damerauLevenshtein(mapped, header) <= 1,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
- * Words of the header, the patient line, the prescriber and the stamp: a line
- * with one of them is never a product line, unless it starts with a list
- * number (the OCR may join the stamp to the last product).
+ * Where the header part of a line starts (a header word, a place, a person,
+ * a date or an address), as a position in the line; and whether the line
+ * holds a person, a date or an address anywhere (`data`). The line is read
+ * only up to that position: the product the OCR joined the stamp or the
+ * prescriber to ("Fluconazole 150 mg gél CLINIQUE DE") is still read.
  */
-const NOT_PRODUCT =
-  /\b(republique|senegal|peuple|ministere|region|district|poste de sante|centre de sante|service|maternite|cabinet|clinique|medecine|docteur|dr|sage femme|icp|tel|rue|ordonnance|nom|prenom|age|terme|date|signature|cachet|patiente?|mme|ans|medicament|posologie)\b/;
+function headerOf(line: string): { start: number | undefined; data: boolean } {
+  const text = folded(line);
+  // Positions hold only when folding kept one character for each.
+  const exact = text.length === line.length;
+  const starts: number[] = [];
+  let data = false;
+  const found = (at: number | undefined, isData: boolean) => {
+    if (at === undefined || at < 0) return;
+    starts.push(exact ? at : 0);
+    if (isData) data = true;
+  };
+  for (const pattern of HEADER_DATA) found(pattern.exec(text)?.index, true);
+  if (!SAYS_POSOLOGY.test(text)) found(AGE_IN_MONTHS.exec(text)?.index, true);
+  found(MISTER.exec(line)?.index, true);
+  found(NOT_PRODUCT.exec(text)?.index, false);
+  found(PLACES.exec(text)?.index, false);
+  for (const word of text.matchAll(/[\p{L}\d]+/gu)) {
+    if (isHeaderWord(word[0])) found(word.index, false);
+  }
+  return { start: starts.length === 0 ? undefined : Math.min(...starts), data };
+}
+
+const QUALIFIERS: ReadonlySet<string> = new Set(QUALIFIER_WORDS.map(normalize));
+
+/** Whether a query is made only of qualifier words ("Pédiatre", "Pharmacie centrale", "Forte"). */
+function onlyQualifiers(query: string): boolean {
+  const words = withoutStopWords(normalize(query))
+    .split(' ')
+    .filter((word) => word !== '' && !/^\d/.test(word));
+  return words.length > 0 && words.every((word) => QUALIFIERS.has(word));
+}
 
 /** A posology line: it starts with a count and a unit, or with a posology word. */
 const POSOLOGY_START =
@@ -704,6 +804,8 @@ function bestOf(pack: Pack, namePart: string): Chosen | undefined {
   let chosen: Chosen | undefined;
   for (const query of new Set(queries)) {
     if (!query.includes(' ') && isPosologyWord(query)) continue;
+    // A laboratory or a qualifier alone names no medicine.
+    if (onlyQualifiers(query)) continue;
     for (const candidate of search(index, query, { limit: 1 })) {
       const match = strengthOf(candidate);
       if (match === 'weak') continue;
@@ -764,22 +866,37 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     // A list number whose dot the OCR lost ("2 Acide folique") is a list mark
     // too; a strength glued to a long word ("Spéciafoldine5") is split from it.
     const marked = MARKED.test(raw);
-    const counted = raw.replace(LIST_MARK, '');
+    const whole = raw.normalize('NFC').replace(LIST_MARK, '');
+    // A posology starts with its count ("1 c. à soupe"), read before the
+    // count is taken for a list number.
+    if (isPosology(plain(whole))) return;
+    // The line is read up to its header part: a header word, a place, a
+    // person, a date or an address. The OCR may join the stamp or the
+    // prescriber to the last product ("Fluconazole 150 mg gél CLINIQUE DE"):
+    // what comes before is still read; a header line leaves nothing.
+    const header = headerOf(whole);
+    const counted = whole.slice(0, header.start).trim();
+    // The line quoted under what it gives ("Lu sur l'ordonnance"), without
+    // its header part: no name read from the paper is ever quoted.
+    const shown =
+      header.start === undefined
+        ? raw
+        : `${LIST_MARK.exec(raw.normalize('NFC'))?.[0] ?? ''}${counted}`.trim();
     const unmarked = gluedStrengthSplit(counted.replace(/^\d{1,2}\s+(?=\p{L})/u, ''));
     const { text: line, near } = snapped(digitsInWords(unmarked), vocabulary);
     const p = plain(line);
-    // A header word ends a numbered product line when the OCR joins the stamp
-    // to it ("Fluconazole 150 mg gél CLINIQUE DE"): the line is still read.
-    // A posology starts with its count ("1 c. à soupe"), read before the
-    // count is taken for a list number.
-    if (p.length < 3 || (!marked && NOT_PRODUCT.test(p))) return;
+    if (p.length < 3 || !/\p{L}{2}/u.test(p)) return;
+    // An unnumbered line with a header part is read only when what is left
+    // looks like a product (a strength, a form word).
+    if (header.start !== undefined && !marked && !PRODUCT_HINT.test(p)) return;
     if (isPosology(plain(counted)) || isPosology(p)) return;
     const namePart = namePartOf(line).trim();
     const query = namePartOf(unmarked).trim();
     const chosen = bestOf(pack, namePart);
     if (chosen === undefined) {
-      if ((PRODUCT_HINT.test(p) || marked) && normalize(namePart).length >= 4) {
-        typed.push({ text: query, line: raw, lineIndex, reason: 'not-recognised' });
+      // Never a line of a person, a date or an address (spec, 7.6 and 7.11).
+      if (!header.data && (PRODUCT_HINT.test(p) || marked) && normalize(namePart).length >= 4) {
+        typed.push({ text: query, line: shown, lineIndex, reason: 'not-recognised' });
       }
       return;
     }
@@ -833,7 +950,7 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     const product: PrescriptionProduct = {
       ref,
       candidate,
-      line: raw,
+      line: shown,
       lineIndex,
       query,
       match,
