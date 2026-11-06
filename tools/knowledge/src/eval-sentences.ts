@@ -22,7 +22,8 @@ export type SentenceType = (typeof SENTENCE_TYPES)[number];
  * What a held-out sentence says of the products: taken (`affirmative`), not
  * taken (`negation`), taken by another person (`other-person`), taken before
  * (`past`), a food that is also a remedy (`food`), several at once (`list`),
- * or asked about (`question`).
+ * asked about (`question`), or told of, advised or prescribed by someone else
+ * (`advice`, second held-out set).
  */
 export const SENTENCE_CASES = [
   'affirmative',
@@ -32,6 +33,7 @@ export const SENTENCE_CASES = [
   'food',
   'list',
   'question',
+  'advice',
 ] as const;
 export type SentenceCase = (typeof SENTENCE_CASES)[number];
 
@@ -471,13 +473,23 @@ function printReport(report: SentenceReport, out: (line: string) => void): void 
   }
 }
 
-/** Which set to read: the tuning set, with its bars, or the held-out set, measured only. */
-export type SentenceSet = 'tuning' | 'heldout';
+/** Which set to read: the tuning set, with its bars, or a held-out set, measured only. */
+export type SentenceSet = 'tuning' | 'heldout' | 'heldout-2';
+
+/** The held-out sets: their file, and what the report says of them. */
+const HELD_OUT_SETS: Record<Exclude<SentenceSet, 'tuning'>, { file: string; label: string }> = {
+  // Its misses led to the rules of round 2 of the review of #68: now used.
+  heldout: {
+    file: 'sentences-heldout.yaml',
+    label: 'held-out set 1 (used: its misses led to the rules of round 2 of the review)',
+  },
+  'heldout-2': { file: 'sentences-heldout-2.yaml', label: 'held-out set 2, never tuned on' },
+};
 
 /**
  * Runs the evaluation on the repository at root (schemas read from `schemas`,
  * the root by default); returns the exit code: 0 when every bar is met, 1
- * otherwise, and 1 for an unreadable or empty sentence file or baseline. The
+ * otherwise, and 1 for an unreadable or empty sentence file or baseline. A
  * held-out set has no bar: 0 once read.
  */
 export async function main(
@@ -487,7 +499,9 @@ export async function main(
   set: SentenceSet = 'tuning',
 ): Promise<number> {
   try {
-    return set === 'heldout' ? await runHeldOut(root, out, schemas) : await run(root, out, schemas);
+    return set === 'tuning'
+      ? await run(root, out, schemas)
+      : await runHeldOut(root, out, schemas, HELD_OUT_SETS[set]);
   } catch (error) {
     out(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
@@ -510,11 +524,12 @@ async function runHeldOut(
   root: string,
   out: (line: string) => void,
   schemas: string,
+  set: { file: string; label: string },
 ): Promise<number> {
   const { index, families } = await packIndex(root, schemas);
-  const file = path.join(root, 'eval', 'speech', 'sentences-heldout.yaml');
+  const file = path.join(root, 'eval', 'speech', set.file);
   const sentences = parseSentences(await readFile(file, 'utf8'));
-  out(`held-out set: ${String(sentences.length)} sentences, never tuned on; measured with no bar`);
+  out(`${set.label}: ${String(sentences.length)} sentences; measured with no bar`);
   printReport(evaluateSentences(index, families, sentences), out);
   return 0;
 }
@@ -589,7 +604,10 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  main(root, console.log, root, process.argv.includes('--heldout') ? 'heldout' : 'tuning').then(
+  let set: SentenceSet = 'tuning';
+  if (process.argv.includes('--heldout')) set = 'heldout';
+  if (process.argv.includes('--heldout-2')) set = 'heldout-2';
+  main(root, console.log, root, set).then(
     (code) => {
       process.exitCode = code;
     },

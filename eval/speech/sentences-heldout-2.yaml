@@ -1,0 +1,631 @@
+# SPDX-License-Identifier: CC-BY-4.0
+# Second held-out sentences (round 2 of the review of #68, see
+# eval/speech/README.md): written and committed before the rules of round 2
+# (another person named before, then a pronoun; told of or advised by
+# someone else; a past said by a time), without reading again the sentences
+# held-out set 1 failed on, and never tuned on. Measured once, with
+# `pnpm eval:sentences:heldout-2`, and reported as they are: no bar. No real
+# patient data: every sentence and first name is invented. The expectations
+# were written from the registry and from what the sentence means, not from
+# the output of the resolver.
+#   lang, type, expect, notTaken: as in sentences-heldout.yaml.
+#   case: as there, and advice (told of, advised or prescribed by someone
+#         else: taken when a health worker prescribes it, not taken when a
+#         neighbour, a friend, a relative or a healer only talks of it).
+
+# French: another person named before, then a pronoun.
+- {
+    text: "c'est pour ma soeur, elle prend du coartem",
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'ma tante est malade, elle boit du kinkéliba',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'mon petit frère a de la fièvre, je lui donne du paracétamol',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: paracetamol-generic }],
+  }
+- {
+    text: "mon mari tousse, il prend de l'amoxicilline",
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'ma belle-mère a mal au dos, elle met de la voltarène',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken:
+      [
+        {
+          any:
+            [
+              { kind: product, id: voltarene-50-mg-62431527 },
+              { kind: product, id: voltarene-emulgel-1-63855240 },
+              { kind: product, id: diclofenac-generic },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'mon bébé a de la fièvre et je lui donne du doliprane',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'ma fille est enceinte aussi, elle prend du fer',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: 'mon mari a le palu. il prend de la nivaquine et moi du fer',
+    lang: fr,
+    type: plain,
+    case: other-person,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+    notTaken: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'Awa est malade, elle prend du coartem',
+    lang: fr,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'ma mère a de la tension, je prends du doliprane pour ma tête',
+    lang: fr,
+    type: plain,
+    case: other-person,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+
+# Wolof and mixed: another person named before, then a pronoun.
+- {
+    text: 'sama doom dafa feebar, dafay naan doliprane',
+    lang: wo,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'sama jëkkër dafa tawat, mu ngi naan coartem',
+    lang: wo,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'sama yaay dafa sonn, dafay naan kinkéliba',
+    lang: wo,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'sama rakk dafa am sibiru, mu jël nivaquine',
+    lang: wo,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'Fatou dafa feebar, dafay naan doliprane',
+    lang: wo,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'sama doom dafa feebar, dama naan doliprane ngir sama bopp',
+    lang: wo,
+    type: plain,
+    case: other-person,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'sama jëkkër a de la fièvre, il prend du doliprane',
+    lang: mix,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'ma maman dafa feebar, elle boit du moringa',
+    lang: mix,
+    type: none,
+    case: other-person,
+    expect: [],
+    notTaken: [{ kind: plant, id: moringa }],
+  }
+
+# Told of, advised, or prescribed.
+- {
+    text: "ma voisine m'a conseillé le kinkéliba",
+    lang: fr,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "une amie m'a parlé du moringa pour le lait",
+    lang: fr,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: "le marabout m'a dit de boire du nebeday",
+    lang: fr,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: "ma belle-soeur m'a conseillé de prendre de l'advil",
+    lang: fr,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: "on m'a parlé du cytotec au marché",
+    lang: fr,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: 'sama xarit wax na ma ci coartem',
+    lang: wo,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'sama yaay digal na ma kinkéliba',
+    lang: wo,
+    type: none,
+    case: advice,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "la sage-femme m'a dit de prendre du fer",
+    lang: fr,
+    type: plain,
+    case: advice,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: "le médecin m'a conseillé du doliprane",
+    lang: fr,
+    type: plain,
+    case: advice,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "le pharmacien m'a dit de prendre de l'amoxicilline",
+    lang: fr,
+    type: plain,
+    case: advice,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'doktoor bi wax na ma ma naan nivaquine',
+    lang: wo,
+    type: plain,
+    case: advice,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "ma voisine m'a donné du doliprane",
+    lang: fr,
+    type: plain,
+    case: advice,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+
+# Taken before, said by a time.
+- {
+    text: "l'an dernier j'ai pris de la nivaquine",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "le mois dernier on m'a donné de l'amoxicilline",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "il y a trois mois j'ai pris du tramadol",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "il y a deux semaines j'ai bu du kinkéliba",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: "la dernière fois j'ai pris du coartem",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'pendant ma première grossesse je prenais du fer',
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: "quand j'étais enceinte de mon fils j'ai pris de la quinine",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: quinine-generic }],
+  }
+- {
+    text: "lors de ma dernière grossesse on m'a donné la SP",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: sp }],
+  }
+- {
+    text: "il y a longtemps j'ai pris du cytotec",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: misoprostol-generic }],
+  }
+- {
+    text: "l'année passée j'ai pris de l'advil",
+    lang: fr,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'at bu weesu dama jël nivaquine',
+    lang: wo,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'weer bu weesu dama naan kinkéliba',
+    lang: wo,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'daaw dama jël coartem',
+    lang: wo,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'bi ma ëmbee woon sama taaw, dama naan nebeday',
+    lang: wo,
+    type: none,
+    case: past,
+    expect: [],
+    notTaken: [{ kind: plant, id: moringa }],
+  }
+
+# Taken now, with a time said.
+- {
+    text: "il y a deux jours j'ai pris du doliprane",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: "hier soir j'ai bu du kinkéliba",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'démb laa jël coartem',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'depuis la semaine dernière je prends du fer',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: "ce matin j'ai pris un efferalgan",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+
+# Taken.
+- {
+    text: 'je prends du doliprane trois fois par jour',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama naan coartem ak doliprane',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect:
+      [
+        { kind: product, id: artemether-lumefantrine-generic },
+        { kind: product, id: doliprane-500-mg-63368332 },
+      ],
+  }
+- {
+    text: "on m'a prescrit de l'amoxicilline et du fer",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: amoxicilline-almus-1-g-60151544 },
+              { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+              { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+              { kind: product, id: clamoxyl-1-g-64539416 },
+            ],
+        },
+        { any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] },
+      ],
+  }
+- {
+    text: 'je bois une tisane de kinkéliba le soir',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'dama jël nivaquine guddi gi',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: "je masse mes jambes avec de l'huile de ricin",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: castor-oil }],
+  }
+- {
+    text: 'je prends la SP au poste de santé ce mois-ci',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: sp }],
+  }
+- {
+    text: 'dama naan efferalgan bu ma metti bopp',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: efferalgan-1000-mg-67058605 }],
+  }
+- {
+    text: 'je viens de prendre deux advil',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: advil-200-mg-68634000 }],
+  }
+- {
+    text: 'dama lekk nebeday ci ceeb bi',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: moringa }],
+  }
+- {
+    text: 'je prends du flagyl pour une infection',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: metronidazole-generic },
+              { kind: product, id: flagyl-250-mg-68818192 },
+            ],
+        },
+      ],
+  }
+- {
+    text: 'sama doktoor jox na ma tramadol',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect:
+      [
+        {
+          any:
+            [
+              { kind: product, id: tramadol-generic },
+              { kind: product, id: contramal-50-mg-68655884 },
+            ],
+        },
+      ],
+  }
+- {
+    text: "j'ai commencé la nivaquine avec mon mari",
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: chloroquine-generic }],
+  }
+- {
+    text: 'ma mère et moi buvons du kinkéliba',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: kinkeliba }],
+  }
+- {
+    text: 'je donne le sein et je prends du doliprane',
+    lang: fr,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama naan doliprane, sama jëkkër itam',
+    lang: wo,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: doliprane-500-mg-63368332 }],
+  }
+- {
+    text: 'dama prendre coartem depuis hier',
+    lang: mix,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: product, id: artemether-lumefantrine-generic }],
+  }
+- {
+    text: 'man dama jël fer chaque jour',
+    lang: mix,
+    type: plain,
+    case: affirmative,
+    expect:
+      [{ any: [{ kind: product, id: iron-generic }, { kind: product, id: fer-acide-folique }] }],
+  }
+- {
+    text: 'je bois bissap ak kinkéliba',
+    lang: mix,
+    type: plain,
+    case: affirmative,
+    expect: [{ kind: plant, id: bissap }, { kind: plant, id: kinkeliba }],
+  }

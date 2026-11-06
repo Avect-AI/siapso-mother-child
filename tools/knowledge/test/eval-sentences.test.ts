@@ -24,6 +24,7 @@ import { REPO_ROOT, tempCopy } from './helpers.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SENTENCES_FILE = path.join(ROOT, 'eval', 'speech', 'sentences.yaml');
 const HELD_OUT_FILE = path.join(ROOT, 'eval', 'speech', 'sentences-heldout.yaml');
+const HELD_OUT_2_FILE = path.join(ROOT, 'eval', 'speech', 'sentences-heldout-2.yaml');
 /**
  * Building the repository pack and reading every sentence as heard takes about
  * 2 s alone, and over 5 s (Vitest's default) with coverage on a loaded machine.
@@ -333,20 +334,34 @@ describe('main', () => {
 
   // The held-out set is measured, never tuned on: its figures are reported as
   // they are, with no bar.
-  async function runHeldOut(heldOut: string | undefined): Promise<{ code: number; text: string }> {
+  async function runHeldOut(
+    heldOut: string | undefined,
+    set: 'heldout' | 'heldout-2' = 'heldout',
+  ): Promise<{ code: number; text: string }> {
     const copy = await tempCopy();
     try {
       await mkdir(path.join(copy.root, 'eval', 'speech'), { recursive: true });
       if (heldOut !== undefined) {
-        await writeFile(path.join(copy.root, 'eval', 'speech', 'sentences-heldout.yaml'), heldOut);
+        const file = set === 'heldout' ? 'sentences-heldout.yaml' : 'sentences-heldout-2.yaml';
+        await writeFile(path.join(copy.root, 'eval', 'speech', file), heldOut);
       }
       const lines: string[] = [];
-      const code = await main(copy.root, (line) => lines.push(line), REPO_ROOT, 'heldout');
+      const code = await main(copy.root, (line) => lines.push(line), REPO_ROOT, set);
       return { code, text: lines.join('\n') };
     } finally {
       await copy.remove();
     }
   }
+
+  // Review of #68, round 2: a second held-out set, for the rules of round 2.
+  it('reports the second held-out set from its own file, with no bar', async () => {
+    const one = `${LICENCE}- { text: dama naan nebeday, lang: wo, type: plain, case: advice, expect: [{ kind: plant, id: moringa }] }\n`;
+    const report = await runHeldOut(one, 'heldout-2');
+    expect(report.text).toMatch(/held-out set 2/);
+    expect(report.text).toMatch(/advice\s+1\s+1\s+1\s+0\s+0/);
+    expect(report.code).toBe(0);
+    expect((await runHeldOut(undefined, 'heldout-2')).code).toBe(1);
+  });
 
   it('reports the held-out set with no bar, and fails on a missing or malformed file', async () => {
     const wrong = `${LICENCE}- { text: dama naan nebeday, lang: wo, type: plain, case: affirmative, expect: [{ kind: plant, id: kinkeliba }] }\n`;
@@ -450,6 +465,8 @@ describe('the committed held-out set', () => {
       food: 10,
       list: 15,
       question: 10,
+      // A case of the second held-out set.
+      advice: 0,
     };
     for (const name of SENTENCE_CASES) {
       expect(heldOut.filter((item) => item.case === name).length, name).toBeGreaterThanOrEqual(
@@ -473,14 +490,60 @@ describe('the committed held-out set', () => {
         ...pack.products.map((product) => `product:${product.id}`),
         ...pack.plants.map((plant) => `plant:${plant.id}`),
       ]);
-      for (const item of parseSentences(await readFile(HELD_OUT_FILE, 'utf8'))) {
-        for (const expected of [...item.expect, ...(item.notTaken ?? [])].flatMap(alternativesOf)) {
-          expect(known.has(`${expected.kind}:${expected.id}`), `${item.text}: ${expected.id}`).toBe(
-            true,
-          );
+      for (const file of [HELD_OUT_FILE, HELD_OUT_2_FILE]) {
+        for (const item of parseSentences(await readFile(file, 'utf8'))) {
+          for (const expected of [...item.expect, ...(item.notTaken ?? [])].flatMap(
+            alternativesOf,
+          )) {
+            expect(
+              known.has(`${expected.kind}:${expected.id}`),
+              `${item.text}: ${expected.id}`,
+            ).toBe(true);
+          }
         }
       }
     },
     PACK_TIMEOUT_MS,
   );
+
+  // Review of #68, round 2: written before the rules of round 2 (another
+  // person named before, advice, a past said by a time), never tuned on.
+  it('has a second set of at least 60 new sentences on another person, advice and the past', async () => {
+    const second = parseSentences(await readFile(HELD_OUT_2_FILE, 'utf8'));
+    const before = new Set(
+      [
+        ...parseSentences(await readFile(SENTENCES_FILE, 'utf8')),
+        ...parseSentences(await readFile(HELD_OUT_FILE, 'utf8')),
+      ].map((item) => plain(item.text)),
+    );
+    expect(second.length).toBeGreaterThanOrEqual(60);
+    const atLeast: [string, number][] = [
+      ['fr', 25],
+      ['wo', 15],
+      ['mix', 3],
+    ];
+    for (const [lang, count] of atLeast) {
+      expect(second.filter((item) => item.lang === lang).length, lang).toBeGreaterThanOrEqual(
+        count,
+      );
+    }
+    const cases: [SentenceCase, number][] = [
+      ['other-person', 10],
+      ['advice', 8],
+      ['past', 12],
+      ['affirmative', 15],
+    ];
+    for (const [name, count] of cases) {
+      expect(second.filter((item) => item.case === name).length, name).toBeGreaterThanOrEqual(
+        count,
+      );
+    }
+    for (const item of second) {
+      expect(item.case, item.text).toBeDefined();
+      expect(before.has(plain(item.text)), `already in a set: ${item.text}`).toBe(false);
+    }
+    expect(second.filter((item) => (item.notTaken?.length ?? 0) > 0).length).toBeGreaterThanOrEqual(
+      25,
+    );
+  });
 });
