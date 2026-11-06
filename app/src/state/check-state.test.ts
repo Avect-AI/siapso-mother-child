@@ -401,6 +401,39 @@ describe('useCheckStore', () => {
     expect(result.current.signsGiven).toBe(false);
   });
 
+  it('counts the signs answer only for what it was given for (S14, 8.5)', () => {
+    const { result } = renderHook(() => useCheckStore());
+    act(() => {
+      result.current.start('p1');
+      result.current.setSigns([], 'p1|t1|2026-11-04|pregnancy');
+    });
+    expect(result.current.signsFor).toBe('p1|t1|2026-11-04|pregnancy');
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(true);
+    // Another key (other signs to ask, her answers saved again): not answered for that.
+    expect(result.current.signsGivenFor('p1|t1|2026-11-05|pregnancy')).toBe(false);
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy+postpartum+baby')).toBe(false);
+    act(() => {
+      result.current.clearSigns();
+    });
+    expect(result.current).toMatchObject({ signsGiven: false, signsFor: null });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(false);
+    // Given without a key: it counts for none until taken for the first key shown.
+    act(() => {
+      result.current.setSigns(['fever']);
+    });
+    expect(result.current).toMatchObject({ signsGiven: true, signsFor: null });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(false);
+    act(() => {
+      result.current.adoptSigns('p1|t1|2026-11-04|pregnancy');
+    });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(true);
+    // Taken once: a later key never takes it again, the question is asked.
+    act(() => {
+      result.current.adoptSigns('p1|t1|2026-11-05|pregnancy');
+    });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-05|pregnancy')).toBe(false);
+  });
+
   it('keeps the signs answer within the check when the list changes (SCRUM-56, S14)', () => {
     const { result } = renderHook(() => useCheckStore());
     act(() => {

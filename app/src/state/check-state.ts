@@ -38,6 +38,17 @@ export interface CheckState {
   /** The signs question was answered: an empty `signs` is then "none of these", not "not asked yet". */
   signsGiven: boolean;
   /**
+   * What the answer was given for (signsAnswerKey: her answers as saved, the
+   * day, the groups of signs asked); null when given without one, or none.
+   */
+  signsFor: string | null;
+  /**
+   * Whether the signs question is answered for this key (signsAnswerKey): an
+   * answer given for another day, other answers of hers or other signs to ask
+   * does not count, so no result is ever shown on it (S14, 8.5).
+   */
+  signsGivenFor: (key: string) => boolean;
+  /**
    * The answers of a passer-by checked without a profile, in memory only (never
    * stored, no history), when the check is hers; null otherwise.
    */
@@ -111,8 +122,17 @@ export interface CheckState {
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
-  /** The answer to the signs question: the signs present now, or none (empty). */
-  setSigns: (signs: string[]) => void;
+  /**
+   * The answer to the signs question: the signs present now, or none (empty),
+   * given for `forKey` (signsAnswerKey) when the screen knows it.
+   */
+  setSigns: (signs: string[], forKey?: string) => void;
+  /**
+   * An answer given before the check knew what it was for (no key) is taken
+   * for `forKey`, the first key the check shows it under; from then on it is
+   * forgotten like any other when that key changes. No effect otherwise.
+   */
+  adoptSigns: (forKey: string) => void;
   /** No answer to the signs question (yet): the result asks it first. */
   clearSigns: () => void;
   /** Back to no check at all, for no profile: every list and the passer-by forgotten. */
@@ -178,6 +198,7 @@ interface CheckData {
   items: CheckedItem[];
   signs: string[];
   signsGiven: boolean;
+  signsFor: string | null;
   changed: CheckChange | null;
   /** The list each unrecognised text was typed in, by refKey. */
   lists: Readonly<Record<string, EntryKind>>;
@@ -214,8 +235,9 @@ type Action =
   | { type: 'remove'; index: number }
   | { type: 'restore'; index: number; item: CheckedItem }
   | { type: 'clearChanged' }
-  | { type: 'signs'; signs: string[] }
+  | { type: 'signs'; signs: string[]; forKey: string | null }
   | { type: 'clearSigns' }
+  | { type: 'adoptSigns'; forKey: string }
   | { type: 'reset' };
 
 const EMPTY: CheckData = {
@@ -223,6 +245,7 @@ const EMPTY: CheckData = {
   items: [],
   signs: [],
   signsGiven: false,
+  signsFor: null,
   changed: null,
   lists: {},
   families: {},
@@ -365,8 +388,8 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
 
 /** No answer to the signs question: they are asked again before the result. */
 function withoutSigns(state: CheckData): CheckData {
-  return state.signsGiven || state.signs.length > 0
-    ? { ...state, signs: [], signsGiven: false }
+  return state.signsGiven || state.signs.length > 0 || state.signsFor !== null
+    ? { ...state, signs: [], signsGiven: false, signsFor: null }
     : state;
 }
 
@@ -425,9 +448,18 @@ function reduce(state: CheckData, action: Action): CheckData {
     case 'clearChanged':
       return state.changed === null ? state : { ...state, changed: null };
     case 'signs':
-      return { ...state, signs: [...new Set(action.signs)], signsGiven: true };
+      return {
+        ...state,
+        signs: [...new Set(action.signs)],
+        signsGiven: true,
+        signsFor: action.forKey,
+      };
     case 'clearSigns':
       return withoutSigns(state);
+    case 'adoptSigns':
+      return state.signsGiven && state.signsFor === null
+        ? { ...state, signsFor: action.forKey }
+        : state;
     case 'reset':
       return EMPTY;
   }
@@ -492,11 +524,14 @@ export function useCheckStore(): CheckState {
   const clearChanged = useCallback(() => {
     dispatch({ type: 'clearChanged' });
   }, []);
-  const setSigns = useCallback((signs: string[]) => {
-    dispatch({ type: 'signs', signs });
+  const setSigns = useCallback((signs: string[], forKey?: string) => {
+    dispatch({ type: 'signs', signs, forKey: forKey ?? null });
   }, []);
   const clearSigns = useCallback(() => {
     dispatch({ type: 'clearSigns' });
+  }, []);
+  const adoptSigns = useCallback((forKey: string) => {
+    dispatch({ type: 'adoptSigns', forKey });
   }, []);
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
@@ -506,6 +541,7 @@ export function useCheckStore(): CheckState {
     items,
     signs,
     signsGiven,
+    signsFor,
     changed,
     lists,
     written,
@@ -530,6 +566,10 @@ export function useCheckStore(): CheckState {
     [declined],
   );
   const saidOf = useCallback((item: CheckedItem) => said[refKey(item.ref)] === true, [said]);
+  const signsGivenFor = useCallback(
+    (key: string) => signsGiven && signsFor === key,
+    [signsGiven, signsFor],
+  );
   const aboveOf = useCallback(
     (item: CheckedItem) =>
       item.strengthAtMostMg === undefined &&
@@ -543,6 +583,8 @@ export function useCheckStore(): CheckState {
       items,
       signs,
       signsGiven,
+      signsFor,
+      signsGivenFor,
       changed,
       quick,
       start,
@@ -564,6 +606,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     }),
     [
@@ -571,6 +614,8 @@ export function useCheckStore(): CheckState {
       items,
       signs,
       signsGiven,
+      signsFor,
+      signsGivenFor,
       changed,
       quick,
       start,
@@ -592,6 +637,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     ],
   );

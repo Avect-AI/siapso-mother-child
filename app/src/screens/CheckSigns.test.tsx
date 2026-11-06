@@ -405,7 +405,79 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     await waitFor(() => {
       expect(probe.current().signsGiven).toBe(false);
     });
-    expect(await question()).toBeVisible();
+    // Asked again, the question answers again (no dead end): the result comes back.
+    await user.click(
+      within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
+    );
+    expect(await screen.findByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
+  });
+
+  it('answers again with "Oui, au moins un" once her answers changed elsewhere', async () => {
+    const { user, probe } = await openCheckWithItem();
+    await user.click(
+      within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Résultat' });
+
+    await saveProfile(profileOf({ updatedAt: '2026-11-04T09:30:00.000Z' }));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => {
+      expect(probe.current().signsGiven).toBe(false);
+    });
+
+    const asked = await question();
+    await user.click(within(asked).getByRole('button', { name: 'Oui, au moins un' }));
+    await user.click(within(asked).getAllByRole('checkbox')[0] as HTMLElement);
+    await user.click(within(asked).getByRole('button', { name: 'Voir le résultat' }));
+    await waitFor(() => {
+      expect(probe.current().signsGiven).toBe(true);
+    });
+    expect(probe.current().signs).toHaveLength(1);
+  });
+
+  it('forgets the answer at midnight when the signs to ask change with the day (S14, 8.5)', async () => {
+    // "Je ne sais pas" for her term, said 28 days ago: tomorrow the baby may be born.
+    vi.setSystemTime(new Date(2026, 10, 4, 23, 59, 30));
+    const unsure = profileOf({ term: { kind: 'unknown', givenOn: '2026-10-07' } });
+    const { user } = await openCheckWithItem({ profile: unsure });
+    await user.click(
+      within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Résultat' });
+
+    // Past midnight, the page shown again: the signs after the birth and of the
+    // baby now apply, and were never asked. No result on the old answer.
+    vi.setSystemTime(new Date(2026, 10, 5, 0, 0, 30));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { level: 2, name: 'Résultat' })).toBeNull();
+    });
+    expect(screen.queryByText('Signes de danger maintenant : aucun')).toBeNull();
+    const asked = await question();
+    expect(within(asked).getByRole('button', { name: 'Non, aucun de ces signes' })).toBeVisible();
+  });
+
+  it('keeps the answer over midnight when the signs to ask stay the same (8.5), read again on focus', async () => {
+    vi.setSystemTime(new Date(2026, 10, 4, 23, 59, 30));
+    const { user, probe } = await openCheckWithItem();
+    await user.click(
+      within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Résultat' });
+
+    vi.setSystemTime(new Date(2026, 10, 5, 0, 0, 30));
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(probe.current().signsGiven).toBe(true);
+    expect(screen.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
   });
 
   it('brings a danger into view when a product added makes one, and keeps it in the history once taken off (S15)', async () => {

@@ -10,6 +10,7 @@ import { profileSummary } from '../domain/profile-summary.js';
 import { bandedName, doseBandLine, doseBandOf } from '../domain/dose-band.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
 import { joinNames } from '../domain/result-view.js';
+import { signsAnswerKey } from '../domain/signs.js';
 import { isStale } from '../domain/staleness.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { HistoryEntry, Mode, Profile } from '../domain/types.js';
@@ -40,8 +41,10 @@ export function untilMidnight(now: Date): number {
 
 /**
  * A new reading of her profile and of the day (SCRUM-56, 8.3, her term kept
- * current): when the page shows again and at midnight, the check reads them
- * again (at unlock it is shown again, so it reads them then too).
+ * current): when the page shows again (visibility, focus of the window, a page
+ * restored from the back-forward cache) and at midnight, the check reads them
+ * again (at unlock it is shown again, so it reads them then too). Two windows
+ * side by side never change visibility, hence the focus.
  */
 function useReading(): { reading: number; today: string } {
   // Today from the phone's clock, handed to pure code.
@@ -54,8 +57,12 @@ function useReading(): { reading: number; today: string } {
       if (document.visibilityState !== 'hidden') again();
     };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', again);
+    window.addEventListener('pageshow', again);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', again);
+      window.removeEventListener('pageshow', again);
     };
   }, [again]);
   useEffect(() => {
@@ -626,7 +633,9 @@ export function Check() {
             />
           )}
           {/* The result under the answer (S15), worked out again at each change. */}
-          {empty || !check.signsGiven || profile === null ? null : (
+          {empty ||
+          profile === null ||
+          !check.signsGivenFor(signsAnswerKey(profile.profile, profile.today, notBefore)) ? null : (
             <CheckResult
               profile={profile.profile}
               today={profile.today}

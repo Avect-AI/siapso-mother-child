@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useId, useRef, useState } from 'react';
-import { groupsForProfile, shownGroups, signsByGroup } from '../domain/signs.js';
+import { groupsForProfile, shownGroups, signsAnswerKey, signsByGroup } from '../domain/signs.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
@@ -54,7 +54,19 @@ export function CheckSigns({
   const t = useT();
   const lang = useLang();
   const { pack, packError } = useApp();
-  const { signs, signsGiven, setSigns, clearSigns } = useCheck();
+  const {
+    signs,
+    signsGivenFor,
+    signsGiven: givenAtAll,
+    signsFor,
+    setSigns,
+    clearSigns,
+    adoptSigns,
+  } = useCheck();
+  // The answer counts only for what it was given for: her answers as saved,
+  // the day and the signs asked (S14, 8.5); otherwise the question is asked.
+  const answerKey = signsAnswerKey(profile, today, notBefore);
+  const signsGiven = signsGivenFor(answerKey);
   const titleId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
@@ -70,6 +82,17 @@ export function CheckSigns({
   const answered = useRef(false);
   // "Changer" pressed: the question takes the focus once it is back.
   const askAgain = useRef(false);
+
+  // An answer given with no key (never by this screen) is taken for the key it is first shown under.
+  useEffect(() => {
+    if (givenAtAll && signsFor === null) adoptSigns(answerKey);
+  }, [givenAtAll, signsFor, answerKey, adoptSigns]);
+
+  // Asked again for any reason (Changer, her answers saved elsewhere, a new
+  // day, other signs to ask): the next tap answers again, never a dead end.
+  useEffect(() => {
+    if (!signsGiven) answered.current = false;
+  }, [signsGiven]);
 
   // The question back after "Changer": its heading takes the focus.
   useEffect(() => {
@@ -118,7 +141,7 @@ export function CheckSigns({
   const answerNone = () => {
     if (answered.current) return;
     answered.current = true;
-    setSigns([]);
+    setSigns([], answerKey);
   };
 
   const seeAll = () => {
@@ -266,7 +289,7 @@ export function CheckSigns({
                   return;
                 }
                 answered.current = true;
-                setSigns(ticked);
+                setSigns(ticked, answerKey);
               }}
             >
               {t('signs.seeResult')}
