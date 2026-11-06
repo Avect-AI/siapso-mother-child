@@ -37,6 +37,8 @@ path = [
   "TRADEMARKS.md",
   "speech/MODEL_CARD.md",
   "speech/LICENSES.md",
+  "ocr/MODEL_CARD.md",
+  "ocr/LICENSES.md",
   ".impeccable/design.json",
   # Design briefs of the impeccable process, written for this project.
   "app/.impeccable/**",

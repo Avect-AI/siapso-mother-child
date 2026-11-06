@@ -29,7 +29,9 @@
     "voice:convert": "sh tools/hygiene/py.sh speech/convert/convert.py",
     "voice:install-local": "node speech/scripts/install-local.mjs",
     "eval:speech": "pnpm --filter @siapso/speech eval",
-    "voice:bench": "pnpm --filter @siapso/speech bench"
+    "voice:bench": "pnpm --filter @siapso/speech bench",
+    "ocr:install-local": "node ocr/scripts/install-local.mjs",
+    "ocr:bench": "pnpm --filter @siapso/ocr bench"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

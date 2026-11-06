@@ -16,6 +16,11 @@ describe('service worker precache', () => {
     for (const pattern of workbox.globPatterns) expect(pattern.startsWith('voice')).toBe(false);
   });
 
+  it('never precaches the prescription reading pack: it is installed only on request', () => {
+    expect(workbox.globIgnores).toContain('ocr/**');
+    for (const pattern of workbox.globPatterns) expect(pattern.startsWith('ocr')).toBe(false);
+  });
+
   it('keeps the app shell and the knowledge pack in the precache', () => {
     expect(workbox.globPatterns).toContain('pack/*.{json,sig}');
     expect(workbox.globPatterns[0]).toMatch(/\{html,js,/);
@@ -38,7 +43,7 @@ describe('service worker precache', () => {
     expect(workbox.globPatterns.filter((pattern) => pattern.startsWith('pack/'))).toEqual([
       'pack/*.{json,sig}',
     ]);
-    expect(workbox.globIgnores).toEqual(['pack/pack.json', 'voice/**']);
+    expect(workbox.globIgnores).toEqual(['pack/pack.json', 'voice/**', 'ocr/**']);
   });
 
   it('keeps the referral file of a deployment offline: who to call works in airplane mode', () => {

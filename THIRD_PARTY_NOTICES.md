@@ -33,6 +33,12 @@ Files that SIAPSO Mother-Child includes but does not author. Their licences are 
 - The app shows them, with the Whisper models, the data of the Wolof model and the full Apache 2.0 and MIT texts, on its licences screen (`#/licences`, from About; `app/src/domain/third-party.ts`). Each voice pack also ships the texts (`licenses/`, `NOTICE.md`).
 - The service worker bundles parts of Workbox 7.4.1 (MIT, Copyright Google LLC).
 
+## Prescription reading pack (not in the repository)
+
+- `@siapso/ocr` (SCRUM-57, `docs/ocr.md`): its reading worker (`assets/ocr-worker-*.js` in a build) bundles the JavaScript of ONNX Runtime Web (MIT, Copyright (c) Microsoft Corporation), the very build the speech worker uses (`1.31.0-dev.20260914-8d85527a0`). The app does not load it yet (the screens come in phase 3).
+- The optional reading pack, built by `pnpm ocr:install-local` and never committed, carries the PaddleOCR PP-OCRv5 mobile detection and Latin recognition models (Apache License 2.0, declared on their Hugging Face cards, which name no copyright holder; the pack ships the `LICENSE` of the PaddleOCR GitHub project at a pinned commit, "Copyright (c) 2016 PaddlePaddle Authors"), the WebAssembly and loader of ONNX Runtime Web (MIT, with the `LICENSE` and `ThirdPartyNotices.txt` of ONNX Runtime at the commit the build comes from, for the third-party code its WebAssembly links), pdf.js `pdfjs-dist` 6.4.299 (Apache License 2.0, Mozilla Foundation and contributors) and the two WebAssembly decoders of scanned images pdf.js ships: `jbig2.wasm` (the JBIG2 decoder of PDFium, BSD-3-Clause and Apache License 2.0, Copyright 2014 The PDFium Authors) and `openjpeg.wasm` (OpenJPEG, BSD-2-Clause), each with its licence texts, all in `licenses/` and `NOTICE.md`. Sources, revisions and hashes: `ocr/MODEL_CARD.md` and `ocr/LICENSES.md`.
+- The licences screen of the app will list them when the app ships the reading (phase 3).
+
 ## Speech model and its training data (not in the repository)
 
 The speech model files are converted at build time from public models and are not committed. Their licence chain, including the open question on the share-alike licence of WAXAL Wolof (CC BY-SA 4.0) and the missing data licence of ALFFA Wolof, is in `speech/LICENSES.md` and `speech/MODEL_CARD.md`. This is not legal advice, and it is not settled.
