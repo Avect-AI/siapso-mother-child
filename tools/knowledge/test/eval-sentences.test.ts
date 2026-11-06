@@ -14,13 +14,16 @@ import {
   main,
   parseSentenceBaseline,
   parseSentences,
+  SENTENCE_CASES,
   SENTENCE_LANGS,
 } from '../src/eval-sentences.js';
+import type { SentenceCase } from '../src/eval-sentences.js';
 import { loadContent } from '../src/load.js';
 import { REPO_ROOT, tempCopy } from './helpers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SENTENCES_FILE = path.join(ROOT, 'eval', 'speech', 'sentences.yaml');
+const HELD_OUT_FILE = path.join(ROOT, 'eval', 'speech', 'sentences-heldout.yaml');
 /**
  * Building the repository pack and reading every sentence as heard takes about
  * 2 s alone, and over 5 s (Vitest's default) with coverage on a loaded machine.
@@ -65,6 +68,36 @@ describe('parseSentences', () => {
     expect(() =>
       parseSentences('- { text: x, lang: fr, type: plain, expect: [{ kind: plant }] }'),
     ).toThrow('"expect"');
+  });
+
+  // Review of #68: a product named but not taken (said with a negation, by
+  // another person, in the past) must not come ticked.
+  it('reads the products named but not taken, apart from the ones taken', () => {
+    const [item] = parseSentences(
+      '- { text: je prends du doliprane mais pas de cytotec, lang: fr, type: plain, expect: [{ kind: product, id: a }], notTaken: [{ kind: product, id: b }] }',
+    );
+    expect(item?.notTaken?.map(alternativesOf)).toEqual([[{ kind: 'product', id: 'b' }]]);
+    // A sentence naming only products not taken has no product taken.
+    expect(
+      parseSentences(
+        '- { text: je ne prends pas de cytotec, lang: fr, type: none, expect: [], notTaken: [{ kind: product, id: b }] }',
+      )[0]?.notTaken,
+    ).toHaveLength(1);
+    expect(() =>
+      parseSentences(
+        '- { text: x, lang: fr, type: none, expect: [], notTaken: [{ kind: plant }] }',
+      ),
+    ).toThrow('"notTaken"');
+  });
+
+  it('reads the case of a held-out sentence, and rejects an unknown one', () => {
+    const [item] = parseSentences(
+      '- { text: mon mari prend du coartem, lang: fr, type: none, case: other-person, expect: [] }',
+    );
+    expect(item?.case).toBe('other-person');
+    expect(() =>
+      parseSentences('- { text: x, lang: fr, type: none, case: story, expect: [] }'),
+    ).toThrow('"case"');
   });
 
   it('expects no product for a sentence of type none, and only for one', () => {
@@ -182,7 +215,38 @@ describe('evaluateSentences', () => {
       false: 0,
       checksRight: 1,
       checksWrong: 1,
+      // Named and offered (ticked or to confirm): the King Kyliba of the first.
+      offered: 1,
     });
+  });
+
+  it('counts a product named but not taken that comes ticked as a false product', () => {
+    const report = evaluateSentences(
+      index,
+      families,
+      parseSentences(
+        '- { text: je ne bois pas de kinkéliba, lang: fr, type: none, expect: [], notTaken: [{ kind: plant, id: kinkeliba }] }',
+      ),
+    );
+    expect(report.overall).toMatchObject({ expected: 0, right: 0, notTakenTicked: 1 });
+    expect(report.overall.false).toBe(1);
+    expect(report.perCase.negation).toMatchObject({ sentences: 0 });
+  });
+
+  it('tallies each case apart', () => {
+    const report = evaluateSentences(
+      index,
+      families,
+      parseSentences(
+        [
+          '- { text: dama naan nebeday, lang: wo, type: plain, case: affirmative, expect: [{ kind: plant, id: moringa }] }',
+          '- { text: je ne bois pas de kinkéliba, lang: fr, type: none, case: negation, expect: [], notTaken: [{ kind: plant, id: kinkeliba }] }',
+        ].join('\n'),
+      ),
+    );
+    expect(report.perCase.affirmative).toMatchObject({ sentences: 1, right: 1 });
+    expect(report.perCase.negation).toMatchObject({ sentences: 1, notTaken: 1 });
+    expect(report.perCase.past).toMatchObject({ sentences: 0 });
   });
 });
 
@@ -242,6 +306,34 @@ describe('main', () => {
     expect(bad.code).toBe(1);
     expect(bad.text).toMatch(/FAIL: .*baseline/);
   });
+
+  // The held-out set is measured, never tuned on: its figures are reported as
+  // they are, with no bar.
+  async function runHeldOut(heldOut: string | undefined): Promise<{ code: number; text: string }> {
+    const copy = await tempCopy();
+    try {
+      await mkdir(path.join(copy.root, 'eval', 'speech'), { recursive: true });
+      if (heldOut !== undefined) {
+        await writeFile(path.join(copy.root, 'eval', 'speech', 'sentences-heldout.yaml'), heldOut);
+      }
+      const lines: string[] = [];
+      const code = await main(copy.root, (line) => lines.push(line), REPO_ROOT, 'heldout');
+      return { code, text: lines.join('\n') };
+    } finally {
+      await copy.remove();
+    }
+  }
+
+  it('reports the held-out set with no bar, and fails on a missing or malformed file', async () => {
+    const wrong = `${LICENCE}- { text: dama naan nebeday, lang: wo, type: plain, case: affirmative, expect: [{ kind: plant, id: kinkeliba }] }\n`;
+    const report = await runHeldOut(wrong);
+    expect(report.text).toMatch(/held-out set/);
+    expect(report.text).toMatch(/affirmative\s+1\s+1\s+0\s+1\s+1/);
+    expect(report.text).not.toMatch(/FAIL/);
+    expect(report.code).toBe(0);
+    expect((await runHeldOut(undefined)).code).toBe(1);
+    expect((await runHeldOut(`${LICENCE}[]\n`)).code).toBe(1);
+  });
 });
 
 describe('the committed sentence set', () => {
@@ -299,6 +391,68 @@ describe('the committed sentence set', () => {
           baseline.precision,
         );
         expect(tally.right / tally.expected).toBeGreaterThanOrEqual(baseline.recall);
+      }
+    },
+    PACK_TIMEOUT_MS,
+  );
+});
+
+// Review of #68: a set written before the rules for products not taken, and
+// never tuned on. These tests check its shape only, never its figures.
+describe('the committed held-out set', () => {
+  const plain = (text: string): string =>
+    text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  it('has at least 120 new sentences in French and Wolof, of every case', async () => {
+    const heldOut = parseSentences(await readFile(HELD_OUT_FILE, 'utf8'));
+    const tuning = new Set(
+      parseSentences(await readFile(SENTENCES_FILE, 'utf8')).map((item) => plain(item.text)),
+    );
+    expect(heldOut.length).toBeGreaterThanOrEqual(120);
+    expect(heldOut.filter((item) => item.lang === 'fr').length).toBeGreaterThanOrEqual(50);
+    expect(heldOut.filter((item) => item.lang === 'wo').length).toBeGreaterThanOrEqual(40);
+    const least: Record<SentenceCase, number> = {
+      affirmative: 20,
+      negation: 20,
+      'other-person': 15,
+      past: 15,
+      food: 10,
+      list: 15,
+      question: 10,
+    };
+    for (const name of SENTENCE_CASES) {
+      expect(heldOut.filter((item) => item.case === name).length, name).toBeGreaterThanOrEqual(
+        least[name],
+      );
+    }
+    for (const item of heldOut) {
+      expect(item.case, item.text).toBeDefined();
+      expect(tuning.has(plain(item.text)), `also in the tuning set: ${item.text}`).toBe(false);
+    }
+    expect(
+      heldOut.filter((item) => (item.notTaken?.length ?? 0) > 0).length,
+    ).toBeGreaterThanOrEqual(40);
+  });
+
+  it(
+    'expects only products and plants of the registry',
+    async () => {
+      const pack = buildPack(await loadContent(ROOT, ROOT));
+      const known = new Set([
+        ...pack.products.map((product) => `product:${product.id}`),
+        ...pack.plants.map((plant) => `plant:${plant.id}`),
+      ]);
+      for (const item of parseSentences(await readFile(HELD_OUT_FILE, 'utf8'))) {
+        for (const expected of [...item.expect, ...(item.notTaken ?? [])].flatMap(alternativesOf)) {
+          expect(known.has(`${expected.kind}:${expected.id}`), `${item.text}: ${expected.id}`).toBe(
+            true,
+          );
+        }
       }
     },
     PACK_TIMEOUT_MS,

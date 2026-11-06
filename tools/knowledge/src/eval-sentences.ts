@@ -18,6 +18,23 @@ export type SentenceLang = (typeof SENTENCE_LANGS)[number];
 export const SENTENCE_TYPES = ['plain', 'misspelt', 'none'] as const;
 export type SentenceType = (typeof SENTENCE_TYPES)[number];
 
+/**
+ * What a held-out sentence says of the products: taken (`affirmative`), not
+ * taken (`negation`), taken by another person (`other-person`), taken before
+ * (`past`), a food that is also a remedy (`food`), several at once (`list`),
+ * or asked about (`question`).
+ */
+export const SENTENCE_CASES = [
+  'affirmative',
+  'negation',
+  'other-person',
+  'past',
+  'food',
+  'list',
+  'question',
+] as const;
+export type SentenceCase = (typeof SENTENCE_CASES)[number];
+
 export interface Expected {
   kind: EntryKind;
   id: string;
@@ -30,7 +47,16 @@ export interface EvalSentence {
   text: string;
   lang: SentenceLang;
   type: SentenceType;
+  /** Held-out set only: what the sentence says of the products. */
+  case?: SentenceCase;
+  /** The products the speaker takes. */
   expect: ExpectedProduct[];
+  /**
+   * The products named but not taken: said with a negation, by or for another
+   * person, or as a past use. They must not come ticked: a ticked one is a
+   * false product. Offered unticked is right (she may still take it).
+   */
+  notTaken?: ExpectedProduct[];
 }
 
 export interface SentenceBaseline {
@@ -56,6 +82,14 @@ export interface SentenceTally {
   missed: number;
   /** Products offered unticked. */
   unticked: number;
+  /** Products the sentences name that were offered, ticked or unticked. */
+  offered: number;
+  /** Products named but not taken. */
+  notTaken: number;
+  /** Products named but not taken that came ticked (counted in `false` too). */
+  notTakenTicked: number;
+  /** Products named but not taken that were offered unticked. */
+  notTakenUnticked: number;
   /** Names offered to check, read from words the voice split, that the sentence names. */
   checksRight: number;
   /** Names offered to check that the sentence does not name. */
@@ -72,6 +106,7 @@ export interface SentenceMiss {
 export interface SentenceReport {
   perLang: Record<SentenceLang, SentenceTally>;
   perType: Record<SentenceType, SentenceTally>;
+  perCase: Record<SentenceCase, SentenceTally>;
   overall: SentenceTally;
   misses: SentenceMiss[];
   /** Strengths said with a name found: how many, and how many were read right. */
@@ -122,6 +157,11 @@ export function parseSentences(text: string): EvalSentence[] {
         `${where} (${item.text}): "type" must be one of ${SENTENCE_TYPES.join(', ')}`,
       );
     }
+    if (item.case !== undefined && !SENTENCE_CASES.includes(item.case)) {
+      throw new Error(
+        `${where} (${item.text}): "case" must be one of ${SENTENCE_CASES.join(', ')}`,
+      );
+    }
     if (!Array.isArray(item.expect) || !item.expect.every(isProduct)) {
       throw new Error(
         `${where} (${item.text}): "expect" must be a list of { kind, id }, { any: [...] }, with an optional mg`,
@@ -130,6 +170,14 @@ export function parseSentences(text: string): EvalSentence[] {
     if ((item.type === 'none') !== (item.expect.length === 0)) {
       throw new Error(
         `${where} (${item.text}): a sentence of "type: none", and only one, expects []`,
+      );
+    }
+    if (
+      item.notTaken !== undefined &&
+      (!Array.isArray(item.notTaken) || !item.notTaken.every(isProduct))
+    ) {
+      throw new Error(
+        `${where} (${item.text}): "notTaken" must be a list of { kind, id } or { any: [...] }`,
       );
     }
     return item as EvalSentence;
@@ -182,6 +230,10 @@ function emptyTally(): SentenceTally {
     false: 0,
     missed: 0,
     unticked: 0,
+    offered: 0,
+    notTaken: 0,
+    notTakenTicked: 0,
+    notTakenUnticked: 0,
     checksRight: 0,
     checksWrong: 0,
   };
@@ -219,6 +271,10 @@ export function evaluateSentences(
     SentenceType,
     SentenceTally
   >;
+  const perCase = Object.fromEntries(SENTENCE_CASES.map((name) => [name, emptyTally()])) as Record<
+    SentenceCase,
+    SentenceTally
+  >;
   const overall = emptyTally();
   const misses: SentenceMiss[] = [];
   const strengths = { said: 0, read: 0 };
@@ -227,31 +283,58 @@ export function evaluateSentences(
     const ticked = found.filter((product) => product.checked);
     const checks = found.filter((product) => product.heardAs !== undefined);
     const left = [...ticked];
+    const unticked = found.filter((product) => !product.checked);
     let right = 0;
+    let offered = 0;
     let checksRight = 0;
     const missed: string[] = [];
+    const wantedOf = (product: ExpectedProduct): Set<string> =>
+      new Set(alternativesOf(product).map((entry) => familyOf(families, entry)));
     for (const product of item.expect) {
-      const wanted = new Set(alternativesOf(product).map((entry) => familyOf(families, entry)));
+      const wanted = wantedOf(product);
       const at = left.findIndex((candidate) => wanted.has(candidate.candidate.family));
       const hit = at >= 0 ? left.splice(at, 1)[0] : undefined;
       if (hit === undefined) {
         missed.push(alternativesOf(product)[0]?.id ?? '');
+        const offer = unticked.findIndex((candidate) => wanted.has(candidate.candidate.family));
+        if (offer >= 0) {
+          unticked.splice(offer, 1);
+          offered += 1;
+        }
         if (checks.some((check) => wanted.has(check.candidate.family))) checksRight += 1;
         continue;
       }
       right += 1;
+      offered += 1;
       if (product.mg !== undefined) {
         strengths.said += 1;
         if (hit.strengthMg === product.mg) strengths.read += 1;
       }
     }
-    for (const tally of [perLang[item.lang], perType[item.type], overall]) {
+    // A product named but not taken is false when it comes ticked (it is left
+    // over from the products taken), right when offered unticked.
+    let notTakenTicked = 0;
+    let notTakenUnticked = 0;
+    for (const product of item.notTaken ?? []) {
+      const wanted = wantedOf(product);
+      if (left.some((candidate) => wanted.has(candidate.candidate.family))) notTakenTicked += 1;
+      else if (unticked.some((candidate) => wanted.has(candidate.candidate.family))) {
+        notTakenUnticked += 1;
+      }
+    }
+    const tallies = [perLang[item.lang], perType[item.type], overall];
+    if (item.case !== undefined) tallies.push(perCase[item.case]);
+    for (const tally of tallies) {
       tally.sentences += 1;
       tally.expected += item.expect.length;
       tally.right += right;
       tally.false += left.length;
       tally.missed += missed.length;
       tally.unticked += found.length - ticked.length;
+      tally.offered += offered;
+      tally.notTaken += item.notTaken?.length ?? 0;
+      tally.notTakenTicked += notTakenTicked;
+      tally.notTakenUnticked += notTakenUnticked;
       tally.checksRight += checksRight;
       tally.checksWrong += checks.length - checksRight;
     }
@@ -259,7 +342,7 @@ export function evaluateSentences(
       misses.push({ text: item.text, lang: item.lang, found: describe(ticked), missed });
     }
   }
-  return { perLang, perType, overall, misses, strengths };
+  return { perLang, perType, perCase, overall, misses, strengths };
 }
 
 function describe(products: readonly SentenceProduct[]): string[] {
@@ -332,37 +415,99 @@ export function failures(
   return found;
 }
 
+const LABEL_WIDTH = 13;
+
+/** Named products offered, ticked or to confirm, over the products named. */
+const offeredOf = (tally: SentenceTally): number =>
+  tally.expected === 0 ? 1 : tally.offered / tally.expected;
+
 function row(label: string, tally: SentenceTally): string {
   const cells = [tally.sentences, tally.expected, tally.right, tally.false, tally.missed].map(
     (value) => String(value).padStart(6),
   );
   const checks = `${String(tally.checksRight)}/${String(tally.checksWrong)}`;
-  return `${label.padEnd(9)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)} ${checks.padStart(7)}`;
+  const notTaken = `${String(tally.notTakenTicked)}/${String(tally.notTakenUnticked)}/${String(tally.notTaken)}`;
+  return `${label.padEnd(LABEL_WIDTH)}${cells.join('')} ${precisionOf(tally).toFixed(3).padStart(9)} ${recallOf(tally).toFixed(3).padStart(8)} ${String(tally.unticked).padStart(9)} ${checks.padStart(7)} ${offeredOf(tally).toFixed(3).padStart(8)} ${notTaken.padStart(10)}`;
 }
+
+function printReport(report: SentenceReport, out: (line: string) => void): void {
+  const header = ['sentences', 'named', 'right', 'false', 'missed'];
+  out(
+    `${'lang'.padEnd(LABEL_WIDTH)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)} ${'checks'.padStart(7)} ${'offered'.padStart(8)} ${'not taken'.padStart(10)}`,
+  );
+  out(
+    '(right and false: ticked; recall: named and ticked; offered: named and ticked or to confirm)',
+  );
+  out('(checks: names read from words the voice split, offered unticked: right/wrong)');
+  out(
+    '(not taken: named with a negation, by another person or as a past use: ticked (counted false)/unticked/named)',
+  );
+  for (const lang of SENTENCE_LANGS) out(row(lang, report.perLang[lang]));
+  out(row('overall', report.overall));
+  for (const type of SENTENCE_TYPES) out(row(type, report.perType[type]));
+  for (const name of SENTENCE_CASES) {
+    if (report.perCase[name].sentences > 0) out(row(name, report.perCase[name]));
+  }
+  out(
+    `strengths said with a name found: ${String(report.strengths.said)}, read right: ${String(report.strengths.read)}`,
+  );
+  for (const miss of report.misses) {
+    out(
+      `miss: [${miss.lang}] "${miss.text}" -> found ${miss.found.join(', ') || '(nothing)'}; missed ${miss.missed.join(', ') || '(nothing)'}`,
+    );
+  }
+}
+
+/** Which set to read: the tuning set, with its bars, or the held-out set, measured only. */
+export type SentenceSet = 'tuning' | 'heldout';
 
 /**
  * Runs the evaluation on the repository at root (schemas read from `schemas`,
  * the root by default); returns the exit code: 0 when every bar is met, 1
- * otherwise, and 1 for an unreadable or empty sentence file or baseline.
+ * otherwise, and 1 for an unreadable or empty sentence file or baseline. The
+ * held-out set has no bar: 0 once read.
  */
 export async function main(
   root: string,
   out: (line: string) => void = console.log,
   schemas: string = root,
+  set: SentenceSet = 'tuning',
 ): Promise<number> {
   try {
-    return await run(root, out, schemas);
+    return set === 'heldout' ? await runHeldOut(root, out, schemas) : await run(root, out, schemas);
   } catch (error) {
     out(`FAIL: ${error instanceof Error ? error.message : String(error)}`);
     return 1;
   }
 }
 
-async function run(root: string, out: (line: string) => void, schemas: string): Promise<number> {
+async function packIndex(
+  root: string,
+  schemas: string,
+): Promise<{ index: ResolverIndex; families: Map<string, string> }> {
   const pack = buildPack(await loadContent(root, schemas));
   const entries = entriesFromPack(pack);
-  const index = buildIndex(entries);
-  const families = new Map(entries.map((entry) => [entry.id, entry.family]));
+  return {
+    index: buildIndex(entries),
+    families: new Map(entries.map((entry) => [entry.id, entry.family])),
+  };
+}
+
+async function runHeldOut(
+  root: string,
+  out: (line: string) => void,
+  schemas: string,
+): Promise<number> {
+  const { index, families } = await packIndex(root, schemas);
+  const file = path.join(root, 'eval', 'speech', 'sentences-heldout.yaml');
+  const sentences = parseSentences(await readFile(file, 'utf8'));
+  out(`held-out set: ${String(sentences.length)} sentences, never tuned on; measured with no bar`);
+  printReport(evaluateSentences(index, families, sentences), out);
+  return 0;
+}
+
+async function run(root: string, out: (line: string) => void, schemas: string): Promise<number> {
+  const { index, families } = await packIndex(root, schemas);
   const folder = path.join(root, 'eval', 'speech');
   const sentences = parseSentences(await readFile(path.join(folder, 'sentences.yaml'), 'utf8'));
   const baseline = parseSentenceBaseline(await readFile(path.join(folder, BASELINE_FILE), 'utf8'));
@@ -390,22 +535,8 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
     }
   }
 
-  const header = ['sentences', 'named', 'right', 'false', 'missed'];
-  out(
-    `${'lang'.padEnd(9)}${header.map((cell) => cell.slice(0, 6).padStart(6)).join('')} ${'precision'.padStart(9)} ${'recall'.padStart(8)} ${'unticked'.padStart(9)} ${'checks'.padStart(7)}`,
-  );
-  out('(checks: names read from words the voice split, offered unticked: right/wrong)');
-  for (const lang of SENTENCE_LANGS) out(row(lang, report.perLang[lang]));
-  out(row('overall', report.overall));
-  for (const type of SENTENCE_TYPES) out(row(type, report.perType[type]));
-  out(
-    `strengths said with a name found: ${String(report.strengths.said)}, read right: ${String(report.strengths.read)}`,
-  );
-  for (const miss of report.misses) {
-    out(
-      `miss: [${miss.lang}] "${miss.text}" -> found ${miss.found.join(', ') || '(nothing)'}; missed ${miss.missed.join(', ') || '(nothing)'}`,
-    );
-  }
+  out(`tuning set: ${String(sentences.length)} sentences, with the bars of ${BASELINE_FILE}`);
+  printReport(report, out);
   out(
     `background: ${String(background.length)} transcripts of eval/speech/results, ${String(backgroundFalse)} false products, ${String(backgroundUnticked)} offered unticked, of which ${String(backgroundChecks)} names offered to check`,
   );
@@ -443,7 +574,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  main(root).then(
+  main(root, console.log, root, process.argv.includes('--heldout') ? 'heldout' : 'tuning').then(
     (code) => {
       process.exitCode = code;
     },
