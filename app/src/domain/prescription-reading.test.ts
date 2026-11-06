@@ -212,11 +212,107 @@ describe('readPrescription: lines that are not products', () => {
     );
   });
 
-  it('never offers a numbered line of a name the base does not know and a family name', () => {
-    for (const line of ['3. Mbissine Faye', '4. Zeyna Ndiaye', '5. Thiaba Sarr']) {
-      expect(readPrescription(pack, [line]), line).toEqual({ products: [], typed: [] });
+  it('never offers a name the patient or prescriber line of the same prescription gives', () => {
+    for (const [header, line] of [
+      ['Nom et prénom : Mbissine Faye', '3. Mbissine Faye'],
+      ['Mlle Zeyna Ndiaye, 25 ans', '4. Zeyna Ndiaye'],
+      ['Dr Thiaba Sarr, médecin', '5. Thiaba Sarr'],
+    ] as const) {
+      expect(readPrescription(pack, [header, line]), line).toEqual({ products: [], typed: [] });
     }
   });
+
+  // Review of PR 70, round 3: a person's name in front of a product was quoted.
+  it.each([
+    ['Awa Doliprane 1000 mg', 'paracetamol', 'Doliprane 1000 mg'],
+    ['Mme Fatou Paracétamol 500 mg', 'paracetamol', 'Paracétamol 500 mg'],
+    ['Fatou Diop Doliprane 1000 mg cp', 'paracetamol', 'Doliprane 1000 mg cp'],
+    ['1. Penda Kane Doliprane 500 mg', 'paracetamol', '1. Doliprane 500 mg'],
+    ['Adama Codéine 30 mg', 'codeine', 'Codéine 30 mg'],
+    ['Fatou Fer + Acide folique', 'folic-acid+iron', 'Fer + Acide folique'],
+    ['Awa Fall Coartem', 'artemether+lumefantrine', 'Coartem'],
+    ['Khady SP', 'pyrimethamine+sulfadoxine', 'SP'],
+  ])(
+    'drops the name of a person in front of a product, and reads the product: %s',
+    (line, substances, shown) => {
+      const { products } = readPrescription(pack, [line]);
+      expect(products.map((p) => substancesOf(p.ref.id))).toEqual([substances]);
+      expect(products[0]?.line).toBe(shown);
+    },
+  );
+
+  it('offers a product outside the base without the name of the person after it', () => {
+    for (const [line, text] of [
+      ['4. Smecta Ndiaye', 'Smecta'],
+      ['5. Gaviscon Diop', 'Gaviscon'],
+    ] as const) {
+      const { typed } = readPrescription(pack, [line]);
+      expect(
+        typed.map((t) => t.text),
+        line,
+      ).toEqual([text]);
+      expect(
+        typed.map((t) => t.line),
+        line,
+      ).toEqual([line.replace(/ \S+$/u, '')]);
+    }
+  });
+
+  it(
+    'never quotes a listed name, read on any product line of the name grid',
+    { timeout: 300_000 },
+    () => {
+      const first = ['Fatou', 'Awa', 'Penda', 'Khady', 'Adama', 'Mariama'];
+      const last = ['Diop', 'Ndiaye', 'Kane', 'Fall', 'Sow', 'Ba'];
+      const lines: [string, string][] = [
+        ['Doliprane 1000 mg', 'paracetamol'],
+        ['Paracétamol 500 mg cp', 'paracetamol'],
+        ['Fer + Acide folique', 'folic-acid+iron'],
+        ['Coartem', 'artemether+lumefantrine'],
+        ['SP', 'pyrimethamine+sulfadoxine'],
+        ['Codéine 30 mg', 'codeine'],
+        ['Amoxicilline 500 mg gél', 'amoxicillin'],
+      ];
+      const listed = new Set(PERSON_NAMES.map((name) => normalize(name)));
+      const leaks: string[] = [];
+      const lost: string[] = [];
+      for (const a of first) {
+        for (const b of last) {
+          for (const [written, substances] of lines) {
+            for (const line of [
+              `${a} ${b} ${written}`,
+              `${a} ${written}`,
+              `Mme ${a} ${b} ${written}`,
+              `1. ${a} ${b} ${written}`,
+              `${written} ${a} ${b}`,
+            ]) {
+              const reading = readPrescription(pack, [line]);
+              if (!reading.products.some((p) => substancesOf(p.ref.id) === substances)) {
+                lost.push(line);
+              }
+              const outputs = [
+                ...reading.products.flatMap((p) => [p.line, p.query]),
+                ...reading.typed.flatMap((t) => [t.line, t.text]),
+              ];
+              for (const output of outputs) {
+                if (
+                  normalize(output)
+                    .split(' ')
+                    .some((word) => listed.has(word))
+                ) {
+                  leaks.push(`${line}: ${output}`);
+                }
+              }
+            }
+          }
+          const smecta = readPrescription(pack, [`1. ${a} ${b} Smecta sachet`]).typed;
+          if (smecta.map((t) => t.text).join() !== 'Smecta sachet') lost.push(`${a} ${b} Smecta`);
+        }
+      }
+      expect(leaks).toEqual([]);
+      expect(lost).toEqual([]);
+    },
+  );
 
   it(
     'reads every name, brand and local name of the base, numbered or with a posology',
@@ -294,9 +390,14 @@ describe('readPrescription: lines that are not products', () => {
     });
     expect(readPrescription(pack, ['M Cheikh Néso, cp'])).toEqual({ products: [], typed: [] });
     expect(readPrescription(pack, ['5. Awa Diop'])).toEqual({ products: [], typed: [] });
+    // "DE" for "Dr" near the end of the line, before a name: nothing after it is quoted.
     const { typed } = readPrescription(pack, ['6. Primpéran 10 mg DE DPEUmar Ba']);
-    expect(typed.map((t) => t.text)).toEqual(['Primpéran 10 mg DE DPEUmar']);
-    expect(typed.map((t) => t.line)).toEqual(['6. Primpéran 10 mg DE DPEUmar']);
+    expect(typed.map((t) => t.text)).toEqual(['Primpéran 10 mg']);
+    expect(typed.map((t) => t.line)).toEqual(['6. Primpéran 10 mg']);
+    // A stamp before a list mark: quoted from the mark, its strength read.
+    const fluconazole = only(['CLINIQUE DE 4. Fluconazole 150 mg']);
+    expect(fluconazole.line).toBe('4. Fluconazole 150 mg');
+    expect(fluconazole.strengthMg).toBe(150);
   });
 
   it('knows no person name that is a word of a name of the base', () => {
@@ -687,12 +788,41 @@ describe('readPrescription: a product that holds what the line does not name', (
   it('takes the generic of the substances named only when every word of the line is explained', () => {
     // "phosphate" is a salt, "30 mg" a strength, "cp" a form: codeine alone.
     expect(substancesOf(only(['Codéine phosphate 30 mg cp']).ref.id)).toBe('codeine');
-    // A word left that resembles nothing keeps the product found, with what it holds more.
+    // A word left that resembles no brand: the generic, to check.
     const product = only(['1. Zzqx codéine 400 mg']);
-    expect(mayBePreTicked(product)).toBe(substancesOf(product.ref.id) === 'codeine');
-    if (substancesOf(product.ref.id) !== 'codeine') {
-      expect(product.extraSubstances.length).toBeGreaterThan(0);
-    }
+    expect(substancesOf(product.ref.id)).toBe('codeine');
+    expect(product.match).toBe('strong');
+    expect(mayBePreTicked(product)).toBe(false);
+  });
+
+  // Review of PR 70, round 3: a laboratory, a salt or a plain descriptor is
+  // no garbled brand.
+  it.each([
+    '1. Codéine Arrow 30 mg',
+    '1. Codéine 30 mg cp Teva',
+    '1. Codéine sandoz 30',
+    '1. Codéine Biogaran 30 mg',
+    '1. Codéine base 30 mg',
+    '1. Codeine Antalgique 30 mg',
+  ])('reads a generic written with its laboratory, salt or kind as the generic: %s', (line) => {
+    const product = only([line]);
+    expect(substancesOf(product.ref.id)).toBe('codeine');
+    expect(product.extraSubstances).toEqual([]);
+  });
+
+  it.each([
+    ['1. Codéine Dafal 30 mg', /^dafalgan-codeine-/],
+    ['1. Codéine Klip 30 mg', /^klipal-/],
+    // Two letters swapped, the resolver's own pick being the generic.
+    ['1. Dalfagan codéine', /^dafalgan-codeine-/],
+  ])('keeps the brand the word left resembles most: %s', (line, id) => {
+    const { products, typed } = readPrescription(pack, [line]);
+    expect(products).toHaveLength(1);
+    const [product] = products as [PrescriptionProduct];
+    expect(product.ref.id).toMatch(id);
+    expect(product.extraSubstances).toEqual(['paracetamol']);
+    expect(mayBePreTicked(product)).toBe(false);
+    expect(typed).toContainEqual(expect.objectContaining({ reason: 'holds-more', forProduct: 0 }));
   });
 });
 
@@ -864,6 +994,8 @@ describe('unitsPerDayOf', () => {
     'un demi cp x 2/j',
     '1 cp x 3/j, max 4 cp/j',
     '1 cp x 3/j maximum',
+    // Two multiplications: a strength and a count, never a plain count.
+    '2 x 500 mg x 2/j',
     // As the OCR garbled the times of day: never fewer than said.
     '1 cp matin, 72304 pendant 3 ju',
     '1 cp mat in, midi et soir pendant 3 jours',

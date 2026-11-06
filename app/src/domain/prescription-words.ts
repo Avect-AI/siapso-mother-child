@@ -107,6 +107,38 @@ export const QUALIFIER_WORDS: readonly string[] = [
   'upsa',
   'ratiopharm',
   'cristers',
+  'eg',
+  'winthrop',
+  'qualimed',
+];
+
+/**
+ * Plain words a prescriber writes with a generic that name no brand: a salt
+ * ("Codéine base", "phosphate") or the kind of medicine ("antalgique"). A
+ * word of them left on a line is never a garbled brand.
+ */
+export const PLAIN_WORDS: readonly string[] = [
+  'base',
+  'phosphate',
+  'chlorhydrate',
+  'sulfate',
+  'sodique',
+  'potassique',
+  'monohydraté',
+  'trihydraté',
+  'antalgique',
+  'antalgiques',
+  'antibiotique',
+  'antipaludique',
+  'antipaludéen',
+  'anti-inflammatoire',
+  'inflammatoire',
+  'antifongique',
+  'antiseptique',
+  'antispasmodique',
+  'antihistaminique',
+  'antitussif',
+  'contraceptif',
 ];
 
 /**

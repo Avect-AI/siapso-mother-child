@@ -34,6 +34,7 @@ import {
   HEADER_WORDS,
   PERSON_NAMES,
   PLACE_NAMES,
+  PLAIN_WORDS,
   QUALIFIER_SUBSTANCE_WORDS,
   QUALIFIER_WORDS,
 } from './prescription-words.js';
@@ -236,17 +237,26 @@ function isHeaderWord(word: string): boolean {
 interface HeaderSpan {
   start: number;
   end: number;
+  /**
+   * `cut`: the line is read before it, or after it; `title`: a title before
+   * a name ("Mme", "Dr", "M."), a cut after which a product may follow;
+   * `name`: the name of a person, dropped, the line read around it.
+   */
+  kind: 'cut' | 'title' | 'name';
   /** A person, a date, an address or an age: the line is never offered as typed. */
   data: boolean;
 }
 
-/** Each pattern of HEADER_DATA, global, to find every match. */
+/** Each pattern of HEADER_DATA, global, to find every match; the last one is the titles. */
 const HEADER_DATA_ALL = HEADER_DATA.map(
   (pattern) => new RegExp(pattern.source, `${pattern.flags}g`),
 );
+const TITLES_ALL = HEADER_DATA_ALL.at(-1);
 const NOT_PRODUCT_ALL = new RegExp(NOT_PRODUCT.source, 'g');
 const PLACES_ALL = new RegExp(PLACES.source, 'gu');
 const MISTER_ALL = new RegExp(MISTER.source, 'gu');
+/** "DE" read for "Dr" near the end of a line, before a name ("10 mg DE DPEUmar Ba"). */
+const DOCTOR_AT_END = /(?<![\p{L}])DE\s+(\S+)(?:\s+(\S+))?\s*$/u;
 
 /** Whether a word of a line (folded) is a listed name, a name of one or two letters only with its capital. */
 function isListedName(word: string, written: string): boolean {
@@ -254,24 +264,43 @@ function isListedName(word: string, written: string): boolean {
 }
 
 /**
- * The header parts of a line, in their order: header words (also as the
- * OCR misreads them), places, persons, dates, addresses, ages and titles.
- * A header word inside two words of a name of the base is none
- * ("DOXYCYCLINE PHARMACIE CENTRALE DES ARMEES"), a name of a person just
- * before a word of a name of the base is part of that name ("Anta
- * codéine", Antarène cut short), and an age is a person's only outside a
- * product line.
+ * Whether a person's name and the word after it start a name of the base:
+ * "Anta codéine" is "Antarène codéine" cut short, never a person.
  */
-function headerSpans(line: string, vocabulary: Vocabulary): HeaderSpan[] {
+function startsANameOfTheBase(vocabulary: Vocabulary, word: string, next: string): boolean {
+  return (vocabulary.pairsByNext.get(next) ?? []).some(
+    (before) =>
+      (word.length >= 4 && before.startsWith(word)) ||
+      (word.length >= 5 &&
+        Math.abs(before.length - word.length) <= 1 &&
+        damerauLevenshtein(word, before) <= 1),
+  );
+}
+
+/**
+ * The header parts of a line, in their order: header words (also as the
+ * OCR misreads them), places, dates, addresses, ages, titles, and the names
+ * of persons (listed ones, and those the patient and prescriber lines of
+ * the prescription give, `names`). A header word inside two words of a
+ * name of the base is none ("DOXYCYCLINE PHARMACIE CENTRALE DES ARMEES"), a
+ * name that starts a name of the base is part of it ("Anta codéine"), and
+ * an age is a person's only outside a product line.
+ */
+function headerSpans(
+  line: string,
+  vocabulary: Vocabulary,
+  names: ReadonlySet<string>,
+): HeaderSpan[] {
   const text = folded(line);
   // Positions hold only when folding kept one character for each.
   const exact = text.length === line.length;
   const spans: HeaderSpan[] = [];
-  const add = (start: number, end: number, data: boolean) => {
-    spans.push(exact ? { start, end, data } : { start: 0, end: line.length, data });
+  const add = (start: number, end: number, kind: HeaderSpan['kind'], data: boolean) => {
+    spans.push(exact ? { start, end, kind, data } : { start: 0, end: line.length, kind, data });
   };
   for (const pattern of HEADER_DATA_ALL) {
-    for (const m of text.matchAll(pattern)) add(m.index, m.index + m[0].length, true);
+    const kind = pattern === TITLES_ALL ? 'title' : 'cut';
+    for (const m of text.matchAll(pattern)) add(m.index, m.index + m[0].length, kind, true);
   }
   const ages = SAYS_POSOLOGY.test(text)
     ? [AGE_IN_YEARS]
@@ -279,19 +308,37 @@ function headerSpans(line: string, vocabulary: Vocabulary): HeaderSpan[] {
   for (const pattern of ages) {
     for (const m of text.matchAll(pattern)) {
       const rest = `${text.slice(0, m.index)} ${text.slice(m.index + m[0].length)}`;
-      if (!PRODUCT_HINT.test(plain(rest))) add(m.index, m.index + m[0].length, true);
+      if (!PRODUCT_HINT.test(plain(rest))) add(m.index, m.index + m[0].length, 'cut', true);
     }
   }
-  // "M. Ndao", "M, Cheikh": the title, the name after it is read on its own.
-  for (const m of line.matchAll(MISTER_ALL)) add(m.index, m.index + m[0].length - 2, true);
-  for (const m of text.matchAll(NOT_PRODUCT_ALL)) add(m.index, m.index + m[0].length, false);
-  for (const m of text.matchAll(PLACES_ALL)) add(m.index, m.index + m[0].length, false);
+  // "M. Ndao", "M, Cheikh": the title; the name after it is a name.
+  for (const m of line.matchAll(MISTER_ALL)) {
+    add(m.index, m.index + m[0].length - 2, 'title', true);
+  }
+  for (const m of text.matchAll(NOT_PRODUCT_ALL)) {
+    add(m.index, m.index + m[0].length, 'cut', false);
+  }
+  for (const m of text.matchAll(PLACES_ALL)) add(m.index, m.index + m[0].length, 'cut', false);
+  const isName = (word: string, written: string) =>
+    isListedName(word, written) || (word.length >= 2 && names.has(word));
   for (const word of text.matchAll(/[\p{L}\d]+/gu)) {
     const end = word.index + word[0].length;
-    if (isHeaderWord(word[0])) add(word.index, end, false);
-    if (isListedName(word[0], line.slice(word.index, end))) {
+    if (isHeaderWord(word[0])) add(word.index, end, 'cut', false);
+    if (isName(word[0], line.slice(word.index, end))) {
       const next = /^ +([\p{L}\d]+)/u.exec(text.slice(end))?.[1];
-      if (next === undefined || !vocabulary.packWords.has(next)) add(word.index, end, false);
+      if (next === undefined || !startsANameOfTheBase(vocabulary, word[0], next)) {
+        add(word.index, end, 'name', false);
+      }
+    }
+  }
+  const doctor = DOCTOR_AT_END.exec(line);
+  if (doctor !== null) {
+    const after = [doctor[1], doctor[2]].map((written) => ({
+      word: folded(written ?? '').replace(/[^\p{L}]/gu, ''),
+      written: (written ?? '').replace(/[^\p{L}]/gu, ''),
+    }));
+    if (after.some(({ word, written }) => word !== '' && isName(word, written))) {
+      add(doctor.index, line.length, 'cut', false);
     }
   }
   const guarded = vocabulary.guarded
@@ -299,53 +346,103 @@ function headerSpans(line: string, vocabulary: Vocabulary): HeaderSpan[] {
     : [];
   return spans
     .filter((span) => !guarded.some(([from = 0, to = 0]) => span.start >= from && span.end <= to))
-    .sort((a, b) => a.start - b.start);
+    .sort((a, b) => a.start - b.start || (a.kind === 'title' ? -1 : b.kind === 'title' ? 1 : 0));
 }
 
 /** A part of a line that starts with a list number, then a letter (a dash there is a separator). */
 const LIST_START = /^\s*\(?\d{1,2}\s*[.)]\s*\p{L}/u;
+/** At most two words before a list number: what a stamp leaves before a product ("DE 4. Fluconazole"). */
+const BEFORE_LIST_MARK = /^(?:\S+\s+){1,2}?(?=\(?\d{1,2}\s*[.)]\s*\p{L})/u;
 
 /** What is read of a line once its header parts are set aside. */
 interface HeaderCut {
-  /** The text read: before the first header part, or after it. */
+  /** The text read: before the first header part, or after it, without the names of persons. */
   kept: string;
   /** Whether the line holds a person, a date, an address or an age anywhere. */
   data: boolean;
   /** Whether the text read is numbered (the line, or the part after a header part). */
   marked: boolean;
+  /** The list mark of the part after a header part ("4. " of "CLINIQUE DE 4. Fluconazole"), to quote it. */
+  mark?: string | undefined;
 }
 
 /**
- * The part of a line that may name a product. Before its first header part
- * when that part looks like a product (numbered, or with a strength or a
- * form word: "Fluconazole 150 mg gél CLINIQUE DE"); else after it, when
- * what follows is numbered or looks like a product ("Dakar 1. Doliprane
- * 1000 mg cp", "Pour Awa : Doliprane 500 mg", "1. Médicament : Doliprane
- * 1000 mg"), read again the same way; else nothing.
+ * The part of a line that may name a product, without the names of persons
+ * (dropped, the line read around them: "Awa Doliprane 1000 mg" is
+ * "Doliprane 1000 mg"). Before its first other header part when that part
+ * looks like a product (numbered, or with a strength or a form word:
+ * "Fluconazole 150 mg gél CLINIQUE DE"); else after it, from a list number
+ * when one follows closely ("CLINIQUE DE 4. Fluconazole 150 mg"), when what
+ * follows is numbered or looks like a product ("Dakar 1. Doliprane 1000 mg
+ * cp", "1. Médicament : Doliprane 1000 mg"), or names something of the base
+ * after a title or on a numbered line ("Mme Fatou Coartem"), read again
+ * the same way; else nothing.
  */
-function cutHeader(text: string, marked: boolean, vocabulary: Vocabulary): HeaderCut {
-  const spans = headerSpans(text, vocabulary);
-  const [first] = spans;
-  if (first === undefined) return { kept: text.trim(), data: false, marked };
+function cutHeader(
+  text: string,
+  marked: boolean,
+  vocabulary: Vocabulary,
+  names: ReadonlySet<string>,
+): HeaderCut {
+  const spans = headerSpans(text, vocabulary, names);
   const data = spans.some((span) => span.data);
+  // The names go; blanks of the same length keep the positions of the rest.
+  let blank = text;
+  for (const span of spans) {
+    if (span.kind !== 'name') continue;
+    blank = `${blank.slice(0, span.start)}${' '.repeat(span.end - span.start)}${blank.slice(span.end)}`;
+  }
+  const tidy = (part: string) => part.replace(/\s+/g, ' ').trim();
+  const first = spans.find((span) => span.kind !== 'name');
+  if (first === undefined) return { kept: tidy(blank), data, marked };
   const hint = (part: string) => PRODUCT_HINT.test(plain(part));
-  const before = text.slice(0, first.start).trim();
+  const before = tidy(blank.slice(0, first.start));
   if (lettersOf(before) >= 2 && (marked || hint(before))) return { kept: before, data, marked };
-  const rest = text.slice(first.end).replace(/^[\s:;,]+/u, '');
+  let rest = blank.slice(first.end).replace(/^[\s:;,]+/u, '');
+  const mark = BEFORE_LIST_MARK.exec(rest);
+  if (mark !== null) rest = rest.slice(mark[0].length);
   const listed = LIST_START.test(rest);
-  const after = rest.replace(/^[\s.-]+(?!\d)/u, '');
-  // A numbered line whose header part comes first goes on when what follows
-  // names something of the base ("1. Médicament Doliprane"): never for the
-  // rest of a header ("4 Région médicale de Diourbel").
-  const namesBase = [...folded(after).matchAll(/[\p{L}\d]+/gu)].some((word) =>
-    vocabulary.packWords.has(word[0]),
-  );
-  const goesOn = marked && lettersOf(before) < 2 && namesBase;
+  const after = tidy(rest.replace(/^[\s.-]+(?!\d)/u, ''));
+  // A title, or a numbered line whose header part comes first, goes on when
+  // what follows names something of the base ("Mme Fatou Diop Coartem",
+  // "1. Médicament Doliprane"): never for the rest of a header ("4 Région
+  // médicale de Diourbel").
+  const namesBase =
+    [...folded(after).matchAll(/[\p{L}\d]+/gu)].some((word) => vocabulary.packWords.has(word[0])) ||
+    tokensOf(after).some((token) => ALIASES[token] !== undefined);
+  const goesOn = namesBase && (first.kind === 'title' || (marked && lettersOf(before) < 2));
   if (after !== '' && (listed || hint(after) || goesOn)) {
-    const inner = cutHeader(after.replace(LIST_MARK, ''), marked || listed, vocabulary);
-    return { kept: inner.kept, data: data || inner.data, marked: inner.marked };
+    const inner = cutHeader(after.replace(LIST_MARK, ''), marked || listed, vocabulary, names);
+    const mark = inner.mark ?? (listed ? LIST_MARK.exec(after)?.[0] : undefined);
+    return { kept: inner.kept, data: data || inner.data, marked: inner.marked, mark };
   }
   return { kept: '', data, marked };
+}
+
+/** A label before a name: of the patient, of the prescriber ("Nom et prénom :", "Mme", "Dr"). */
+const NAME_LABEL =
+  /(?<![\p{L}])(?:nom(?:\s+et\s+prenoms?)?|prenoms?|patiente?|mme|mlle|madame|mademoiselle|monsieur|dr|docteur|pr|professeur|m\.)(?![\p{L}])\s*[:.,]?\s*((?:[\p{L}'-]+ *){1,3})/gu;
+
+/**
+ * The names the patient and prescriber lines of a prescription give, folded
+ * ("Nom et prénom : Mbissine Faye", "Dr Ndickou Baldé"): on its other lines
+ * they are dropped like the listed names, so a name the reading does not
+ * list is never quoted either.
+ */
+function namesOfPersons(lines: readonly string[], vocabulary: Vocabulary): Set<string> {
+  const names = new Set<string>();
+  for (const line of lines) {
+    for (const m of folded(line).matchAll(NAME_LABEL)) {
+      for (const word of (m[1] ?? '').split(/[\s'-]+/)) {
+        // The name ends where a product starts ("Mme Fatou Diop Fer + Acide folique").
+        if (vocabulary.baseWords.has(word) || ALIASES[word.toUpperCase()] !== undefined) break;
+        if (word.length < 2 || isHeaderWord(word)) continue;
+        if (POSOLOGY_WORDS.has(word) || NOT_PRODUCT.test(word)) continue;
+        names.add(word);
+      }
+    }
+  }
+  return names;
 }
 
 /** How many letters a text has. */
@@ -388,7 +485,7 @@ const POSOLOGY_CUT = new RegExp(
 
 /** The words of a posology: a line made mostly of them is a posology line. */
 const POSOLOGY_WORDS: ReadonlySet<string> = new Set(
-  'une un deux trois quatre prise prises unique fois par jour jours j semaine semaines mois matin midi soir coucher repas apres avant pendant au aux le la les de du des et ou si en dans verre eau douleur douleurs fievre forte qsp jusqu accouchement renouveler a prendre cp cps gel gelule gelules sachet sachets cuillere soupe cafe lyoc ovule ovules goutte gouttes x max maximum regles jeun milieu tpi agent devant prophylaxie arreter ne pas dormir sous moustiquaire effervescent'.split(
+  'pour une un deux trois quatre prise prises unique fois par jour jours j semaine semaines mois matin midi soir coucher repas apres avant pendant au aux le la les de du des et ou si en dans verre eau douleur douleurs fievre forte qsp jusqu accouchement renouveler a prendre cp cps gel gelule gelules sachet sachets cuillere soupe cafe lyoc ovule ovules goutte gouttes x max maximum regles jeun milieu tpi agent devant prophylaxie arreter ne pas dormir sous moustiquaire effervescent'.split(
     ' ',
   ),
 );
@@ -585,6 +682,10 @@ interface Vocabulary {
    * a line may be one of them ("Antar" for ANTARENE).
    */
   brandWords: Map<string, string[]>;
+  /** For each word of a name of the base (folded), the words before it in those names. */
+  pairsByNext: Map<string, string[]>;
+  /** Every word of a name of the base (folded), however short ("fer", "sp"). */
+  baseWords: Set<string>;
 }
 
 const vocabularies = new WeakMap<Pack, Vocabulary>();
@@ -678,7 +779,9 @@ function vocabularyOf(pack: Pack): Vocabulary {
 }
 
 /** The words of the base the header rules and the brand rule read (see Vocabulary). */
-function wordsOfTheBase(pack: Pack): Pick<Vocabulary, 'packWords' | 'guarded' | 'brandWords'> {
+function wordsOfTheBase(
+  pack: Pack,
+): Pick<Vocabulary, 'packWords' | 'guarded' | 'brandWords' | 'pairsByNext' | 'baseWords'> {
   const names = [
     ...pack.substances.flatMap((s) => [s.names.fr, s.names.en]),
     ...pack.products.flatMap((p) => [
@@ -730,7 +833,17 @@ function wordsOfTheBase(pack: Pack): Pick<Vocabulary, 'packWords' | 'guarded' | 
       brandWords.set(word, [...(brandWords.get(word) ?? []), product.id]);
     }
   }
-  return { packWords, guarded, brandWords };
+  const pairsByNext = new Map<string, string[]>();
+  for (const words of names.map(wordsOf)) {
+    words.forEach((word, k) => {
+      const before = words[k - 1];
+      if (before !== undefined) pairsByNext.set(word, [...(pairsByNext.get(word) ?? []), before]);
+    });
+  }
+  const baseWords = new Set(
+    names.flatMap(wordsOf).filter((word) => !isHeaderWord(word) && !NAMES.has(word)),
+  );
+  return { packWords, guarded, brandWords, pairsByNext, baseWords };
 }
 
 /**
@@ -1070,6 +1183,8 @@ export function unitsPerDayOf(text: string): number | undefined {
     return undefined;
   }
   if (UNCLEAR_POSOLOGY.test(t) || strayNumber(t)) return undefined;
+  // Two multiplications ("2 x 500 mg x 2/j"): a count and a strength, or two counts.
+  if ((t.match(/(?<![a-z])x(?![a-z])/g) ?? []).length > 1) return undefined;
   if (new Set([...t.matchAll(COUNT)].map((count) => count[1])).size > 1) return undefined;
   let m =
     /(\d+)\s*(cp|gel|gelules?|sachets?|c|lyoc|ovules?|comprimes?)?\.?\s*(a soupe|a cafe)?\s*x\s*(\d+)\s*(\/|par)\s*j/.exec(
@@ -1151,6 +1266,8 @@ function bestOf(pack: Pack, namePart: string): Chosen | undefined {
 
 /** The salt words, as the resolver reads them ("phosphate" of "codéine phosphate"). */
 const SALTS: ReadonlySet<string> = new Set(SALT_WORDS.map(normalize));
+/** Plain words of a generic's line, as the resolver reads them: salts, kinds of medicine. */
+const PLAIN: ReadonlySet<string> = new Set(PLAIN_WORDS.map(normalize));
 
 /**
  * The words of a name part that neither the substances given nor the names
@@ -1177,6 +1294,8 @@ function wordsLeft(
         word !== '' &&
         !neutralWord(word) &&
         !SALTS.has(word) &&
+        !PLAIN.has(word) &&
+        !QUALIFIERS.has(word) &&
         !known.some((name) => name === word || (word.length >= 3 && name.startsWith(word))) &&
         !(ABBREVIATIONS[word]?.substances.some((id) => substances.has(id)) ?? false),
     );
@@ -1201,48 +1320,69 @@ function namesItsBrand(
   return brandWordsOf(vocabulary, candidate.id).some((word) => words.has(word));
 }
 
+/** How a word left resembles a brand word: 0 for its start, the slips, 1.5 for its letters swapped; undefined when not. */
+function resemblance(word: string, brandWord: string): number | undefined {
+  if (brandWord.startsWith(word)) return 0;
+  if (Math.abs(brandWord.length - word.length) <= 2) {
+    const slips = damerauLevenshtein(word, brandWord);
+    if (slips <= (brandWord.length >= 9 ? 2 : 1)) return slips;
+  }
+  // The same letters, the first and the last in place: "Dalfagan" for "Dafalgan".
+  const sorted = (w: string) => Array.from(w).sort().join('');
+  if (
+    word.length >= 6 &&
+    word.length === brandWord.length &&
+    word[0] === brandWord[0] &&
+    word.at(-1) === brandWord.at(-1) &&
+    sorted(word) === sorted(brandWord)
+  ) {
+    return 1.5;
+  }
+  return undefined;
+}
+
 /**
- * The brand a word left on the line resembles (its start, four letters or
- * more, or the word within one slip, two from 9 letters) when that brand
- * holds the substances of the product read and more: "Antar codéine 400 mg"
- * is ANTARENE CODEINE, never codeine alone. The product of the strength
- * read when the brand has one. Undefined otherwise.
+ * The brand a word left on the line resembles most (its start, four
+ * letters or more, the word within the slips of the snap, or its letters
+ * swapped) among the brands that hold the substances `base` and more:
+ * "Antar codéine 400 mg" is ANTARENE CODEINE, "Codéine Dafal 30 mg"
+ * DAFALGAN CODEINE, "Dalfagan codéine" DAFALGAN CODEINE, never codeine
+ * alone. The product of the strength read when the brand has one.
+ * Undefined when no word left resembles such a brand.
  */
 function resemblingBrand(
   pack: Pack,
   vocabulary: Vocabulary,
+  left: readonly string[],
+  base: ReadonlySet<string>,
   namePart: string,
-  candidate: Candidate,
-  held: ReadonlySet<string>,
 ): Candidate | undefined {
-  if (candidate.kind !== 'product' || held.size === 0) return undefined;
-  const own = normalize(ownNames(pack, candidate).join(' ')).split(' ');
-  const left = wordsLeft(pack, namePart, held, own).filter(
-    (word) => word.length >= 4 && !/\d/.test(word),
-  );
+  if (base.size === 0) return undefined;
   const more = (id: string) => {
     const substances = vocabulary.substancesOfProduct.get(id) ?? new Set<string>();
-    return substances.size > held.size && [...held].every((s) => substances.has(s));
+    return substances.size > base.size && [...base].every((s) => substances.has(s));
   };
-  const strength = parseStrength(namePart).strengthMg;
+  let best: { rank: number; gap: number; ids: string[] } | undefined;
   for (const word of left) {
+    if (word.length < 4 || /\d/.test(word)) continue;
     for (const [brandWord, ids] of vocabulary.brandWords) {
-      const close =
-        brandWord.startsWith(word) ||
-        (Math.abs(brandWord.length - word.length) <= 2 &&
-          damerauLevenshtein(word, brandWord) <= (brandWord.length >= 9 ? 2 : 1));
-      if (!close) continue;
-      const products = ids
-        .filter(more)
-        .map((id) => pack.products.find((p) => p.id === id))
-        .filter((p): p is Product => p !== undefined);
-      const product =
-        products.find((p) => p.components.some((c) => c.strengthMg === strength)) ?? products[0];
-      const found = product && candidateFor(pack, product.id, product.names.fr);
-      if (found !== undefined) return found;
+      const rank = resemblance(word, brandWord);
+      const holding = ids.filter(more);
+      if (rank === undefined || holding.length === 0) continue;
+      const gap = Math.abs(brandWord.length - word.length);
+      if (best === undefined || rank < best.rank || (rank === best.rank && gap < best.gap)) {
+        best = { rank, gap, ids: holding };
+      }
     }
   }
-  return undefined;
+  if (best === undefined) return undefined;
+  const strength = parseStrength(namePart).strengthMg;
+  const products = best.ids
+    .map((id) => pack.products.find((p) => p.id === id))
+    .filter((p): p is Product => p !== undefined);
+  const product =
+    products.find((p) => p.components.some((c) => c.strengthMg === strength)) ?? products[0];
+  return product && candidateFor(pack, product.id, product.names.fr);
 }
 
 /**
@@ -1333,6 +1473,10 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
   const products: PrescriptionProduct[] = [];
   const typed: TypedLine[] = [];
   const families = new Map<string, number>();
+  const names = namesOfPersons(
+    joined.map((line) => line.text),
+    vocabulary,
+  );
 
   joined.forEach(({ text: raw, index: lineIndex }, at) => {
     // A list number whose dot the OCR lost ("2 Acide folique") is a list mark
@@ -1357,15 +1501,24 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     // person, a date or an address. The OCR may join the stamp or the
     // prescriber to the last product ("Fluconazole 150 mg gél CLINIQUE DE"):
     // what comes before is still read; a header line leaves nothing.
-    const header = cutHeader(whole, marked, vocabulary);
-    const counted = header.kept;
+    const header = cutHeader(whole, marked, vocabulary, names);
+    let counted = header.kept;
+    // A label before a colon, once the names are gone ("Pour Awa : Doliprane").
+    const labelled = /^([^:]*\p{L}[^:]*?)\s*:\s*(\S.*)$/u.exec(counted);
+    if (
+      labelled?.[1] !== undefined &&
+      labelled[2] !== undefined &&
+      onlyPosologyWords(labelled[1])
+    ) {
+      counted = labelled[2];
+    }
     const numbered = header.marked;
     // The line quoted under what it gives ("Lu sur l'ordonnance"), without
     // its header part: no name read from the paper is ever quoted.
     const shown =
       counted === whole.trim()
         ? raw
-        : `${LIST_MARK.exec(raw.normalize('NFC'))?.[0] ?? ''}${counted}`.trim();
+        : `${header.mark ?? LIST_MARK.exec(raw.normalize('NFC'))?.[0] ?? ''}${counted}`.trim();
     const unmarked = gluedStrengthSplit(counted.replace(/^\d{1,2}\s+(?=\p{L})/u, ''));
     const { text: line, near } = snapped(digitsInWords(unmarked), vocabulary);
     const p = plain(line);
@@ -1383,18 +1536,7 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       const kept =
         (numbered && lettersOf(namePart) >= 2) ||
         (PRODUCT_HINT.test(p) && normalize(namePart).length >= 4);
-      // A numbered line that ends with a family name, the rest resembling
-      // nothing of the base and saying no number, strength or form ("3.
-      // Mbissine Faye"), is a person.
-      const words = [...folded(whole).matchAll(/[\p{L}\d]+/gu)];
-      const last = words.at(-1);
-      const person =
-        last !== undefined &&
-        isListedName(last[0], whole.slice(last.index, last.index + last[0].length)) &&
-        !PRODUCT_HINT.test(p) &&
-        !/\d/.test(p) &&
-        search(searchIndexOf(pack), namePart, { limit: 1 }).length === 0;
-      if (kept && !header.data && !person) {
+      if (kept && !header.data) {
         typed.push({ text: query, line: shown, lineIndex, reason: 'not-recognised' });
       }
       return;
@@ -1434,33 +1576,36 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       resembled || (bySubstance && certain.size > 0)
         ? [...substances].filter((id) => !named.has(id))
         : [];
-    if (candidate.kind === 'product' && extraOf(held).length > 0) {
-      const generic = genericOf(pack, vocabulary, named);
-      const exact = generic && candidateFor(pack, generic.id, generic.names.fr);
-      // Only when every word of the line is a word of the substances named,
-      // a form, a strength or a posology: a word left may be a garbled brand
-      // that holds more ("Antar codéine 400 mg").
-      if (
-        exact !== undefined &&
-        exact.id !== candidate.id &&
-        wordsLeft(pack, namePart, named, []).length === 0
-      ) {
-        // Named surely, or partly by a guess ("Efav"): then it is to be checked.
-        const surely = [...guessed].every((id) => certain.has(id));
-        candidate = exact;
-        match = match === 'very-strong' && surely ? 'very-strong' : 'strong';
-        held = substancesOfRef(pack, { kind: exact.kind, id: exact.id });
-      }
-    }
-    // A garbled word left that resembles a brand holding more than the
-    // product read ("Klipai codéine": KLIPAL, with paracetamol): that brand,
-    // to check, with what it holds more (more substances is the cautious side).
-    const brand = resemblingBrand(pack, vocabulary, namePart, candidate, held);
+    // The words of the line the substances named, a form, a strength, a
+    // posology, a salt, a laboratory or a kind of medicine do not explain
+    // ("Antar" of "Antar codéine 400 mg"; never "Arrow", "base", "antalgique").
+    const byName = candidate.kind === 'product' && extraOf(held).length > 0;
+    const own = byName ? [] : normalize(ownNames(pack, candidate).join(' ')).split(' ');
+    const left = wordsLeft(pack, namePart, byName ? named : held, own);
+    // A word left that resembles a brand holding more ("Klipai codéine":
+    // KLIPAL, with paracetamol; "Dalfagan codéine"): the brand it resembles
+    // most, to check, with what it holds more (more substances is the
+    // cautious side).
+    const brand =
+      candidate.kind === 'product'
+        ? resemblingBrand(pack, vocabulary, left, byName ? named : held, namePart)
+        : undefined;
     if (brand !== undefined) {
       candidate = brand;
       match = 'strong';
       resembled = true;
       held = substancesOfRef(pack, { kind: brand.kind, id: brand.id });
+    } else if (byName) {
+      // Else the product of exactly the substances named takes the place of
+      // the one found, to check when a word is left or a substance is a guess.
+      const generic = genericOf(pack, vocabulary, named);
+      const exact = generic && candidateFor(pack, generic.id, generic.names.fr);
+      if (exact !== undefined && exact.id !== candidate.id) {
+        const surely = [...guessed].every((id) => certain.has(id));
+        candidate = exact;
+        match = match === 'very-strong' && surely && left.length === 0 ? 'very-strong' : 'strong';
+        held = substancesOfRef(pack, { kind: exact.kind, id: exact.id });
+      }
     }
     const ref = { kind: candidate.kind, id: candidate.id };
     // One product per family: the line that names it best.
