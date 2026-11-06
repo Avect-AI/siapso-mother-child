@@ -62,6 +62,17 @@ describe('readPrescription: lines', () => {
     expect(products[1]?.line).toBe('2. Flagyl 500 mg cp');
   });
 
+  it('joins a name wrapped across one posology line while its bracket is open: never MALOCIDE too', () => {
+    const { products } = readPrescription(pack, [
+      'SP (Sulfadoxine',
+      '3 cp en une prise',
+      'Pyriméthamine)',
+    ]);
+    expect(products.map((p) => substancesOf(p.ref.id))).toEqual(['pyrimethamine+sulfadoxine']);
+    expect(products[0]?.line).toBe('SP (Sulfadoxine Pyriméthamine)');
+    expect(products[0]?.posology).toBe('3 cp en une prise');
+  });
+
   it('accepts a text of several lines as well as a list of lines', () => {
     const text = '1. Flagyl 500 mg cp\n1 cp x 2/j pendant 7 jours';
     expect(readPrescription(pack, [text]).products.map((p) => p.ref.id)).toEqual([
@@ -601,6 +612,57 @@ describe('unitsPerDayOf', () => {
       expect(unitsPerDayOf(text)).toBeUndefined();
     },
   );
+});
+
+describe('readPrescription: short names of combinations', () => {
+  it.each([
+    ['1. SP', 'pyrimethamine+sulfadoxine'],
+    ['TPI : SP', 'pyrimethamine+sulfadoxine'],
+    ['S.P', 'pyrimethamine+sulfadoxine'],
+    ['SP 3 cp en une prise', 'pyrimethamine+sulfadoxine'],
+    ['FAF', 'folic-acid+iron'],
+    ['2. FAF 1 cp/j', 'folic-acid+iron'],
+    ['3. AL 20/120', 'artemether+lumefantrine'],
+    ['4. CTX 960 mg', 'sulfamethoxazole+trimethoprim'],
+  ])('reads the short name in %s as its combination, never pre-ticked', (line, substances) => {
+    const product = only([line]);
+    expect(substancesOf(product.ref.id)).toBe(substances);
+    expect(product.match).toBe('strong');
+    expect(mayBePreTicked(product)).toBe(false);
+  });
+
+  it('reads a short name only in capitals, as a whole word, on a line that says nothing else', () => {
+    for (const line of [
+      'sp',
+      'Al Hassane Ndiaye',
+      'AL HASSANE NDIAYE',
+      'Cabinet Al Amine',
+      'SPASFON',
+      // As Tesseract read the handwriting proxy: garbled, never a short name.
+      '§ AL. § ;: 3 en',
+    ]) {
+      const { products } = readPrescription(pack, [line]);
+      expect(
+        products.filter((p) => p.match === 'strong').map((p) => p.ref.id),
+        line,
+      ).toEqual([]);
+    }
+  });
+
+  it('reads the product after a label and a colon: "Si douleur : Doliprane 1 g"', () => {
+    expect(only(['Si douleur : Doliprane 1 g']).strengthMg).toBe(1000);
+  });
+
+  it('keeps a numbered line of two letters or more as typed', () => {
+    for (const [line, text] of [
+      ['5. NS', 'NS'],
+      ['6. Kz 2', 'Kz 2'],
+    ] as const) {
+      expect(readPrescription(pack, [line]).typed, line).toEqual([
+        { text, line, lineIndex: 0, reason: 'not-recognised' },
+      ]);
+    }
+  });
 });
 
 describe('readPrescription: lines kept to add as typed', () => {

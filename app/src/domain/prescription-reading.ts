@@ -27,6 +27,7 @@ import {
 import { strengthOf } from './possible-matches.js';
 import {
   ABBREVIATIONS,
+  ALIASES,
   HEADER_PHRASES,
   HEADER_WORDS,
   PLACE_NAMES,
@@ -304,34 +305,58 @@ function leavesOpen(line: string): boolean {
   return line.split('(').length > line.split(')').length || /[+,]$|\bet$/.test(line);
 }
 
+/** Whether a line leaves a bracket open. */
+function leavesBracketOpen(line: string): boolean {
+  return line.split('(').length > line.split(')').length;
+}
+
+/** A line that starts with a list number ("2.", "3)"): never the end of the name above. */
+const NUMBERED = /^\s*\(?\d{1,2}\s*[.),]/;
+
 /**
  * The lines, a name wrapped over two lines joined again (a table cell "SP
  * (Sulfadoxine" / "Pyriméthamine)", a line ending with "+"), each with the
- * index of its first line.
+ * index of its first line. A bracket left open may close after one
+ * posology line, which then stays under the joined name (a table row whose
+ * posology cell is beside the first line of the name: "SP (Sulfadoxine" /
+ * "3 cp en une prise" / "Pyriméthamine)").
  */
 function joinedLines(lines: readonly string[]): { text: string; index: number }[] {
+  const given = lines
+    .flatMap((text) => text.split(/\r?\n/))
+    .map((part, index) => ({ text: part.trim(), index }))
+    .filter((line) => line.text !== '');
   const out: { text: string; index: number }[] = [];
-  let index = 0;
-  for (const given of lines) {
-    for (const part of given.split(/\r?\n/)) {
-      const line = part.trim();
-      const at = index;
-      index += 1;
-      if (line === '') continue;
-      const previous = out.at(-1);
-      const closes =
-        line.includes(')') || (previous !== undefined && /[+,]$|\bet$/.test(previous.text));
-      if (
-        previous !== undefined &&
-        leavesOpen(previous.text) &&
-        !/^\s*\(?\d{1,2}\s*[.),]/.test(line) &&
-        closes
-      ) {
-        previous.text = `${previous.text} ${line}`;
-      } else {
-        out.push({ text: line, index: at });
-      }
+  for (let at = 0; at < given.length; at += 1) {
+    const line = given[at] as { text: string; index: number };
+    const previous = out.at(-1);
+    const closes =
+      line.text.includes(')') || (previous !== undefined && /[+,]$|\bet$/.test(previous.text));
+    if (
+      previous !== undefined &&
+      leavesOpen(previous.text) &&
+      !NUMBERED.test(line.text) &&
+      closes
+    ) {
+      previous.text = `${previous.text} ${line.text}`;
+      continue;
     }
+    const after = given[at + 1];
+    if (
+      previous !== undefined &&
+      after !== undefined &&
+      leavesBracketOpen(previous.text) &&
+      isPosology(plain(line.text)) &&
+      after.text.includes(')') &&
+      !NUMBERED.test(after.text) &&
+      !isPosology(plain(after.text))
+    ) {
+      previous.text = `${previous.text} ${after.text}`;
+      out.push({ ...line });
+      at += 1;
+      continue;
+    }
+    out.push({ ...line });
   }
   return out;
 }
@@ -816,6 +841,36 @@ function bestOf(pack: Pack, namePart: string): Chosen | undefined {
   return chosen;
 }
 
+/**
+ * The combination a short name stands for ("1. SP", "S.P", "FAF 1 cp/j"),
+ * when the resolver finds nothing strong: in capitals, a whole word, the
+ * only word of the name part but numbers, units, forms and posology words;
+ * the generic product of exactly its substances, as a strong match (never
+ * pre-ticked). Undefined otherwise.
+ */
+function aliasOf(pack: Pack, vocabulary: Vocabulary, namePart: string): Chosen | undefined {
+  // A line the OCR garbled ("§ AL. § ;: 3 en") never gives a short name.
+  if (/[^\p{L}\p{N}\s.,/:()'+%µ-]/u.test(namePart)) return undefined;
+  // "S.P" and "S/P" are "SP".
+  const tokens = tokensOf(namePart.replace(/(?<=\p{Lu})[./](?=\p{Lu})/gu, ''));
+  const aliases = tokens.filter((token) => ALIASES[token] !== undefined);
+  const [alias] = aliases;
+  if (alias === undefined || aliases.length > 1) return undefined;
+  const others = tokens.filter((token) => token !== alias);
+  if (!others.every((token) => normalize(token).split(' ').every(neutralWord))) return undefined;
+  const generic = genericOf(pack, vocabulary, new Set(ALIASES[alias]));
+  const candidate = generic && candidateFor(pack, generic.id, generic.names.fr);
+  return candidate === undefined ? undefined : { candidate, match: 'strong', length: alias.length };
+}
+
+/** Whether a label before a colon names when to take, never what ("TPI", "Si douleur"). */
+function onlyPosologyWords(text: string): boolean {
+  const words = plain(text)
+    .split(/[^a-z]+/)
+    .filter((word) => word !== '');
+  return words.length > 0 && words.every((word) => POSOLOGY_WORDS.has(word));
+}
+
 /** The substances of a product of the pack (none for a plant). */
 function substancesOfRef(pack: Pack, ref: PrescriptionProduct['ref']): Set<string> {
   if (ref.kind !== 'product') return new Set();
@@ -866,7 +921,13 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     // A list number whose dot the OCR lost ("2 Acide folique") is a list mark
     // too; a strength glued to a long word ("Spéciafoldine5") is split from it.
     const marked = MARKED.test(raw);
-    const whole = raw.normalize('NFC').replace(LIST_MARK, '');
+    let whole = raw.normalize('NFC').replace(LIST_MARK, '');
+    // A label before a colon says when, the product comes after it ("TPI :
+    // SP", "Si douleur : Doliprane 1 g").
+    const label = /^([^:]*\p{L}[^:]*?)\s*:\s*(\S.*)$/u.exec(whole);
+    if (label?.[1] !== undefined && label[2] !== undefined && onlyPosologyWords(label[1])) {
+      whole = label[2];
+    }
     // A posology starts with its count ("1 c. à soupe"), read before the
     // count is taken for a list number.
     if (isPosology(plain(whole))) return;
@@ -885,17 +946,23 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     const unmarked = gluedStrengthSplit(counted.replace(/^\d{1,2}\s+(?=\p{L})/u, ''));
     const { text: line, near } = snapped(digitsInWords(unmarked), vocabulary);
     const p = plain(line);
-    if (p.length < 3 || !/\p{L}{2}/u.test(p)) return;
+    const letters = (text: string) => text.replace(/[^\p{L}]/gu, '').length;
+    if (letters(p) < 2) return;
     // An unnumbered line with a header part is read only when what is left
     // looks like a product (a strength, a form word).
     if (header.start !== undefined && !marked && !PRODUCT_HINT.test(p)) return;
     if (isPosology(plain(counted)) || isPosology(p)) return;
     const namePart = namePartOf(line).trim();
     const query = namePartOf(unmarked).trim();
-    const chosen = bestOf(pack, namePart);
+    const chosen = bestOf(pack, namePart) ?? aliasOf(pack, vocabulary, namePart);
     if (chosen === undefined) {
-      // Never a line of a person, a date or an address (spec, 7.6 and 7.11).
-      if (!header.data && (PRODUCT_HINT.test(p) || marked) && normalize(namePart).length >= 4) {
+      // A numbered line of two letters or more, or a line that looks like a
+      // product; never a line of a person, a date or an address (spec, 7.6
+      // and 7.11).
+      const kept =
+        (marked && letters(namePart) >= 2) ||
+        (PRODUCT_HINT.test(p) && normalize(namePart).length >= 4);
+      if (kept && !header.data) {
         typed.push({ text: query, line: shown, lineIndex, reason: 'not-recognised' });
       }
       return;

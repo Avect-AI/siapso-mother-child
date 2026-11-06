@@ -40,6 +40,22 @@ export const ABBREVIATIONS: Readonly<Record<string, Abbreviation>> = {
 };
 
 /**
+ * Short names prescribers write for a combination, by the substances they
+ * stand for: "SP" for sulfadoxine and pyrimethamine, "FAF" for iron and
+ * folic acid. Read only in capitals, as a whole word, on a line that says
+ * nothing else but a strength, a form or a posology ("1. SP", "TPI : SP",
+ * "S.P", "FAF 1 cp/j"), and only as the generic product of exactly these
+ * substances when the pack has one; never pre-ticked (a strong match).
+ */
+export const ALIASES: Readonly<Record<string, readonly string[]>> = {
+  SP: ['pyrimethamine', 'sulfadoxine'],
+  FAF: ['folic-acid', 'iron'],
+  ASAQ: ['amodiaquine', 'artesunate'],
+  AL: ['artemether', 'lumefantrine'],
+  CTX: ['sulfamethoxazole', 'trimethoprim'],
+};
+
+/**
  * Words of substance names that name no substance by themselves: "vitamine"
  * belongs to vitamin C's name in the base, yet "vitamine B9" is folic acid.
  * Normalised as the resolver reads words.
