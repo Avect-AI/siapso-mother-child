@@ -64,8 +64,8 @@ Status of this card: draft for publication. Nothing is published yet. Licence re
 
 | Pack id                  | Source (revision)                                                          | Language | Source licence                                | Served size (model + ONNX Runtime + notices) |
 | ------------------------ | -------------------------------------------------------------------------- | -------- | --------------------------------------------- | -------------------------------------------- |
-| `whisper-small-wolof-q8` | `M9and2M/whisper-small-wolof` (`8cc20b3c6e77ecb490210103d3b4fd0b85c3d1d8`) | Wolof    | MIT (declared on its card)                    | 325.6 MB (298.7 MB + 26.9 MB)                |
-| `whisper-base-fr-q8`     | `openai/whisper-base` (`e37978b90ca9030d5170a5c07aadb050351a65bb`)         | French   | MIT (OpenAI repository), apache-2.0 (HF card) | 137.2 MB (110.2 MB + 26.9 MB)                |
+| `whisper-small-wolof-q8` | `M9and2M/whisper-small-wolof` (`8cc20b3c6e77ecb490210103d3b4fd0b85c3d1d8`) | Wolof    | MIT (declared on its card)                    | 326.0 MB (298.7 MB + 27.3 MB)                |
+| `whisper-base-fr-q8`     | `openai/whisper-base` (`e37978b90ca9030d5170a5c07aadb050351a65bb`)         | French   | MIT (OpenAI repository), apache-2.0 (HF card) | 137.5 MB (110.2 MB + 27.3 MB)                |
 
 Origin:
 
