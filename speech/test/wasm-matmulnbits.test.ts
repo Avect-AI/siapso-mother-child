@@ -68,17 +68,28 @@ describe('ONNX Runtime Web (the build pinned by Transformers.js) and 4-bit weigh
   });
 });
 
+/**
+ * Starting Python and running the gates takes about 3 s alone (a virtual
+ * environment on a synced OneDrive folder), more under the load of the whole
+ * suite: above the 5 s default of Vitest, so the test gets its own limit.
+ */
+const PYTHON_TIMEOUT_MS = 60_000;
+
 describe('training data gates (speech/train/test_finetune.py)', () => {
   const python = ['python3', 'python', 'py'].find(
     (name) => spawnSync(name, ['--version']).status === 0,
   );
-  it.skipIf(python === undefined)('refuse Kallaama by default and accept the opt-in', () => {
-    const result = spawnSync(
-      python ?? 'python3',
-      [path.join(here, '..', 'train', 'test_finetune.py')],
-      { encoding: 'utf8' },
-    );
-    expect(result.stderr).toContain('OK');
-    expect(result.status).toBe(0);
-  });
+  it.skipIf(python === undefined)(
+    'refuse Kallaama by default and accept the opt-in',
+    () => {
+      const result = spawnSync(
+        python ?? 'python3',
+        [path.join(here, '..', 'train', 'test_finetune.py')],
+        { encoding: 'utf8' },
+      );
+      expect(result.stderr).toContain('OK');
+      expect(result.status).toBe(0);
+    },
+    PYTHON_TIMEOUT_MS,
+  );
 });
