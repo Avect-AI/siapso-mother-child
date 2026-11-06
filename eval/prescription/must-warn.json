@@ -247,5 +247,38 @@
     "lines": ["2. Antarene codeine 200"],
     "names": ["codeine", "ibuprofen"],
     "why": "ANTARENE CODEINE without accents: the brand, both substances, never codeine alone."
+  },
+  {
+    "lines": ["1. Dalfagan codéine"],
+    "names": ["codeine", "paracetamol"],
+    "why": "DAFALGAN CODEINE with two letters swapped, the resolver picking the codeine generic: never codeine alone (review of PR 70, round 3).",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Dafal 30 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "DAFALGAN CODEINE cut short after the substance: the brand the word resembles, never ANTARENE CODEINE.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Klip 30 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "KLIPAL cut short after the substance: the brand the word resembles.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Arrow 30 mg"],
+    "names": ["codeine"],
+    "why": "A laboratory after the substance: the codeine generic, never a brand of another substance."
+  },
+  {
+    "lines": ["1. Codéine base 30 mg"],
+    "names": ["codeine"],
+    "why": "A salt after the substance: the codeine generic."
+  },
+  {
+    "lines": ["Adama Codéine 30 mg"],
+    "names": ["codeine"],
+    "why": "A first name before the substance: dropped, the codeine generic read."
   }
 ]
