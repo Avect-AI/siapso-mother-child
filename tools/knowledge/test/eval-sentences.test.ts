@@ -21,6 +21,11 @@ import { REPO_ROOT, tempCopy } from './helpers.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SENTENCES_FILE = path.join(ROOT, 'eval', 'speech', 'sentences.yaml');
+/**
+ * Building the repository pack and reading every sentence as heard takes about
+ * 2 s alone, and over 5 s (Vitest's default) with coverage on a loaded machine.
+ */
+const PACK_TIMEOUT_MS = 20_000;
 
 describe('parseSentences', () => {
   it('reads one product, alternatives, a strength and no product', () => {
@@ -253,39 +258,49 @@ describe('the committed sentence set', () => {
     expect(sentences.filter((item) => item.type === 'none').length).toBeGreaterThanOrEqual(30);
   });
 
-  it('expects only products and plants of the registry', async () => {
-    const pack = buildPack(await loadContent(ROOT, ROOT));
-    const known = new Set([
-      ...pack.products.map((product) => `product:${product.id}`),
-      ...pack.plants.map((plant) => `plant:${plant.id}`),
-    ]);
-    for (const item of parseSentences(await readFile(SENTENCES_FILE, 'utf8'))) {
-      for (const expected of item.expect.flatMap(alternativesOf)) {
-        expect(known.has(`${expected.kind}:${expected.id}`), `${item.text}: ${expected.id}`).toBe(
-          true,
-        );
+  it(
+    'expects only products and plants of the registry',
+    async () => {
+      const pack = buildPack(await loadContent(ROOT, ROOT));
+      const known = new Set([
+        ...pack.products.map((product) => `product:${product.id}`),
+        ...pack.plants.map((plant) => `plant:${plant.id}`),
+      ]);
+      for (const item of parseSentences(await readFile(SENTENCES_FILE, 'utf8'))) {
+        for (const expected of item.expect.flatMap(alternativesOf)) {
+          expect(known.has(`${expected.kind}:${expected.id}`), `${item.text}: ${expected.id}`).toBe(
+            true,
+          );
+        }
       }
-    }
-  });
+    },
+    PACK_TIMEOUT_MS,
+  );
 
-  it('reaches the recorded bars (the background is checked by pnpm eval:sentences)', async () => {
-    const pack = buildPack(await loadContent(ROOT, ROOT));
-    const entries = entriesFromPack(pack);
-    const index = buildIndex(entries);
-    const families = new Map(entries.map((entry) => [entry.id, entry.family]));
-    const report = evaluateSentences(
-      index,
-      families,
-      parseSentences(await readFile(SENTENCES_FILE, 'utf8')),
-    );
-    const baseline = parseSentenceBaseline(
-      await readFile(path.join(ROOT, 'eval', 'speech', 'sentences-baseline.json'), 'utf8'),
-    );
-    expect(baseline.precision).toBeGreaterThanOrEqual(0.95);
-    expect(baseline.recall).toBeGreaterThanOrEqual(0.85);
-    for (const tally of [report.overall, ...Object.values(report.perLang)]) {
-      expect(tally.right / (tally.right + tally.false)).toBeGreaterThanOrEqual(baseline.precision);
-      expect(tally.right / tally.expected).toBeGreaterThanOrEqual(baseline.recall);
-    }
-  });
+  it(
+    'reaches the recorded bars (the background is checked by pnpm eval:sentences)',
+    async () => {
+      const pack = buildPack(await loadContent(ROOT, ROOT));
+      const entries = entriesFromPack(pack);
+      const index = buildIndex(entries);
+      const families = new Map(entries.map((entry) => [entry.id, entry.family]));
+      const report = evaluateSentences(
+        index,
+        families,
+        parseSentences(await readFile(SENTENCES_FILE, 'utf8')),
+      );
+      const baseline = parseSentenceBaseline(
+        await readFile(path.join(ROOT, 'eval', 'speech', 'sentences-baseline.json'), 'utf8'),
+      );
+      expect(baseline.precision).toBeGreaterThanOrEqual(0.95);
+      expect(baseline.recall).toBeGreaterThanOrEqual(0.85);
+      for (const tally of [report.overall, ...Object.values(report.perLang)]) {
+        expect(tally.right / (tally.right + tally.false)).toBeGreaterThanOrEqual(
+          baseline.precision,
+        );
+        expect(tally.right / tally.expected).toBeGreaterThanOrEqual(baseline.recall);
+      }
+    },
+    PACK_TIMEOUT_MS,
+  );
 });
