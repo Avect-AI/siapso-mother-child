@@ -309,6 +309,131 @@ describe('readPrescription: a combination read in part (must warn)', () => {
   });
 });
 
+describe('readPrescription: a combination named in part by a short word (must warn)', () => {
+  /**
+   * The line names a combination, one part of it by an abbreviation or the
+   * start of its name: the product read holds the other part only, so it
+   * says which substance the line also names, is never pre-ticked, and the
+   * line is offered as typed too.
+   */
+  function expectWarned(line: string, other: string): void {
+    const { products, typed } = readPrescription(pack, [line]);
+    expect(products, line).toHaveLength(1);
+    const [product] = products as [PrescriptionProduct];
+    expect(product.missingSubstances, `${line}: ${substancesOf(product.ref.id)}`).toContain(other);
+    expect(mayBePreTicked(product), line).toBe(false);
+    expect(typed, line).toContainEqual(
+      expect.objectContaining({ reason: 'names-more', forProduct: 0, lineIndex: 0 }),
+    );
+  }
+
+  it.each([
+    ['Dafalgan codé', 'codeine'],
+    ['Efferalgan cod.', 'codeine'],
+    ['Efferalgan codé 500 mg', 'codeine'],
+    ['Paracétamol + Cod', 'codeine'],
+    ['Ibuprofène + codé', 'codeine'],
+    ['Paracétamol + Tram', 'tramadol'],
+    ['Amodiaquine + AS', 'artesunate'],
+    ['Amodiaquine 153 mg + Art.', 'artesunate'],
+    ['Triméthoprime + Sulfa', 'sulfamethoxazole'],
+    ['Fer + AF', 'folic-acid'],
+    ['Fer + B9', 'folic-acid'],
+  ])('%s says it also names %s', (line, other) => {
+    expectWarned(line, other);
+  });
+
+  it('names folic acid for "vitamine B9", never vitamin C for the word "vitamine"', () => {
+    const { products } = readPrescription(pack, ['Fer + vitamine B9']);
+    expect(products.flatMap((p) => p.missingSubstances)).not.toContain('ascorbic-acid');
+    expectWarned('Fer + vitamine B9', 'folic-acid');
+  });
+
+  it('says the line names more after a "+", a "/" or "et", even what the base does not know', () => {
+    for (const line of [
+      'Amoxicilline + acide clavulanique',
+      'Amoxicilline / Acide clavulanique 1 g',
+      'Paracétamol et caféine 500 mg',
+    ]) {
+      const { products, typed } = readPrescription(pack, [line]);
+      expect(products, line).toHaveLength(1);
+      const [product] = products as [PrescriptionProduct];
+      expect(product.namesMore, line).toBe(true);
+      expect(mayBePreTicked(product), line).toBe(false);
+      expect(typed, line).toContainEqual(
+        expect.objectContaining({ reason: 'names-more', forProduct: 0 }),
+      );
+    }
+  });
+
+  it('never says a line names more when the product explains every part of it', () => {
+    for (const line of [
+      '1. Fer + Acide folique cp : 1 cp/jour pendant 3 mois',
+      '2. ASAQ (Artésunate + Amodiaquine)',
+      '3. Coartem 20/120 mg',
+      '4. Paracétamol 500 mg cp',
+      '5. Fer et acide folique cp',
+      '6. Efferalgan pédiatrique 30 mg/ml',
+    ]) {
+      const product = only([line]);
+      expect(product.namesMore, line).toBe(false);
+      expect(product.missingSubstances, line).toEqual([]);
+    }
+  });
+
+  it('never snaps a misread combination brand to its single-substance sibling', () => {
+    for (const line of ['Coliprane 500 mg', 'Efferalgan cod€ine']) {
+      const { products, typed } = readPrescription(pack, [line]);
+      for (const [forProduct, product] of products.entries()) {
+        if (substancesOf(product.ref.id) === 'codeine+paracetamol') continue;
+        expect(product.missingSubstances, line).toContain('codeine');
+        expect(mayBePreTicked(product), line).toBe(false);
+        expect(typed, line).toContainEqual(
+          expect.objectContaining({ reason: 'names-more', forProduct }),
+        );
+      }
+      expect(products.length + typed.length, line).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('readPrescription: a product that holds what the line does not name', () => {
+  it('prefers the product of exactly the substances named: "Codéine 30 mg" is codeine alone', () => {
+    for (const line of ['Codéine 30 mg', 'Codéine phosphate 30 mg']) {
+      const product = only([line]);
+      expect(substancesOf(product.ref.id), line).toBe('codeine');
+      expect(product.extraSubstances, line).toEqual([]);
+    }
+  });
+
+  it('says which substances the product adds, and is never pre-ticked: "Ténofovir Lamivudine"', () => {
+    const { products, typed } = readPrescription(pack, ['Ténofovir Lamivudine']);
+    expect(products).toHaveLength(1);
+    const [product] = products as [PrescriptionProduct];
+    expect(substancesOf(product.ref.id)).toBe('dolutegravir+lamivudine+tenofovir');
+    expect(product.extraSubstances).toEqual(['dolutegravir']);
+    expect(mayBePreTicked(product)).toBe(false);
+    expect(typed).toContainEqual(expect.objectContaining({ reason: 'holds-more', forProduct: 0 }));
+  });
+
+  it('reads "Ténofovir + Lamivudine + Efav" as the efavirenz combination, to check', () => {
+    const product = only(['Ténofovir + Lamivudine + Efav']);
+    expect(substancesOf(product.ref.id)).toBe('efavirenz+lamivudine+tenofovir');
+    expect(product.missingSubstances).toEqual([]);
+    expect(product.extraSubstances).toEqual([]);
+    expect(mayBePreTicked(product)).toBe(false);
+  });
+
+  it('never computes extra substances for a brand: the brand says what the box holds', () => {
+    for (const line of ['1. Efferalgan codéine', '2. Doliprane codéine', '3. Codoliprane cp']) {
+      const product = only([line]);
+      expect(substancesOf(product.ref.id), line).toBe('codeine+paracetamol');
+      expect(product.extraSubstances, line).toEqual([]);
+      expect(product.missingSubstances, line).toEqual([]);
+    }
+  });
+});
+
 describe('readPrescription: strengths, posology and units per day', () => {
   it('proposes the strength the line gives, never a strength in micrograms', () => {
     expect(only(['1. Doliprane 1000 mg cp']).strengthMg).toBe(1000);
@@ -394,5 +519,7 @@ describe('mayBePreTicked', () => {
     expect(mayBePreTicked(product)).toBe(true);
     expect(mayBePreTicked({ ...product, match: 'strong' })).toBe(false);
     expect(mayBePreTicked({ ...product, missingSubstances: ['codeine'] })).toBe(false);
+    expect(mayBePreTicked({ ...product, extraSubstances: ['codeine'] })).toBe(false);
+    expect(mayBePreTicked({ ...product, namesMore: true })).toBe(false);
   });
 });

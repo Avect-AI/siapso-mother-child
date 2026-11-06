@@ -25,7 +25,8 @@ import {
   type Candidate,
 } from '@siapso/resolver';
 import { strengthOf } from './possible-matches.js';
-import { needsUnitsPerDay, searchIndexOf } from './search-index.js';
+import { ABBREVIATIONS, QUALIFIER_SUBSTANCE_WORDS } from './prescription-words.js';
+import { needsUnitsPerDay, productFamilyOf, searchIndexOf } from './search-index.js';
 
 /** A product or a remedy of the base read on a line of the prescription. */
 export interface PrescriptionProduct {
@@ -60,12 +61,31 @@ export interface PrescriptionProduct {
   unitsPerDayOffer: number | undefined;
   /**
    * The substances the line names that the product lacks (substance ids,
-   * sorted): a combination read in part ("SP" read as pyrimethamine alone).
-   * The item then says which ones, is never pre-ticked, and the line is also
-   * offered as typed (`typed`, reason `names-more`), so the result's safety
-   * net looks it up again and a level is never lowered silently.
+   * sorted): a combination read in part ("SP" read as pyrimethamine alone,
+   * "Paracétamol + Cod" as paracetamol). Named by their names, by the start
+   * of a name or a slip, by an abbreviation ("AF", "codé"), or by a word
+   * that resembles them. The item then says which ones, is never
+   * pre-ticked, and the line is also offered as typed (`typed`, reason
+   * `names-more`), so the result's safety net looks it up again and a level
+   * is never lowered silently.
    */
   missingSubstances: string[];
+  /**
+   * The substances the product holds that a line naming its substances by
+   * their names does not name (substance ids, sorted): "Ténofovir
+   * Lamivudine" read as the combination with dolutegravir, the only one the
+   * base has. Never computed for a brand, whose name says what the box
+   * holds. The item is then never pre-ticked and the line is offered as
+   * typed too (reason `holds-more`).
+   */
+  extraSubstances: string[];
+  /**
+   * Whether the line goes on, after a "+", a "/" or "et", with a part the
+   * product does not explain, even one that names nothing of the base
+   * ("Amoxicilline + acide clavulanique"): never pre-ticked, and the line is
+   * offered as typed too (reason `names-more`).
+   */
+  namesMore: boolean;
 }
 
 /** A line offered to add as typed ("Ajouter tel quel"), unticked. */
@@ -77,10 +97,12 @@ export interface TypedLine {
   lineIndex: number;
   /**
    * `not-recognised`: it looks like a product and names nothing of the base;
-   * `names-more`: a product was read on it, but the line names a substance
-   * that product lacks (`forProduct`, its index in `products`).
+   * `names-more`: a product was read on it (`forProduct`, its index in
+   * `products`), but the line names a substance that product lacks, or goes
+   * on with a part the product does not explain; `holds-more`: the product
+   * read holds a substance the line does not name.
    */
-  reason: 'not-recognised' | 'names-more';
+  reason: 'not-recognised' | 'names-more' | 'holds-more';
   forProduct?: number;
 }
 
@@ -94,11 +116,17 @@ export interface PrescriptionReading {
 /**
  * Whether the screen may ever tick this item for her (a shortcut such as
  * "Tout cocher", should the live test call for one): never for a strong
- * match, nor for a line that names a substance the product lacks. The list
- * itself starts with nothing ticked, whatever this says.
+ * match, nor for a product whose substances differ from those the line
+ * names (missing or extra), nor for a line that names more than the
+ * product. The list itself starts with nothing ticked, whatever this says.
  */
 export function mayBePreTicked(product: PrescriptionProduct): boolean {
-  return product.match === 'very-strong' && product.missingSubstances.length === 0;
+  return (
+    product.match === 'very-strong' &&
+    product.missingSubstances.length === 0 &&
+    product.extraSubstances.length === 0 &&
+    !product.namesMore
+  );
 }
 
 /** Lowercase, accents and marks gone, spaces collapsed: what the line rules read. */
@@ -223,6 +251,15 @@ interface Vocabulary {
   wordsOfSubstance: Map<string, string[]>;
   /** The substances of each product. */
   substancesOfProduct: Map<string, Set<string>>;
+  /**
+   * The words of 7 letters or more of brand names that only combinations
+   * have ("codolipran"), with the substances of those combinations: a word
+   * misread near one of them and snapped to a name of fewer substances
+   * ("Coliprane" to DOLIPRANE) says the line may name the combination.
+   */
+  combinationWords: Map<string, Set<string>>;
+  /** The substances each word of `words` names at the fewest: of the substance, or of the product of its brand with the fewest. */
+  leastOf: Map<string, Set<string>>;
 }
 
 const vocabularies = new WeakMap<Pack, Vocabulary>();
@@ -247,10 +284,15 @@ function vocabularyOf(pack: Pack): Vocabulary {
         if (word.length >= 7 && !word.includes(' ') && !words.has(word)) words.set(word, written);
       }
     }
+    // The words that name a substance: long enough, and not a qualifier
+    // ("vitamine" names no substance by itself).
+    const namingWords = (text: string) =>
+      normalize(text)
+        .split(' ')
+        .filter((word) => word.length >= SUBSTANCE_WORD && !QUALIFIER_SUBSTANCE_WORDS.has(word));
     const owners = new Map<string, Set<string>>();
     for (const substance of pack.substances) {
-      for (const word of normalize(`${substance.names.fr} ${substance.names.en}`).split(' ')) {
-        if (word.length < SUBSTANCE_WORD) continue;
+      for (const word of namingWords(`${substance.names.fr} ${substance.names.en}`)) {
         const set = owners.get(word) ?? new Set<string>();
         set.add(substance.id);
         owners.set(word, set);
@@ -260,17 +302,46 @@ function vocabularyOf(pack: Pack): Vocabulary {
       [...owners].flatMap(([word, ids]) => (ids.size === 1 ? [[word, [...ids][0] ?? '']] : [])),
     );
     const wordsOfSubstance = new Map(
-      pack.substances.map((s) => [
-        s.id,
-        normalize(`${s.names.fr} ${s.names.en}`)
-          .split(' ')
-          .filter((word) => word.length >= SUBSTANCE_WORD),
-      ]),
+      pack.substances.map((s) => [s.id, namingWords(`${s.names.fr} ${s.names.en}`)]),
     );
     const substancesOfProduct = new Map(
       pack.products.map((p) => [p.id, new Set(p.components.map((c) => c.substance))]),
     );
-    vocabulary = { words, substanceWords, wordsOfSubstance, substancesOfProduct };
+    // Each long word with the substances it names at the fewest, and the
+    // substances of the combinations a brand word names.
+    const leastOf = new Map<string, Set<string>>();
+    const fewer = (word: string, held: Set<string>) => {
+      const known = leastOf.get(word);
+      if (known === undefined || held.size < known.size) leastOf.set(word, held);
+    };
+    for (const substance of pack.substances) {
+      for (const word of normalize(`${substance.names.fr} ${substance.names.en}`).split(' ')) {
+        if (word.length >= 7) fewer(word, new Set([substance.id]));
+      }
+    }
+    const combined = new Map<string, Set<string>>();
+    for (const product of pack.products) {
+      const held = substancesOfProduct.get(product.id) ?? new Set<string>();
+      for (const word of new Set(normalize(product.brands.join(' ')).split(' '))) {
+        if (word.length < 7) continue;
+        fewer(word, held);
+        if (held.size < 2) continue;
+        const set = combined.get(word) ?? new Set<string>();
+        for (const s of held) set.add(s);
+        combined.set(word, set);
+      }
+    }
+    const combinationWords = new Map(
+      [...combined].filter(([word]) => (leastOf.get(word)?.size ?? 0) >= 2),
+    );
+    vocabulary = {
+      words,
+      substanceWords,
+      wordsOfSubstance,
+      substancesOfProduct,
+      combinationWords,
+      leastOf,
+    };
     vocabularies.set(pack, vocabulary);
   }
   return vocabulary;
@@ -319,30 +390,34 @@ function completingSubstances(vocabulary: Vocabulary, held: ReadonlySet<string>)
   return found;
 }
 
+/** The names of a product of the pack, and the name the resolver matched. */
+function ownNames(pack: Pack, candidate: Candidate): string[] {
+  const product =
+    candidate.kind === 'product' ? pack.products.find((p) => p.id === candidate.id) : undefined;
+  return product === undefined
+    ? [candidate.matched]
+    : [
+        candidate.matched,
+        product.names.fr,
+        product.names.en,
+        ...product.brands,
+        ...product.localNames.map((l) => l.text),
+      ];
+}
+
 /**
  * The words of a name part that the product read does not explain: not a
  * word of its names or of the name matched, not a form or salt word, not a
- * posology or header word, not a number. What is left may be a part of the
- * name the OCR garbled.
+ * posology or header word, not a number; 3 letters or more. What is left may
+ * be a part of the name the OCR garbled or a prescriber shortened.
  */
 function unexplainedWords(pack: Pack, namePart: string, candidate: Candidate): string[] {
-  const product =
-    candidate.kind === 'product' ? pack.products.find((p) => p.id === candidate.id) : undefined;
-  const names =
-    product === undefined
-      ? []
-      : [
-          product.names.fr,
-          product.names.en,
-          ...product.brands,
-          ...product.localNames.map((l) => l.text),
-        ];
-  const own = new Set(normalize([candidate.matched, ...names].join(' ')).split(' '));
+  const own = new Set(normalize(ownNames(pack, candidate).join(' ')).split(' '));
   return withoutStopWords(normalize(namePart))
     .split(' ')
     .filter(
       (word) =>
-        word.length >= SUBSTANCE_WORD &&
+        word.length >= 3 &&
         !/\d/.test(word) &&
         !own.has(word) &&
         !isPosologyWord(word) &&
@@ -350,39 +425,159 @@ function unexplainedWords(pack: Pack, namePart: string, candidate: Candidate): s
     );
 }
 
+/** The substances a name part names: surely, or by a guess that is to be checked. */
+interface Naming {
+  /** By a whole substance name, or by a word only that substance's names have ("folique"). */
+  certain: Set<string>;
+  /** By the start of a name, a slip, an abbreviation or a resemblance. */
+  guessed: Set<string>;
+}
+
 /**
  * The substances a name part names: by their names, as the confirm screen
  * reads them (namedSubstances), and by a word that only one substance has
- * ("folique" of "acide folique"), or a word of 6 letters or more the OCR
- * read in part or with a slip: the start of that word ("Sulfadox"), or the
- * word within one edit (two from 9 letters).
+ * ("folique" of "acide folique"), both sure; or a word of 6 letters or more
+ * the OCR read in part or with a slip: the start of that word ("Sulfadox"),
+ * or the word within one edit (two from 9 letters), a guess.
  */
-function substancesNamed(pack: Pack, namePart: string): Set<string> {
-  const named = new Set(namedSubstances(searchIndexOf(pack), namePart));
+function substancesNamed(pack: Pack, namePart: string): Naming {
+  const certain = new Set(namedSubstances(searchIndexOf(pack), namePart));
+  const guessed = new Set<string>();
   const { substanceWords } = vocabularyOf(pack);
   for (const word of normalize(namePart).split(' ')) {
     if (word.length < SUBSTANCE_WORD || /\d/.test(word)) continue;
     for (const [known, id] of substanceWords) {
-      const close =
-        known === word ||
-        (word.length >= RESEMBLING_WORD &&
-          (known.startsWith(word) ||
-            (Math.abs(known.length - word.length) <= 2 &&
-              damerauLevenshtein(word, known) <= (known.length >= 9 ? 2 : 1))));
-      if (close) named.add(id);
+      if (known === word) {
+        certain.add(id);
+      } else if (
+        word.length >= RESEMBLING_WORD &&
+        (known.startsWith(word) ||
+          (Math.abs(known.length - word.length) <= 2 &&
+            damerauLevenshtein(word, known) <= (known.length >= 9 ? 2 : 1)))
+      ) {
+        guessed.add(id);
+      }
     }
   }
-  return named;
+  for (const id of certain) guessed.delete(id);
+  return { certain, guessed };
+}
+
+/** The words of a text, accents aside, case kept: what the abbreviations read. */
+function tokensOf(text: string): string[] {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token !== '');
+}
+
+/** The substances an abbreviation of a name part stands for ("AF", "codé", "3TC"). */
+function abbreviated(namePart: string): Set<string> {
+  const found = new Set<string>();
+  for (const token of tokensOf(namePart)) {
+    const abbreviation = ABBREVIATIONS[token.toLowerCase()];
+    if (abbreviation === undefined) continue;
+    if (abbreviation.upper === true && token !== token.toUpperCase()) continue;
+    for (const id of abbreviation.substances) found.add(id);
+  }
+  return found;
+}
+
+/**
+ * Where a name part goes on after a "+", a "/" between two words
+ * ("Paracétamol/Codéine", "TDF/3TC", never "500/30" or "3/j") or "et": its
+ * parts, each to be explained by the product read.
+ */
+function partsOf(namePart: string): string[] {
+  return namePart
+    .split(/\s*\+\s*|(?<=\p{L})\s*\/\s*(?=\p{L}|\d+\p{L})|\s+et\s+/iu)
+    .filter((part) => part.trim() !== '');
+}
+
+/** A word of a part that says nothing of which product: a number, a unit, a form, a posology word. */
+function neutralWord(word: string): boolean {
+  return (
+    word.length < 2 ||
+    (/^\d/.test(word) && ABBREVIATIONS[word] === undefined) ||
+    /^(mg|g|ml|cl|l|ug|µg|μg|mcg|ui)$/.test(word) ||
+    withoutStopWords(word) === '' ||
+    isPosologyWord(word)
+  );
+}
+
+/**
+ * Whether the product explains every part of a name part joined by "+", "/"
+ * or "et": each word of each part is a number, a unit, a form or a posology
+ * word, a word of the product's names (or the start of one, two letters or
+ * more: "Ac." of "acide"), a word of the name of a substance it holds (or
+ * the start of one, three letters or more), or an abbreviation of one.
+ */
+function explainsEveryPart(
+  pack: Pack,
+  vocabulary: Vocabulary,
+  namePart: string,
+  candidate: Candidate,
+  held: ReadonlySet<string>,
+): boolean {
+  const parts = partsOf(namePart);
+  if (parts.length < 2) return true;
+  const heldNames = pack.substances
+    .filter((s) => held.has(s.id))
+    .map((s) => `${s.names.fr} ${s.names.en}`);
+  const own = normalize([...ownNames(pack, candidate), ...heldNames].join(' '))
+    .split(' ')
+    .filter((word) => word.length >= 2);
+  const heldWords = [...held].flatMap((id) => vocabulary.wordsOfSubstance.get(id) ?? []);
+  const explained = (word: string) =>
+    neutralWord(word) ||
+    own.some((name) => name === word || name.startsWith(word)) ||
+    (word.length >= 3 && heldWords.some((name) => name.startsWith(word))) ||
+    (ABBREVIATIONS[word]?.substances.some((id) => held.has(id)) ?? false);
+  return parts.every((part) => normalize(part).split(' ').every(explained));
+}
+
+/**
+ * The products of the pack whose substances are exactly these, a generic
+ * first ("Codéine (générique)", "TLE (ténofovir, lamivudine, éfavirenz)"):
+ * the product a line naming these substances by their names names.
+ */
+function genericOf(pack: Pack, vocabulary: Vocabulary, substances: ReadonlySet<string>) {
+  const same = (held: ReadonlySet<string> | undefined) =>
+    held !== undefined &&
+    held.size === substances.size &&
+    [...held].every((s) => substances.has(s));
+  return pack.products.find(
+    (p) =>
+      same(vocabulary.substancesOfProduct.get(p.id)) &&
+      (productFamilyOf(pack, p.id) ?? '').startsWith('substances:'),
+  );
+}
+
+/** The resolver candidate of a product of the pack, as a search of its name gives it. */
+function candidateFor(pack: Pack, productId: string, name: string): Candidate | undefined {
+  return search(searchIndexOf(pack), name, { limit: 5 }).find((c) => c.id === productId);
+}
+
+/** A line with its long misread words snapped, and the combinations a word was read near. */
+interface Snapped {
+  text: string;
+  /** The substances of the combination names a word was near but not snapped to. */
+  near: Set<string>;
 }
 
 /**
  * A long word misread by the OCR snapped to the substance or brand name it is
  * within one edit of (two from 9 letters): "Gsulfadofine" to "sulfadoxine",
  * "Efferalany" to "efferalgan", so that a combination is read whole. Words of
- * 7 letters or more only; the closest name wins.
+ * 7 letters or more only; the closest name wins. When the name of a
+ * combination that holds the substances of that name and more is at most
+ * one slip further, the combination is noted: "Coliprane" snapped to
+ * DOLIPRANE says the line may name CODOLIPRANE, which also holds codeine.
  */
-function snapped(line: string, vocabulary: Vocabulary): string {
-  return line.replace(/\p{L}{7,}/gu, (word) => {
+function snapped(line: string, vocabulary: Vocabulary): Snapped {
+  const near = new Set<string>();
+  const text = line.replace(/\p{L}{7,}/gu, (word) => {
     const w = normalize(word);
     // The slips allowed go by the length of the word as read, whatever the
     // resolver folds when it reads words as they sound.
@@ -398,26 +593,37 @@ function snapped(line: string, vocabulary: Vocabulary): string {
         bestDistance = distance;
       }
     }
+    if (best === undefined) return word;
+    const least = vocabulary.leastOf.get(normalize(best)) ?? new Set<string>();
+    for (const [c, substances] of vocabulary.combinationWords) {
+      if (Math.abs(c.length - w.length) > allowed + 1 || substances.size <= least.size) continue;
+      if (![...least].every((s) => substances.has(s))) continue;
+      if (damerauLevenshtein(w, c) > allowed + 1) continue;
+      for (const s of substances) near.add(s);
+    }
     // The name word as written, so the resolver reads it as it would read it typed.
-    return best ?? word;
+    return best;
   });
+  return { text, near };
 }
 
-/** The letters the OCR reads as digits inside a word ("fol1que", "Amox1cilline"). */
+/** The letters the OCR reads as digits or signs inside a word ("fol1que", "Amox1cilline", "cod€ine"). */
 const LETTER_OF_DIGIT: Readonly<Record<string, string>> = {
   '0': 'o',
   '1': 'i',
   '5': 's',
   '8': 'b',
+  '€': 'e',
 };
 
 /**
- * A digit between two letters read as the letter it stands for; "B9", "B12"
- * and a strength glued to a name ("Doliprane1g") stay as they are.
+ * A digit (or a euro sign) between two letters read as the letter it stands
+ * for; "B9", "B12" and a strength glued to a name ("Doliprane1g") stay as
+ * they are.
  */
 function digitsInWords(line: string): string {
   return line.replace(
-    /(?<=\p{L})[0158](?=\p{L})(?!(?:mg|g|ml|µg|ug|mcg)(?![\p{L}\d]))/giu,
+    /(?<=\p{L})[0158€](?=\p{L})(?!(?:mg|g|ml|µg|ug|mcg)(?![\p{L}\d]))/giu,
     (digit) => LETTER_OF_DIGIT[digit] ?? digit,
   );
 }
@@ -560,7 +766,7 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     const marked = MARKED.test(raw);
     const counted = raw.replace(LIST_MARK, '');
     const unmarked = gluedStrengthSplit(counted.replace(/^\d{1,2}\s+(?=\p{L})/u, ''));
-    const line = snapped(digitsInWords(unmarked), vocabulary);
+    const { text: line, near } = snapped(digitsInWords(unmarked), vocabulary);
     const p = plain(line);
     // A header word ends a numbered product line when the OCR joins the stamp
     // to it ("Fluconazole 150 mg gél CLINIQUE DE"): the line is still read.
@@ -577,21 +783,50 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       }
       return;
     }
-    const { candidate } = chosen;
+    let { candidate, match } = chosen;
+    let held = substancesOfRef(pack, { kind: candidate.kind, id: candidate.id });
+    const { certain, guessed } = substancesNamed(pack, namePart);
+    // What a combination of the pack would add to what the line holds or
+    // names surely: where an abbreviation, the start of a name or a garbled
+    // word may name a substance ("Paracétamol + Cod", "Fer + AF").
+    const context = new Set([
+      ...completingSubstances(vocabulary, held),
+      ...completingSubstances(vocabulary, certain),
+    ]);
+    for (const id of abbreviated(namePart)) if (context.has(id)) guessed.add(id);
+    for (const word of context.size > 0 ? unexplainedWords(pack, namePart, candidate) : []) {
+      for (const id of context) {
+        const words = vocabulary.wordsOfSubstance.get(id) ?? [];
+        const resembles = (name: string) =>
+          name.startsWith(word) ||
+          (word.length >= SUBSTANCE_WORD && sharedInOrder(word, name) >= RESEMBLANCE);
+        if (words.some(resembles)) guessed.add(id);
+      }
+    }
+    // A word left as read near the name of a combination.
+    for (const id of near) guessed.add(id);
+    const named = new Set([...certain, ...guessed]);
+    // A product found by the name of a substance holds what the line does not
+    // name ("Codéine" read as ANTARENE CODEINE, with ibuprofen): the product of
+    // exactly the substances named takes its place when the base has one.
+    const bySubstance = candidate.matchedLang === 'inn' || candidate.match === 'substances';
+    const extraOf = (substances: ReadonlySet<string>) =>
+      bySubstance && certain.size > 0 ? [...substances].filter((id) => !named.has(id)) : [];
+    if (candidate.kind === 'product' && extraOf(held).length > 0) {
+      const generic = genericOf(pack, vocabulary, named);
+      const exact = generic && candidateFor(pack, generic.id, generic.names.fr);
+      if (exact !== undefined && exact.id !== candidate.id) {
+        // Named surely, or partly by a guess ("Efav"): then it is to be checked.
+        const surely = [...guessed].every((id) => certain.has(id));
+        candidate = exact;
+        match = match === 'very-strong' && surely ? 'very-strong' : 'strong';
+        held = substancesOfRef(pack, { kind: exact.kind, id: exact.id });
+      }
+    }
     const ref = { kind: candidate.kind, id: candidate.id };
     // One product per family: the line that names it best.
     const known = families.get(candidate.family);
     if (known !== undefined && (products[known]?.candidate.score ?? 0) >= candidate.score) return;
-    const held = substancesOfRef(pack, ref);
-    const named = substancesNamed(pack, namePart);
-    // A word garbled past a slip that resembles what a combination would add.
-    const completing = completingSubstances(vocabulary, held);
-    for (const word of completing.size > 0 ? unexplainedWords(pack, namePart, candidate) : []) {
-      for (const id of completing) {
-        const words = vocabulary.wordsOfSubstance.get(id) ?? [];
-        if (words.some((name) => sharedInOrder(word, name) >= RESEMBLANCE)) named.add(id);
-      }
-    }
     const missingSubstances = [...named].filter((id) => !held.has(id)).sort();
     const posology = posologyOf(line, joined.slice(at + 1));
     const units = posology === undefined ? undefined : unitsPerDayOf(posology);
@@ -601,11 +836,13 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
       line: raw,
       lineIndex,
       query,
-      match: chosen.match,
+      match,
       strengthMg: MICROGRAMS.test(namePart) ? undefined : parseStrength(namePart).strengthMg,
       posology,
       unitsPerDayOffer: needsUnitsPerDay(pack, ref) ? units : undefined,
       missingSubstances,
+      extraSubstances: candidate.kind === 'product' ? extraOf(held).sort() : [],
+      namesMore: !explainsEveryPart(pack, vocabulary, namePart, candidate, held),
     };
     if (known !== undefined) {
       products[known] = product;
@@ -617,14 +854,16 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
 
   // A later line may have taken the place of an earlier one of its family.
   products.sort((a, b) => a.lineIndex - b.lineIndex);
-  // The lines read in part are offered as typed too, after the products are settled.
+  // The lines read in part, or read as a product that holds more than they
+  // name, are offered as typed too, after the products are settled.
   products.forEach((product, forProduct) => {
-    if (product.missingSubstances.length === 0) return;
+    const namesMore = product.missingSubstances.length > 0 || product.namesMore;
+    if (!namesMore && product.extraSubstances.length === 0) return;
     typed.push({
       text: product.query,
       line: product.line,
       lineIndex: product.lineIndex,
-      reason: 'names-more',
+      reason: namesMore ? 'names-more' : 'holds-more',
       forProduct,
     });
   });
