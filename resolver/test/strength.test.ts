@@ -155,6 +155,17 @@ describe('parseStrength', () => {
     expect(parseStrength('aspirine 12 x 500')).toMatchObject({ strengthMg: 500 });
   });
 
+  it('reads a number above a dose of tablets before "cp" as a strength missing its unit', () => {
+    // "Doliprane 1000 cp" on a prescription: 1000 is the strength, never 1000 tablets.
+    expect(parseStrength('doliprane 1000 cp')).toMatchObject({ strengthMg: 1000 });
+    expect(parseStrength('brufen 400 cpr')).toMatchObject({ strengthMg: 400 });
+    // Up to MAX_TIMES, "cp" counts tablets: no strength.
+    expect(parseStrength('doliprane 2 cp')).toEqual({ text: 'doliprane 2 cp' });
+    expect(parseStrength('doliprane 12 cps')).toEqual({ text: 'doliprane 12 cps' });
+    // The written words stay counts whatever the number.
+    expect(parseStrength('boite de 100 comprimes')).toEqual({ text: 'boite de 100 comprimes' });
+  });
+
   it('keeps the first number as the strength when it is more than 12: "x" then the count of a box (review of #71)', () => {
     expect(parseStrength('aspirine 100 x 120')).toMatchObject({ strengthMg: 100 });
     expect(parseStrength('kardegic 75 x 90')).toMatchObject({ strengthMg: 75 });
