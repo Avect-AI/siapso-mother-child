@@ -50,11 +50,20 @@ export const BUDGET_BASE = 8_000_000;
 export const BUDGET_PER_BYTE = 1.5;
 
 class Budget {
-  constructor(public left: number) {}
+  left: number;
+
+  constructor(readonly total: number) {
+    this.left = total;
+  }
 
   spend(steps: number): void {
     this.left -= steps;
     if (this.left < 0) throw new OverBudget();
+  }
+
+  /** The steps counted so far, at most the total. */
+  get used(): number {
+    return Math.min(this.total, this.total - this.left);
   }
 }
 
@@ -649,7 +658,36 @@ export interface PdfRefusal {
  * encrypted file is not read: only the sizes its dictionaries give count.
  */
 export function oversizedImage(bytes: Uint8Array, maxPixels: number): PdfRefusal | null {
+  return inspectPdfImages(bytes, maxPixels).refusal;
+}
+
+/** What oversizedImage decided, and the work it took: tested against the budget, not the clock. */
+export interface PdfImageInspection {
+  refusal: PdfRefusal | null;
+  /** Steps counted (see BUDGET_BASE). */
+  steps: number;
+  /** The budget for this file: BUDGET_BASE + BUDGET_PER_BYTE x its size. */
+  budget: number;
+  /** Whether the check stopped at its budget (then refused, unless an image was too large first). */
+  overBudget: boolean;
+}
+
+/** oversizedImage, with the work it counted. */
+export function inspectPdfImages(bytes: Uint8Array, maxPixels: number): PdfImageInspection {
   const budget = new Budget(BUDGET_BASE + BUDGET_PER_BYTE * bytes.length);
+  let overBudget = false;
+  const refusal = refusalOf(bytes, maxPixels, budget, () => {
+    overBudget = true;
+  });
+  return { refusal, steps: budget.used, budget: budget.total, overBudget };
+}
+
+function refusalOf(
+  bytes: Uint8Array,
+  maxPixels: number,
+  budget: Budget,
+  onOverBudget: () => void,
+): PdfRefusal | null {
   let unsupported: string | undefined;
   const cannot = (why: string) => {
     unsupported ??= why;
@@ -736,6 +774,7 @@ export function oversizedImage(bytes: Uint8Array, maxPixels: number): PdfRefusal
     }
   } catch (error) {
     if (!(error instanceof OverBudget)) throw error;
+    onOverBudget();
     cannot('the file takes too long to read here');
   }
   return unsupported === undefined ? null : { reason: 'pdf-unsupported', why: unsupported };

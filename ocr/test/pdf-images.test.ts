@@ -4,7 +4,12 @@
 // anything (pdf-images.ts), on hand-written PDF fragments: the syntax the
 // reader must not be fooled by. readPdf's own refusals: pdf.test.ts.
 import { describe, expect, it } from 'vitest';
-import { oversizedImage } from '../src/pdf-images.js';
+import {
+  BUDGET_BASE,
+  BUDGET_PER_BYTE,
+  inspectPdfImages,
+  oversizedImage,
+} from '../src/pdf-images.js';
 
 const LIMIT = 20_000_000;
 function latin1(text: string): Uint8Array {
@@ -152,9 +157,11 @@ describe('oversizedImage', () => {
   });
 
   it('gives up, refusing, on a file that would take too long to read', () => {
-    const started = performance.now();
-    expect(check(`1 0 obj ${'<<'.repeat(200_000)}`)).toEqual(unsupported(/too long/));
-    expect(performance.now() - started).toBeLessThan(5000);
+    // Nested 200,000 deep: stopped at 1,000 levels, as over its budget.
+    const work = inspectPdfImages(latin1(`1 0 obj ${'<<'.repeat(200_000)}`), LIMIT);
+    expect(work.refusal).toEqual(unsupported(/too long/));
+    expect(work.overBudget).toBe(true);
+    expect(work.steps).toBeLessThan(work.budget);
   });
 
   it('is not slowed by binary data', () => {
@@ -167,14 +174,19 @@ describe('oversizedImage', () => {
 
 // Each file is built in the test, up to 20 MB: more than the default 5 s in all.
 describe('oversizedImage on files crafted to be slow', { timeout: 120_000 }, () => {
-  // Bounds loose enough for a loaded machine: a file of 20 MB is refused in
-  // about 2 s on the laptop of the bench (docs/ocr.md), within the 90 s limit
-  // of a reading on a slow phone.
-  const timed = (text: string) => {
+  // The work is asserted, not the time, which a loaded machine stretches: the
+  // steps the check counts, against its budget for the file's size. The
+  // budget's timings (20 MB within about 1.5 s on the bench laptop) are in
+  // pdf-images.ts and docs/threat-model.md. One loose wall-clock bound per
+  // test still catches a path that does work it does not count.
+  const SANITY_MS = 30_000;
+  const measured = (text: string) => {
     const bytes = latin1(text);
     const started = performance.now();
-    const result = oversizedImage(bytes, LIMIT);
-    return { result, ms: performance.now() - started };
+    const work = inspectPdfImages(bytes, LIMIT);
+    expect(performance.now() - started).toBeLessThan(SANITY_MS);
+    expect(work.budget).toBe(BUDGET_BASE + BUDGET_PER_BYTE * bytes.length);
+    return { ...work, size: bytes.length };
   };
 
   it('looks each object up once: 5,000 images sized by references behind an 8 MB stream', () => {
@@ -183,19 +195,20 @@ describe('oversizedImage on files crafted to be slow', { timeout: 120_000 }, () 
       (_, i) =>
         `${String(i + 10)} 0 obj\n<< /Subtype /Image /Width ${String(i + 20_000)} 0 R /Height 10 /Length 1 >>\nstream\nx\nendstream\nendobj\n${String(i + 20_000)} 0 obj 10 endobj\n`,
     ).join('');
-    const { result, ms } = timed(stream('/Filter /FlateDecode', 'z'.repeat(8_000_000)) + images);
-    expect(result).toBeNull();
-    expect(ms).toBeLessThan(2000);
+    const work = measured(stream('/Filter /FlateDecode', 'z'.repeat(8_000_000)) + images);
+    expect(work.refusal).toBeNull();
+    // The stream's 8 MB are skipped, never searched once per reference.
+    expect(work.steps).toBeLessThan(2_000_000);
   });
 
-  it('refuses in time a file of 200,000 stray stream keywords', () => {
-    const { result, ms } = timed(`1 0 obj\n${'q 1 0 0 1 0 0 cm stream\n'.repeat(200_000)}`);
-    expect(result).toEqual(unsupported(/too long/));
-    expect(ms).toBeLessThan(3000);
+  it('refuses a file of 200,000 stray stream keywords by its budget', () => {
+    const work = measured(`1 0 obj\n${'q 1 0 0 1 0 0 cm stream\n'.repeat(200_000)}`);
+    expect(work.refusal).toEqual(unsupported(/too long/));
+    expect(work.overBudget).toBe(true);
   });
 
-  it('reads or refuses in time a file of 20 MB of syntax with tens of thousands of references', () => {
-    // Every size by a reference of its own, each defined: 120,000 lookups.
+  it('reads 20 MB of syntax with 120,000 references within its budget', () => {
+    // Every size by a reference of its own, each defined.
     const objects = Array.from(
       { length: 60_000 },
       (_, i) =>
@@ -204,16 +217,27 @@ describe('oversizedImage on files crafted to be slow', { timeout: 120_000 }, () 
     const filler = '/Name [1 2 3 4 5 6 7 8 9 10] (text) '.repeat(
       Math.ceil(Math.max(0, 20_000_000 - objects.length) / 36),
     );
-    const { result, ms } = timed(`${objects}1 0 obj << ${filler} >> endobj\n`);
-    expect(result).not.toEqual(tooLarge());
-    expect(ms).toBeLessThan(6000);
+    const work = measured(`${objects}1 0 obj << ${filler} >> endobj\n`);
+    expect(work.refusal).toBeNull();
+    expect(work.overBudget).toBe(false);
+    expect(work.steps).toBeLessThanOrEqual(work.budget);
   });
 
-  it('refuses in time 20 MB of tokens, the slowest syntax to read', () => {
-    for (const unit of ['1 ', '/a ', '[1] ', '<< >>stream\n']) {
-      const { result, ms } = timed(`1 0 obj ${unit.repeat(Math.ceil(20_000_000 / unit.length))}`);
-      expect(result, unit).not.toEqual(tooLarge());
-      expect(ms, unit).toBeLessThan(6000);
+  it('reads 20 MB of tokens within its budget, or refuses them by it, never by their size', () => {
+    const shapes: [string, boolean][] = [
+      ['/a ', false],
+      ['[1] ', false],
+      ['1 ', true],
+      ['<< >>stream\n', true],
+    ];
+    for (const [unit, refused] of shapes) {
+      const work = measured(`1 0 obj ${unit.repeat(Math.ceil(20_000_000 / unit.length))}`);
+      expect(work.overBudget, unit).toBe(refused);
+      if (refused) expect(work.refusal, unit).toEqual(unsupported(/too long/));
+      else {
+        expect(work.refusal, unit).toBeNull();
+        expect(work.steps, unit).toBeLessThanOrEqual(work.budget);
+      }
     }
   });
 });
