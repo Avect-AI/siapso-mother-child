@@ -57,20 +57,21 @@ It runs the same ONNX graphs as the browser with Transformers.js in Node: same f
 - The sentences are read as the voice heard them (`productsInSentence(index, text, { heard: true })`): a name read from words the voice split is offered unticked, to confirm; it never counts as found, and the `checks` column says how many such offers were right and wrong.
 - `offered`: the products named that are offered at all, ticked or to confirm. A remedy that is also a food ("bissap", "jinjeer", "ail") is offered unticked by design since the review of #68, so it counts as missed in the recall (ticked) and as offered here.
 - Background: the model's transcripts of general FLEURS sentences in `results/*.json` (400, French and Wolof, no product names) are read too: any product found there, ticked, is a false product, and any name offered to confirm there is counted apart.
-- `sentences-baseline.json`: the bars CI enforces on the tuning set, overall and in each language: precision at least 0.97, recall (ticked) at least 0.88, offered at least 0.95, no false product in the background and no name offered to confirm there (`backgroundCheckOffers`). Why: a false product is worse than a missed one (it is put before her, even if she confirms it), so the precision bar is the higher; the offered bar keeps every product named in front of her. The recall bar was 0.95 until the review of #68: its foods offered unticked (13 of the 244 products named) took the ticked recall from 0.980 to 0.926 (0.895 in Wolof, where most of them are), every one of them still offered; 0.88 keeps about one product per language of margin. Lower a bar only in a reviewed pull request that says why.
-- It also prints the p95 time of one sentence (the 256 sentences and the 400 transcripts, which are much longer than the 80 characters the search field keeps).
+- `sentences-baseline.json`: the bars CI enforces on the tuning set, overall and in each language: precision at least 0.97, recall (ticked) at least 0.88, offered at least 0.95, no false product in the background and no name offered to confirm there (`backgroundCheckOffers`). Why: a false product is worse than a missed one (it is put before her, even if she confirms it), so the precision bar is the higher; the offered bar keeps every product named in front of her. The recall bar was 0.95 until the review of #68: its foods offered unticked (13 of the 244 products named) took the ticked recall from 0.980 to 0.926 (0.895 in Wolof, where most of them are), every one of them still offered; 0.88 keeps about one product per language of margin. Round 3 of the review: a bar of its own on the products named that are no food, `nonFoodRecall`, recall (ticked) at least 0.95 in each language and overall; the foods are counted apart in the report (`foods`: offered / named, a food being a product found with `alsoFood`). Lower a bar only in a reviewed pull request that says why.
+- `notTaken` (round 3): as in the held-out sets, a product named but not taken; ticked, it is a false product.
+- It also prints the p95 time of one sentence (the sentences and the 400 transcripts, which are much longer than the 80 characters the search field keeps).
 
-These are tuning-set figures: the sentences were written by the developer who wrote the rules, and the rules were changed until they held, so they are optimistic. They measure that the rules hold, not how real speakers talk. Measured on 2026-11-06, after the review of #68 (256 sentences, 244 products named):
+These are tuning-set figures: the sentences were written by the developer who wrote the rules, and the rules were changed until they held, so they are optimistic. They measure that the rules hold, not how real speakers talk. Round 3 of the review added 18 sentences from the reviewer's probes (everyday phrases that had unticked a product she takes, "sœur" as the voice writes it). Measured on 2026-11-06, after round 3 (274 sentences, 259 products named, 4 named but not taken):
 
-| Tuning set | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered |
-| ---------- | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: |
-| fr         |       106 |   101 |    95 |     0 |      6 |     1.000 |           0.941 |   0.980 |
-| wo         |        98 |    95 |    85 |     0 |     10 |     1.000 |           0.895 |   0.968 |
-| mix        |        52 |    48 |    46 |     0 |      2 |     1.000 |           0.958 |   1.000 |
-| overall    |       256 |   244 |   226 |     0 |     18 |     1.000 |           0.926 |   0.980 |
-| misspelt   |        60 |    65 |    61 |     0 |      4 |     1.000 |           0.938 |   0.938 |
+| Tuning set | Sentences | Named | Right | False | Missed | Precision | Recall (ticked) | Offered | Non-food recall | Foods offered |
+| ---------- | --------: | ----: | ----: | ----: | -----: | --------: | --------------: | ------: | --------------: | ------------: |
+| fr         |       122 |   114 |   108 |     0 |      6 |     1.000 |           0.947 |   0.982 |           0.982 |           4/4 |
+| wo         |       100 |    97 |    87 |     0 |     10 |     1.000 |           0.897 |   0.969 |           0.967 |           7/7 |
+| mix        |        52 |    48 |    46 |     0 |      2 |     1.000 |           0.958 |   1.000 |           1.000 |           2/2 |
+| overall    |       274 |   259 |   241 |     0 |     18 |     1.000 |           0.931 |   0.981 |           0.980 |         13/13 |
+| misspelt   |        60 |    65 |    61 |     0 |      4 |     1.000 |           0.938 |   0.938 |           0.938 |           0/0 |
 
-Before the review (foods ticked): recall 0.980 overall, 0.968 at the lowest language, the same precision. Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word).
+The 4 products named but not taken came unticked. Before the review (foods ticked, 256 sentences): recall 0.980 overall, 0.968 at the lowest language, the same precision. Strengths said with a name found: 13, read right 11. Background: 0 false products in 400 transcripts (one name offered unticked: "neeem", read as neem, also a common word).
 
 ### Held-out set 1 (review of #68), now used
 
@@ -94,7 +95,7 @@ Measured once on 2026-11-06, before round 2, as they came:
 
 Without the five sentences of the review: precision 0.950 (95 right, 5 false), recall 0.848, not taken 5 ticked of 57. The five false products are products not taken that came ticked: another person the rules do not see ("la voisine m'a parlé du cytotec", where "m'" reads as given to her; "c'est pour ma mère, elle prend du kardégic" and "sama doom dafa am sibiru, je lui donne de la nivaquine", where the person is in the clause before, and the next clause has a subject of its own), and a past use said with a date only ("l'année dernière on m'a donné de la quinine", "il y a deux ans j'ai pris du cytotec"). Every negation came unticked. The foods are offered unticked as designed (one, "kola", is not found at all, and "neem" comes unticked as a common word). One wrong offer to confirm: "j'ai arrêté le fer il y a un mois" offers FERTIFOL as "Ou peut-être", unticked, as the clause guard reads "fer il y a un" as a longer name. These were the next rules to write, with sentences of their own (held-out set 2).
 
-After round 2 (a used set now, so an optimistic figure): precision 1.000, recall (ticked) 0.853, offered 0.991, 0 of the 63 products not taken ticked (other person 0 of 19, past 0 of 18), no FERTIFOL; still missed "sans paracétamol je n'arrive pas à dormir" (offered unticked) and "dama naan neem ak kola".
+After round 2, and the same after round 3 (a used set now, so an optimistic figure): precision 1.000, recall (ticked) 0.853, offered 0.991, non-food recall 0.971, 0 of the 63 products not taken ticked (other person 0 of 19, past 0 of 18), no FERTIFOL; still missed "sans paracétamol je n'arrive pas à dormir" (offered unticked) and "dama naan neem ak kola".
 
 ### Held-out set 2 (round 2 of the review of #68)
 
@@ -114,6 +115,8 @@ Measured once on 2026-11-06, after the rules of round 2, as it came:
 | advice       |        12 |     5 |     5 |     0 |      0 |     1.000 |           1.000 |   1.000 |                            0 / 7 / 7 |
 
 The four false products are products not taken that came ticked: another person named by a first name only ("Awa est malade, elle prend du coartem", "Fatou dafa feebar, dafay naan doliprane"), a time the lists do not hold ("l'année passée"), and a past said in the clause before a clause with a subject of its own ("bi ma ëmbee woon sama taaw, dama naan nebeday"). Every product told of or advised by someone else came unticked, and every one prescribed by a health worker ticked. Missed (offered unticked): "depuis la semaine dernière je prends du fer" (a use since then, read as past), "j'ai commencé la nivaquine avec mon mari" (read as his), and the bissap of "je bois bissap ak kinkéliba" (a food, by design). No rule was changed for them (decision of the coordinator): the four false products are known limits, to measure again with the recordings of SCRUM-32 (real voices; `docs/voice.md`, Known limits).
+
+Measured once more after round 3 (rules from the reviewer's probes, not from this set; the reviewer found the "depuis" case on his own, which is also one of its misses): precision 0.892 (33 right, the same 4 false), recall (ticked) 0.943, offered 1.000, non-food recall 0.971, 4 of 37 products not taken ticked. "depuis la semaine dernière je prends du fer" now comes ticked; still missed "j'ai commencé la nivaquine avec mon mari" (read as his) and the bissap (a food).
 
 ### Audio check (2026-11-06)
 
