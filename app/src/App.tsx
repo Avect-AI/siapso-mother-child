@@ -23,7 +23,6 @@ import { CALL_PATH, Referral } from './screens/Referral.js';
 import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
 import { Settings } from './screens/Settings.js';
-import { SignsNow } from './screens/SignsNow.js';
 import { Status } from './screens/Status.js';
 import { Unlock } from './screens/Unlock.js';
 import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
@@ -335,6 +334,8 @@ function Screens() {
   }, [key]);
 
   if (screen === null) return <Redirect to="/" replace />;
+  // The danger signs present now are asked on the check (SCRUM-56, S13): an old link goes there.
+  if (screen === 'signs') return <Redirect to="/check" replace />;
   if (screen === 'loading') return null;
   if (screen === 'unlocked') return <AfterUnlock />;
   if (screen === 'unlock' && location !== UNLOCK_PATH) return <LockAway location={location} />;
@@ -401,7 +402,6 @@ function Screens() {
       {screen === 'confirm' && check?.screen === 'confirm' ? (
         <Confirm key={key} kind={check.kind} />
       ) : null}
-      {screen === 'signs' ? <SignsNow /> : null}
       {screen === 'result' ? <Result /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}

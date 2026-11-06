@@ -373,7 +373,6 @@ export const fr = {
     profile: 'Profil : {name}',
     listLabel: 'Produits ajoutés',
     empty: "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
-    seeResult: 'Voir le résultat',
     // Taken off the list being looked at, never off the treatment.
     remove: 'Retirer',
     removeNamed: 'Retirer {name} de la liste',
@@ -800,14 +799,19 @@ export const fr = {
         'Écrivez de 6 à 15 chiffres, avec des espaces si vous voulez, et un + seulement au début.',
     },
   },
-  // Danger signs now, asked once in a check before the result (spec section 7.1, screen 8).
+  // Danger signs now, asked on the check before the result (SCRUM-56, S13): the
+  // signs in words, then "no" or "yes", "yes" opening the list to tick.
   signs: {
     titleWoman: 'Avez-vous un de ces signes maintenant ?',
     titleAccompanied: 'A-t-elle un de ces signes maintenant ?',
-    hint: 'Cochez Aucun de ces signes, ou chaque signe présent maintenant.',
-    none: 'Aucun de ces signes',
+    // A group and its signs in words: "Pendant la grossesse : fièvre, ...".
+    groupWords: '{group} : {signs}',
+    noneNow: 'Non, aucun de ces signes',
+    someNow: 'Oui, au moins un',
+    listHint: 'Cochez chaque signe présent maintenant.',
+    listError:
+      'Cochez au moins un signe présent maintenant, ou répondez : Non, aucun de ces signes.',
     showAll: 'Voir tous les signes',
-    error: 'Répondez : Aucun de ces signes, ou les signes présents maintenant.',
     loading: 'La liste se prépare.',
     seeResult: 'Voir le résultat',
   },

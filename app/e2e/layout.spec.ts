@@ -529,8 +529,11 @@ test.describe('on a 360 px phone', () => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
     await add(page, 'ibuprofene');
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
-    const showAll = page.getByRole('button', { name: 'Voir tous les signes' });
+    // The list of the signs, on the check (SCRUM-56, S13).
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+    const showAll = page.locator('.check__signs-list').getByRole('button', {
+      name: 'Voir tous les signes',
+    });
     await showAll.focus();
     await page.keyboard.press('Enter');
     const postpartum = page.getByRole('group', { name: "Après l'accouchement" });
@@ -633,9 +636,8 @@ test.describe('at 360 px with text at 200 percent', () => {
     await add(page, 'huile de ricin');
     await add(page, 'argile');
     await add(page, 'kinkeliba');
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
-    await page.getByText('Aucun de ces signes', { exact: true }).click();
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
     await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
     // The banner names its instruction once: no group named by the same words.
     await expect(page.locator('.danger-banner[role="group"]')).toHaveCount(0);

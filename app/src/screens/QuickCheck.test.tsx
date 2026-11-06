@@ -128,9 +128,8 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
-    await user.click(await screen.findByRole('button', { name: 'Voir le résultat' }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await user.click(await screen.findByRole('button', { name: 'Non, aucun de ces signes' }));
 
     expect(
       await screen.findByRole('heading', {
@@ -166,9 +165,8 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
-    await user.click(await screen.findByRole('button', { name: 'Voir le résultat' }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await user.click(await screen.findByRole('button', { name: 'Non, aucun de ces signes' }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Résultat pour Awa' }),

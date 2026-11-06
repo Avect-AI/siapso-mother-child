@@ -191,9 +191,8 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: `Résultat pour ${AMINATA}` }),
   ).toBeVisible();

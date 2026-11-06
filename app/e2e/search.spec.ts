@@ -97,24 +97,23 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await expect(items.nth(0)).toContainText('Ibuprofène (générique)');
   await expect(items.nth(1)).toContainText('Kinkéliba');
 
-  // Back from the check goes home: no step of the search is stacked behind it.
-  await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
-  await page.keyboard.press('Enter');
-  // The danger signs present now, by keyboard too: "none" first, then on to the result.
-  const signsTitle = 'Avez-vous un de ces signes maintenant ?';
-  await expect(page.getByRole('heading', { level: 1, name: signsTitle })).toBeVisible();
-  await tabTo(page, page.getByRole('checkbox', { name: 'Aucun de ces signes' }));
-  await page.keyboard.press('Space');
-  await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
+  // The danger signs present now, by keyboard too, on the check (SCRUM-56, S13).
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Avez-vous un de ces signes maintenant ?' }),
+  ).toBeVisible();
+  await tabTo(page, page.getByRole('button', { name: 'Non, aucun de ces signes' }));
   await page.keyboard.press('Enter');
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
   await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
-  // Back from the result asks the signs again, with nothing ticked ("now" may have changed).
-  await page.goBack();
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
+  // Back from the result asks the signs again, nothing chosen ("now" may have changed).
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Oui, au moins un' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  // Back from the check goes home: no step of the search is stacked behind it.
   await page.goBack();
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });

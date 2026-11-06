@@ -20,6 +20,7 @@ import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { flowEntry } from './check-flow.js';
 import { CheckSearch } from './CheckSearch.js';
+import { CheckSigns } from './CheckSigns.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
 import { Typed } from './Typed.js';
 
@@ -122,9 +123,10 @@ function Item({
  * under it, each added by a tap or by the "yes" of the question under it;
  * then the items added (name, substances and strengths, units per day when
  * given), each with a way off the list. Under the list, in words, what just
- * changed (added, taken off with a way to put it back). The one primary
- * action goes on to the result, through the danger signs present now, once
- * at least one item is listed.
+ * changed (added, taken off with a way to put it back). Once at least one
+ * item is listed, the danger signs present now are asked under the list
+ * (S13: CheckSigns), asked again at every showing of the check, and their
+ * answer opens the result.
  *
  * The check is for the active profile: hers in woman mode, the one chosen in
  * the list of profiles in accompanied mode (without a choice, the list opens),
@@ -213,6 +215,14 @@ export function Check() {
   useWarmSearchIndex(pack);
   // True once the profile has taken a moment to read: the loading status speaks then.
   const slow = useLiveRegionReady(CHECK_LOADING_DELAY_MS);
+
+  // The danger signs present now are asked again at every showing of the
+  // check, with nothing chosen (a sign may have started since): an answer
+  // given before a result is not given again by coming back (SCRUM-56, P7).
+  const { clearSigns } = check;
+  useEffect(() => {
+    clearSigns();
+  }, [clearSigns]);
 
   // What the confirm or search screen just did to the list (added, already
   // there, updated) is said once, after this screen is up, so the live region
@@ -407,19 +417,19 @@ export function Check() {
         </Button>
       ) : null}
 
-      <Button
-        variant="primary"
-        className="check__result"
-        disabled={empty}
-        aria-describedby={empty ? emptyId : undefined}
-        onClick={() => {
-          // The danger signs present now come first, then the result (one entry
-          // after this one, then two: their ways back come here, check-flow.ts).
-          navigate('/signs', { state: flowEntry({ stepsToCheck: 1 }) });
-        }}
-      >
-        {t('check.seeResult')}
-      </Button>
+      {/* The danger signs present now, once a product is listed (S13): no result without an answer. */}
+      {empty ? null : (
+        <CheckSigns
+          profile={profile?.profile ?? null}
+          today={profile?.today ?? today}
+          notBefore={notBefore}
+          mode={mode}
+          onAnswer={() => {
+            // The result, one entry after this one: its way back comes here (check-flow.ts).
+            navigate('/result', { state: flowEntry({ stepsToCheck: 1 }) });
+          }}
+        />
+      )}
     </main>
   );
 }

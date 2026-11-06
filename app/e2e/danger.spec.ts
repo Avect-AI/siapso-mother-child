@@ -127,14 +127,20 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
   // From Check.
   await openDangerAndBack(page, 'Ce que vous prenez');
 
-  // The signs present now, "none" first; a fever now.
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The signs present now on the check (SCRUM-56, S13): in words, then "no" or "yes"; a fever now.
+  const asked = page.getByRole('heading', {
+    level: 2,
+    name: 'Avez-vous un de ces signes maintenant ?',
+  });
+  await expect(asked).toBeVisible();
+  await expect(page.locator('.check__sign-words')).toContainText('Fièvre');
+  await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+  await page.getByRole('button', { name: 'Oui, au moins un' }).click();
   const question = page.getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' });
-  await expect(question.getByRole('checkbox').first()).toHaveAccessibleName('Aucun de ces signes');
-  // The heading of the new screen has the focus once the list is shown.
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Avez-vous un de ces signes maintenant ?' }),
-  ).toBeFocused();
+  // Nothing ticked, the focus on the first sign of the list.
+  await expect(question.getByRole('checkbox').first()).toBeFocused();
+  await expect(question.getByRole('checkbox', { checked: true })).toHaveCount(0);
   await expectNoSeriousViolation(page);
   await expectThumbTargets(page);
   await question.getByText('Fièvre', { exact: true }).click();
@@ -268,7 +274,8 @@ test.describe('on a small phone (360 x 560), a call is in the first screen', () 
     await page.getByRole('button', { name: 'Enregistrer' }).click();
     await page.getByRole('searchbox').fill('kinkeliba');
     await addFirstCandidate(page);
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    // The signs present now, on the check (SCRUM-56, S13): "Oui, au moins un", then the sign.
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
     await page
       .getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' })
       .getByText('Fièvre', { exact: true })

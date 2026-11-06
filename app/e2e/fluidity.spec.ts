@@ -28,21 +28,29 @@ import {
 // profile answers (weeks by default, a new profile opens her check, "Aujourd'hui"
 // for a passer-by), P4 the strength asked only when a rule reads it, P5 a
 // product added in one tap, P6 the search on the check screen (no add button,
-// no search or confirm screen per product). The danger journeys (J5) never take more.
+// no search or confirm screen per product), P7 the danger signs asked on the
+// check ("Non, aucun de ces signes" in one tap). The danger journeys (J5) never
+// take more taps.
+//
+// One scroll was traded for two taps and a screen at P7: the signs of her
+// groups are written in full right above "Non, aucun de ces signes" (the
+// safety rule of the spec, S13), which puts that answer under the fold of a
+// 360 x 800 phone once a product is listed (the target of spec section 8.11
+// is not met there; the PR says so).
 const BUDGETS: Record<string, Budget> = {
-  j1: { taps: 10, keys: 20, screens: 6, scrolls: 3 }, // baseline 17 / 20 / 12 / 3
-  j2a: { taps: 5, keys: 14, screens: 5, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
-  j2b: { taps: 7, keys: 25, screens: 5, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
-  j3a: { taps: 5, keys: 14, screens: 5, scrolls: 0 }, // baseline 8 / 14 / 8 / 0
-  j3b: { taps: 11, keys: 22, screens: 6, scrolls: 3 }, // baseline 17 / 22 / 10 / 4
-  j4: { taps: 9, keys: 16, screens: 6, scrolls: 3 }, // baseline 15 / 16 / 9 / 4
+  j1: { taps: 8, keys: 20, screens: 5, scrolls: 4 }, // baseline 17 / 20 / 12 / 3
+  j2a: { taps: 3, keys: 14, screens: 4, scrolls: 1 }, // baseline 8 / 14 / 8 / 0
+  j2b: { taps: 5, keys: 25, screens: 4, scrolls: 0 }, // baseline 12 / 25 / 11 / 1
+  j3a: { taps: 3, keys: 14, screens: 4, scrolls: 1 }, // baseline 8 / 14 / 8 / 0
+  j3b: { taps: 9, keys: 22, screens: 5, scrolls: 4 }, // baseline 17 / 22 / 10 / 4
+  j4: { taps: 7, keys: 16, screens: 5, scrolls: 4 }, // baseline 15 / 16 / 9 / 4
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
-  j5c: { taps: 5, keys: 0, screens: 4, scrolls: 0 }, // from the check (baseline 4 from the signs)
+  j5c: { taps: 5, keys: 0, screens: 3, scrolls: 1 }, // from the check (baseline 4 from the signs)
   j6a: { taps: 2, keys: 9, screens: 1, scrolls: 0 }, // baseline 4 / 9 / 4 / 1
   j6b: { taps: 2, keys: 14, screens: 1, scrolls: 0 }, // baseline 3 / 14 / 4 / 0
   j6c: { taps: 2, keys: 11, screens: 1, scrolls: 0 }, // baseline 4 / 11 / 4 / 1
-  j7: { taps: 14, keys: 55, screens: 6, scrolls: 5 }, // baseline 25 / 55 / 18 / 7
+  j7: { taps: 12, keys: 55, screens: 5, scrolls: 5 }, // baseline 25 / 55 / 18 / 7
 };
 
 // The study's conditions (spec section 3.1): a 360 x 800 touch phone, in French.

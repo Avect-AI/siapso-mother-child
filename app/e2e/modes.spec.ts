@@ -145,9 +145,8 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat pour Ndeye' })).toBeVisible();
 
   await page.getByRole('banner').getByRole('button', { name: 'Quitter' }).click();
@@ -159,9 +158,9 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   }
   await expectNoSeriousViolation(page);
 
-  // Back through every entry of the visit (the signs, the check, the list and
-  // welcome): never the result, the check or the list.
-  for (let step = 0; step < 3; step += 1) {
+  // Back through every entry of the visit (the check, which asks the signs
+  // since SCRUM-56, then the list and welcome): never the result, the check or the list.
+  for (let step = 0; step < 2; step += 1) {
     await page.goBack();
     await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
     const text = await pageText(page);
@@ -229,7 +228,8 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Oui, au moins un' }).click();
   await page.getByText('Fièvre', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByRole('button', { name: 'Voir qui appeler' }).click();

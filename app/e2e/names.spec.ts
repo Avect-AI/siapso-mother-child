@@ -57,9 +57,8 @@ async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
 }
 
 async function seeResult(page: Page) {
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
 }
 
@@ -139,7 +138,8 @@ async function addTyped(page: Page, name: string) {
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
-  const none = page.getByRole('button', { name: /^Non, aucun de ces / });
+  // "Non, aucun de ces médicaments" (or "produits", "remèdes"), never the danger signs answer.
+  const none = page.getByRole('button', { name: /^Non, aucun de ces (?!signes)/ });
   const check = page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' });
   await expect(none.or(check)).toBeVisible();
   if (await none.isVisible()) await none.click();

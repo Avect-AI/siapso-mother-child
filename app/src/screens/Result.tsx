@@ -653,8 +653,8 @@ export function Result() {
   }, [evaluated, profileId, signs, signsGiven, passerBy]);
 
   if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
-  // The signs present now are asked before any result (a typed address, an old entry).
-  if (!signsGiven) return <Redirect to="/signs" replace />;
+  // The signs present now are asked on the check before any result (a typed address, an old entry).
+  if (!signsGiven) return <Redirect to="/check" replace />;
   // The guard on the result: an outdated term asks whether the baby is born instead.
   if (outdated && loaded.status === 'ready') {
     return (

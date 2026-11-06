@@ -582,9 +582,8 @@ describe('Result: one finding, the way back', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await user.click(await screen.findByRole('button', { name: 'Non, aucun de ces signes' }));
 
     const card = await screen.findByRole('article', {
       name: `À montrer avant la prochaine prise. ADVIL 400${NO_BREAK}mg, comprimé enrobé`,

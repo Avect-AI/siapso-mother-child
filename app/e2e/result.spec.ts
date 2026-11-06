@@ -42,9 +42,8 @@ const womanAt = (page: Page, weeks: number) => pregnantAt(page, weeks, 'woman');
 
 /** From the check: "Voir le résultat", "Aucun de ces signes" on the danger signs now, then the result. */
 async function seeResult(page: Page) {
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
 }
 

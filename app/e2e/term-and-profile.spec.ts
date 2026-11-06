@@ -78,8 +78,8 @@ test('an outdated term asks whether the baby is born before any check, then upda
       name: /^Votre terme noté a passé 42 semaines\. Votre bébé est-il né/,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Ajouter un médicament' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Voir le résultat' })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toHaveCount(0);
   // The danger signs stay one tap away.
   await expect(
     page.getByRole('banner').getByRole('link', { name: 'Signes de danger' }),
@@ -175,16 +175,15 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('searchbox').fill('codeine');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
-  // The signs after the birth and of the baby are asked up front, with the pregnancy's.
-  const signs = page.getByRole('group', { name: /^A-t-elle un de ces signes maintenant/ });
+  // The signs after the birth and of the baby are asked up front, with the pregnancy's,
+  // in words on the check (SCRUM-56, S13).
+  const words = page.locator('.check__sign-words');
   for (const group of ['Pendant la grossesse', "Après l'accouchement", 'Chez le bébé']) {
-    await expect(signs.getByRole('group', { name: group })).toBeVisible();
+    await expect(words).toContainText(group);
   }
   await expect(page.getByRole('button', { name: 'Voir tous les signes' })).toHaveCount(0);
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
     page.getByRole('heading', { level: 1, name: /^Résultat pour Femme 1/ }),
@@ -222,7 +221,7 @@ test('an unknown term said 300 days ago asks whether the baby is born first', as
       name: /^Votre terme noté a passé 42 semaines\. Votre bébé est-il né/,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Ajouter un médicament' })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
 });
 
 test('a last period with the phone date set back is read as unknown, and the result says why', async ({
@@ -250,11 +249,9 @@ test('a last period with the phone date set back is read as unknown, and the res
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
   // The real date is later: the baby may be born, its signs are asked too.
-  await expect(page.getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.locator('.check__sign-words')).toContainText('Chez le bébé');
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
     page.getByText(
@@ -342,9 +339,8 @@ test('one profile is deleted with its history after a last yes; the others stay'
   await list.getByRole('button', { name: /^Awa/ }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat pour Awa' })).toBeVisible();
   await expect.poll(async () => (await storedAll(page, 'history')).length).toBe(1);
 
@@ -374,24 +370,25 @@ test('the danger signs now start unticked at each check, and a sign ticked after
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
 
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
   await expect(page.getByText(/^Terme utilisé pour ce résultat/)).toHaveText(/environ 28 semaines/);
 
-  // Back: asked again, nothing ticked; a fever ticked then is in the result Forward opens.
+  // Back: asked again, nothing chosen; a fever ticked then is in the result Forward opens.
   await page.goBack();
+  const some = page.getByRole('button', { name: 'Oui, au moins un' });
+  await expect(some).toHaveAttribute('aria-expanded', 'false');
+  await some.click();
   const fever = page.getByRole('checkbox', { name: 'Fièvre', exact: true });
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
+  await expect(fever).not.toBeChecked();
   await fever.check();
   await page.goForward();
   await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
   await expect(page.locator('article.level--danger').first()).toBeVisible();
 
-  // A new look from the list: nothing ticked from before.
+  // A new look from the list: nothing chosen from before.
   await page.getByRole('button', { name: 'Revenir à la liste' }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
-  await expect(fever).not.toBeChecked();
+  await expect(some).toHaveAttribute('aria-expanded', 'false');
+  await expect(fever).toHaveCount(0);
 });

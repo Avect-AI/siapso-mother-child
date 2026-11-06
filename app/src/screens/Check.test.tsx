@@ -108,13 +108,15 @@ describe('Check', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
     expect(window.location.hash).toBe('#/check');
-    const result = screen.getByRole('button', { name: 'Voir le résultat' });
-    expect(result).toBeDisabled();
-    expect(result).toHaveClass('button--primary');
-    expect(result).toHaveAccessibleDescription(
-      "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
-    );
-    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    // Nothing listed: no danger signs question and no way to a result yet (SCRUM-56, S13).
+    expect(
+      screen.getByText(
+        "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Non, aucun de ces signes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Voir le résultat' })).toBeNull();
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
     // One field for medicines and remedies (SCRUM-56, S12), no screen to open first.
     expect(field()).toHaveAccessibleDescription(
       'Le nom sur la boîte ou celui du remède, même mal écrit.',
@@ -415,7 +417,8 @@ describe('Check', () => {
       'lang',
       'la',
     );
-    expect(screen.getByRole('button', { name: 'Voir le résultat' })).toBeEnabled();
+    // Listed: the danger signs present now are asked under the list (SCRUM-56, S13).
+    expect(screen.getByRole('button', { name: 'Non, aucun de ces signes' })).toBeVisible();
 
     await user.click(
       screen.getByRole('button', { name: 'Retirer Paracétamol 500 mg (générique) de la liste' }),
@@ -429,7 +432,7 @@ describe('Check', () => {
 
     await user.click(screen.getByRole('button', { name: 'Retirer Kinkéliba de la liste' }));
     expect(field()).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Voir le résultat' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Non, aucun de ces signes' })).toBeNull();
   });
 
   it('says what was just added, and puts a removed item back at its place', async () => {
@@ -632,10 +635,10 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
       expect(within(asked).getByRole('heading', { level: 2 })).toHaveFocus();
     });
     expect(probe.current().items).toEqual([]);
-    // "Yes" is an answer: the check keeps its one primary action (the result).
+    // "Yes" is an answer among others, never a primary action of the check.
     const yes = within(asked).getByRole('button', { name: "Oui, c'est ce produit" });
     expect(yes).toHaveClass('button--secondary');
-    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(0);
 
     await user.click(yes);
 
@@ -897,10 +900,8 @@ describe('Check to result', () => {
     await saveProfile(profileOf());
     const { user } = await openCheckFromHome();
     await addThrough(user, 'kinkeliba');
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
-    // The danger signs present now come first.
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now come first, on the check (SCRUM-56, S13).
+    await user.click(screen.getByRole('button', { name: 'Non, aucun de ces signes' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
     // Kinkeliba has no rule and evidence 0: we do not know, never reassurance.

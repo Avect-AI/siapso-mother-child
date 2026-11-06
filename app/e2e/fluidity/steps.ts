@@ -145,17 +145,21 @@ export async function openEveryWhy(j: Journey): Promise<void> {
   j.notes.push(`"Pourquoi ?" opened: ${String(opened)}`);
 }
 
-/** From the list to the result: "Voir le résultat", no sign (or `sign`), "Voir le résultat". */
+/**
+ * From the list to the result, with the danger signs question of the check
+ * (SCRUM-56, S13): "Non, aucun de ces signes"; or, with `sign`, "Oui, au moins
+ * un", the sign, then "Voir le résultat".
+ */
 export async function toResult(j: Journey, { sign }: { sign?: string } = {}): Promise<void> {
   const { page } = j;
-  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat', {
-    then: page.getByRole('heading', { level: 1, name: /signes maintenant/ }),
+  const result = page.getByRole('heading', { level: 1, name: /^Résultat/ });
+  if (sign === undefined) {
+    await j.tap(button(page, 'Non, aucun de ces signes'), 'non aucun signe', { then: result });
+    return;
+  }
+  await j.tap(button(page, 'Oui, au moins un'), 'oui au moins un', {
+    then: page.getByText(sign, { exact: true }),
   });
-  await j.tap(
-    page.getByText(sign ?? 'Aucun de ces signes', { exact: true }),
-    sign === undefined ? 'aucun signe' : `signe ${sign}`,
-  );
-  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat 2', {
-    then: page.getByRole('heading', { level: 1, name: /^Résultat/ }),
-  });
+  await j.tap(page.getByText(sign, { exact: true }), `signe ${sign}`);
+  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat', { then: result });
 }

@@ -2508,7 +2508,16 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 .check__search {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
+}
+
+/* Spaced by margins, so the voice panel at rest and an empty result line take no room. */
+.check__search > * + * {
+  margin-top: var(--space-3);
+}
+
+.check__search > .voice--idle,
+.check__search > .search__results:not(:has(> :not(.search__status:empty))) {
+  margin-top: 0;
 }
 
 /*
@@ -2528,6 +2537,57 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 .check__question h2 {
   font-size: var(--font-size-title);
   overflow-wrap: break-word;
+}
+
+/*
+ * The danger signs present now, under the list (SCRUM-56, S13): the question
+ * at title size, the signs in words right above the two answers (neither is
+ * the primary action), then the list to tick after "Oui, au moins un".
+ */
+.check__signs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule);
+}
+
+.check__signs h2 {
+  font-size: var(--font-size-title);
+  overflow-wrap: break-word;
+}
+
+.check__sign-words {
+  display: grid;
+  gap: var(--space-1);
+  overflow-wrap: break-word;
+}
+
+.check__signs-all {
+  justify-self: start;
+  margin-inline-start: calc(-1 * var(--space-3));
+}
+
+.check__signs-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.check__signs-answers > .button {
+  flex: 1 1 12rem;
+  min-height: var(--touch-target-large);
+}
+
+.check__signs-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+}
+
+.check__signs-list > .button,
+.check__signs > .check__signs-result {
+  width: 100%;
 }
 
 .check__result {
