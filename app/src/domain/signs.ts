@@ -37,6 +37,32 @@ export function groupsForProfile(
 }
 
 /**
+ * What an answer to the danger signs question was given for (SCRUM-56, S14
+ * and 8.5): her answers as saved (profile id and last save), the day, and the
+ * groups of signs asked first. The answer holds only while this key is the
+ * same: a new day, her answers saved again, or other signs to ask (her term
+ * read as possibly past at midnight) ask the question again, and no result is
+ * shown on the old answer meanwhile. No profile (not read): every group.
+ */
+export function signsAnswerKey(
+  profile: Pick<
+    Profile,
+    | 'id'
+    | 'pregnant'
+    | 'pregnancyUnsure'
+    | 'pregnancyUnsureOn'
+    | 'term'
+    | 'updatedAt'
+    | 'breastfeeding'
+  > | null,
+  todayIso: string,
+  notBefore?: string,
+): string {
+  const groups = groupsForProfile(profile, todayIso, notBefore).join('+');
+  return [profile?.id ?? '', profile?.updatedAt ?? '', todayIso, groups].join('|');
+}
+
+/**
  * The groups shown: those of the profile, every group once she asked to see
  * all, and always the group of a sign that is chosen.
  */
