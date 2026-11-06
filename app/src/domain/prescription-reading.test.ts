@@ -181,6 +181,76 @@ describe('readPrescription: lines that are not products', () => {
     expect(typed.map((t) => t.text)).toEqual(['Spasfon Lyoc 80 mg']);
   });
 
+  // Review of PR 70, round 2: lines the header cut lost entirely.
+  it.each([
+    ['Dakar 1. Doliprane 1000 mg cp', 'paracetamol', 1000],
+    ['Pour Awa : Doliprane 500 mg', 'paracetamol', 500],
+    ['1. Médicament : Doliprane 1000 mg', 'paracetamol', 1000],
+    ['1. Médicament Doliprane 1000 mg', 'paracetamol', 1000],
+    ['DOXYCYCLINE PHARMACIE CENTRALE DES ARMEES 100 mg, comprimé : 1 cp x 2/j', 'doxycycline', 100],
+    ['DOXYCYCLINE PHARMACIE CENTRALE DES ARMEES : 1 cp x 2/j', 'doxycycline', undefined],
+  ])(
+    'reads the product after a header part, or a header word of a name of the base: %s',
+    (line, substances, mg) => {
+      const product = only([line]);
+      expect(substancesOf(product.ref.id)).toBe(substances);
+      expect(product.strengthMg).toBe(mg);
+      // No name read from the paper is quoted.
+      expect(product.line).not.toMatch(/Awa|Dakar/);
+      expect(product.query).not.toMatch(/Awa|Dakar|Médicament/);
+    },
+  );
+
+  it('reads a first name followed by a substance as the name of a product: "1. Anta codéine 400"', () => {
+    const { products } = readPrescription(pack, ['1. Anta codéine 400']);
+    expect(products.map((p) => substancesOf(p.ref.id))).toContain('codeine+ibuprofen');
+  });
+
+  it('offers a product line whose age is the age of the box: "1. Vermox 500 mg dès 2 ans"', () => {
+    expect(readPrescription(pack, ['1. Vermox 500 mg dès 2 ans']).typed.map((t) => t.text)).toEqual(
+      ['Vermox 500 mg dès 2 ans'],
+    );
+  });
+
+  it('never offers a numbered line of a name the base does not know and a family name', () => {
+    for (const line of ['3. Mbissine Faye', '4. Zeyna Ndiaye', '5. Thiaba Sarr']) {
+      expect(readPrescription(pack, [line]), line).toEqual({ products: [], typed: [] });
+    }
+  });
+
+  it(
+    'reads every name, brand and local name of the base, numbered or with a posology',
+    { timeout: 300_000 },
+    () => {
+      const lost: string[] = [];
+      const named = new Map<string, string>();
+      for (const p of pack.products) {
+        for (const name of [
+          p.names.fr,
+          p.names.en,
+          ...p.brands,
+          ...p.localNames.map((l) => l.text),
+        ]) {
+          if (!named.has(name)) named.set(name, substancesOf(p.id));
+        }
+      }
+      for (const p of pack.plants) {
+        for (const name of [p.names.fr, p.names.en, ...p.localNames.map((l) => l.text)]) {
+          if (!named.has(name)) named.set(name, `plant:${p.id}`);
+        }
+      }
+      for (const [name, want] of named) {
+        for (const line of [`1. ${name}`, `${name} : 1 cp x 2/j`]) {
+          const got = readPrescription(pack, [line]).products.map((p) =>
+            p.ref.kind === 'plant' ? `plant:${p.ref.id}` : substancesOf(p.ref.id),
+          );
+          if (!got.includes(want)) lost.push(`${line}: ${got.join(', ')}`);
+        }
+      }
+      expect(lost).toEqual([]);
+    },
+  );
+
   it('never takes a form word for a header word one slip away ("sachet" is no "cachet")', () => {
     expect(readPrescription(pack, ['Smecta sachet']).typed.map((t) => t.text)).toEqual([
       'Smecta sachet',
@@ -579,11 +649,49 @@ describe('readPrescription: a product that holds what the line does not name', (
   });
 
   it('never computes extra substances for a brand: the brand says what the box holds', () => {
-    for (const line of ['1. Efferalgan codéine', '2. Doliprane codéine', '3. Codoliprane cp']) {
+    for (const [line, substances] of [
+      ['1. Efferalgan codéine', 'codeine+paracetamol'],
+      ['2. Doliprane codéine', 'codeine+paracetamol'],
+      ['3. Codoliprane cp', 'codeine+paracetamol'],
+      // The brand written without its accents, then a substance it holds.
+      ['4. Antarene codeine 200', 'codeine+ibuprofen'],
+    ] as const) {
       const product = only([line]);
-      expect(substancesOf(product.ref.id), line).toBe('codeine+paracetamol');
+      expect(substancesOf(product.ref.id), line).toBe(substances);
       expect(product.extraSubstances, line).toEqual([]);
       expect(product.missingSubstances, line).toEqual([]);
+    }
+  });
+
+  // Review of PR 70, round 2: a garbled brand word left on the line was
+  // ignored, and the generic of the substance named took the place of the
+  // brand, dropping the brand's other substance silently.
+  it.each([
+    ['1. Antar codéine 400 mg', 'codeine+ibuprofen', 'ibuprofen'],
+    ['1. Anta codéine 400', 'codeine+ibuprofen', 'ibuprofen'],
+    ['1. Klipai codéine 300', 'codeine+paracetamol', 'paracetamol'],
+    ['1. Ixpim tramadol 37,5', 'paracetamol+tramadol', 'paracetamol'],
+  ])(
+    'keeps the brand a garbled word of %s resembles, which holds more: never pre-ticked',
+    (line, substances, extra) => {
+      const { products, typed } = readPrescription(pack, [line]);
+      expect(products, line).toHaveLength(1);
+      const [product] = products as [PrescriptionProduct];
+      expect(substancesOf(product.ref.id)).toBe(substances);
+      expect(product.extraSubstances).toContain(extra);
+      expect(mayBePreTicked(product)).toBe(false);
+      expect(typed).toContainEqual(expect.objectContaining({ forProduct: 0 }));
+    },
+  );
+
+  it('takes the generic of the substances named only when every word of the line is explained', () => {
+    // "phosphate" is a salt, "30 mg" a strength, "cp" a form: codeine alone.
+    expect(substancesOf(only(['Codéine phosphate 30 mg cp']).ref.id)).toBe('codeine');
+    // A word left that resembles nothing keeps the product found, with what it holds more.
+    const product = only(['1. Zzqx codéine 400 mg']);
+    expect(mayBePreTicked(product)).toBe(substancesOf(product.ref.id) === 'codeine');
+    if (substancesOf(product.ref.id) !== 'codeine') {
+      expect(product.extraSubstances.length).toBeGreaterThan(0);
     }
   });
 });
@@ -765,6 +873,8 @@ describe('unitsPerDayOf', () => {
 
   it.each([
     ['2 cp * 3 / j', 6],
+    // The multiplication sign, written as an escape so the file stays ASCII.
+    ['2 cp \u00d7 3/j', 6],
     ['2 cp matin et 2 cp le soir', 4],
     ['1 cp le matin et 1 cp le soir', 2],
   ])('reads a plain count written another way: %s is %d', (text, units) => {

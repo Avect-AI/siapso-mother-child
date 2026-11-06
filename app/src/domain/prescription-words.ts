@@ -160,7 +160,6 @@ export const HEADER_WORDS: readonly string[] = [
   'patiente',
   'patient',
   'mme',
-  'ans',
   'medicament',
   'medicaments',
   'posologie',
