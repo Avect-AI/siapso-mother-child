@@ -31,6 +31,7 @@ import {
   ALIASES,
   HEADER_PHRASES,
   HEADER_WORDS,
+  PERSON_NAMES,
   PLACE_NAMES,
   QUALIFIER_SUBSTANCE_WORDS,
   QUALIFIER_WORDS,
@@ -206,7 +207,9 @@ const HEADER_DATA: readonly RegExp[] = [
 const AGE_IN_MONTHS = /\b\d{1,2}\s*mois\b/;
 const SAYS_POSOLOGY = /\b(pendant|qsp|durant|pour|par|jusqu|cp|gel|sachets?)\b|\/\s*j|x\s*\d/;
 /** "M. Ndao": a title, in capitals as written. */
-const MISTER = /(?<![\p{L}])M\.\s*\p{Lu}/u;
+const MISTER = /(?<![\p{L}])M[.,]?\s+\p{Lu}\p{Ll}|(?<![\p{L}])M\.\s*\p{Lu}/u;
+/** The names of PERSON_NAMES, folded, by their length: one or two letters count only in capitals. */
+const NAMES: ReadonlySet<string> = new Set(PERSON_NAMES.map(folded));
 
 /** Whether a word of a folded line is a header word, as written or as the OCR misreads it. */
 function isHeaderWord(word: string): boolean {
@@ -253,6 +256,9 @@ function headerOf(line: string): { start: number | undefined; data: boolean } {
   found(PLACES.exec(text)?.index, false);
   for (const word of text.matchAll(/[\p{L}\d]+/gu)) {
     if (isHeaderWord(word[0])) found(word.index, false);
+    // A name read from the paper: the line is read up to it.
+    const capital = /^\p{Lu}/u.test(line.slice(word.index, word.index + 1));
+    if (NAMES.has(word[0]) && (word[0].length > 2 || (exact && capital))) found(word.index, false);
   }
   return { start: starts.length === 0 ? undefined : Math.min(...starts), data };
 }
@@ -987,15 +993,28 @@ function aliasOf(pack: Pack, vocabulary: Vocabulary, namePart: string): Chosen |
   // A line the OCR garbled ("§ AL. § ;: 3 en") never gives a short name.
   if (/[^\p{L}\p{N}\s.,/:()'+%µ-]/u.test(namePart)) return undefined;
   // "S.P" and "S/P" are "SP".
-  const tokens = tokensOf(namePart.replace(/(?<=\p{Lu})[./](?=\p{Lu})/gu, ''));
-  const aliases = tokens.filter((token) => ALIASES[token] !== undefined);
-  const [alias] = aliases;
-  if (alias === undefined || aliases.length > 1) return undefined;
-  const others = tokens.filter((token) => token !== alias);
-  if (!others.every((token) => normalize(token).split(' ').every(neutralWord))) return undefined;
-  const generic = genericOf(pack, vocabulary, new Set(ALIASES[alias]));
+  const tokens = tokensOf(
+    namePart.replace(/(?<![\p{L}])(\p{Lu})[./](?=\p{Lu}(?![\p{L}]))/gu, '$1'),
+  );
+  const substances = new Set<string>();
+  let names = 0;
+  for (const token of tokens) {
+    // A short name of a combination, or the abbreviations of its substances
+    // in capitals ("TDF/3TC/DTG", "SMX + TMP").
+    const capitals = token === token.toUpperCase() && /\p{Lu}/u.test(token);
+    const stands =
+      ALIASES[token] ?? (capitals ? ABBREVIATIONS[token.toLowerCase()]?.substances : undefined);
+    if (stands !== undefined) {
+      for (const id of stands) substances.add(id);
+      names += 1;
+    } else if (!normalize(token).split(' ').every(neutralWord)) {
+      return undefined;
+    }
+  }
+  if (names === 0) return undefined;
+  const generic = genericOf(pack, vocabulary, substances);
   const candidate = generic && candidateFor(pack, generic.id, generic.names.fr);
-  return candidate === undefined ? undefined : { candidate, match: 'strong', length: alias.length };
+  return candidate === undefined ? undefined : { candidate, match: 'strong', length: names };
 }
 
 /** Whether a label before a colon names when to take, never what ("TPI", "Si douleur"). */

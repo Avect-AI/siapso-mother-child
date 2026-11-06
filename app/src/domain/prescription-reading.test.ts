@@ -12,7 +12,7 @@ import {
   unitsPerDayOf,
   type PrescriptionProduct,
 } from './prescription-reading.js';
-import { PLACE_NAMES } from './prescription-words.js';
+import { PERSON_NAMES, PLACE_NAMES } from './prescription-words.js';
 import { needsUnitsPerDay, strengthChoiceOf } from './search-index.js';
 
 let pack: Pack;
@@ -213,6 +213,32 @@ describe('readPrescription: lines that are not products', () => {
       }
       expect(readPrescription(pack, [place]).products, place).toEqual([]);
       expect(readPrescription(pack, [`Fait à ${place}`]).products, place).toEqual([]);
+    }
+  });
+
+  it('never offers a name read from the paper: a common first or family name ends the line', () => {
+    // As Tesseract read the prescriber joined to the last product (development set).
+    expect(readPrescription(pack, ['gagnante et M, Cheikh dno CP'])).toEqual({
+      products: [],
+      typed: [],
+    });
+    expect(readPrescription(pack, ['M Cheikh Néso, cp'])).toEqual({ products: [], typed: [] });
+    expect(readPrescription(pack, ['5. Awa Diop'])).toEqual({ products: [], typed: [] });
+    const { typed } = readPrescription(pack, ['6. Primpéran 10 mg DE DPEUmar Ba']);
+    expect(typed.map((t) => t.text)).toEqual(['Primpéran 10 mg DE DPEUmar']);
+    expect(typed.map((t) => t.line)).toEqual(['6. Primpéran 10 mg DE DPEUmar']);
+  });
+
+  it('knows no person name that is a word of a name of the base', () => {
+    const names = new Set(
+      [
+        ...pack.plants.flatMap((p) => [p.names.fr, p.names.en, ...p.localNames.map((l) => l.text)]),
+        ...pack.products.flatMap((p) => [p.names.fr, ...p.brands]),
+        ...pack.substances.flatMap((s) => [s.names.fr, s.names.en]),
+      ].flatMap((name) => normalize(name).split(' ')),
+    );
+    for (const person of PERSON_NAMES) {
+      expect(names.has(normalize(person)), person).toBe(false);
     }
   });
 
@@ -755,6 +781,20 @@ describe('readPrescription: short names of combinations', () => {
     expect(product.match).toBe('strong');
     expect(mayBePreTicked(product)).toBe(false);
   });
+
+  it.each([
+    ['TDF/3TC/DTG', 'dolutegravir+lamivudine+tenofovir'],
+    ['TDF/3TC/EFV', 'efavirenz+lamivudine+tenofovir'],
+    ['AS/AQ', 'amodiaquine+artesunate'],
+    ['SMX + TMP 800/160', 'sulfamethoxazole+trimethoprim'],
+  ])(
+    'reads a line of short names only, %s, as the combination of exactly them, never pre-ticked',
+    (line, substances) => {
+      const product = only([line]);
+      expect(substancesOf(product.ref.id)).toBe(substances);
+      expect(mayBePreTicked(product)).toBe(false);
+    },
+  );
 
   it('reads a short name only in capitals, as a whole word, on a line that says nothing else', () => {
     for (const line of [
