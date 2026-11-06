@@ -131,6 +131,20 @@ export async function addProduct(
   });
 }
 
+/** The prescription of the pharmacist's journey (spec section 3.1), as typed at the counter. */
+export const PRESCRIPTION = ['clamoxyl 1g', 'bi profenid', 'doliprane 1000', 'tardyferon b9'];
+
+/** Every "Pourquoi ?" of the result opened, from the first card down. */
+export async function openEveryWhy(j: Journey): Promise<void> {
+  const whys = j.page.locator('main details.result-card__why:not([open]) > summary');
+  let opened = 0;
+  while ((await whys.count()) > 0) {
+    opened += 1;
+    await j.tap(whys.first(), `pourquoi ${String(opened)}`);
+  }
+  j.notes.push(`"Pourquoi ?" opened: ${String(opened)}`);
+}
+
 /** From the list to the result: "Voir le résultat", no sign (or `sign`), "Voir le résultat". */
 export async function toResult(j: Journey, { sign }: { sign?: string } = {}): Promise<void> {
   const { page } = j;

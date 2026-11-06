@@ -13,6 +13,8 @@ import {
   addProduct,
   button,
   openAgain,
+  openEveryWhy,
+  PRESCRIPTION,
   pregnantAnswers,
   relayWithProfiles,
   toResult,
@@ -35,10 +37,11 @@ const BUDGETS: Record<string, Budget> = {
   j4: { taps: 10, keys: 16, screens: 8, scrolls: 3 }, // baseline 15 / 16 / 9 / 4
   j5a: { taps: 3, keys: 0, screens: 3, scrolls: 0 },
   j5b: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
-  j5c: { taps: 4, keys: 0, screens: 3, scrolls: 0 },
+  j5c: { taps: 5, keys: 0, screens: 4, scrolls: 0 }, // from the check (baseline 4 from the signs)
   j6a: { taps: 3, keys: 9, screens: 4, scrolls: 0 }, // baseline 4 / 9 / 4 / 1
   j6b: { taps: 3, keys: 14, screens: 4, scrolls: 0 },
   j6c: { taps: 3, keys: 11, screens: 4, scrolls: 0 }, // baseline 4 / 11 / 4 / 1
+  j7: { taps: 18, keys: 55, screens: 15, scrolls: 6 }, // baseline 25 / 55 / 18 / 7
 };
 
 // The study's conditions (spec section 3.1): a 360 x 800 touch phone, in French.
@@ -184,18 +187,15 @@ journey('j5b', 'danger from the start, one sign ticked, to a call', async (page,
   await j.tapCountOnly(callLink(page), 'appeler');
 });
 
+// From the check with one product listed (spec section 10.2: 5 taps from the
+// check, the baseline's 4 counted from the signs screen).
 journey('j5c', 'danger sign ticked during a check, to a call', async (page, j) => {
   await womanWithProfile(page);
   await button(page, 'Ajouter un médicament').click();
   await page.getByRole('searchbox').fill('ibuprofene');
   await addFirstCandidate(page);
-  await button(page, 'Voir le résultat').click();
-  await page.getByText('Aucun de ces signes', { exact: true }).waitFor();
-  await j.begin('signs now');
-  await j.tap(page.getByText('Fièvre', { exact: true }), 'fievre');
-  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat', {
-    then: page.getByRole('heading', { level: 1, name: /^Résultat/ }),
-  });
+  await j.begin('check');
+  await toResult(j, { sign: 'Fièvre' });
   const main = page.getByRole('main');
   await j.tap(
     main
@@ -222,4 +222,23 @@ journey('j6c', 'strength unknown: "paracetamol"', async (page, j) => {
   await womanWithProfile(page);
   await j.begin('check');
   await addProduct(j, 'paracetamol');
+});
+
+// The pharmacist's nearest path until the professional mode (spec sections 4.1
+// and 9.4): accompanied mode, a passer-by, the four products of a
+// prescription, then every "Pourquoi ?" of the result opened.
+journey('j7', 'pharmacist at the counter, 4 products, details opened', async (page, j) => {
+  await relayWithProfiles(page);
+  await openAgain(page);
+  await j.begin('code screen');
+  await unlock(j);
+  await j.tap(button(page, 'Regarder sans enregistrer'), 'regarder sans enregistrer');
+  await pregnantAnswers(j);
+  await j.tap(button(page, 'Regarder ses produits'), 'regarder ses produits', {
+    then: button(page, 'Ajouter un médicament'),
+  });
+  // A strength typed is the one chosen; a strength asked otherwise, "Je ne sais pas".
+  for (const name of PRESCRIPTION) await addProduct(j, name);
+  await toResult(j);
+  await openEveryWhy(j);
 });
