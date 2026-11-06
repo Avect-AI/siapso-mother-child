@@ -127,6 +127,12 @@ export interface CheckState {
    * given for `forKey` (signsAnswerKey) when the screen knows it.
    */
   setSigns: (signs: string[], forKey?: string) => void;
+  /**
+   * An answer given before the check knew what it was for (no key) is taken
+   * for `forKey`, the first key the check shows it under; from then on it is
+   * forgotten like any other when that key changes. No effect otherwise.
+   */
+  adoptSigns: (forKey: string) => void;
   /** No answer to the signs question (yet): the result asks it first. */
   clearSigns: () => void;
   /** Back to no check at all, for no profile: every list and the passer-by forgotten. */
@@ -231,6 +237,7 @@ type Action =
   | { type: 'clearChanged' }
   | { type: 'signs'; signs: string[]; forKey: string | null }
   | { type: 'clearSigns' }
+  | { type: 'adoptSigns'; forKey: string }
   | { type: 'reset' };
 
 const EMPTY: CheckData = {
@@ -449,6 +456,10 @@ function reduce(state: CheckData, action: Action): CheckData {
       };
     case 'clearSigns':
       return withoutSigns(state);
+    case 'adoptSigns':
+      return state.signsGiven && state.signsFor === null
+        ? { ...state, signsFor: action.forKey }
+        : state;
     case 'reset':
       return EMPTY;
   }
@@ -518,6 +529,9 @@ export function useCheckStore(): CheckState {
   }, []);
   const clearSigns = useCallback(() => {
     dispatch({ type: 'clearSigns' });
+  }, []);
+  const adoptSigns = useCallback((forKey: string) => {
+    dispatch({ type: 'adoptSigns', forKey });
   }, []);
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
@@ -592,6 +606,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     }),
     [
@@ -622,6 +637,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     ],
   );

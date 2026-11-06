@@ -212,9 +212,14 @@ export function CheckSearch({
     field.current?.focus();
   };
 
-  /** What a tap on `candidate` adds at once, or null when its question must ask first. */
+  /**
+   * What a tap on `candidate` adds at once, or null when its question must ask
+   * first. Never while the rows trail the field (found for an older text, the
+   * search waiting a moment after each key): what she typed since may change
+   * the answer ("ibuprofene" then " codeine").
+   */
   const atOnce = (candidate: Candidate, foundBy: string): CheckedItem | null =>
-    pack === null
+    pack === null || text.trim() !== foundBy.trim()
       ? null
       : oneTapItem(pack, candidate, foundBy, { heard: fromVoice, items: check.items });
 
@@ -229,7 +234,8 @@ export function CheckSearch({
     if (item === null || pack === null) {
       // From the state of this render: two clicks in one task both open it.
       const open = asked !== null && rowKey(asked.candidate) === rowKey(candidate);
-      setAsked(open ? null : { candidate, foundBy, heard: fromVoice });
+      // Asked for what the field says now, not the older text the row was found by.
+      setAsked(open ? null : { candidate, foundBy: text, heard: fromVoice });
       return;
     }
     busy.current = true;

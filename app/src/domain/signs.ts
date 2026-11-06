@@ -38,11 +38,13 @@ export function groupsForProfile(
 
 /**
  * What an answer to the danger signs question was given for (SCRUM-56, S14
- * and 8.5): her answers as saved (profile id and last save), the day, and the
- * groups of signs asked first. The answer holds only while this key is the
- * same: a new day, her answers saved again, or other signs to ask (her term
- * read as possibly past at midnight) ask the question again, and no result is
- * shown on the old answer meanwhile. No profile (not read): every group.
+ * and 8.5): her answers as saved (profile id and last save) and the groups of
+ * signs asked first. The answer holds only while this key is the same: her
+ * answers saved again, or other signs to ask (her term read as possibly past
+ * at midnight: the signs after the birth and of the baby now apply) ask the
+ * question again, and no result is shown on the old answer meanwhile. A new
+ * day alone keeps it (8.5): the result reads her term again. No profile (not
+ * read): every group.
  */
 export function signsAnswerKey(
   profile: Pick<
@@ -59,7 +61,7 @@ export function signsAnswerKey(
   notBefore?: string,
 ): string {
   const groups = groupsForProfile(profile, todayIso, notBefore).join('+');
-  return [profile?.id ?? '', profile?.updatedAt ?? '', todayIso, groups].join('|');
+  return [profile?.id ?? '', profile?.updatedAt ?? '', groups].join('|');
 }
 
 /**

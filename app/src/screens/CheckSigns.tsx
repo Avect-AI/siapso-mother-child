@@ -54,7 +54,15 @@ export function CheckSigns({
   const t = useT();
   const lang = useLang();
   const { pack, packError } = useApp();
-  const { signs, signsGivenFor, setSigns, clearSigns } = useCheck();
+  const {
+    signs,
+    signsGivenFor,
+    signsGiven: givenAtAll,
+    signsFor,
+    setSigns,
+    clearSigns,
+    adoptSigns,
+  } = useCheck();
   // The answer counts only for what it was given for: her answers as saved,
   // the day and the signs asked (S14, 8.5); otherwise the question is asked.
   const answerKey = signsAnswerKey(profile, today, notBefore);
@@ -74,6 +82,11 @@ export function CheckSigns({
   const answered = useRef(false);
   // "Changer" pressed: the question takes the focus once it is back.
   const askAgain = useRef(false);
+
+  // An answer given with no key (never by this screen) is taken for the key it is first shown under.
+  useEffect(() => {
+    if (givenAtAll && signsFor === null) adoptSigns(answerKey);
+  }, [givenAtAll, signsFor, answerKey, adoptSigns]);
 
   // Asked again for any reason (Changer, her answers saved elsewhere, a new
   // day, other signs to ask): the next tap answers again, never a dead end.

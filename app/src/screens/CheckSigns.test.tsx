@@ -462,9 +462,9 @@ describe('Danger signs now, on the check before the result (S13)', () => {
     expect(within(asked).getByRole('button', { name: 'Non, aucun de ces signes' })).toBeVisible();
   });
 
-  it('forgets the answer at midnight even when the signs to ask stay the same (a new day, 8.5)', async () => {
+  it('keeps the answer over midnight when the signs to ask stay the same (8.5), read again on focus', async () => {
     vi.setSystemTime(new Date(2026, 10, 4, 23, 59, 30));
-    const { user } = await openCheckWithItem();
+    const { user, probe } = await openCheckWithItem();
     await user.click(
       within(await question()).getByRole('button', { name: 'Non, aucun de ces signes' }),
     );
@@ -475,10 +475,9 @@ describe('Danger signs now, on the check before the result (S13)', () => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    await waitFor(() => {
-      expect(screen.queryByRole('heading', { level: 2, name: 'Résultat' })).toBeNull();
-    });
-    expect(await question()).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(probe.current().signsGiven).toBe(true);
+    expect(screen.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
   });
 
   it('brings a danger into view when a product added makes one, and keeps it in the history once taken off (S15)', async () => {

@@ -794,6 +794,19 @@ describe('Check: the search on the check screen (SCRUM-56, S12)', () => {
     expect(window.history.length).toBe(length);
   });
 
+  it('never adds at a tap from rows found for an older text: the field says more now', async () => {
+    const { user, probe } = await openCheck();
+    const row = await typeAndFind(user, 'ibuprofene', /^Ibuprofène \(générique\)/);
+    expect(row).toHaveAccessibleName(/Ajouter$/);
+    // More typed, and the row tapped before the rows follow the field.
+    await user.type(field(), ' codeine');
+    await user.click(row);
+
+    // Nothing added on the old text: its question opens for what the field says.
+    expect(probe.current().items).toEqual([]);
+    expect(field()).toHaveValue('ibuprofene codeine');
+  });
+
   it('adds a brand found whole at a tap, the name typed kept (cytotec)', async () => {
     const { user, probe } = await openCheck();
     const row = await typeAndFind(user, 'cytotec', /^Misoprostol/);

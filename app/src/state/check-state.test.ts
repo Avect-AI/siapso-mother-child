@@ -409,7 +409,7 @@ describe('useCheckStore', () => {
     });
     expect(result.current.signsFor).toBe('p1|t1|2026-11-04|pregnancy');
     expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(true);
-    // A new day, or other signs to ask: not answered for that.
+    // Another key (other signs to ask, her answers saved again): not answered for that.
     expect(result.current.signsGivenFor('p1|t1|2026-11-05|pregnancy')).toBe(false);
     expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy+postpartum+baby')).toBe(false);
     act(() => {
@@ -417,12 +417,21 @@ describe('useCheckStore', () => {
     });
     expect(result.current).toMatchObject({ signsGiven: false, signsFor: null });
     expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(false);
-    // Given without a key: never counts for one.
+    // Given without a key: it counts for none until taken for the first key shown.
     act(() => {
       result.current.setSigns(['fever']);
     });
     expect(result.current).toMatchObject({ signsGiven: true, signsFor: null });
     expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(false);
+    act(() => {
+      result.current.adoptSigns('p1|t1|2026-11-04|pregnancy');
+    });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-04|pregnancy')).toBe(true);
+    // Taken once: a later key never takes it again, the question is asked.
+    act(() => {
+      result.current.adoptSigns('p1|t1|2026-11-05|pregnancy');
+    });
+    expect(result.current.signsGivenFor('p1|t1|2026-11-05|pregnancy')).toBe(false);
   });
 
   it('keeps the signs answer within the check when the list changes (SCRUM-56, S14)', () => {

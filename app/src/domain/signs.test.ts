@@ -146,10 +146,10 @@ describe('signsAnswerKey: what a danger signs answer holds for (S14, 8.5)', () =
     expect(signsAnswerKey(base, '2026-11-04')).toBe(signsAnswerKey({ ...base }, '2026-11-04'));
   });
 
-  it('changes with the day, even when the signs to ask stay the same', () => {
+  it('stays the same over a new day when the signs to ask stay the same (8.5)', () => {
     const weeks: Profile = { ...base, term: { kind: 'weeks', weeks: 30, givenOn: '2026-11-04' } };
     expect(groupsForProfile(weeks, '2026-11-05')).toEqual(groupsForProfile(weeks, '2026-11-04'));
-    expect(signsAnswerKey(weeks, '2026-11-05')).not.toBe(signsAnswerKey(weeks, '2026-11-04'));
+    expect(signsAnswerKey(weeks, '2026-11-05')).toBe(signsAnswerKey(weeks, '2026-11-04'));
   });
 
   it('changes when the signs to ask change (an unknown term said 29 days ago: the baby may be born)', () => {
@@ -160,13 +160,13 @@ describe('signsAnswerKey: what a danger signs answer holds for (S14, 8.5)', () =
 
   it('changes when her answers are saved again, or for another woman', () => {
     const key = signsAnswerKey(base, '2026-11-04');
-    expect(signsAnswerKey({ ...base, updatedAt: '2026-11-04T09:00:00.000Z' }, '2026-11-04')).not.toBe(
-      key,
-    );
+    expect(
+      signsAnswerKey({ ...base, updatedAt: '2026-11-04T09:00:00.000Z' }, '2026-11-04'),
+    ).not.toBe(key);
     expect(signsAnswerKey({ ...base, id: 'p2' }, '2026-11-04')).not.toBe(key);
   });
 
   it('holds for no profile with every group', () => {
-    expect(signsAnswerKey(null, '2026-11-04')).toBe('||2026-11-04|pregnancy+postpartum+baby');
+    expect(signsAnswerKey(null, '2026-11-04')).toBe('||pregnancy+postpartum+baby');
   });
 });
