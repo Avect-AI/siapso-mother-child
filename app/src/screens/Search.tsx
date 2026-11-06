@@ -169,7 +169,14 @@ export function Search({ kind }: { kind: EntryKind }) {
   const [entry] = useState(flowState);
   const [text, setText] = useState(entry.query ?? '');
   const [query, setQuery] = useState(text);
-  const [leaving, setLeaving] = useState(false);
+  // Set by the first add or move away, at once: a second click in the same
+  // task, before React renders again, must not add or go back twice.
+  const leaving = useRef(false);
+  const leave = (): boolean => {
+    if (leaving.current) return false;
+    leaving.current = true;
+    return true;
+  };
   // The products and remedies the text looks like, asked about before it is added as typed.
   const [lookalikes, setLookalikes] = useState<Candidate[] | null>(null);
   // The whole list of the kind, after a name said found nothing.
@@ -238,8 +245,7 @@ export function Search({ kind }: { kind: EntryKind }) {
    * the field, perhaps typed since, is kept on this entry for the way back.
    */
   const choose = (candidate: Candidate, foundBy: string) => {
-    if (leaving) return;
-    setLeaving(true);
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     // The product goes in the entry's state, never in the address.
     navigate(confirmPath(candidate.kind), {
@@ -267,13 +273,13 @@ export function Search({ kind }: { kind: EntryKind }) {
    * screen. Never from Enter, which picks no row by name.
    */
   const tap = (candidate: Candidate, foundBy: string) => {
-    if (leaving) return;
+    if (leaving.current) return;
     const item = atOnce(candidate, foundBy);
     if (item === null || pack === null) {
       choose(candidate, foundBy);
       return;
     }
-    setLeaving(true);
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     // The name she typed, when the product is shown under another one ("cytotec").
     const written = writtenNameOf(pack, candidate, foundBy, lang);
@@ -298,8 +304,7 @@ export function Search({ kind }: { kind: EntryKind }) {
    * `declined` when she said it is none of the products proposed.
    */
   const addAsTyped = (declined = false) => {
-    if (leaving || typed === '') return;
-    setLeaving(true);
+    if (typed === '' || !leave()) return;
     check.add(
       { ref: { kind: 'unrecognised', text: typed } },
       {
@@ -314,7 +319,7 @@ export function Search({ kind }: { kind: EntryKind }) {
 
   // "Not found": first, whether it is one of the products or remedies the text looks like.
   const notFound = () => {
-    if (leaving || typed === '') return;
+    if (leaving.current || typed === '') return;
     const found = index === null ? [] : lookalikesOf(index, typed, kind);
     if (found.length > 0) setLookalikes(found);
     else addAsTyped();
@@ -322,8 +327,7 @@ export function Search({ kind }: { kind: EntryKind }) {
 
   // A remedy or a medicine family from the whole list: its confirm screen, as a candidate.
   const chooseEntry = (chosen: BrowseEntry) => {
-    if (leaving) return;
-    setLeaving(true);
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     navigate(confirmPath(chosen.kind), {
       state: flowEntry({

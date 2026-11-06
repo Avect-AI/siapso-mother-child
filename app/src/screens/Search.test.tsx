@@ -525,6 +525,50 @@ describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', ()
     expect(await screen.findByText(/est ajouté à la liste\.$/)).toBeVisible();
   });
 
+  it('adds once and goes back once when two clicks come before the screen renders again', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'ibuprofene');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveAccessibleName(/Ajouter$/);
+    });
+    const go = vi.spyOn(window.history, 'go');
+    const row = candidates()[0] as HTMLElement;
+
+    // A quick double tap: both clicks in the same task, before React renders.
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(window.location.hash).toBe('#/check');
+    expect(probe.current().items).toHaveLength(1);
+  });
+
+  it('opens one confirm screen when two clicks on a row to confirm come in the same task', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'doliprane');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent(/^DOLIPRANE/);
+    });
+    const length = window.history.length;
+    const row = candidates()[0] as HTMLElement;
+
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    // One step forward, not two: Back from the confirm screen comes back to the search.
+    expect(window.history.length).toBe(length + 1);
+  });
+
   it('opens "Est-ce bien ce produit ?" when the daily count is to ask (doliprane)', async () => {
     const { user, field, probe } = await openSearch('Ajouter un médicament');
     await user.type(field, 'doliprane');
