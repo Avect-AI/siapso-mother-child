@@ -202,8 +202,12 @@ export function Prescription() {
   };
 
   const confirmTicked = (reading: PrescriptionReading) => {
-    const queue = reading.products.flatMap((_, index) => (ticked.has(`p${index}`) ? [index] : []));
-    const typed = reading.typed.flatMap((_, index) => (ticked.has(`t${index}`) ? [index] : []));
+    const queue = reading.products.flatMap((_, index) =>
+      ticked.has(`p${String(index)}`) ? [index] : [],
+    );
+    const typed = reading.typed.flatMap((_, index) =>
+      ticked.has(`t${String(index)}`) ? [index] : [],
+    );
     if (queue.length === 0 && typed.length === 0) {
       setRefused(true);
       return;
@@ -333,7 +337,7 @@ export function Prescription() {
           )}
           <ul className="prescription__items">
             {phase.reading.products.map((product, index) => {
-              const key = `p${index}`;
+              const key = `p${String(index)}`;
               const id = `${listId}-${key}`;
               return (
                 <li key={key} className="prescription__item">
@@ -366,7 +370,7 @@ export function Prescription() {
               <p>{t('prescription.typedLead')}</p>
               <ul className="prescription__items">
                 {phase.reading.typed.map((line, index) => {
-                  const key = `t${index}`;
+                  const key = `t${String(index)}`;
                   const id = `${listId}-${key}`;
                   return (
                     <li key={key} className="prescription__item">

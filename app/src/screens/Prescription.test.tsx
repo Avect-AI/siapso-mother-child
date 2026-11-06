@@ -14,10 +14,20 @@ import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
 
-const ocr = vi.hoisted(() => ({
-  installed: null as unknown,
-  lines: [] as string[],
-  failure: null as unknown,
+/** What the replaced OCR package answers, set by each test. */
+interface FakeOcr {
+  installed: object | null;
+  lines: string[];
+  failure: Error | null;
+  reads: number;
+  installs: number;
+  manifestAsked: number;
+}
+
+const ocr: FakeOcr = vi.hoisted((): FakeOcr => ({
+  installed: null,
+  lines: [],
+  failure: null,
   reads: 0,
   installs: 0,
   manifestAsked: 0,
@@ -47,7 +57,7 @@ vi.mock('@siapso/ocr', async (importOriginal) => {
     createOcrClient: () => ({
       read: () => {
         ocr.reads += 1;
-        if (ocr.failure !== null) return Promise.reject(ocr.failure as Error);
+        if (ocr.failure !== null) return Promise.reject(ocr.failure);
         return Promise.resolve({ lines: ocr.lines, source: 'image', pages: 1, ms: 5 });
       },
       cancel: () => undefined,
