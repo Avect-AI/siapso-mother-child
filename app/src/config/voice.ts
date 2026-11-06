@@ -29,21 +29,20 @@ export const MAX_RECORDING_SECONDS = 8;
 /**
  * The names of the base given to the French decoder as said before the speech
  * (Whisper's previous text, SCRUM-61): the most common names of the sentence
- * evaluation and the common brands of the registry, 87 tokens. Measured on
+ * evaluation and the common brands of the registry, 84 tokens. Measured on
  * 2026-11-06 (docs/voice.md) on synthetic voices and affirmative sentences
- * only: far more names written right (75 of 88 products ticked instead of 50,
- * clips exactly right 67 of 80 instead of 43; the 80 clips are 22 sentences
- * said by three Windows voices, and 14 more), none ticked wrongly, the FLEURS word
- * error rate unchanged (30.0 % against 30.3 %), 6 to 13 % more time. Known
- * limit: "kinkéliba" may be heard as "quinine qu'il y va", which the clause
- * guard of the resolver offers only to confirm, never ticked; a prompt adding
- * the remedies that sound like medicines did not remove it. On for French by
- * decision of 2026-11-06; to measure again with real voices (SCRUM-32).
+ * only (the 80 clips are 22 sentences said by three Windows voices, and 14
+ * more): far more names written right, none ticked wrongly, the FLEURS word
+ * error rate unchanged, 6 to 13 % more time. "quinine" was taken out after
+ * the review of #68: with it, "kinkéliba" was heard as "quinine qu'il y va" 3
+ * times in 7; without it, never, and 70 products of 88 are ticked instead of
+ * 67 (43 with no names). On for French by decision of 2026-11-06; to measure
+ * again with real voices (SCRUM-32).
  */
 export const VOICE_NAMES_PROMPT_ON = true;
 
 export const VOICE_NAMES_PROMPT =
-  'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, quinine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
+  'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
 
 /**
  * The words the decoder is given for a language, or undefined: the names, for

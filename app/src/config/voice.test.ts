@@ -32,7 +32,7 @@ describe('voice packs offered', () => {
 
 // SCRUM-61: the names of the base given to the French decoder (docs/voice.md):
 // measured on synthetic voices, affirmative sentences (80 clips: 22 sentences
-// by 3 Windows voices, and 14 more), 75 of 88 products ticked instead of 50,
+// by 3 Windows voices, and 14 more), 70 of 88 products ticked instead of 43,
 // none ticked wrongly.
 describe('the names given to the decoder', () => {
   it('are on for the French voice, and never given to the Wolof one', () => {
@@ -48,9 +48,12 @@ describe('the names given to the decoder', () => {
     expect(voiceContextFor('wo', false)).toBeUndefined();
   });
 
-  it('keep to the prompt measured (variant A, 87 tokens)', () => {
+  // Review of #68: variant A without "quinine" (84 tokens), measured so:
+  // "kinkéliba" was never heard as "quinine qu'il y va" any more.
+  it('keep to the prompt measured (variant A without quinine, 84 tokens)', () => {
     expect(VOICE_NAMES_PROMPT).toBe(
-      'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, quinine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.',
+      'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.',
     );
+    expect(VOICE_NAMES_PROMPT).not.toMatch(/quinine/i);
   });
 });
