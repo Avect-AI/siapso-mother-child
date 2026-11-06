@@ -118,6 +118,12 @@ describe('readPrescription: lines that are not products', () => {
     expect(readPrescription(pack, [line])).toEqual({ products: [], typed: [] });
   });
 
+  // As PaddleOCR read "1 cp en prise unique" on a tilted photo: the resolver
+  // reads words as they sound, so "price" is "prise", a posology word.
+  it('never searches a posology word read with a slip: "1 ap en price unique"', () => {
+    expect(readPrescription(pack, ['1 ap en price unique']).products).toEqual([]);
+  });
+
   it('never proposes a weak resemblance: a short prefix or a first name gives nothing', () => {
     for (const line of ['1. Anta', '2. Moussa', '3. Vitamines']) {
       expect(readPrescription(pack, [line]).products, line).toEqual([]);
@@ -162,6 +168,9 @@ describe('readPrescription: cleaning', () => {
       substancesOf(only(['1. SP (Gsulfadofine Pyriméthamine) : 3 cp en une prise']).ref.id),
     ).toBe('pyrimethamine+sulfadoxine');
     expect(only(['2. Efferalany 1 g cp eff']).ref.id).toMatch(/^efferalgan-/);
+    // Two slips allowed from 9 letters as read, whatever the resolver folds
+    // ("ii" read as one letter): PaddleOCR on the handwriting proxy.
+    expect(substancesOf(only(['5 Amoxiciine gl: glx 3/ pendant7 jo']).ref.id)).toBe('amoxicillin');
   });
 });
 

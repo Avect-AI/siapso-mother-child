@@ -104,14 +104,16 @@ describe('parsing', () => {
 
   it('reads the baseline and refuses a bar that is not a number in range', () => {
     const ok = {
-      sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: 0, maxFalseHand: 0 } },
+      sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: 0, maxSilentHand: 0 } },
     };
     expect(parseBaseline(JSON.stringify(ok))).toEqual(ok);
     for (const bad of [
       { sources: {} },
-      { sources: { text: { recallPrint: 1.2, recallHand: 1, maxFalsePrint: 0, maxFalseHand: 0 } } },
-      { sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: -1, maxFalseHand: 0 } } },
-      { sources: { text: { recallPrint: 1, recallHand: 1, maxFalseHand: 0 } } },
+      {
+        sources: { text: { recallPrint: 1.2, recallHand: 1, maxFalsePrint: 0, maxSilentHand: 0 } },
+      },
+      { sources: { text: { recallPrint: 1, recallHand: 1, maxFalsePrint: -1, maxSilentHand: 0 } } },
+      { sources: { text: { recallPrint: 1, recallHand: 1, maxSilentHand: 0 } } },
     ]) {
       expect(() => parseBaseline(JSON.stringify(bad)), JSON.stringify(bad)).toThrow(/baseline/);
     }
@@ -265,7 +267,7 @@ describe('mustWarnOutcome', () => {
 
 describe('failures', () => {
   const baseline: Baseline = {
-    sources: { text: { recallPrint: 1, recallHand: 0.9, maxFalsePrint: 0, maxFalseHand: 1 } },
+    sources: { text: { recallPrint: 1, recallHand: 0.9, maxFalsePrint: 0, maxSilentHand: 1 } },
   };
   /** A summary whose printed and handwritten totals are [expected, found, false products]. */
   const summaryOf = (print: [number, number, number], hand: [number, number, number]): Summary => {
@@ -300,12 +302,23 @@ describe('failures', () => {
     ]);
     expect(found).toEqual([
       'text: 1 false product on printed pages (at most 0)',
-      'text: 2 false products on handwritten pages (at most 1)',
+      'text: 2 false products without the warning on handwritten pages (at most 1)',
       'text: recall on printed pages 0.900 is below the baseline 1',
       'text: recall on handwritten pages 0.800 is below the baseline 0.9',
       'must-warn case 1 is read in part without the warning',
       'must-warn case 3 proposes a product of another substance',
       'must-warn case 4 is lost: no product and no line to add as typed',
+    ]);
+  });
+
+  it('counts on handwritten pages only the false products that do not say their line names more', () => {
+    const summary = summaryOf([10, 10, 0], [10, 9, 3]);
+    const hand = summary.groups.get('all/hand');
+    if (hand !== undefined) hand.partialWarned = 2;
+    expect(failures(new Map([['text', summary]]), baseline, [])).toEqual([]);
+    if (hand !== undefined) hand.partialWarned = 1;
+    expect(failures(new Map([['text', summary]]), baseline, [])).toEqual([
+      'text: 2 false products without the warning on handwritten pages (at most 1)',
     ]);
   });
 
@@ -341,7 +354,7 @@ describe('main', () => {
         },
       ]),
     );
-    const bars = { recallPrint: 1, recallHand: 0, maxFalsePrint: 0, maxFalseHand: 0 };
+    const bars = { recallPrint: 1, recallHand: 0, maxFalsePrint: 0, maxSilentHand: 0 };
     await writeFile(
       path.join(dir, 'baseline.json'),
       JSON.stringify({ sources: { text: bars, engine: bars } }),

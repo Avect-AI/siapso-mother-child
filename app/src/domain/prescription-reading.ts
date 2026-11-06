@@ -135,6 +135,15 @@ const POSOLOGY_WORDS: ReadonlySet<string> = new Set(
   ),
 );
 
+/** The posology words as the resolver reads words (as they sound): "price" is "prise". */
+const POSOLOGY_SOUNDS: ReadonlySet<string> = new Set([...POSOLOGY_WORDS].map(normalize));
+
+/** Whether a word is a posology word, as written or as it sounds. */
+function isPosologyWord(word: string): boolean {
+  const letters = plain(word).replace(/[^a-z]/g, '');
+  return POSOLOGY_WORDS.has(letters) || POSOLOGY_SOUNDS.has(normalize(letters));
+}
+
 function isPosology(plainLine: string): boolean {
   if (POSOLOGY_START.test(plainLine)) return true;
   // The part before an inline posology ("Doliprane 1000 mg : 1 cp x 3/j").
@@ -200,8 +209,11 @@ function joinedLines(lines: readonly string[]): { text: string; index: number }[
 }
 
 interface Vocabulary {
-  /** Normalised words of 7 letters or more of the substance and brand names of the pack. */
-  words: string[];
+  /**
+   * The words of 7 letters or more (normalised) of the substance and brand
+   * names of the pack, each with the word as written, accents aside.
+   */
+  words: Map<string, string>;
   /**
    * Normalised words of 5 letters or more that the names of one substance
    * only have ("sulfadoxin", "folik", "fereux"), with that substance.
@@ -227,9 +239,14 @@ function vocabularyOf(pack: Pack): Vocabulary {
       ...pack.substances.flatMap((s) => [s.names.fr, s.names.en]),
       ...pack.products.flatMap((p) => p.brands),
     ];
-    const words = new Set(
-      names.flatMap((name) => normalize(name).split(' ')).filter((word) => word.length >= 7),
-    );
+    // Each normalised word with the word as written (the first name that has it).
+    const words = new Map<string, string>();
+    for (const name of names) {
+      for (const written of plain(name).split(/[^\p{L}\p{N}]+/u)) {
+        const word = normalize(written);
+        if (word.length >= 7 && !word.includes(' ') && !words.has(word)) words.set(word, written);
+      }
+    }
     const owners = new Map<string, Set<string>>();
     for (const substance of pack.substances) {
       for (const word of normalize(`${substance.names.fr} ${substance.names.en}`).split(' ')) {
@@ -253,7 +270,7 @@ function vocabularyOf(pack: Pack): Vocabulary {
     const substancesOfProduct = new Map(
       pack.products.map((p) => [p.id, new Set(p.components.map((c) => c.substance))]),
     );
-    vocabulary = { words: [...words], substanceWords, wordsOfSubstance, substancesOfProduct };
+    vocabulary = { words, substanceWords, wordsOfSubstance, substancesOfProduct };
     vocabularies.set(pack, vocabulary);
   }
   return vocabulary;
@@ -328,7 +345,7 @@ function unexplainedWords(pack: Pack, namePart: string, candidate: Candidate): s
         word.length >= SUBSTANCE_WORD &&
         !/\d/.test(word) &&
         !own.has(word) &&
-        !POSOLOGY_WORDS.has(word) &&
+        !isPosologyWord(word) &&
         !NOT_PRODUCT.test(word),
     );
 }
@@ -367,16 +384,21 @@ function substancesNamed(pack: Pack, namePart: string): Set<string> {
 function snapped(line: string, vocabulary: Vocabulary): string {
   return line.replace(/\p{L}{7,}/gu, (word) => {
     const w = normalize(word);
+    // The slips allowed go by the length of the word as read, whatever the
+    // resolver folds when it reads words as they sound.
+    const allowed = word.length >= 9 ? 2 : 1;
     let best: string | undefined;
-    let bestDistance = 3;
-    for (const v of vocabulary.words) {
+    let bestDistance = allowed + 1;
+    for (const [v, written] of vocabulary.words) {
       if (Math.abs(v.length - w.length) > 2) continue;
       const distance = damerauLevenshtein(w, v);
-      if (distance < bestDistance && distance <= (w.length >= 9 ? 2 : 1)) {
-        best = v;
+      if (distance === 0) return word;
+      if (distance < bestDistance) {
+        best = written;
         bestDistance = distance;
       }
     }
+    // The name word as written, so the resolver reads it as it would read it typed.
     return best ?? word;
   });
 }
@@ -466,9 +488,7 @@ const WINDOW_STARTS = 2;
  */
 function bestOf(pack: Pack, namePart: string): Chosen | undefined {
   const index = searchIndexOf(pack);
-  const words = namePart
-    .split(/\s+/)
-    .filter((w) => /\p{L}{2,}/u.test(w) && !POSOLOGY_WORDS.has(plain(w).replace(/[^a-z]/g, '')));
+  const words = namePart.split(/\s+/).filter((w) => /\p{L}{2,}/u.test(w) && !isPosologyWord(w));
   const queries = [namePart];
   for (let start = 0; start < Math.min(WINDOW_STARTS, words.length); start += 1) {
     for (let n = 3; n >= 1; n -= 1) {
@@ -477,7 +497,7 @@ function bestOf(pack: Pack, namePart: string): Chosen | undefined {
   }
   let chosen: Chosen | undefined;
   for (const query of new Set(queries)) {
-    if (POSOLOGY_WORDS.has(plain(query))) continue;
+    if (!query.includes(' ') && isPosologyWord(query)) continue;
     for (const candidate of search(index, query, { limit: 1 })) {
       const match = strengthOf(candidate);
       if (match === 'weak') continue;

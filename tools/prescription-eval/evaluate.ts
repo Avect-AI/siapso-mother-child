@@ -58,8 +58,13 @@ export interface OcrRow {
 export interface Bars {
   recallPrint: number;
   recallHand: number;
+  /** False products on printed pages, with or without the warning. */
   maxFalsePrint: number;
-  maxFalseHand: number;
+  /**
+   * False products on handwritten pages that do not say their line names
+   * more: a combination read in part with its warning is not counted here.
+   */
+  maxSilentHand: number;
 }
 
 export interface Baseline {
@@ -173,7 +178,7 @@ export function parseBaseline(text: string): Baseline {
         throw new Error(`baseline.json: ${name}.${key} must be a number from 0 to 1`);
       }
     }
-    for (const key of ['maxFalsePrint', 'maxFalseHand'] as const) {
+    for (const key of ['maxFalsePrint', 'maxSilentHand'] as const) {
       const value = bars[key];
       if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
         throw new Error(`baseline.json: ${name}.${key} must be a whole number, 0 or more`);
@@ -358,15 +363,17 @@ export function failures(
       continue;
     }
     const print = summary.groups.get('all/print')?.score;
-    const hand = summary.groups.get('all/hand')?.score;
+    const handGroup = summary.groups.get('all/hand');
+    const hand = handGroup?.score;
     if (print !== undefined && print.falseProducts > bars.maxFalsePrint) {
       found.push(
         `${name}: ${plural(print.falseProducts)} on printed pages (at most ${String(bars.maxFalsePrint)})`,
       );
     }
-    if (hand !== undefined && hand.falseProducts > bars.maxFalseHand) {
+    const silent = hand === undefined ? 0 : hand.falseProducts - (handGroup?.partialWarned ?? 0);
+    if (silent > bars.maxSilentHand) {
       found.push(
-        `${name}: ${plural(hand.falseProducts)} on handwritten pages (at most ${String(bars.maxFalseHand)})`,
+        `${name}: ${plural(silent)} without the warning on handwritten pages (at most ${String(bars.maxSilentHand)})`,
       );
     }
     for (const [label, score, bar] of [
