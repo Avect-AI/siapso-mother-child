@@ -55,11 +55,15 @@ A baseline is changed only in a reviewed pull request that says why. When the re
 
 The 36 prescriptions are split into `dev` (rx01 to rx24) and `heldout` (rx25 to rx36), but the held-out set was tuned on: rules of the reading were added after its failures (the joining of a name wrapped in a table cell came from what PaddleOCR made of it, spec section 4.5), unit tests use its text (the garbled sulfadoxine "ulfaderne" of rx33), and the rules added after the review of PR 70 were checked against its texts too. Its figures are therefore no held-out measure: like the development set, it shows what the rules were set to do. The baselines equal the figures measured today on both.
 
-The set that was never tuned on is the fresh held-out set below.
+The set that was never tuned on is the fresh held-out set below; it is not independent of the rules either (see there).
 
 ## Fresh held-out set
 
-Made on 2026-11-06, after the review of PR 70, by `tools/prescription-eval/fresh.mjs`, and frozen (`fresh/truth.json`, `fresh/pages.json`, written by `tools/prescription-eval/freeze-fresh.ts`) before the reading was run on it:
+Made on 2026-11-06, after the review of PR 70, by `tools/prescription-eval/fresh.mjs`, and frozen (`fresh/truth.json`, `fresh/pages.json`, written by `tools/prescription-eval/freeze-fresh.ts`) before the reading was run on it.
+
+It was not tuned on: no rule was changed for what it showed. But it is not independent of the rules: it was designed after the review, by the same person who fixed the reading, around the cases the review raised (a pharmacy stamp, "Visa du pharmacien", a "City, le date" line, a postal address, a date in words, posologies after a dash and in brackets), with the same catalog of products and posologies as the 36 prescriptions. Its figures say that the rules hold on new layouts made with those cases in mind, not how the reading does on prescriptions nobody had in mind; real prescriptions, and an OCR measure, are the test of that.
+
+What it holds:
 
 - 12 prescriptions, fx01 to fx12: 8 printed, 4 in a handwriting-style font; 45 product lines, 28 of them in the pack and 17 outside it.
 - New seeds (`424242 + 104729 i`, the development set uses `1000 + 7919 i`), the same catalog of products and posologies.
@@ -67,7 +71,7 @@ Made on 2026-11-06, after the review of PR 70, by `tools/prescription-eval/fresh
 - New synthetic names (first and family names, prescribers, districts), some of which the reading does not list as names.
 - Its exact text (`freshText`) is the whole sheet in reading order, header, signature and stamp included, unlike `truthText` of the 36 prescriptions.
 
-Measured once, on 2026-11-06, at the end of the work on the review of PR 70, with the rules as they are on this branch (`pnpm eval:prescription:fresh`):
+Measured on 2026-11-06 at the end of the first round of the review of PR 70, then again after its second round (garbled brands, the header cut), with the same figures both times (`pnpm eval:prescription:fresh`); no rule was set on them:
 
 | Source     | Printed (8): recall, false products | Handwriting proxy (4): recall, false products | Strengths right / wrong | Counts offered right / wrong | Kept outside the pack | Header lines offered |
 | ---------- | ----------------------------------- | --------------------------------------------- | ----------------------- | ---------------------------- | --------------------- | -------------------- |
@@ -88,7 +92,7 @@ No line of the header, the signature or the stamp gave a product or a line to ad
 | Tesseract, single block, flat-field (144) | 208 / 244 (85.2 %), 2 (2 warned) | 68 / 136 (50.0 %), 12 (7 warned)          | 157 / 0                           | 0                              | 106 / 152             | 0                    |
 | Tesseract, automatic layout (96)          | 114 / 156 (73.1 %), 0            | 41 / 92 (44.6 %), 5 (1 warned)            | 89 / 0                            | 0                              | 66 / 104              | 0                    |
 
-On the handwriting proxy, PaddleOCR reads 1 strength wrong ("flucinazole 100 mg" for 150 mg: a digit the OCR misread, which no rule can see) and Tesseract single block 3. Must-warn: 43 cases, 23 read whole, 20 read in part with the warning, none silent, false, lost or pre-tickable though unsure. Negative: 22 lines, none gives anything. Every false product left is a part of a combination. About 9,000 pairs of common Senegalese first and family names, in lower and in capital letters, give nothing (checked once by hand, not a bar; the unit tests hold a sample).
+On the handwriting proxy, PaddleOCR reads 1 strength wrong ("flucinazole 100 mg" for 150 mg: a digit the OCR misread, which no rule can see) and Tesseract single block 3. Must-warn: 48 cases, 28 read whole, 20 read in part with the warning, none silent, false, lost or pre-tickable though unsure. Negative: 24 lines, none gives anything. Every name, brand and local name of the base (640 names, numbered and with a posology: 1,280 lines) is read as its product or remedy (a unit test). Every false product left is a part of a combination. About 9,000 pairs of common Senegalese first and family names, in lower and in capital letters, give nothing (checked once by hand, not a bar; the unit tests hold a sample).
 
 Before the review, on 2026-11-06, the same sources gave the same recall on printed pages, 128 / 136 on the PaddleOCR proxy, 3 wrong strengths with PaddleOCR and 22 with Tesseract single block, and the reading had no bar on strengths, counts, lines kept or header lines (git history of this file). With the resolver of pull request 59 (phonetic folding), measured with the rules before the review, every bar of that time held; run again once it is merged.
 
