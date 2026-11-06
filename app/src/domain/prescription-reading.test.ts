@@ -391,12 +391,19 @@ describe('readPrescription: a combination read in part (must warn)', () => {
     ['1. Pyriméthamine Sulfadoxyne)', 'pyrimethamine+sulfadoxine'],
     ['3. Amodiaquine (Artésun', 'amodiaquine+artesunate'],
     ['4. Fer + Ac. folique cp', 'folic-acid+iron'],
+    // As Tesseract read a printed page (development set): the short name says
+    // what the garbled words no longer do.
+    ['1. Fer acide otique (FAF)', 'folic-acid+iron'],
   ])('reads %s whole, or in part with the warning', (line, combination) => {
     expectWholeOrWarned(line, combination);
   });
 
   it('warns for a line read in part (the checks above are not vacuous)', () => {
-    for (const line of ['3. Amodiaquine (Artésun', '4. Fer + Ac. folique cp']) {
+    for (const line of [
+      '3. Amodiaquine (Artésun',
+      '4. Fer + Ac. folique cp',
+      '1. Fer acide otique (FAF)',
+    ]) {
       const [product] = readPrescription(pack, [line]).products;
       expect(product?.missingSubstances.length, line).toBe(1);
     }

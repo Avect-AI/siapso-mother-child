@@ -695,10 +695,14 @@ function tokensOf(text: string): string[] {
     .filter((token) => token !== '');
 }
 
-/** The substances an abbreviation of a name part stands for ("AF", "codé", "3TC"). */
+/**
+ * The substances an abbreviation of a name part stands for ("AF", "codé",
+ * "3TC"), and those of a short name of a combination in capitals ("FAF").
+ */
 function abbreviated(namePart: string): Set<string> {
   const found = new Set<string>();
   for (const token of tokensOf(namePart)) {
+    for (const id of ALIASES[token] ?? []) found.add(id);
     const abbreviation = ABBREVIATIONS[token.toLowerCase()];
     if (abbreviation === undefined) continue;
     if (abbreviation.upper === true && token !== token.toUpperCase()) continue;
