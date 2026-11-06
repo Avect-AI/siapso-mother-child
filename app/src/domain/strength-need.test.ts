@@ -203,8 +203,16 @@ function requiredSigns(): string[] {
 
 /** The highest level of the findings about the box, the first item. */
 function boxLevel(context: Omit<EvaluationContext, 'items'>, items: CheckedItem[]) {
-  const { findings } = evaluate(pack, { ...context, items });
-  return maxLevel(findings.filter((f) => f.items.includes(0)).map((f) => f.level));
+  return boxReading(context, items).level;
+}
+
+/** The highest level of the findings about the box, the first item, and their cards (rules). */
+function boxReading(context: Omit<EvaluationContext, 'items'>, items: CheckedItem[]) {
+  const about = evaluate(pack, { ...context, items }).findings.filter((f) => f.items.includes(0));
+  return {
+    level: maxLevel(about.map((f) => f.level)),
+    cards: new Set(about.flatMap((f) => (f.ruleId === undefined ? [] : [f.ruleId]))),
+  };
 }
 
 describe('the dose of generic aspirin answered by a range (SCRUM-56)', () => {
@@ -253,6 +261,7 @@ describe('a box without its strength never reads lower than a box of its family 
   it('in every situation, beside every partner of a rule, breastfeeding or not, at every term', () => {
     let pairs = 0;
     const lower: string[] = [];
+    const lost: string[] = [];
     for (const [family, members] of families()) {
       const extras: {
         name: string;
@@ -291,18 +300,32 @@ describe('a box without its strength never reads lower than a box of its family 
       ];
       for (const { name, context, partner } of contexts) {
         const beside = partner === undefined ? [] : [partner];
-        const unknown = boxLevel(context, [productItem(members[0]?.id ?? '', true), ...beside]);
-        for (const member of members) {
-          pairs += 1;
-          const known = boxLevel(context, [productItem(member.id), ...beside]);
-          if (levelRank(unknown) < levelRank(known)) {
-            lower.push(`${family} ${member.id} ${name}: ${unknown} < ${known}`);
-          }
+        const known = members.map((member) =>
+          boxReading(context, [productItem(member.id), ...beside]),
+        );
+        // Whichever box stands for the family on the confirm screen (the
+        // candidate's own id) is the one kept with its strength not given.
+        for (const candidate of members) {
+          const unknown = boxReading(context, [productItem(candidate.id, true), ...beside]);
+          members.forEach((member, i) => {
+            const box = known[i];
+            if (box === undefined) return;
+            pairs += 1;
+            const where = `${family} ${candidate.id} for ${member.id} ${name}`;
+            if (levelRank(unknown.level) < levelRank(box.level)) {
+              lower.push(`${where}: ${unknown.level} < ${box.level}`);
+            }
+            for (const card of box.cards) {
+              if (!unknown.cards.has(card)) lost.push(`${where}: ${card}`);
+            }
+          });
         }
       }
     }
     expect(lower).toEqual([]);
-    // Thousands of pairs: a future threshold rule that would lower one is caught.
-    expect(pairs).toBeGreaterThan(5000);
-  });
+    // No card of a box is lost when its strength is not given, not only the highest level.
+    expect(lost).toEqual([]);
+    // Many thousands of pairs: a future threshold rule that would lower one is caught.
+    expect(pairs).toBeGreaterThan(20000);
+  }, 180_000);
 });
