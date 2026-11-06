@@ -325,7 +325,7 @@ export const en: Dictionary = {
     unitsMany: '{units} units a day',
     notRecognised: 'Product not recognised',
     notRecognisedPlant: 'Remedy not recognised',
-    strengthUnknown: 'Strength not known',
+    strengthUnknown: 'Strength not stated',
     writtenAs: 'You wrote: {text}',
   },
   search: {
@@ -414,7 +414,7 @@ export const en: Dictionary = {
     sameBoxYesNamed: 'Yes, the same as {name}',
     sameBoxNo: 'No, another box',
     sameBoxError: 'Say whether it is the same box.',
-    takesPlace: '{name}, strength not known, becomes {product} in the list.',
+    takesPlace: '{name}, strength not stated, becomes {product} in the list.',
     missing: 'This product is not on this phone. Search again.',
     missingSubstances: '{substances}: not in this product. Compare with the name on the box.',
     strengthNotFound:

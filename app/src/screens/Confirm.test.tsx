@@ -199,7 +199,7 @@ describe('Confirm: the strength on the box', () => {
     // No rule reads the strength of paracetamol without a daily count.
     expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
     // Never a silent strength: said not given.
-    expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non connu$/);
+    expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non précisé$/);
     // The daily count stays in sight, blank for "I do not know".
     const units = screen.getByRole('textbox', { name: UNITS });
     expect(units).toHaveValue('');
@@ -267,7 +267,7 @@ describe('Confirm: the strength on the box', () => {
     await user.click(screen.getByRole('button', { name: 'Une unité de moins' }));
 
     expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
-    expect(product()).toHaveTextContent(/Dosage non connu$/);
+    expect(product()).toHaveTextContent(/Dosage non précisé$/);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([
@@ -292,7 +292,7 @@ describe('Confirm: the strength on the box', () => {
     await giveCount(user, 3);
 
     await user.click(screen.getByRole('radio', { name: 'Je ne sais pas' }));
-    expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non connu$/);
+    expect(product()).toHaveTextContent(/^DOLIPRANEParacétamolDosage non précisé$/);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
@@ -307,7 +307,7 @@ describe('Confirm: the strength on the box', () => {
       'listitem',
     );
     expect(row).toHaveTextContent('DOLIPRANE');
-    expect(row).toHaveTextContent('Dosage non connu');
+    expect(row).toHaveTextContent('Dosage non précisé');
     expect(row).not.toHaveTextContent(/\d+\s?mg/);
   });
 
@@ -353,7 +353,7 @@ describe('Confirm: the strength on the box', () => {
 
     expect(screen.queryByRole('group', { name: STRENGTH })).toBeNull();
     expect(screen.queryByRole('textbox', { name: UNITS })).toBeNull();
-    expect(product()).toHaveTextContent(/Dosage non connu$/);
+    expect(product()).toHaveTextContent(/Dosage non précisé$/);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
@@ -447,7 +447,7 @@ describe('Confirm: the strength on the box', () => {
     expect(
       screen.queryByRole('group', { name: `Quelle forme est écrite sur la boîte${NBSP}?` }),
     ).toBeNull();
-    expect(product()).toHaveTextContent(/Dosage non connu$/);
+    expect(product()).toHaveTextContent(/Dosage non précisé$/);
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
 
     expect(await backOnCheck()).toBeVisible();
@@ -872,7 +872,7 @@ describe('Confirm: a known strength for a family listed with its strength unknow
     await user.click(within(sameBox).getByRole('radio', { name: 'Oui, la même' }));
     expect(
       screen.getByText(
-        /^EFFERALGAN, dosage non connu, devient EFFERALGAN 500 mg, .+ dans la liste\.$/,
+        /^EFFERALGAN, dosage non précisé, devient EFFERALGAN 500 mg, .+ dans la liste\.$/,
       ),
     ).toBeVisible();
     expect(screen.getByRole('textbox', { name: UNITS })).toHaveValue('2');

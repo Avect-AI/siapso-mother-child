@@ -62,6 +62,6 @@ export function oneTapItem(
     const product = pack.products.find((p) => p.id === id);
     return product === undefined ? [] : [product];
   });
-  // No rule reads the strength: kept not given, and said so ("Dosage non connu").
+  // No rule reads the strength: kept not given, and said so ("Dosage non précisé").
   return strengthNeed(pack, members) === 'never' ? { ref, strengthUnknown: true } : null;
 }

@@ -390,8 +390,9 @@ export const fr = {
     unitsMany: '{units} unités par jour',
     notRecognised: 'Produit non reconnu',
     notRecognisedPlant: 'Remède non reconnu',
-    // "Je ne sais pas" was answered to the strength question.
-    strengthUnknown: 'Dosage non connu',
+    // The strength is not given: "Je ne sais pas", or not asked since no rule
+    // reads it (SCRUM-56). The clinical committee decides the words (Q-C3).
+    strengthUnknown: 'Dosage non précisé',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },
@@ -498,7 +499,7 @@ export const fr = {
     sameBoxNo: 'Non, une autre boîte',
     sameBoxError: "Dites si c'est la même boîte.",
     // A known strength chosen while the family is listed without one, and she said it is the same box.
-    takesPlace: '{name}, dosage non connu, devient {product} dans la liste.',
+    takesPlace: '{name}, dosage non précisé, devient {product} dans la liste.',
     missing: "Ce produit n'est pas sur ce téléphone. Cherchez encore.",
     // The name typed names a substance the product chosen does not have ("efferalgan codéine").
     missingSubstances:

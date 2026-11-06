@@ -131,7 +131,7 @@ test('DOLIPRANE without a count is added with its strength not given (SCRUM-56, 
   const items = page.getByRole('list', { name: 'Produits ajoutés' });
   await expect(items).toContainText('DOLIPRANE');
   // Never a silent strength.
-  await expect(items).toContainText('Dosage non connu');
+  await expect(items).toContainText('Dosage non précisé');
 });
 
 test('the strength on the box is asked once a daily count is given, and kept with it', async ({
