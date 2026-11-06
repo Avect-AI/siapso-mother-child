@@ -86,6 +86,50 @@ describe('the resolver on the repository pack', () => {
     expect(first('cotrim')).toMatch(/^cotrimoxazole-/);
   });
 
+  // Review of SCRUM-51 (prescription reading, SCRUM-57): a word of how a
+  // medicine is taken names nothing, whatever the folding ("price" misread for
+  // "prise" reached MONOCRIXO L.P. through "UNE PRISE QUOTIDIENNE").
+  it('names no product with a word of a posology or of the description of a form', () => {
+    for (const query of [
+      'prise',
+      'price',
+      'une prise par jour',
+      '1 cp en prise unique',
+      '1 ap en price unique',
+      'quotidienne',
+      'unique',
+      'jour',
+      'matin',
+      'soir',
+      'sans sucre',
+    ]) {
+      const found = search(index, query, { limit: 10 });
+      expect(
+        found.filter((c) => ['word', 'prefix', 'fuzzy-word'].includes(c.match)),
+        query,
+      ).toEqual([]);
+      expect(
+        found.map((c) => c.id),
+        query,
+      ).not.toContain('monocrixo-l-p-100-mg-67000580');
+    }
+  });
+
+  it('reads amoxicillin misread or misspelt as amoxicillin, as before the folding', () => {
+    const amoxicillin = (id: string | undefined) =>
+      pack.products.find((p) => p.id === id)?.components.map((c) => c.substance);
+    for (const query of ['amoxiciine', 'amoxicilline', 'amoxiciline']) {
+      const [best] = search(index, query);
+      expect(amoxicillin(best?.id), query).toEqual(['amoxicillin']);
+    }
+    // One l misread as an i: as close as before the folding, its INN a near match.
+    const found = search(index, 'amoxiciine', { limit: 10 });
+    expect(found[0]?.score).toBeGreaterThanOrEqual(0.75);
+    expect(found.some((c) => c.match === 'near' && amoxicillin(c.id)?.[0] === 'amoxicillin')).toBe(
+      true,
+    );
+  });
+
   it('finds the plants by their names in the standard Wolof orthography', () => {
     const wolof: Record<string, string> = {
       dakhar: 'tamarind',

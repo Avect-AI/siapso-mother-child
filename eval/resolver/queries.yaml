@@ -1440,3 +1440,25 @@
 - { query: huile de raisin, type: noise, expect: none }
 - { query: 'résine', type: noise, expect: none }
 - { query: Coura, type: noise, expect: none }
+# Prescription reading (SCRUM-57, review of SCRUM-51): a word of how a medicine
+# is taken names nothing, and one l misread as an i is still amoxicillin.
+- { query: prise, type: noise, expect: none }
+- { query: price, type: noise, expect: none }
+- { query: une prise par jour, type: noise, expect: none }
+- { query: 1 cp en prise unique, type: noise, expect: none }
+- {
+    query: amoxiciine,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-1-g-60151544 },
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+        { kind: product, id: amoxicilline-arrow-250-mg-5-ml-66773446 },
+        { kind: product, id: clamoxyl-1-g-64539416 },
+        { kind: product, id: clamoxyl-125-mg-5-ml-61155773 },
+        { kind: product, id: clamoxyl-250-mg-5-ml-67140810 },
+        { kind: product, id: clamoxyl-500-mg-5-ml-62607530 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }

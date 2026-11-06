@@ -68,6 +68,14 @@ const index = buildIndex([
       { text: 'Acide méfénamique', lang: 'inn', substance: 'mefenamic-acid' },
     ],
   },
+  // A description of the form after the comma, with how it is taken in
+  // brackets (review of SCRUM-51: "prise" and its misread "price").
+  product(
+    'monocrixo-100',
+    'brand:monokrixo l p',
+    'MONOCRIXO L.P. 100 mg, gélule à libération prolongée (UNE PRISE QUOTIDIENNE)',
+  ),
+  product('fervex-sans-sucre', 'brand:ferveks', 'FERVEX ADULTES SANS SUCRE, granulés'),
 ]);
 
 describe('a query equal to one word of a name', () => {
@@ -105,7 +113,7 @@ describe('a query equal to one word of a name', () => {
     expect(best?.weakWord).toBeUndefined();
   });
 
-  it.each(['chrono', 'cutanée', 'application', 'emulgel'])(
+  it.each(['chrono', 'emulgel'])(
     'is an inner word when it is not the first word of the name: %s',
     (query) => {
       const [best] = search(index, query);
@@ -113,6 +121,40 @@ describe('a query equal to one word of a name', () => {
       expect(best?.weakWord).toBe('inner');
     },
   );
+
+  // Words of the description of a form and of how it is taken name nothing,
+  // whatever the folding: no word, prefix or close-word match alone.
+  it.each([
+    'cutanée',
+    'application',
+    'prise',
+    'price',
+    'quotidienne',
+    'quotidi',
+    'libération',
+    'une prise par jour',
+    '1 cp en prise unique',
+    '1 ap en price unique',
+    'unique',
+    'jour',
+    'matin',
+    'soir',
+    'sans sucre',
+    'sucre',
+  ])('names nothing with a word of a description or a posology: %s', (query) => {
+    const matched = search(index, query, { limit: 10 }).filter((c) =>
+      ['word', 'prefix', 'fuzzy-word'].includes(c.match),
+    );
+    expect(matched).toEqual([]);
+  });
+
+  it('still finds the brand of a product named with a description', () => {
+    expect(search(index, 'monocrixo')[0]).toMatchObject({ id: 'monocrixo-100', match: 'word' });
+    expect(search(index, 'fervex sans sucre')[0]).toMatchObject({
+      id: 'fervex-sans-sucre',
+      match: 'exact',
+    });
+  });
 
   it('keeps the score and the order: only the caller weighs it', () => {
     expect(search(index, 'Biogaran 500')[0]).toMatchObject({
