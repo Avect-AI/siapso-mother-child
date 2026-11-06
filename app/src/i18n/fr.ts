@@ -458,6 +458,13 @@ export const fr = {
     // A name read from words the voice split ("King Kyliba" for kinkéliba):
     // offered unticked. Never "vérifiez": the app flags, it does not verify.
     sentenceCheckHeard: "À confirmer : j'ai entendu « {words} »",
+    // A product said with a negation, by another person or as a past use
+    // (review of #68): offered unticked with the words that say so.
+    sentenceCheckClause: 'À confirmer : « {words} »',
+    // A name that is also a food ("ail", "gingembre"): offered unticked.
+    sentenceFood: '« {word} » est aussi un aliment : cochez-le si vous le prenez comme remède.',
+    // The spelling a word was read with ("ibiprofen" for "ibiporofen").
+    sentenceReadAs: 'Lu comme « {spelling} »',
     // Read by a screen reader: the list itself shows the names.
     sentenceFoundOne: 'Un produit trouvé dans la phrase : {name}.',
     sentenceFoundMany: '{count} produits trouvés dans la phrase, le premier : {name}.',

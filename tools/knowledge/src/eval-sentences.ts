@@ -62,12 +62,18 @@ export interface EvalSentence {
 export interface SentenceBaseline {
   /** Minimum precision, overall and in each language. */
   precision: number;
-  /** Minimum recall, overall and in each language. */
+  /** Minimum recall (products named and ticked), overall and in each language. */
   recall: number;
   /** Maximum number of products found (ticked) in the background transcripts. */
   backgroundFalseProducts: number;
   /** Maximum number of names offered to check ("Vérifiez", read from words joined) in the background. */
   backgroundCheckOffers: number;
+  /**
+   * Minimum share of the products named that are offered, ticked or to
+   * confirm, overall and in each language: a food ("bissap") is offered
+   * unticked by design (review of #68).
+   */
+  offered: number;
 }
 
 export interface SentenceTally {
@@ -211,6 +217,7 @@ export function parseSentenceBaseline(text: string): SentenceBaseline {
     recall: ratioIn(record, 'recall'),
     backgroundFalseProducts: countIn(record, 'backgroundFalseProducts'),
     backgroundCheckOffers: countIn(record, 'backgroundCheckOffers'),
+    offered: ratioIn(record, 'offered'),
   };
 }
 
@@ -387,13 +394,19 @@ function collectHypotheses(value: unknown, into: string[]): void {
 
 /** The bars that a measure does not meet; a measure that is not a number fails. */
 export function failures(
-  measured: { precision: number; recall: number; background: number; checks: number },
+  measured: {
+    precision: number;
+    recall: number;
+    offered: number;
+    background: number;
+    checks: number;
+  },
   baseline: SentenceBaseline,
   label = '',
 ): string[] {
   const found: string[] = [];
   const prefix = label === '' ? '' : `${label}: `;
-  for (const key of ['precision', 'recall'] as const) {
+  for (const key of ['precision', 'recall', 'offered'] as const) {
     const value = measured[key];
     if (!Number.isFinite(value)) found.push(`${prefix}${key} is not a number (${String(value)})`);
     else if (value < baseline[key]) {
@@ -542,7 +555,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
   );
   out(`p95 time of one sentence: ${percentile95(times).toFixed(3)} ms`);
   out(
-    `baseline: precision >= ${String(baseline.precision)} and recall >= ${String(baseline.recall)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}, background names to check <= ${String(baseline.backgroundCheckOffers)}`,
+    `baseline: precision >= ${String(baseline.precision)}, recall (ticked) >= ${String(baseline.recall)} and offered >= ${String(baseline.offered)} overall and per language, background false products <= ${String(baseline.backgroundFalseProducts)}, background names to check <= ${String(baseline.backgroundCheckOffers)}`,
   );
 
   const failed = [
@@ -550,6 +563,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
       {
         precision: precisionOf(report.overall),
         recall: recallOf(report.overall),
+        offered: offeredOf(report.overall),
         background: backgroundFalse,
         checks: backgroundChecks,
       },
@@ -560,6 +574,7 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
         {
           precision: precisionOf(report.perLang[lang]),
           recall: recallOf(report.perLang[lang]),
+          offered: offeredOf(report.perLang[lang]),
           background: 0,
           checks: 0,
         },

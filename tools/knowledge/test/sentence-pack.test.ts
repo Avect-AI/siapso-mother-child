@@ -6,9 +6,15 @@ import type { Pack } from '@siapso/engine';
 import {
   AMBIGUOUS_NAME_WORDS,
   buildIndex,
+  CLAUSE_JOIN_WORDS,
+  CLAUSE_RESET_WORDS,
   entriesFromPack,
   FILLER_WORDS,
+  FOOD_NAME_WORDS,
   JOINING_WORDS,
+  NEGATION_WORDS,
+  PAST_WORDS,
+  PERSON_WORDS,
   productsInSentence,
   search,
   WEAK_ALONE_WORDS,
@@ -44,6 +50,66 @@ describe('the word lists of a sentence on the repository pack', () => {
     for (const word of [...WEAK_ALONE_WORDS, ...AMBIGUOUS_NAME_WORDS]) {
       expect(search(index, word).length, word).toBeGreaterThan(0);
     }
+  });
+
+  it('lists as foods only whole names of remedies of the base', () => {
+    for (const word of FOOD_NAME_WORDS) {
+      const exact = search(index, word).filter((candidate) => candidate.match === 'exact');
+      expect(
+        exact.map((candidate) => candidate.kind),
+        word,
+      ).toContain('plant');
+    }
+  });
+
+  it('lists no word of a clause (negation, past, person) that is a whole name of the base', () => {
+    for (const word of [
+      ...NEGATION_WORDS,
+      ...PAST_WORDS,
+      ...PERSON_WORDS,
+      ...CLAUSE_RESET_WORDS,
+      ...CLAUSE_JOIN_WORDS,
+    ]) {
+      const exact = search(index, word).filter((candidate) => candidate.match === 'exact');
+      expect(
+        exact.map((candidate) => candidate.id),
+        word,
+      ).toEqual([]);
+    }
+  });
+});
+
+// Review of #68: the sentences of the review, on the repository pack.
+describe('the products named but maybe not taken', () => {
+  const read = (sentence: string) =>
+    productsInSentence(index, sentence, { heard: true }).map((found) => [
+      found.candidate.id.replace(/-\d.*$/, ''),
+      found.checked,
+      found.clause?.text,
+    ]);
+
+  it('unticks, never drops, a product said with a negation, by another person or before', () => {
+    expect(read('je prends du doliprane mais pas de cytotec')).toEqual([
+      ['doliprane', true, undefined],
+      ['misoprostol-generic', false, 'pas de cytotec'],
+    ]);
+    expect(read('dama naan doliprane waaye duma naan cytotec')).toEqual([
+      ['doliprane', true, undefined],
+      ['misoprostol-generic', false, 'duma naan cytotec'],
+    ]);
+    const doctor = 'le médecin a dit de ne pas prendre de l advil ni de l ibuprofène';
+    expect(read(doctor)).toEqual([
+      ['advil', false, doctor],
+      ['ibuprofen-generic', false, doctor],
+    ]);
+    expect(read('mon mari prend du coartem et moi du doliprane')).toEqual([
+      ['artemether-lumefantrine-generic', false, 'mon mari prend du coartem'],
+      ['doliprane', true, undefined],
+    ]);
+    expect(read('avant je prenais de la nivaquine maintenant du coartem')).toEqual([
+      ['chloroquine-generic', false, 'avant je prenais de la nivaquine'],
+      ['artemether-lumefantrine-generic', true, undefined],
+    ]);
   });
 });
 

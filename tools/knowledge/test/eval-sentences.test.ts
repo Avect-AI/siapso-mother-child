@@ -114,22 +114,30 @@ describe('parseSentenceBaseline', () => {
   it('reads the bars, and rejects a missing or non-numeric one', () => {
     expect(
       parseSentenceBaseline(
-        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
       ),
     ).toEqual({
       precision: 0.95,
       recall: 0.85,
       backgroundFalseProducts: 0,
       backgroundCheckOffers: 0,
+      offered: 0.9,
     });
     for (const [text, key] of [
+      [
+        '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+        'offered',
+      ],
       [
         '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0 }',
         'backgroundCheckOffers',
       ],
-      ['{ "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }', 'precision'],
       [
-        '{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }',
+        '{ "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
+        'precision',
+      ],
+      [
+        '{ "precision": 1.2, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }',
         'precision',
       ],
       [
@@ -221,14 +229,24 @@ describe('evaluateSentences', () => {
   });
 
   it('counts a product named but not taken that comes ticked as a false product', () => {
+    // A first name says another person: no rule reads it.
     const report = evaluateSentences(
       index,
       families,
       parseSentences(
-        '- { text: je ne bois pas de kinkéliba, lang: fr, type: none, expect: [], notTaken: [{ kind: plant, id: kinkeliba }] }',
+        [
+          '- { text: du kinkéliba pour Awa, lang: fr, type: none, expect: [], notTaken: [{ kind: plant, id: kinkeliba }] }',
+          '- { text: je ne bois pas de kinkéliba, lang: fr, type: none, expect: [], notTaken: [{ kind: plant, id: kinkeliba }] }',
+        ].join('\n'),
       ),
     );
-    expect(report.overall).toMatchObject({ expected: 0, right: 0, notTakenTicked: 1 });
+    expect(report.overall).toMatchObject({
+      expected: 0,
+      right: 0,
+      notTaken: 2,
+      notTakenTicked: 1,
+      notTakenUnticked: 1,
+    });
     expect(report.overall.false).toBe(1);
     expect(report.perCase.negation).toMatchObject({ sentences: 0 });
   });
@@ -256,14 +274,20 @@ describe('failures', () => {
     recall: 0.85,
     backgroundFalseProducts: 0,
     backgroundCheckOffers: 0,
+    offered: 0.9,
   };
   it('says each bar not met, and a measure that is not a number', () => {
-    expect(failures({ precision: 1, recall: 0.9, background: 0, checks: 0 }, baseline)).toEqual([]);
     expect(
-      failures({ precision: 0.9, recall: 0.8, background: 1, checks: 1 }, baseline),
-    ).toHaveLength(4);
+      failures({ precision: 1, recall: 0.9, offered: 1, background: 0, checks: 0 }, baseline),
+    ).toEqual([]);
     expect(
-      failures({ precision: Number.NaN, recall: 0.9, background: 0, checks: 0 }, baseline),
+      failures({ precision: 0.9, recall: 0.8, offered: 0.8, background: 1, checks: 1 }, baseline),
+    ).toHaveLength(5);
+    expect(
+      failures(
+        { precision: Number.NaN, recall: 0.9, offered: 1, background: 0, checks: 0 },
+        baseline,
+      ),
     ).toEqual(['precision is not a number (NaN)']);
   });
 });
@@ -290,7 +314,7 @@ describe('main', () => {
   }
 
   const BARS =
-    '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0 }';
+    '{ "precision": 0.95, "recall": 0.85, "backgroundFalseProducts": 0, "backgroundCheckOffers": 0, "offered": 0.9 }';
 
   it('exits 0 when the bars are met', async () => {
     const { code, text } = await runWith(ONE, BARS);
@@ -386,11 +410,13 @@ describe('the committed sentence set', () => {
       );
       expect(baseline.precision).toBeGreaterThanOrEqual(0.95);
       expect(baseline.recall).toBeGreaterThanOrEqual(0.85);
+      expect(baseline.offered).toBeGreaterThanOrEqual(0.95);
       for (const tally of [report.overall, ...Object.values(report.perLang)]) {
         expect(tally.right / (tally.right + tally.false)).toBeGreaterThanOrEqual(
           baseline.precision,
         );
         expect(tally.right / tally.expected).toBeGreaterThanOrEqual(baseline.recall);
+        expect(tally.offered / tally.expected).toBeGreaterThanOrEqual(baseline.offered);
       }
     },
     PACK_TIMEOUT_MS,

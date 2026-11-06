@@ -196,6 +196,37 @@ describe('Search: products said in a sentence', () => {
   });
 });
 
+// Review of #68.
+describe('Search: a product maybe not taken, a food, a spelling undone', () => {
+  it('offers unticked a product said with a negation, with the words that say so', async () => {
+    const { group } = await say('dama naan doliprane waaye duma naan cytotec');
+    const [taken, refused] = within(group).getAllByRole('checkbox');
+    expect(taken).toBeChecked();
+    expect(refused).not.toBeChecked();
+    expect(refused?.closest('label')).toHaveTextContent(/misoprostol/i);
+    expect(refused?.closest('label')).toHaveTextContent(
+      new RegExp(`À confirmer${NBSP}: «${NBSP}duma naan cytotec${NBSP}»`),
+    );
+  });
+
+  it('offers unticked a remedy that is also a food, saying so', async () => {
+    const { group } = await say('dama naan bissap ak nivaquine');
+    const [food, medicine] = within(group).getAllByRole('checkbox');
+    expect(food).not.toBeChecked();
+    expect(food?.closest('label')).toHaveTextContent(
+      new RegExp(`bissap${NBSP}» est aussi un aliment${NBSP}: cochez-le si vous le prenez`),
+    );
+    expect(medicine).toBeChecked();
+  });
+
+  it('says the spelling a word was read as', async () => {
+    const { group } = await say('dama naan ibiporofen bi');
+    expect(within(group).getByRole('checkbox').closest('label')).toHaveTextContent(
+      new RegExp(`Lu comme «${NBSP}ibiprofen`),
+    );
+  });
+});
+
 describe('Search: a name the voice split into words', () => {
   it('offers it unticked, saying what was heard, and adds it only once ticked and confirmed', async () => {
     const { user, group, probe } = await say(

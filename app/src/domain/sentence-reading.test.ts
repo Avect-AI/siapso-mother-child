@@ -110,3 +110,28 @@ describe('sentenceReadingOf: what is typed', () => {
     ).toEqual(['brand:advil', 'substances:artemether+lumefantrine']);
   });
 });
+
+// Review of #68: one product named with a negation, by another person or as
+// a past use is offered unticked, with its clause, in place of the candidates
+// of the whole text, which would offer it as the answer.
+describe('sentenceReadingOf: a product maybe not taken', () => {
+  it('offers it unticked with its clause, typed or heard', () => {
+    for (const source of ['typed', 'voice'] as const) {
+      const found = sentenceReadingOf(index, "je n'ai pas pris de coartem", 'product', source);
+      expect(
+        found?.map((product) => [product.candidate.family, product.checked, product.clause]),
+        source,
+      ).toEqual([
+        [
+          'substances:artemether+lumefantrine',
+          false,
+          { reason: 'negation', text: "je n'ai pas pris de coartem" },
+        ],
+      ]);
+    }
+    expect(
+      sentenceReadingOf(index, 'sama jëkkër dafay naan coartem', 'product', 'voice')?.[0]?.clause
+        ?.reason,
+    ).toBe('other-person');
+  });
+});

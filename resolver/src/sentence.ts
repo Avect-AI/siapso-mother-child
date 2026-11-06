@@ -9,10 +9,12 @@ import { compiledOf } from './index-build.js';
 import { matchStrength, type MatchStrength } from './match-strength.js';
 import { normalize } from './normalize.js';
 import { search } from './search.js';
+import { clauseMarks, type ClauseReason } from './sentence-clause.js';
 import {
   AMBIGUOUS_NAME_WORDS,
   CLAUSE_START_WORDS,
   FILLER_WORDS,
+  FOOD_NAME_WORDS,
   JOINING_WORDS,
   LINKING_WORDS,
   NUMBER_WORDS,
@@ -28,8 +30,10 @@ export interface SentenceProduct {
   candidate: Candidate;
   /** How clearly the words name it: never weak. */
   strength: Exclude<MatchStrength, 'weak'>;
-  /** Ticked at first; a name that is also a common word ("goro") is not. */
+  /** Ticked at first; a name that is also a common word ("goro") or a food ("ail") is not. */
   checked: boolean;
+  /** The name is also a food or a spice ("ail", "gingembre"): offered unticked. */
+  alsoFood?: boolean;
   /** The words of the sentence that name it, as written, with the strength said after them. */
   text: string;
   /** The strength said with it, in mg. */
@@ -41,6 +45,13 @@ export interface SentenceProduct {
    * this name ("King Kyliba" for kinkéliba): offered unticked, to be checked.
    */
   heardAs?: string;
+  /**
+   * The clause that says it is maybe not taken by the speaker now, with a
+   * negation ("pas de cytotec"), by or for another person ("mon mari prend du
+   * coartem") or as a past use ("avant je prenais de la nivaquine"): offered
+   * unticked with these words, never dropped.
+   */
+  clause?: { reason: ClauseReason; text: string };
 }
 
 export interface SentenceOptions {
@@ -70,6 +81,7 @@ const LINKS = setOf(LINKING_WORDS);
 const JOINS = setOf(JOINING_WORDS);
 const WEAK_ALONE = setOf(WEAK_ALONE_WORDS);
 const AMBIGUOUS = setOf(AMBIGUOUS_NAME_WORDS);
+const FOODS = setOf(FOOD_NAME_WORDS);
 const NUMBERS = setOf(NUMBER_WORDS);
 const CLAUSE_STARTS = setOf(CLAUSE_START_WORDS);
 /** At most this many words after a name are shown with it when they start another clause. */
@@ -659,11 +671,8 @@ export function productsInSentence(
       (reading) => clear(reading) || !merged.some((joined) => overlap(reading, joined)),
     );
   }
-  const families = new Set<string>();
-  const products: { at: number; product: SentenceProduct }[] = [];
+  const products: { at: number; last: number; product: SentenceProduct }[] = [];
   for (const reading of taken) {
-    if (families.has(reading.candidate.family)) continue;
-    families.add(reading.candidate.family);
     const first = tokens[reading.span.first];
     const last = tokens[reading.span.last];
     if (first === undefined || last === undefined) continue;
@@ -681,29 +690,68 @@ export function productsInSentence(
       if (withStrength !== undefined) candidate = withStrength;
     }
     const ambiguous = reading.span.words === 1 && AMBIGUOUS.has(first.norm);
+    // A remedy that is also a food ("ail", "tisane de gingembre"): maybe eaten as food only.
+    const food =
+      candidate.kind === 'plant' &&
+      tokens
+        .slice(reading.span.first, reading.span.last + 1)
+        .some((token) => FOODS.has(token.norm));
     // Heard right before the start of another clause: the voice may have made
     // the name out of a longer one ("quinine qu'il y va" for kinkéliba).
     const clauseEnd =
       options.heard === true && strength === undefined
         ? clauseAfter(tokens, reading.span.last)
         : undefined;
+    // The last word of the name, or of the strength said after it.
+    let lastWord = reading.span.last;
+    while (strength !== undefined && (tokens[lastWord + 1]?.end ?? Infinity) <= strength.end) {
+      lastWord += 1;
+    }
     products.push({
       at: reading.span.first,
+      last: lastWord,
       product: {
         candidate,
         strength: reading.strength,
-        checked: !ambiguous && clauseEnd === undefined,
+        checked: !ambiguous && !food && clauseEnd === undefined,
         text,
+        ...(food ? { alsoFood: true } : {}),
         ...(strength === undefined ? {} : { strengthMg: strength.mg }),
         ...(reading.readAs === undefined ? {} : { readAs: reading.readAs }),
         ...(clauseEnd === undefined ? {} : { heardAs: sentence.slice(first.start, clauseEnd) }),
       },
     });
   }
-  for (const { at, product } of merged) {
-    if (families.has(product.candidate.family)) continue;
-    families.add(product.candidate.family);
-    products.push({ at, product });
+  for (const { at, last, product } of merged) products.push({ at, last, product });
+  // Said with a negation, by another person, as a past use: offered unticked, never dropped.
+  const marks = clauseMarks(
+    tokens,
+    products.map(({ at, last }) => ({ first: at, last })),
+  );
+  products.forEach((found, position) => {
+    const mark = marks[position];
+    const from = mark === undefined ? undefined : tokens[mark.first];
+    const to = mark === undefined ? undefined : tokens[mark.last];
+    if (mark === undefined || from === undefined || to === undefined) return;
+    found.product = {
+      ...found.product,
+      checked: false,
+      clause: { reason: mark.reason, text: sentence.slice(from.start, to.end) },
+    };
+  });
+  // Each family once: the first found, unless it is named as not taken and
+  // the same product is named again, ticked ("mon mari prend du doliprane et
+  // moi aussi je prends du doliprane").
+  const kept = new Map<string, (typeof products)[number]>();
+  for (const found of products) {
+    const family = found.product.candidate.family;
+    const before = kept.get(family);
+    const taken =
+      before !== undefined &&
+      before.product.clause !== undefined &&
+      found.product.clause === undefined &&
+      found.product.checked;
+    if (before === undefined || taken) kept.set(family, found);
   }
-  return products.sort((a, b) => a.at - b.at).map(({ product }) => product);
+  return [...kept.values()].sort((a, b) => a.at - b.at).map(({ product }) => product);
 }

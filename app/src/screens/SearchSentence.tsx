@@ -40,6 +40,23 @@ export function SentenceProducts({
     section.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [attempts]);
 
+  /**
+   * Why a product is offered unticked: a name read from words the voice split
+   * ("King Kyliba"), a clause that says it is maybe not taken ("pas de
+   * cytotec", review of #68), a food ("ail"), or a name that is also a common
+   * word ("goro").
+   */
+  const untickedBecause = (product: SentenceProduct): string[] => {
+    if (product.heardAs !== undefined) {
+      return [t('search.sentenceCheckHeard', { words: product.heardAs })];
+    }
+    if (product.clause !== undefined) {
+      return [t('search.sentenceCheckClause', { words: product.clause.text })];
+    }
+    if (product.alsoFood === true) return [t('search.sentenceFood', { word: product.text })];
+    return product.checked ? [] : [t('search.sentenceCommonWord', { word: product.text })];
+  };
+
   if (pack === null) return null;
   const options = products.map((product, at) => {
     const shown = candidateDisplayOf(pack, product.candidate, product.text, lang);
@@ -58,13 +75,11 @@ export function SentenceProducts({
         ...(shown.detail === undefined ? [] : [shown.detail]),
         t(product.candidate.kind === 'product' ? 'search.kindProduct' : 'search.kindPlant'),
         ...strength,
-        // Offered unticked, and why: a name read from words the voice split
-        // ("King Kyliba"), or a name that is also a common word ("goro").
-        ...(product.heardAs !== undefined
-          ? [t('search.sentenceCheckHeard', { words: product.heardAs })]
-          : product.checked
-            ? []
-            : [t('search.sentenceCommonWord', { word: product.text })]),
+        // A word read with a Wolof spelling undone: the spelling it was read as.
+        ...(product.readAs === undefined
+          ? []
+          : [t('search.sentenceReadAs', { spelling: product.readAs })]),
+        ...untickedBecause(product),
       ],
       checked: ticked[at] === true,
       onChange: (checked: boolean) => {

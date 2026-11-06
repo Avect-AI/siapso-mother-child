@@ -8,6 +8,7 @@ import {
   AMBIGUOUS_NAME_WORDS,
   buildIndex,
   FILLER_WORDS,
+  FOOD_NAME_WORDS,
   normalize,
   phoneticKey,
   productsInSentence,
@@ -214,6 +215,22 @@ const index = buildIndex([
     ],
     { family: 'brand:inofer', substances: ['iron'] },
   ),
+  product(
+    'misoprostol-generic',
+    [
+      { text: 'Misoprostol (générique)', lang: 'fr' },
+      { text: 'Cytotec', lang: 'brand' },
+    ],
+    { family: 'substances:misoprostol', priority: 2, substances: ['misoprostol'] },
+  ),
+  product(
+    'laroscorbine-sans-sucre',
+    [
+      { text: 'LAROSCORBINE 500 mg SANS SUCRE, comprimé à croquer', lang: 'fr' },
+      { text: 'LAROSCORBINE SANS SUCRE', lang: 'brand' },
+    ],
+    { family: 'brand:laroskorbin sans sukr', strengths: [500], substances: ['ascorbic-acid'] },
+  ),
   plant('moringa', [
     { text: 'Moringa', lang: 'fr' },
     { text: 'nebeday', lang: 'wo' },
@@ -229,6 +246,10 @@ const index = buildIndex([
   plant('neem', [
     { text: 'Neem', lang: 'fr' },
     { text: 'nim', lang: 'wo' },
+  ]),
+  plant('ginger', [
+    { text: 'Gingembre', lang: 'fr' },
+    { text: 'jinjeer', lang: 'wo' },
   ]),
 ]);
 
@@ -493,6 +514,149 @@ describe('productsInSentence: the words of a name the voice split', () => {
   });
 });
 
+// Review of #68: a product named with a negation, by or for another person,
+// or as a past use, is offered unticked with the clause that says so; never
+// dropped, as she may still take it.
+describe('productsInSentence: products named but maybe not taken', () => {
+  /** [family, ticked, reason, clause] of each product found. */
+  const read = (sentence: string, heard = true) =>
+    productsInSentence(index, sentence, { heard }).map((found) => [
+      found.candidate.family,
+      found.checked,
+      found.clause?.reason,
+      found.clause?.text,
+    ]);
+
+  it('unticks a product said with a negation, in its clause only', () => {
+    expect(read('je prends du doliprane mais pas de cytotec')).toEqual([
+      ['brand:dolipran', true, undefined, undefined],
+      ['substances:misoprostol', false, 'negation', 'pas de cytotec'],
+    ]);
+    expect(read('dama naan doliprane waaye duma naan cytotec')).toEqual([
+      ['brand:dolipran', true, undefined, undefined],
+      ['substances:misoprostol', false, 'negation', 'duma naan cytotec'],
+    ]);
+    expect(read("le médecin a dit de ne pas prendre de l'advil ni de l'ibuprofène")).toEqual([
+      [
+        'brand:advil',
+        false,
+        'negation',
+        "le médecin a dit de ne pas prendre de l'advil ni de l'ibuprofène",
+      ],
+      [
+        'substances:ibuprofen',
+        false,
+        'negation',
+        "le médecin a dit de ne pas prendre de l'advil ni de l'ibuprofène",
+      ],
+    ]);
+  });
+
+  it('reads the Wolof negative forms of a verb', () => {
+    for (const sentence of [
+      'naanuma nebeday',
+      'jëlul coartem',
+      'amuma coartem',
+      'duñu ma jox coartem',
+      'bul naan nebeday',
+    ]) {
+      expect(
+        read(sentence).map((found) => found.slice(1, 3)),
+        sentence,
+      ).toEqual([[false, 'negation']]);
+    }
+  });
+
+  it('unticks a product another person takes, unless it is given to the speaker', () => {
+    expect(read('mon mari prend du coartem et moi du doliprane')).toEqual([
+      ['substances:artemether+lumefantrine', false, 'other-person', 'mon mari prend du coartem'],
+      ['brand:dolipran', true, undefined, undefined],
+    ]);
+    expect(read('sama jëkkër dafay naan nivaquine')).toEqual([
+      ['substances:chloroquine', false, 'other-person', 'sama jëkkër dafay naan nivaquine'],
+    ]);
+    expect(read('je donne du doliprane à ma petite soeur')[0]?.slice(1, 3)).toEqual([
+      false,
+      'other-person',
+    ]);
+    // Given to her, or taken with her: hers too.
+    expect(read("ma mère m'a donné du moringa")[0]?.slice(1, 3)).toEqual([true, undefined]);
+    expect(read('sama yaay dafa ma jox kinkéliba')[0]?.slice(1, 3)).toEqual([true, undefined]);
+    expect(read('ma soeur et moi prenons du coartem')[0]?.slice(1, 3)).toEqual([true, undefined]);
+  });
+
+  it('unticks a product taken before or stopped', () => {
+    expect(read('avant je prenais de la nivaquine maintenant du coartem')).toEqual([
+      ['substances:chloroquine', false, 'past', 'avant je prenais de la nivaquine'],
+      ['substances:artemether+lumefantrine', true, undefined, undefined],
+    ]);
+    for (const sentence of [
+      "j'ai arrêté le moringa",
+      'je ne prends plus de nivaquine',
+      'bàyyi naa nivaquine',
+      'dama daan naan nebeday',
+    ]) {
+      expect(
+        read(sentence).map((found) => found.slice(1, 3)),
+        sentence,
+      ).toEqual([[false, 'past']]);
+    }
+  });
+
+  it('carries the clause over to the names that follow without a verb of their own', () => {
+    expect(read('mon mari prend du coartem et du doliprane').map((found) => found[1])).toEqual([
+      false,
+      false,
+    ]);
+    // With a verb or a subject of their own, the next words say something else.
+    expect(read('je ne prends pas de cytotec et je prends du doliprane')).toEqual([
+      ['substances:misoprostol', false, 'negation', 'je ne prends pas de cytotec'],
+      ['brand:dolipran', true, undefined, undefined],
+    ]);
+    // "mais", "waaye", "maintenant" start a clause of their own.
+    expect(read('pas de cytotec mais du doliprane').map((found) => found[1])).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it('keeps ticked what only looks like a negation', () => {
+    // "ne ... que" is "only", "plus" joins two names, a name may hold "sans".
+    expect(read('je ne prends que du doliprane').map((found) => found[1])).toEqual([true]);
+    expect(read('doliprane plus advil').map((found) => found[1])).toEqual([true, true]);
+    expect(read('je prends de la laroscorbine sans sucre')).toEqual([
+      ['brand:laroskorbin sans sukr', true, undefined, undefined],
+    ]);
+    expect(read("je n'ai rien d'autre que du doliprane").map((found) => found[1])).toEqual([true]);
+  });
+
+  it('reads a typed sentence the same way', () => {
+    expect(
+      read('je prends du doliprane mais pas de cytotec', false).map((found) => found[1]),
+    ).toEqual([true, false]);
+  });
+
+  it('keeps the product taken when the same one is also named as not taken', () => {
+    expect(read('mon mari prend du doliprane et moi je prends du doliprane aussi')).toEqual([
+      ['brand:dolipran', true, undefined, undefined],
+    ]);
+  });
+});
+
+// Review of #68: a remedy that is also a food may be named as food only.
+describe('productsInSentence: a name that is also a food', () => {
+  it('offers it unticked, saying it is also a food', () => {
+    const found = productsInSentence(index, 'dama naan jinjeer ak nebeday', { heard: true });
+    expect(
+      found.map((product) => [product.candidate.id, product.checked, product.alsoFood]),
+    ).toEqual([
+      ['ginger', false, true],
+      ['moringa', true, undefined],
+    ]);
+    expect(productsInSentence(index, 'une tisane de gingembre')[0]?.alsoFood).toBe(true);
+  });
+});
+
 describe('phoneticKey', () => {
   it('reads alike the letters a voice confuses', () => {
     expect(phoneticKey('kingkiliba')).toBe('kinkilipa');
@@ -521,5 +685,6 @@ describe('the word lists of a sentence', () => {
       expect(normalize(word), word).not.toBe('');
     }
     expect(AMBIGUOUS_NAME_WORDS).toContain('goro');
+    expect(FOOD_NAME_WORDS).toEqual(expect.arrayContaining(['ail', 'gingembre', 'bissap']));
   });
 });
