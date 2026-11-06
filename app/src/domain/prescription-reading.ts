@@ -569,7 +569,7 @@ export function readPrescription(pack: Pack, lines: readonly string[]): Prescrip
     for (const word of completing.size > 0 ? unexplainedWords(pack, namePart, candidate) : []) {
       for (const id of completing) {
         const words = vocabulary.wordsOfSubstance.get(id) ?? [];
-        if (words.some((known) => sharedInOrder(word, known) >= RESEMBLANCE)) named.add(id);
+        if (words.some((name) => sharedInOrder(word, name) >= RESEMBLANCE)) named.add(id);
       }
     }
     const missingSubstances = [...named].filter((id) => !held.has(id)).sort();
