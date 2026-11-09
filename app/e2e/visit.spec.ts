@@ -288,18 +288,14 @@ for (const { width, height } of [
 
 test('an easy code is warned about, then kept on a second yes', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
+  // The 4th digit moves on: the warning comes in place of the field.
   await page.getByLabel('Code', { exact: true }).fill('1990');
-  await page.getByRole('button', { name: 'Continuer' }).click();
 
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Ce code est facile à deviner' }),
-  ).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Ce code est facile à deviner' })).toBeFocused();
   await expectNoSeriousViolation(page);
   await page.getByRole('button', { name: 'Garder ce code' }).click();
-  await page.getByLabel('Le même code', { exact: true }).fill('1990');
-  await page.getByRole('button', { name: 'Enregistrer le code' }).click();
+  await page.getByLabel('Tapez-le encore', { exact: true }).fill('1990');
   await expectStart(page, 'woman');
 
   // The keypad never says the word of the erase.

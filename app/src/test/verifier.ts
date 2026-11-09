@@ -45,6 +45,12 @@ export async function weakVerifier(
   return { salt: toBase64Url(salt), hash: toBase64Url(check), iterations, version: 2 };
 }
 
+/** `verifier` as the versions before SCRUM-56 kept it: without the code's length. */
+export function withoutLength(verifier: CodeVerifier): CodeVerifier {
+  const { salt, hash, iterations, version } = verifier;
+  return version === undefined ? { salt, hash, iterations } : { salt, hash, iterations, version };
+}
+
 /** A verifier of `code` at the full count in the format before SCRUM-39, as the phone kept it. */
 export function legacyVerifier(code: string): Promise<CodeVerifier> {
   return weakVerifier(code, 600_000);

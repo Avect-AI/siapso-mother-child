@@ -6,7 +6,14 @@
 // works without the Internet. The names, numbers and texts here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, seedBeforeUpdate, unlock, waitForServiceWorkerControl } from './support.js';
+import {
+  CODE,
+  expectWelcome,
+  seedBeforeUpdate,
+  storedCodeLength,
+  unlock,
+  waitForServiceWorkerControl,
+} from './support.js';
 
 const AMINATA = 'Aminata Seck';
 const NDEYE = 'Ndeye Fall';
@@ -125,7 +132,7 @@ test('a phone updated from the version in clear: sealed at the first code, reada
 }) => {
   // The app opens once (its database is made), then holds what the old version left.
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await waitForServiceWorkerControl(page);
   const old = await seedOldFormat(page);
 
@@ -142,12 +149,15 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   // Nothing of them is readable anywhere in storage.
   const dump = await dumpStorage(page);
   const everything = JSON.stringify(dump);
-  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT, old.givenOn, old.lmp]) {
+  for (const clear of [AMINATA, NDEYE, CONTACT, PHONE, FREE_TEXT]) {
     expect(everything, clear).not.toContain(clear);
   }
-  // Their situations and terms either, outside the knowledge pack (which names every situation).
+  // Their situations, terms and dates either, outside the knowledge pack (which
+  // names every situation, and dates its sources: one may be the day of her term).
   const theirs = JSON.stringify([personal(dump), dump.local, dump.session]);
   for (const clear of [
+    old.givenOn,
+    old.lmp,
     'hiv-cotrimoxazole',
     'sickle-cell',
     '"weeks"',
@@ -232,7 +242,7 @@ test('"Quitter" in another tab while the first code after the update is worked o
   context,
 }) => {
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
+  await expectWelcome(page);
   await seedOldFormat(page);
   // As on a slow phone: the code takes a while to work out in this tab.
   await page.addInitScript(() => {
@@ -268,4 +278,34 @@ test('"Quitter" in another tab while the first code after the update is worked o
   await expect(list.getByRole('button', { name: new RegExp(`^${AMINATA}`) })).toBeVisible({
     timeout: 20_000,
   });
+});
+
+test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digit opens it', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expectWelcome(page);
+  await seedBeforeUpdate(page, { settings: { lang: 'fr', mode: 'woman', onboarded: true } });
+  await page.reload();
+  const title = page.getByRole('heading', { level: 1, name: 'Entrez votre code' });
+  await expect(title).toBeVisible();
+  expect(await storedCodeLength(page)).toBeNull();
+
+  // No length kept: the 4 digits wait, nothing is tried before "Ouvrir".
+  await page.getByLabel('Code', { exact: true }).fill(CODE);
+  await expect(page.getByRole('status').filter({ hasText: 'Ouverture en cours.' })).toHaveCount(0);
+  await expect(title).toBeVisible();
+  await page.getByRole('button', { name: 'Ouvrir' }).click();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible({
+    timeout: 20_000,
+  });
+  // Kept with the right code, in the transaction that made the verifier again.
+  expect(await storedCodeLength(page)).toBe(4);
+
+  // The next opening: the 4th digit on the keys tries the code, nothing to press.
+  await page.reload();
+  await expect(title).toBeVisible();
+  const keypad = page.getByRole('group', { name: 'Clavier du code' });
+  for (const digit of CODE) await keypad.getByRole('button', { name: digit, exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });

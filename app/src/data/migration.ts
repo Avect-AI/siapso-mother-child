@@ -28,6 +28,7 @@
 // answer writes nothing; a write that does not end in time is aborted, and
 // counts as done only when its transaction committed anyway.
 import {
+  codeLength,
   isCodeVerifier,
   verifierFields,
   type CodeKeys,
@@ -46,6 +47,12 @@ export interface SealOptions {
   current: { fingerprint: string; wrappingKey: CryptoKey | null };
   /** A verifier made again and its key: stored in the same transaction, every data key wrapped for it. */
   next?: CodeKeys;
+  /**
+   * The length of the code opened (SCRUM-56): added, in the same transaction,
+   * to a version 2 verifier stored without one, its salt and check unchanged
+   * (the same code, the same keys). Nothing else changes for it.
+   */
+  codeLength?: number;
   /** How long each storage step may take (the encryption is never timed); none by default. */
   storageTimeoutMs?: number;
 }
@@ -309,7 +316,25 @@ async function again<T>(pass: () => Promise<T>): Promise<T> {
   }
 }
 
-async function sealOnce({ current, next, storageTimeoutMs }: SealOptions): Promise<SealOutcome> {
+/**
+ * The stored verifier `code` with the length `length` added, when it is a
+ * version 2 verifier kept without one and `length` is the length of a code;
+ * otherwise undefined (nothing to write for it).
+ */
+function withLength(code: CodeVerifier, length: number | undefined): CodeVerifier | undefined {
+  if (length === undefined || code.version === undefined || codeLength(code) !== null) {
+    return undefined;
+  }
+  const added = { ...verifierFields(code), length };
+  return codeLength(added) === null ? undefined : added;
+}
+
+async function sealOnce({
+  current,
+  next,
+  codeLength: length,
+  storageTimeoutMs,
+}: SealOptions): Promise<SealOutcome> {
   const snapshot = await inTime(read(), storageTimeoutMs);
   // Read with the code stored: another verifier (made again in another tab) is said at once.
   const { code } = snapshot;
@@ -339,11 +364,12 @@ async function sealOnce({ current, next, storageTimeoutMs }: SealOptions): Promi
       }
     },
   });
-  if (changes(work) === 0 && next === undefined) return work.outcome;
+  const verifier = next?.verifier ?? withLength(code, length);
+  if (changes(work) === 0 && verifier === undefined) return work.outcome;
   await write(
     snapshot,
     work,
-    next?.verifier,
+    verifier,
     (tx) => requireCode(tx, current.fingerprint),
     storageTimeoutMs,
   );

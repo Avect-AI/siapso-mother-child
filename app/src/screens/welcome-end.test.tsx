@@ -116,8 +116,7 @@ describe('a code that could not be made', () => {
   it('says that a code already exists, on the code screen, when another tab made it first', async () => {
     const user = userEvent.setup();
     await renderApp();
-    await user.click(await screen.findByRole('button', { name: 'Français' }));
-    await user.click(screen.getByRole('button', { name: /^Je suis enceinte/ }));
+    await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
     // Meanwhile, another tab made her code.
     await storeNewVerifier(await verifierOf('2468'));
 
@@ -138,8 +137,7 @@ describe('a code that could not be made', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const user = userEvent.setup();
     await renderApp();
-    await user.click(await screen.findByRole('button', { name: 'Français' }));
-    await user.click(screen.getByRole('button', { name: /^Je suis enceinte/ }));
+    await user.click(await screen.findByRole('button', { name: /^Je suis enceinte/ }));
     const db = await openAppDb();
     const transaction = vi.spyOn(db, 'transaction').mockImplementation(() => {
       throw new DOMException('quota', 'QuotaExceededError');
@@ -148,7 +146,7 @@ describe('a code that could not be made', () => {
     await makeCode(user, '1357');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Choisissez un code' }),
+      await screen.findByRole('heading', { name: 'Choisissez un code de 4 chiffres' }),
     ).toBeVisible();
     // Said on the field, which starts again empty.
     await vi.waitFor(() => {
@@ -157,7 +155,7 @@ describe('a code that could not be made', () => {
       );
     });
     expect(screen.getByLabelText('Code')).toHaveValue('');
-    expect(screen.getByRole('button', { name: 'Continuer' })).toBeEnabled();
+    expect(screen.getByLabelText('Code')).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Regarder un produit' })).toBeNull();
     transaction.mockRestore();
   });

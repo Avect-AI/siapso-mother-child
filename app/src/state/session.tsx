@@ -61,7 +61,9 @@ import { closeVault, openVault } from '../data/vault.js';
 import {
   AUTO_LOCK_MS,
   claimTry,
+  codeLength as lengthOf,
   createCodeKeys,
+  isCode,
   LOCK_WARNING_MS,
   VERIFIER_VERSION,
   NO_LOCKOUT,
@@ -133,6 +135,12 @@ export interface Session {
   codeUnavailable: boolean;
   /** A code made here was refused: one was already on the phone (the code screen says so). */
   codeRefused: boolean;
+  /**
+   * The length of the code on the phone, kept with its verifier (SCRUM-56):
+   * the code screen tries the code once that many digits are in. Null when
+   * none is kept (a code made before) or the code is not known.
+   */
+  codeLength: number | null;
   /**
    * The epoch (entry-state.ts): it changes at every lock, and while locked
    * after two minutes without interaction or hidden. The screens open without
@@ -243,6 +251,12 @@ export function SessionProvider({
   const [epoch, setEpoch] = useState(epochToken);
   const [lockSoon, setLockSoon] = useState(false);
   const verifier = useRef<CodeVerifier | null>(null);
+  const [codeLength, setCodeLength] = useState<number | null>(null);
+  /** The code as stored now, known to this tab, and its length for the code screen. */
+  const knowVerifier = useCallback((known: CodeVerifier | null) => {
+    verifier.current = known;
+    setCodeLength(known === null ? null : lengthOf(known));
+  }, []);
   const failures = useRef<LockoutState>(NO_LOCKOUT);
   const key = useRef<CryptoKey | null>(null);
   const held = useRef<HeldScreen | null>(null);
@@ -263,7 +277,7 @@ export function SessionProvider({
       ([stored, storedLockout]) => {
         if (!live) return;
         // A code made while this was read is the one that counts.
-        verifier.current ??= stored ?? null;
+        if (verifier.current === null) knowVerifier(stored ?? null);
         // Tests that start open hold the stored code, as if it had just been given.
         if (startUnlocked && verifier.current) codeOpened(verifier.current);
         if (storedLockout) {
@@ -283,7 +297,7 @@ export function SessionProvider({
     return () => {
       live = false;
     };
-  }, [storageTimeoutMs, startUnlocked]);
+  }, [storageTimeoutMs, startUnlocked, knowVerifier]);
 
   /**
    * Keeps a lockout in memory and on screen, and stores it (a failure to
@@ -322,15 +336,19 @@ export function SessionProvider({
   }, [storageTimeoutMs]);
 
   /** Opens the session with the code of `opened`: this tab writes with that code only. */
-  const open = useCallback((material: CryptoKey, opened: CodeVerifier) => {
-    key.current = material;
-    openVault(material);
-    codeOpened(opened);
-    holdNothing.current = false;
-    setExited(false);
-    setCodeRefused(false);
-    setStatus('unlocked');
-  }, []);
+  const open = useCallback(
+    (material: CryptoKey, opened: CodeVerifier) => {
+      key.current = material;
+      openVault(material);
+      codeOpened(opened);
+      knowVerifier(opened);
+      holdNothing.current = false;
+      setExited(false);
+      setCodeRefused(false);
+      setStatus('unlocked');
+    },
+    [knowVerifier],
+  );
 
   /** A new epoch: what a profile left on an entry and the danger signs ticked are no longer read. */
   const renewEpoch = useCallback(() => {
@@ -375,7 +393,7 @@ export function SessionProvider({
     try {
       const stored = await withTimeout(getStoredVerifier(), storageTimeoutMs);
       if (stored) {
-        verifier.current = stored;
+        knowVerifier(stored);
         setCodeUnavailable(false);
       }
       return stored ?? null;
@@ -383,7 +401,7 @@ export function SessionProvider({
       console.warn('Code still not read on this device', failure);
       return null;
     }
-  }, [storageTimeoutMs]);
+  }, [storageTimeoutMs, knowVerifier]);
 
   /**
    * Claims the try in storage, shared by every tab, then tells the other tabs
@@ -446,22 +464,28 @@ export function SessionProvider({
           return reopened === null ? 'wrong' : attempt(now, reopened, false);
         };
         if (!opened.renew && opened.wrappingKey !== null) {
+          // A code kept without its length gets it now (SCRUM-56), with the sweep.
+          const length = lengthOf(stored) === null && isCode(code) ? code.length : undefined;
           try {
-            await sealData({ current });
+            await sealData(length === undefined ? { current } : { current, codeLength: length });
           } catch (failure) {
             // Never open with a verifier storage no longer holds.
             if (failure instanceof NoCodeError) {
               return again ? reopen(await readVerifierAgain()) : null;
             }
-            // Only a sweep of records nobody reads: the next unlock does it.
+            // Only a sweep of records nobody reads, and a length: the next unlock does it.
             console.warn('Records in clear not swept on this device yet', failure);
+            return { verifier: stored, wrappingKey: opened.wrappingKey };
           }
-          return { verifier: stored, wrappingKey: opened.wrappingKey };
+          return {
+            verifier: length === undefined ? stored : { ...stored, length },
+            wrappingKey: opened.wrappingKey,
+          };
         }
         const next = await createCodeKeys(code);
         try {
           await sealData({ current, next });
-          verifier.current = next.verifier;
+          knowVerifier(next.verifier);
           // The other tabs hold the verifier made again: they lock and ask for the code.
           tabs.current?.announceCode();
           return next;
@@ -485,7 +509,7 @@ export function SessionProvider({
       };
       return attempt(first, firstOpened, true);
     },
-    [readVerifierAgain, sealData],
+    [readVerifierAgain, sealData, knowVerifier],
   );
 
   const unlock = useCallback(
@@ -568,7 +592,7 @@ export function SessionProvider({
     key.current = null;
     closeVault();
     setLockSoon(false);
-    verifier.current = null;
+    knowVerifier(null);
     codeOpened(null);
     failures.current = NO_LOCKOUT;
     setLockout(NO_LOCKOUT);
@@ -577,7 +601,7 @@ export function SessionProvider({
     renewEpoch();
     forgetMemory();
     setStatus('new');
-  }, [forgetMemory, renewEpoch]);
+  }, [forgetMemory, renewEpoch, knowVerifier]);
 
   /**
    * The code as stored now, which another tab may have erased or made: read
@@ -606,8 +630,12 @@ export function SessionProvider({
       navigate('/', { replace: true });
       return;
     }
-    if (known !== null && codeFingerprint(known) === codeFingerprint(stored)) return;
-    verifier.current = stored;
+    if (known !== null && codeFingerprint(known) === codeFingerprint(stored)) {
+      // The same code; another tab may have kept its length meanwhile (SCRUM-56).
+      if (lengthOf(known) !== lengthOf(stored)) knowVerifier(stored);
+      return;
+    }
+    knowVerifier(stored);
     closings.current += 1;
     key.current = null;
     closeVault();
@@ -627,7 +655,7 @@ export function SessionProvider({
     } catch {
       void setSettings({ onboarded: true }, { store: false });
     }
-  }, [forgetAll, forgetAtLock, renewEpoch, setSettings, storageTimeoutMs]);
+  }, [forgetAll, forgetAtLock, renewEpoch, setSettings, storageTimeoutMs, knowVerifier]);
 
   /** A code made here was refused: this tab asks for the stored one, the welcome over. */
   const refuseCode = useCallback(async (): Promise<CodeMade> => {
@@ -667,7 +695,7 @@ export function SessionProvider({
         if (stored === undefined) return 'unsaved';
         if (codeFingerprint(stored) !== codeFingerprint(made)) return refuseCode();
       }
-      verifier.current = made;
+      knowVerifier(made);
       keepLockout(NO_LOCKOUT);
       setCodeUnavailable(false);
       tabs.current?.announceCode();
@@ -679,7 +707,7 @@ export function SessionProvider({
       open(wrappingKey, made);
       return 'made';
     },
-    [keepLockout, open, refuseCode, storageTimeoutMs],
+    [keepLockout, open, refuseCode, storageTimeoutMs, knowVerifier],
   );
   const forgetCode = useCallback(async () => {
     await withTimeout(eraseProfilesAndCode(), storageTimeoutMs);
@@ -826,6 +854,7 @@ export function SessionProvider({
       lockout,
       codeUnavailable,
       codeRefused,
+      codeLength,
       epoch,
       unlock,
       createCode,
@@ -848,6 +877,7 @@ export function SessionProvider({
       lockout,
       codeUnavailable,
       codeRefused,
+      codeLength,
       epoch,
       unlock,
       createCode,

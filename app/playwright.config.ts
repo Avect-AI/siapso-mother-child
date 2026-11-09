@@ -6,7 +6,9 @@ export default defineConfig({
   forbidOnly: !!process.env['CI'],
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
   retries: process.env['CI'] ? 1 : 0,
-  use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
+  // A phone set to French, as most of the app's users have: the welcome takes
+  // its language from the phone (SCRUM-56); English is one tap on it.
+  use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure', locale: 'fr-FR' },
   // The tests run on a demo build in app/dist-demo (Vite mode demo: it
   // accepts the unsigned pack of `pnpm knowledge:build`, docs/pack-signing.md),
   // never on a release.

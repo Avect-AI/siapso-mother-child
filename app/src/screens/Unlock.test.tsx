@@ -3,7 +3,7 @@ import type { Pack } from '@siapso/engine';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openAppDb, storeLockout } from '../data/db.js';
+import { getStoredLockout, getStoredVerifier, openAppDb, storeLockout } from '../data/db.js';
 import { recordHistory } from '../data/history.js';
 import { saveProfile } from '../data/profiles.js';
 import { saveContacts } from '../data/referral.js';
@@ -16,7 +16,7 @@ import { failWrites } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode, TEST_CODE } from '../test/render-app.js';
 import { probeSession } from '../test/session-probe.js';
-import { legacyVerifier, verifierOf } from '../test/verifier.js';
+import { legacyVerifier, verifierOf, withoutLength } from '../test/verifier.js';
 import { SESSION_CHANNEL } from '../state/tab-sync.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
@@ -33,6 +33,8 @@ beforeAll(async () => {
 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+/** The heading of Home in woman mode, a no-break space before "?". */
+const HOME = 'Un médicament ou un remède ?';
 const accompanied: Settings = { lang: 'fr', mode: 'accompanied', onboarded: true };
 
 afterEach(() => {
@@ -217,27 +219,97 @@ describe('Unlock', () => {
     expect(erase).toHaveFocus();
     expect(screen.getByLabelText('Code')).toHaveValue('');
 
-    for (const digit of ['2', '4', '6', '9']) {
+    for (const digit of ['2', '4', '9']) {
       await user.click(within(keypad).getByRole('button', { name: digit }));
     }
-    expect(screen.getByLabelText('Code')).toHaveValue('2469');
+    expect(screen.getByLabelText('Code')).toHaveValue('249');
     // A screen reader hears how many digits, never which.
     const counts = [...document.querySelectorAll('[aria-live]')].map(
       (region) => region.textContent,
     );
-    expect(counts).toContain('4 chiffres');
+    expect(counts).toContain('3 chiffres');
     expect(counts.join(' ')).not.toMatch(/\d{2,}/);
     expect(erase).not.toHaveAttribute('aria-disabled');
     await user.click(erase);
-    await user.click(within(keypad).getByRole('button', { name: '8' }));
-    expect(screen.getByLabelText('Code')).toHaveValue(TEST_CODE);
+    expect(screen.getByLabelText('Code')).toHaveValue('24');
     // The keys never take the field's place: the phone's keyboard stays closed.
     expect(screen.getByLabelText('Code')).not.toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Ouvrir' }));
+    // The last digit of the code opens it (its length is kept with it): no "Ouvrir".
+    await user.click(within(keypad).getByRole('button', { name: '6' }));
+    await user.click(within(keypad).getByRole('button', { name: '8' }));
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Un médicament ou un remède\u00a0?' }),
     ).toBeVisible();
+  });
+
+  it('tries the code at its last digit, "Ouvrir" kept on screen for a keyboard or a screen reader', async () => {
+    const user = userEvent.setup();
+    await renderApp({ settings: woman, locked: true });
+    const field = await screen.findByLabelText('Code');
+    expect(screen.getByRole('button', { name: 'Ouvrir' })).toBeVisible();
+
+    await user.type(field, TEST_CODE.slice(0, 3));
+    // Nothing tried before the last digit.
+    expect(screen.queryByText('Ouverture en cours.')).toBeNull();
+    await user.type(field, TEST_CODE.slice(3));
+
+    expect(await screen.findByRole('heading', { level: 1, name: HOME })).toBeVisible();
+    expect(await getStoredLockout()).toEqual({ failures: 0, lockedUntil: null });
+  });
+
+  it('tries a wrong code at its last digit and counts it, as every wrong code', async () => {
+    const user = userEvent.setup();
+    await renderApp({ settings: woman, locked: true });
+    const field = await screen.findByLabelText('Code');
+
+    await user.type(field, '1111');
+
+    await waitFor(
+      () => {
+        expect(field).toHaveAccessibleDescription(
+          "Ce n'est pas le bon code. Encore 4 essais avant une attente.",
+        );
+      },
+      { timeout: 10_000 },
+    );
+    expect(field).toHaveValue('');
+    expect(await getStoredLockout()).toEqual({ failures: 1, lockedUntil: null });
+  });
+
+  it('tries nothing during a wait after wrong codes', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 10, 5, 10, 0, 0));
+    const wait = { failures: 5, lockedUntil: Date.now() + 30_000 };
+    await storeLockout(wait);
+    const user = userEvent.setup();
+    await renderApp({ settings: woman, locked: true });
+
+    await user.type(await screen.findByLabelText('Code'), TEST_CODE);
+
+    expect(screen.queryByText('Ouverture en cours.')).toBeNull();
+    expect(screen.getByLabelText('Code')).toHaveAccessibleDescription(
+      "Trop d'essais. Attendez 30 s, puis essayez encore.",
+    );
+    expect(await getStoredLockout()).toEqual(wait);
+  });
+
+  it('keeps "Ouvrir" for a code kept without its length, and keeps the length once it opens', async () => {
+    const before = withoutLength(await verifierOf(TEST_CODE));
+    const user = userEvent.setup();
+    await renderApp({ settings: woman, locked: true, verifier: before });
+    const field = await screen.findByLabelText('Code');
+
+    await user.type(field, TEST_CODE);
+    expect(screen.queryByText('Ouverture en cours.')).toBeNull();
+    expect(field).toHaveValue(TEST_CODE);
+    await user.click(screen.getByRole('button', { name: 'Ouvrir' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: HOME })).toBeVisible();
+    // The same code, its length now kept: the next time opens at the 4th digit.
+    await waitFor(async () => {
+      expect(await getStoredVerifier()).toEqual({ ...before, length: 4 });
+    });
   });
 
   it('counts down the wait after five wrong codes, kept across a reload, and Ouvrir waits', async () => {

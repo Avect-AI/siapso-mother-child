@@ -4,7 +4,7 @@
 // everything at once. The codes here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, expectStart, makeCode, onboard, unlock } from './support.js';
+import { CODE, expectStart, expectWelcome, makeCode, onboard, unlock } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -60,11 +60,12 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
   page,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Français' }).click();
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
 
-  // Typed twice: two different codes start again.
-  await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+  // Typed twice, each typing moving on at its 4th digit: two different codes start again.
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Choisissez un code de 4 chiffres' }),
+  ).toBeVisible();
   const field = page.getByLabel('Code', { exact: true });
   await expect(field).toHaveAttribute('inputmode', 'numeric');
   // A password field (never read out in clear), a one-time code with no name:
@@ -73,13 +74,9 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
   await expect(field).toHaveAttribute('autocomplete', 'one-time-code');
   await expect(field).not.toHaveAttribute('name');
   await field.fill('1357');
-  await page.getByRole('button', { name: 'Continuer' }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Tapez le code une deuxième fois' }),
-  ).toBeVisible();
+  await expect(page.getByLabel('Tapez-le encore', { exact: true })).toBeFocused();
   await expectNoSeriousViolation(page);
-  await page.getByLabel('Le même code').fill('1358');
-  await page.getByRole('button', { name: 'Enregistrer le code' }).click();
+  await page.getByLabel('Tapez-le encore', { exact: true }).fill('1358');
   await expect(page.getByLabel('Code', { exact: true })).toHaveAccessibleDescription(
     /Les deux codes ne sont pas les mêmes/,
   );
@@ -88,13 +85,15 @@ test('woman mode: the code is made at the welcome, asked after a reload, wrong t
   await expect(page.getByRole('banner').getByRole('button', { name: 'Quitter' })).toBeVisible();
 
   // Only the verifier is kept: the HKDF check of PBKDF2 at 600 000
-  // iterations (version 2), never the code nor the key of the data.
+  // iterations (version 2), never the code nor the key of the data; and the
+  // code's length, in clear, so the code screen opens at it (SCRUM-56).
   const verifier = await stored(page, 'code');
   expect(verifier).toEqual({
     salt: expect.stringMatching(/^[\w-]{22}$/) as unknown,
     hash: expect.stringMatching(/^[\w-]{43}$/) as unknown,
     iterations: 600_000,
     version: 2,
+    length: 4,
   });
 
   // Her profile, then a reload: locked.
@@ -294,8 +293,7 @@ test('a forgotten code erases the profiles after EFFACER and a last yes, then th
   await page.getByRole('button', { name: 'Effacer les profils' }).click();
 
   // The welcome again, in the language kept; then nothing of her is left.
-  await expect(page.getByRole('button', { name: 'Français' })).toBeVisible();
-  await page.getByRole('button', { name: 'Français' }).click();
+  await expectWelcome(page);
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
   await page.getByRole('link', { name: 'Mon profil' }).click();

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 import { describe, expect, it, vi } from 'vitest';
-import { codeKeysOf, pbkdf2Of, verifierOf, weakVerifier } from '../test/verifier.js';
+import { codeKeysOf, pbkdf2Of, verifierOf, weakVerifier, withoutLength } from '../test/verifier.js';
 import {
   AUTO_LOCK_MS,
   checkCode,
+  codeLength,
   CODE_MAX,
   CODE_MIN,
   constantTimeEqual,
@@ -24,6 +25,8 @@ import {
   PBKDF2_ITERATIONS,
   remainingLockMs,
   toBase64Url,
+  verifierFields,
+  type CodeVerifier,
   type LockoutState,
 } from './code.js';
 import { seal, unseal } from './crypto.js';
@@ -93,6 +96,36 @@ describe('verifier', () => {
     expect(verifier.salt).toMatch(/^[\w-]+$/);
     expect(verifier.hash).toMatch(/^[\w-]+$/);
     expect(await checkCode('2468', verifier)).toBe(true);
+  });
+
+  it("keeps the code's length beside its verifier, in clear, so the code screen opens at it", async () => {
+    const four = await verifierOf('2468');
+    const six = await verifierOf('135790');
+
+    expect(four.length).toBe(4);
+    expect(six.length).toBe(6);
+    expect(codeLength(four)).toBe(4);
+    expect(codeLength(six)).toBe(6);
+    expect(verifierFields(six)).toEqual({
+      salt: six.salt,
+      hash: six.hash,
+      iterations: PBKDF2_ITERATIONS,
+      version: 2,
+      length: 6,
+    });
+  });
+
+  it('reads no length from a verifier of before (none) or one it is not (left out)', async () => {
+    const before = withoutLength(await verifierOf('2468'));
+    expect(codeLength(before)).toBeNull();
+    expect(verifierFields(before)).not.toHaveProperty('length');
+    for (const length of [3, 7, 4.5, '4', null]) {
+      const odd = { ...before, length } as unknown as CodeVerifier;
+      // Still the verifier of her code: the length is left out, never the code.
+      expect(isCodeVerifier(odd), String(length)).toBe(true);
+      expect(codeLength(odd), String(length)).toBeNull();
+      expect(verifierFields(odd), String(length)).not.toHaveProperty('length');
+    }
   });
 
   it('never holds the code: a new salt each time, so one code gives two verifiers', async () => {
