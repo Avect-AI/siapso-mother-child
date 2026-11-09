@@ -20,6 +20,15 @@ Thank you for helping. This project handles health information for pregnant and 
 6. **Open a pull request** whose title is a Conventional Commits subject, and fill in the template. One pull request delivers one feature or fix.
 7. **Merge**: maintainers squash-merge once every check is green, with `sh tools/github/merge-pr.sh <number>`. The script waits until the four required checks (Text hygiene, Developer Certificate of Origin, Build and test, End-to-end) are reported and refuses to merge unless each of them passed: a skipped required check blocks the merge. The only exception is a Dependabot pull request, whose Developer Certificate of Origin check is skipped by design; the three other checks must still pass. The script also refuses a pull request whose branch is behind `main`, before reading the checks and again just before merging, since its checks did not run with the latest `main`. To update the branch, run `git fetch origin`, then `git merge --signoff origin/main` on the branch, then a plain `git push` (never a force-push). Wait until the checks of the new commit pass, then run the script again. Never push directly to `main`.
 
+   **While GitHub Actions is unavailable** (it refuses to start jobs on this account, and the team does not pay for it for now), the checks run on a maintainer's machine, then the merge goes as above:
+
+   ```sh
+   sh tools/ci/local-ci.sh <number>        # add --skip-docker without Docker
+   sh tools/github/merge-pr.sh <number>
+   ```
+
+   `tools/ci/local-ci.sh` runs the steps of `.github/workflows/ci.yml` and `hygiene.yml` at the head commit of the pull request, each job in a fresh worktree, and then posts one commit status per job, named like the job, which `merge-pr.sh` counts like a check of GitHub Actions. Each status says it comes from a local run: "Local run on <machine>, <UTC time> (GitHub Actions unavailable)". The script refuses a pull request behind `main` (the rule above), and never posts success for a job that did not run fully. GitHub still attaches a failed check to each job it refuses to start, which `merge-pr.sh` also counts: see [docs/testing.md](docs/testing.md#while-github-actions-is-unavailable) for how to clear them, the requirements and the differences with GitHub Actions. This is temporary: go back to GitHub Actions as soon as it can start jobs again, or when the repository becomes public (a team decision).
+
 Example:
 
 ```

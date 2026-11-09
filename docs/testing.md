@@ -19,6 +19,53 @@ In CI, the End-to-end job runs in the official Playwright image (`mcr.microsoft.
 
 The offline test loads the app once, waits until Home says "Prêt sans Internet" (the service worker controls the page: its first install claims it), switches the browser context offline and reloads. That is close to a phone in airplane mode, but not the same: test on a real phone before a release. The tabs test opens two pages in one browser context, as two tabs of one phone: "Quitter" in one locks the other, and the forgotten-code erase in one sends the other to the welcome.
 
+## While GitHub Actions is unavailable
+
+GitHub Actions refuses to start jobs on this account for now ("recent account payments have failed or your spending limit needs to be increased"), and the team does not pay for it at the moment. Until it can start jobs again, or until the repository becomes public (a team decision), a maintainer runs the four required checks on their own machine, then merges with `merge-pr.sh` as usual (`CONTRIBUTING.md`, step 7):
+
+```sh
+sh tools/ci/local-ci.sh <number>                 # every step, the server image included
+sh tools/ci/local-ci.sh <number> --skip-docker   # without Docker: the server image is not built
+sh tools/ci/local-ci.sh <number> --workers 1     # fewer browsers at once (default 2)
+sh tools/ci/local-ci.sh <number> --test-timeout 60000   # longer time limits on a slow or loaded machine
+sh tools/ci/local-ci.sh <number> --only end-to-end   # one job again, once the cause of its failure is known
+sh tools/github/merge-pr.sh <number>
+```
+
+`--only` takes job names separated by commas: `text-hygiene`, `developer-certificate-of-origin`, `build-and-test`, `end-to-end`. The other jobs neither run nor get a status, so their statuses of an earlier run on the same commit stay.
+
+What `tools/ci/local-ci.sh` does:
+
+- It refuses, posting nothing, a pull request that is not open, that is behind `main` (the rule of `merge-pr.sh`), whose head moves while it is read, or whose workflows have a step it does not know (read the change of that pull request to the script, then run its version). It also refuses to start while something answers on `http://localhost:4173`, where the end-to-end tests serve the app (with `CI` set, Playwright never reuses a server already there): stop that server, or leave the job out with `--only`. A server that takes the port while the other jobs run leaves the End-to-end job not run, without a status.
+- It runs the jobs one after the other (Text hygiene, Developer Certificate of Origin, Build and test, End-to-end), each in a fresh detached worktree at the exact head commit, in a temporary folder outside OneDrive (`$TMPDIR`, or `LOCAL_CI_TMPDIR`), removed at the end, also on failure. The steps are the steps of `ci.yml` and `hygiene.yml`, in the same order, with `CI=true`; a job stops at its first failed step, as on GitHub. `sh tools/ci/local-ci.sh --check-workflows` and the test of the script (`tools/ci/local-ci.test.sh`, run by the Build and test job) fail when either workflow gains, loses or renames a step.
+- After each job, and only then, it posts a commit status on the head commit, named like the job: success when every step passed, failure naming the first failed step. The description says where and when it ran: "Local run on <machine>, <UTC time> (GitHub Actions unavailable)". With `--skip-docker`, the server image step is the only one not run, the description adds "server image build skipped (--skip-docker)", and the status is success only if every other step passed. For a Dependabot pull request, the Developer Certificate of Origin job is skipped as in `hygiene.yml` and no status is posted for it (`merge-pr.sh` then reports it missing).
+- It prints the end of the output of a failed step, a summary (result and duration of each job), the failed checks GitHub Actions left on the commit, if any (see below), and the folder of the logs, one per job (by default `$TMPDIR/siapso-local-ci-logs/pr-<n>-<commit>-<time>/`), with the Playwright report when the end-to-end tests fail.
+
+It needs `gh` signed in with the right to write commit statuses, git, Python 3, `shellcheck`, curl, the pnpm version `package.json` pins, any Node (when it is not the version `.nvmrc` names, that version is downloaded from nodejs.org into the cache, `$TMPDIR/siapso-local-ci-cache`, and checked against the SHA-256 list of the release), the Playwright Chromium (`pnpm --filter @siapso/app exec playwright install chromium`), and Docker unless `--skip-docker`. Run one at a time: the end-to-end tests use port 4173. The script that runs is the maintainer's copy, not the one of the pull request.
+
+The first run installs the pinned `reuse` with pip into the cache. Behind an antivirus or a proxy that inspects TLS, pip may fail with `CERTIFICATE_VERIFY_FAILED`: give it the root certificates the system trusts with `PIP_CERT`, a PEM file. On Windows, PowerShell writes them with:
+
+```powershell
+@(Get-ChildItem Cert:\LocalMachine\Root) + @(Get-ChildItem Cert:\CurrentUser\Root) | ForEach-Object { "-----BEGIN CERTIFICATE-----`n" + [Convert]::ToBase64String($_.RawData, 'InsertLineBreaks') + "`n-----END CERTIFICATE-----" } | Set-Content -Encoding ascii "$env:LOCALAPPDATA\system-roots.pem"
+```
+
+then, in Git Bash, `export PIP_CERT="$LOCALAPPDATA\\system-roots.pem"` before the script. Once `reuse` is in the cache, pip is not needed again until `tools/reuse/requirements.txt` changes.
+
+Differences with GitHub Actions: no Ubuntu runner and no Playwright image, so the tests run on the maintainer's system, with the browsers Playwright installed there (the image check reads that folder instead); the fetch of `origin/main` is not shallow, since the worktree shares the maintainer's clone; on Windows, REUSE lint runs on a `git archive` export of the commit, away from long `node_modules` paths; Vitest runs at most 2 workers (one per core, its default, made the 5 and 10 second limits of the unit tests fail on a machine short of memory; `VITEST_MAX_WORKERS` changes it); the Playwright report of a failed run is kept with the logs instead of being uploaded.
+
+Longer time limits, a local accommodation for a slow or loaded machine: `pnpm test:coverage` gets `--testTimeout=30000 --hookTimeout=60000` (Vitest's own limits are 5 and 10 seconds) and `pnpm e2e` gets `--timeout=60000` (Playwright's own is 30 seconds). A limit only measures speed: a test that passes with it asserts exactly what it asserts on GitHub Actions. `--test-timeout <ms>` changes the unit test limit, and the hooks and the end-to-end tests get twice it. It is at least 30000: a limit on the command line replaces the one a configuration sets, and `server/vitest.config.ts` sets 30 seconds for a test and 60 for a hook (the test of the script fails if a configuration sets a longer one). A test that sets its own limit in its code keeps it, as the merge guard tests of `app/src/result-wording.test.ts` keep their 60 seconds.
+
+GitHub still records each job it refuses to start as a failed check of the commit, under the same name as the local status (its annotation says "The job was not started because recent account payments have failed..."), and `merge-pr.sh` refuses a pull request with a failed check. While Actions is unavailable, a maintainer therefore disables the two workflows, so that new commits only get the local statuses:
+
+```sh
+gh workflow disable CI
+gh workflow disable hygiene
+```
+
+A commit pushed before that keeps its refused checks: push a new commit to the pull request (merging `main` makes one when the branch is behind), then run `local-ci.sh` on it. `local-ci.sh` names the failed checks of GitHub Actions it finds on the commit at the end of its run.
+
+Going back to GitHub Actions: enable the workflows again (`gh workflow enable CI`, `gh workflow enable hygiene`), push a commit or re-run the checks of the open pull requests, and stop using `local-ci.sh`. Its statuses stay on the commits it checked, each saying it was a local run.
+
 ## Airplane mode on a real phone
 
 The service worker only runs in a secure context: `https://` or `localhost`. A phone that opens the laptop by its network address (`http://192.168.x.x:4173`) gets no service worker, so the app cannot work offline that way. Use one of the two options below.
