@@ -10,12 +10,19 @@
 // pack and the speech worker ship (licenses/, NOTICE.md), and records them
 // in the pack's voice-pack.json. A deployment serves the same folder.
 // Nothing here is committed: app/public/voice/ is git-ignored.
+//
+// ONNX Runtime's LICENSE and ThirdPartyNotices.txt come from its own
+// repository at the commit the installed onnxruntime-web was built from (its
+// __commit.txt; another commit stops the script), checked by size and SHA-256
+// (PINNED_TEXTS). Each is read once for every pack: from licenses/ in the
+// installed pack (app/public/voice/<id>/, an earlier run) or in the converted
+// one (speech/convert/out/<id>/) when one has it, downloaded otherwise.
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile, copyFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const source = path.join(root, 'speech', 'convert', 'out');
@@ -23,6 +30,89 @@ const target = path.join(root, 'app', 'public', 'voice');
 
 /** The file names of RUNTIME_FILES in speech/src/voice-pack.ts, under runtime/<version>/. */
 const RUNTIME = ['ort-wasm-simd-threaded.asyncify.mjs', 'ort-wasm-simd-threaded.asyncify.wasm'];
+
+/**
+ * ONNX Runtime's LICENSE and ThirdPartyNotices.txt at the commit the installed
+ * onnxruntime-web was built from (its __commit.txt), each checked by size and
+ * SHA-256 (speech/LICENSES.md): the npm package carries neither file, and the
+ * WebAssembly build links third-party code whose notices are there. The
+ * prescription reading pack pins the same texts (pull request #69), since
+ * both packs serve the same build.
+ */
+export const PINNED_TEXTS = Object.fromEntries(
+  Object.entries({
+    onnxruntime: {
+      repo: 'microsoft/onnxruntime',
+      commit: '8d85527a010e294a26b274749f74294b2a32cec5',
+      file: 'LICENSE',
+      path: 'licenses/onnxruntime-web-LICENSE.txt',
+      bytes: 1073,
+      sha256: '2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c',
+    },
+    onnxruntimeNotices: {
+      repo: 'microsoft/onnxruntime',
+      commit: '8d85527a010e294a26b274749f74294b2a32cec5',
+      file: 'ThirdPartyNotices.txt',
+      path: 'licenses/onnxruntime-ThirdPartyNotices.txt',
+      bytes: 338088,
+      sha256: '143764b952fdb1a7c69ce653bfba74a7744d6a8a573bfb73e235fba356c83de3',
+    },
+  }).map(([name, text]) => [
+    name,
+    { ...text, url: `https://raw.githubusercontent.com/${text.repo}/${text.commit}/${text.file}` },
+  ]),
+);
+
+/** Refuses an onnxruntime-web built from another commit than the one its texts are pinned at. */
+export function checkOrtCommit(built) {
+  const pinned = PINNED_TEXTS.onnxruntime.commit;
+  if (built !== pinned) {
+    throw new Error(
+      `onnxruntime-web was built from ${built}, its licence texts are pinned at ${pinned} (PINNED_TEXTS in speech/scripts/install-local.mjs).`,
+    );
+  }
+}
+
+/**
+ * The bytes of a pinned text: `<dir>/<path>` when the local folder has it,
+ * else downloaded from its pinned commit with `download`; refused unless
+ * its size and SHA-256 are the pinned ones.
+ */
+export async function pinnedText(text, dir, download = fetch) {
+  let bytes;
+  const local = dir === undefined ? undefined : path.join(dir, text.path);
+  try {
+    bytes = local === undefined ? undefined : await readFile(local);
+  } catch {
+    bytes = undefined;
+  }
+  if (bytes === undefined) {
+    console.log(`downloading ${text.url}`);
+    const response = await download(text.url);
+    if (!response.ok) throw new Error(`${text.url}: HTTP ${String(response.status)}`);
+    bytes = Buffer.from(await response.arrayBuffer());
+  }
+  const hash = createHash('sha256').update(bytes).digest('hex');
+  if (bytes.length !== text.bytes || hash !== text.sha256) {
+    throw new Error(
+      `${text.repo} ${text.file} is not the pinned file (sha256 ${hash}, expected ${text.sha256})`,
+    );
+  }
+  return bytes;
+}
+
+/**
+ * The pinned texts, read once for every pack: each from the first of `dirs`
+ * that has it, else downloaded. Returns their paths in the pack and bytes.
+ */
+export async function pinnedTexts(dirs, download = fetch, texts = Object.values(PINNED_TEXTS)) {
+  const found = [];
+  for (const text of texts) {
+    const dir = dirs.find((candidate) => existsSync(path.join(candidate, text.path)));
+    found.push({ path: text.path, bytes: await pinnedText(text, dir, download) });
+  }
+  return found;
+}
 
 /** ORT_WEB_VERSION of speech/src/voice-pack.ts: the runtime the app's worker expects. */
 async function expectedOrtVersion() {
@@ -91,27 +181,38 @@ async function dependencies() {
   };
 }
 
-/** Writes licenses/ and NOTICE.md into the pack folder `to`; returns their paths. */
-async function writeLicences(to, manifest, deps) {
-  const dir = path.join(to, 'licenses');
-  await mkdir(dir, { recursive: true });
+/**
+ * Writes licenses/ and NOTICE.md into the pack folder `to`; returns their
+ * paths. `pinned`: the texts of PINNED_TEXTS, as pinnedTexts reads them.
+ */
+async function writeLicences(to, manifest, deps, pinned) {
+  await mkdir(path.join(to, 'licenses'), { recursive: true });
+  const pinnedBytes = (text) => {
+    const found = pinned.find((candidate) => candidate.path === text.path);
+    if (found === undefined) throw new Error(`${text.path} was not read (PINNED_TEXTS)`);
+    return found.bytes;
+  };
+  const { onnxruntime, onnxruntimeNotices } = PINNED_TEXTS;
   const texts = [
     [
-      'transformers.js-LICENSE.txt',
+      'licenses/transformers.js-LICENSE.txt',
       await readFile(path.join(deps.transformers.dir, 'LICENSE'), 'utf8'),
     ],
     [
-      'huggingface-tokenizers-LICENSE.txt',
+      'licenses/huggingface-tokenizers-LICENSE.txt',
       await readFile(path.join(deps.tokenizers.dir, 'LICENSE'), 'utf8'),
     ],
-    ['huggingface-jinja-LICENSE.txt', await readFile(path.join(deps.jinja.dir, 'LICENSE'), 'utf8')],
-    // The npm package carries no licence file; its package.json says MIT, as
-    // github.com/microsoft/onnxruntime/blob/main/LICENSE.
-    ['onnxruntime-web-LICENSE.txt', mitLicence('Microsoft Corporation')],
+    [
+      'licenses/huggingface-jinja-LICENSE.txt',
+      await readFile(path.join(deps.jinja.dir, 'LICENSE'), 'utf8'),
+    ],
+    // The npm package carries neither file: both come from the repository.
+    [onnxruntime.path, pinnedBytes(onnxruntime)],
+    [onnxruntimeNotices.path, pinnedBytes(onnxruntimeNotices)],
     // github.com/openai/whisper/blob/main/LICENSE.
-    ['openai-whisper-LICENSE.txt', mitLicence('2022 OpenAI')],
+    ['licenses/openai-whisper-LICENSE.txt', mitLicence('2022 OpenAI')],
   ];
-  for (const [name, text] of texts) await writeFile(path.join(dir, name), text);
+  for (const [relative, text] of texts) await writeFile(path.join(to, relative), text);
 
   const source = manifest.source;
   const base = source.base
@@ -121,19 +222,25 @@ async function writeLicences(to, manifest, deps) {
 
 - Model: \`${source.repo}\` (revision \`${source.revision}\`), ${source.licence}${source.base ? ' (licence declared on its Hugging Face card)' : ': `licenses/openai-whisper-LICENSE.txt`'}, converted to ONNX and quantised to 8 bits by SIAPSO (\`speech/convert/convert.py\`).${base}
 - ${manifest.licenceNote}
-- ONNX Runtime Web ${deps.ort.version} (\`runtime/\`), ${deps.ort.licence}, Copyright Microsoft Corporation: \`licenses/onnxruntime-web-LICENSE.txt\`.
+- ONNX Runtime Web ${deps.ort.version} (\`runtime/\`), ${deps.ort.licence}, Copyright (c) Microsoft Corporation: \`${onnxruntime.path}\`, the \`${onnxruntime.file}\` of \`${onnxruntime.repo}\` at commit \`${onnxruntime.commit}\`, which the package was built from. Its WebAssembly links third-party code: their notices are \`${onnxruntimeNotices.path}\` (\`${onnxruntimeNotices.file}\` at the same commit).
 - The speech worker of the app bundles Transformers.js ${deps.transformers.version} (${deps.transformers.licence}, Copyright Hugging Face): \`licenses/transformers.js-LICENSE.txt\`; @huggingface/tokenizers ${deps.tokenizers.version} (${deps.tokenizers.licence}): \`licenses/huggingface-tokenizers-LICENSE.txt\`; @huggingface/jinja ${deps.jinja.version} (${deps.jinja.licence}): \`licenses/huggingface-jinja-LICENSE.txt\`.
 `;
   await writeFile(path.join(to, 'NOTICE.md'), notice);
-  return ['NOTICE.md', ...texts.map(([name]) => `licenses/${name}`)];
+  return ['NOTICE.md', ...texts.map(([relative]) => relative)];
 }
 
-async function install(id, deps) {
-  const from = path.join(source, id);
-  const to = path.join(target, id);
+/**
+ * Installs the converted pack `<dirs.source>/<id>/` into `<dirs.target>/<id>/`:
+ * the runtime files of `deps.ort`, the licence texts (`pinned`, from
+ * pinnedTexts) and voice-pack.json with every file's size and SHA-256.
+ */
+export async function install(id, deps, pinned, dirs = { source, target }) {
+  const log = dirs.log ?? console.log;
+  const from = path.join(dirs.source, id);
+  const to = path.join(dirs.target, id);
   const manifest = JSON.parse(await readFile(path.join(from, 'voice-pack.json'), 'utf8'));
   await rm(to, { recursive: true, force: true });
-  await mkdir(target, { recursive: true });
+  await mkdir(dirs.target, { recursive: true });
   await cp(from, to, { recursive: true });
   await mkdir(path.join(to, 'runtime'), { recursive: true });
 
@@ -151,7 +258,7 @@ async function install(id, deps) {
     await copyFile(path.join(deps.ort.dir, 'dist', name), path.join(to, relative));
     added.push(relative);
   }
-  added.push(...(await writeLicences(to, manifest, deps)));
+  added.push(...(await writeLicences(to, manifest, deps, pinned)));
   for (const relative of added) {
     const file = path.join(to, relative);
     manifest.files.push({
@@ -164,31 +271,31 @@ async function install(id, deps) {
   manifest.totalBytes = manifest.files.reduce((sum, file) => sum + file.bytes, 0);
   await writeFile(path.join(to, 'voice-pack.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 
-  console.log(
+  log(
     `${id}: ${String(manifest.totalBytes)} bytes (${(manifest.totalBytes / 1e6).toFixed(1)} MB) in ${to}`,
   );
-  for (const file of manifest.files)
-    console.log(`  ${String(file.bytes).padStart(12)}  ${file.path}`);
+  for (const file of manifest.files) log(`  ${String(file.bytes).padStart(12)}  ${file.path}`);
 }
 
-const requested = process.argv.slice(2);
-let ids = requested;
-if (ids.length === 0) {
-  const entries = await readdir(source, { withFileTypes: true }).catch(() => []);
-  ids = [];
-  for (const entry of entries) {
-    if (
-      entry.isDirectory() &&
-      (await stat(path.join(source, entry.name, 'voice-pack.json')).catch(() => null))
-    ) {
-      ids.push(entry.name);
+async function main(requested) {
+  let ids = requested;
+  if (ids.length === 0) {
+    const entries = await readdir(source, { withFileTypes: true }).catch(() => []);
+    ids = [];
+    for (const entry of entries) {
+      if (
+        entry.isDirectory() &&
+        (await stat(path.join(source, entry.name, 'voice-pack.json')).catch(() => null))
+      ) {
+        ids.push(entry.name);
+      }
     }
   }
-}
-if (ids.length === 0) {
-  console.error(`No voice pack in ${source}: run pnpm voice:convert first.`);
-  process.exitCode = 1;
-} else {
+  if (ids.length === 0) {
+    console.error(`No voice pack in ${source}: run pnpm voice:convert first.`);
+    process.exitCode = 1;
+    return;
+  }
   const deps = await dependencies();
   const expected = await expectedOrtVersion();
   if (deps.ort.version !== expected) {
@@ -196,7 +303,19 @@ if (ids.length === 0) {
       `onnxruntime-web ${deps.ort.version} is installed, the speech worker expects ${expected} (ORT_WEB_VERSION in speech/src/voice-pack.ts).`,
     );
     process.exitCode = 1;
-  } else {
-    for (const id of ids) await install(id, deps);
+    return;
   }
+  checkOrtCommit((await readFile(path.join(deps.ort.dir, '__commit.txt'), 'utf8')).trim());
+  // An earlier install first, then the converted pack: a text checked once is not downloaded again.
+  const pinned = await pinnedTexts(
+    ids.flatMap((id) => [path.join(target, id), path.join(source, id)]),
+  );
+  for (const id of ids) await install(id, deps, pinned);
+}
+
+if (process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  });
 }

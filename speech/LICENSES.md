@@ -47,6 +47,8 @@ FLEURS `wo_sn` and `fr_fr` test splits, dataset revision `70bb2e84b976b7e960aa89
 
 Transformers.js 4.3.1 (Apache-2.0), `@huggingface/tokenizers` 0.2.0 (Apache-2.0), `@huggingface/jinja` 0.5.10 (MIT), ONNX Runtime Web `1.31.0-dev.20260914-8d85527a0` (MIT). Texts ship in each pack under `licenses/` and `NOTICE.md`. Details: `docs/voice.md`.
 
+The npm package of ONNX Runtime Web carries no licence file. Each pack ships, from `microsoft/onnxruntime` at `8d85527a010e294a26b274749f74294b2a32cec5` (the commit the package names in its `__commit.txt`), its `LICENSE` (1,073 bytes, SHA-256 `2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c`, as `licenses/onnxruntime-web-LICENSE.txt`) and its `ThirdPartyNotices.txt` (338,088 bytes, SHA-256 `143764b952fdb1a7c69ce653bfba74a7744d6a8a573bfb73e235fba356c83de3`, as `licenses/onnxruntime-ThirdPartyNotices.txt`): the notices of the third-party code the WebAssembly links. The prescription reading pack pins the same texts for the same build (pull request #69). `pnpm voice:install-local` checks both by size and SHA-256 and refuses an `onnxruntime-web` built from another commit. Read on 2026-11-06 at https://raw.githubusercontent.com/microsoft/onnxruntime/8d85527a010e294a26b274749f74294b2a32cec5/LICENSE and https://raw.githubusercontent.com/microsoft/onnxruntime/8d85527a010e294a26b274749f74294b2a32cec5/ThirdPartyNotices.txt.
+
 ## Links that failed
 
 None of the URLs above failed when opened on 2026-11-05. Note: https://huggingface.co/datasets/google/fleurs rendered without its metadata in the page fetch (content truncated), so the licence line was read from the raw card https://huggingface.co/datasets/google/fleurs/raw/main/README.md.

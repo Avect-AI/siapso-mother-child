@@ -633,8 +633,9 @@ const CLAUSE_START = '(?:^|[.:;!?,] )';
  * colon or a comma ("tell the midwife", "if she bleeds, go to the health
  * post", "do not give", "watch the baby"), "never give", and "should",
  * "please" or "make sure" anywhere; "Never studied" and "Keep" at the start of
- * a sentence state a fact. What a label or a test says is not one: "la notice
- * ne la recommande pas", "only a test can tell".
+ * a sentence state a fact, and so does a quoted English title
+ * (`EN_QUOTATION`). What a label or a test says is not one: "la notice ne la
+ * recommande pas", "only a test can tell".
  */
 const INSTRUCTION: Readonly<Record<Lang, RegExp>> = {
   fr: new RegExp(
@@ -659,6 +660,21 @@ const INSTRUCTION: Readonly<Record<Lang, RegExp>> = {
     'u',
   ),
 };
+
+/**
+ * A quotation in an English text, between straight or curly double quotes:
+ * a quoted title names a source ("Medicines in pregnancy. Never give up on the
+ * data", "Keep, watch and wait") and gives no order, so the English check
+ * reads the text without it. The French check reads quotations too: no French
+ * title has needed it, and a guillemet may quote an order.
+ */
+const EN_QUOTATION = /"[^"]*"|“[^”]*”/gu;
+
+/** The text the instruction check reads (plain text): an English one without its quotations. */
+function instructionText(written: string, lang: Lang): string {
+  const text = plain(written);
+  return lang === 'en' ? text.replace(EN_QUOTATION, '""') : text;
+}
 
 /**
  * The fields a result keeps behind "Pourquoi ?", in accompanied mode only:
@@ -706,7 +722,7 @@ function checkHiddenInstructions(content: Content): Problem[] {
       for (const lang of LANGS) {
         const written = message.data[lang][field];
         if (written === undefined) continue;
-        const found = INSTRUCTION[lang].exec(plain(written));
+        const found = INSTRUCTION[lang].exec(instructionText(written, lang));
         if (found === null) continue;
         problems.push(
           problem(
