@@ -20,7 +20,7 @@
     "@siapso/resolver": "workspace:*",
     "ajv": "8.20.0",
     "tsx": "4.23.15",
-    "vite": "8.3.4",
+    "vite": "8.3.5",
     "yaml": "2.9.1"
   }
 }
