@@ -339,6 +339,24 @@ describe('Search', () => {
     });
   });
 
+  it('moves to the other list once when two clicks come in the same task', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'kinkeliba');
+    const other = await screen.findByRole('button', { name: 'Chercher parmi les remèdes' });
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    act(() => {
+      other.click();
+      other.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ajouter un remède' }),
+    ).toBeVisible();
+    const moves = replace.mock.calls.filter(([, , url]) => String(url).endsWith('/search/plant'));
+    expect(moves).toHaveLength(1);
+  });
+
   it('keeps what was typed when coming back from the confirm screen', async () => {
     const { user, field } = await openSearch('Ajouter un remède');
     await user.type(field, 'nebeday');
@@ -425,7 +443,7 @@ describe('Search', () => {
     ).toBe(true);
   });
 
-  it('opens the confirm screen of a lookalike of the other list', async () => {
+  it('adds a lookalike of the other list found by its whole name at a tap, the name typed kept', async () => {
     const { user, field, probe } = await openSearch('Ajouter un remède');
     await user.type(field, 'cytotec');
     await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
@@ -434,16 +452,19 @@ describe('Search', () => {
     const [first] = within(lookalikes).getAllByRole('button');
     expect(first).toHaveTextContent(/^Misoprostol \(générique\)/);
     expect(first).toHaveTextContent('Médicament');
+    expect(first).toHaveTextContent('Nom sur la boîte : Cytotec');
     expect(screen.getByText("Est-ce l'un de ces médicaments ?")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Non, aucun de ces médicaments' })).toBeVisible();
+    // A brand found whole, nothing to ask: the tap on its named row adds it (SCRUM-56).
     await user.click(first as HTMLElement);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
-    expect(window.location.hash).toBe('#/confirm/product');
-    expect(sessionState()).toMatchObject({ id: 'misoprostol-generic', query: 'cytotec' });
-    expect(probe.current().items).toEqual([]);
+    expect(probe.current().items).toEqual([
+      { ref: { kind: 'product', id: 'misoprostol-generic' } },
+    ]);
+    expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('cytotec');
   });
 
   it('says the name on the box a misspelt brand was found by, in the question too', async () => {
@@ -498,5 +519,97 @@ describe('Search', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
     ).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'unrecognised', text: 'doliprane' } }]);
+  });
+});
+
+describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', () => {
+  it('adds ibuprofen found by its whole name at a tap: the check says it is added', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'ibuprofene');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent(/^Ibuprofène/);
+    });
+    // The row says the tap adds it, where a row that opens a screen has its chevron.
+    expect(candidates()[0]).toHaveAccessibleName(/Ajouter$/);
+
+    await user.click(candidates()[0] as HTMLElement);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(window.location.hash).toBe('#/check');
+    expect(probe.current().items).toHaveLength(1);
+    expect(probe.current().items[0]?.ref).toMatchObject({ kind: 'product' });
+    expect(await screen.findByText(/est ajouté à la liste\.$/)).toBeVisible();
+  });
+
+  it('adds once and goes back once when two clicks come before the screen renders again', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'ibuprofene');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveAccessibleName(/Ajouter$/);
+    });
+    const go = vi.spyOn(window.history, 'go');
+    const row = candidates()[0] as HTMLElement;
+
+    // A quick double tap: both clicks in the same task, before React renders.
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+    ).toBeVisible();
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(window.location.hash).toBe('#/check');
+    expect(probe.current().items).toHaveLength(1);
+  });
+
+  it('opens one confirm screen when two clicks on a row to confirm come in the same task', async () => {
+    const { user, field } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'doliprane');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent(/^DOLIPRANE/);
+    });
+    const length = window.history.length;
+    const row = candidates()[0] as HTMLElement;
+
+    act(() => {
+      row.click();
+      row.click();
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    // One step forward, not two: Back from the confirm screen comes back to the search.
+    expect(window.history.length).toBe(length + 1);
+  });
+
+  it('opens "Est-ce bien ce produit ?" when the daily count is to ask (doliprane)', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'doliprane');
+    await waitFor(() => {
+      expect(candidates()[0]).toHaveTextContent(/^DOLIPRANE/);
+    });
+    expect(candidates()[0]).not.toHaveAccessibleName(/Ajouter$/);
+
+    await user.click(candidates()[0] as HTMLElement);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([]);
+  });
+
+  it('never adds from Enter, which picks no row by its name: the confirm screen opens', async () => {
+    const { user, field, probe } = await openSearch('Ajouter un médicament');
+    await user.type(field, 'ibuprofene{Enter}');
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
+    ).toBeVisible();
+    expect(probe.current().items).toEqual([]);
   });
 });

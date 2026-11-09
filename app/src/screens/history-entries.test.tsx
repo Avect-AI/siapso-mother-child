@@ -2,7 +2,7 @@
 // The browser writes the state of every history entry to disk to restore a
 // session: nothing about a profile or a contact may ever go there, not even
 // for the moment a screen says it was saved or deleted.
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveProfile } from '../data/profiles.js';
@@ -99,9 +99,15 @@ describe('history entries', () => {
     await user.type(screen.getByRole('textbox', { name: 'Âge en semaines' }), '6');
     await user.click(radio(/^Né avant terme/, 'Non'));
     await user.click(screen.getByRole('checkbox', { name: 'Aucune de ces situations' }));
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer et regarder ses produits' }));
 
-    expect(await screen.findByText('Profil enregistré : Mariama.')).toBeVisible();
+    // Saved, her check opens (SCRUM-56); Back goes to the list.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    act(() => {
+      window.history.back();
+    });
     await user.click(await screen.findByRole('link', { name: 'Modifier le profil de Mariama' }));
     await user.click(await screen.findByRole('button', { name: 'Supprimer ce profil' }));
     await user.click(screen.getByRole('button', { name: 'Supprimer le profil' }));

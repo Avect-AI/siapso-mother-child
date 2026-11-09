@@ -12,8 +12,8 @@ export {
   STOP_WORDS,
   withoutStopWords,
 } from './normalize.js';
-export { parseStrength } from './strength.js';
-export type { ParsedQuery } from './strength.js';
+export { parseStrength, strengthsOf } from './strength.js';
+export type { ParsedQuery, ReadStrength, StrengthUnit } from './strength.js';
 export {
   DEFAULT_LIMIT,
   DEFAULT_MIN_SCORE,

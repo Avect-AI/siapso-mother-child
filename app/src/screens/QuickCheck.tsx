@@ -55,7 +55,8 @@ export function QuickCheck() {
   });
   // Read once: a change of language rewords the screen, the answers stay.
   const [initial] = useState(() => {
-    if (update === null) return emptyForm(t('quick.title'), today);
+    // Her weeks taken as given today, one tap from another day (SCRUM-56, S7).
+    if (update === null) return emptyForm(t('quick.title'), today, 'today');
     const form = formFromProfile(update.base, today, 'accompanied');
     return update.asked === 'born' ? afterBirth(form) : reenterTerm(form);
   });

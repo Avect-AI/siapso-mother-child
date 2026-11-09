@@ -6,7 +6,14 @@
 // about. The codes and pseudonyms here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectStart, onboard, seedBeforeUpdate, unlock } from './support.js';
+import {
+  addFirstCandidate,
+  expectStart,
+  herCheckThenProfiles,
+  onboard,
+  seedBeforeUpdate,
+  unlock,
+} from './support.js';
 
 // Whole journeys with accessibility scans of long forms: on a loaded runner
 // they can take longer than the 30 s default.
@@ -38,16 +45,15 @@ async function addProfile(page: Page, pseudonym: string) {
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await page.getByRole('textbox', { name: 'Surnom' }).fill(pseudonym);
   await answerPregnant(page, '20');
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByText(`Profil enregistré : ${pseudonym}.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
+  await herCheckThenProfiles(page, pseudonym);
 }
 
 /** From the check: a remedy found by its name, confirmed. */
 async function addRemedy(page: Page, name: string) {
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill(name);
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
 }
 
 /** How many records a store of the app's IndexedDB holds. */
@@ -129,8 +135,7 @@ test('a depot keeper checks a passer-by without a profile, and nothing is kept',
   await expect(page.locator('.check__profile')).toContainText('Femme de passage');
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('Advil 400');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -242,6 +247,8 @@ for (const { width, height } of [
       await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
       await page.getByRole('searchbox').fill('doliprane');
       await page.locator('.candidate').first().click();
+      // A daily count: the strength is then asked (SCRUM-56).
+      await page.getByRole('button', { name: 'Une unité de plus' }).click();
       await page.addStyleTag({ content: 'html { font-size: 200%; }' });
 
       const question = page.getByRole('group', { name: /^Quel dosage est écrit sur la boîte/ });

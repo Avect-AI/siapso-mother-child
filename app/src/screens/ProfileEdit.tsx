@@ -217,6 +217,7 @@ export function ProfileQuestions({
   onSaved,
   onDelete,
   quick = false,
+  saveLabel,
 }: {
   mode: Mode;
   today: string;
@@ -237,6 +238,8 @@ export function ProfileQuestions({
   onDelete?: (() => void) | undefined;
   /** A passer-by: no pseudonym asked, nothing stored. */
   quick?: boolean;
+  /** What the save button says, when it does more than save ("Enregistrer et regarder ses produits"). */
+  saveLabel?: MessageKey | undefined;
 }) {
   const t = useT();
   const lang = useLang();
@@ -253,6 +256,16 @@ export function ProfileQuestions({
   const formRef = useRef<HTMLFormElement>(null);
   const focusAfterRender = useRef<string | null>(null);
   const weeksId = useId();
+  // The last answer to "Enceinte ?" came from a tap, not from the arrow keys.
+  const tapped = useRef(false);
+  // A passer-by's weeks are taken as given today, an answer shown and one tap
+  // from "Un autre jour" (SCRUM-56, S7, a team decision); a profile kept in
+  // accompanied mode asks the day, never chosen for her.
+  const offeredDay: WeeksDay | null = quick ? 'today' : null;
+  // The pseudonym offered to a new profile ("Femme 3"): selected when its field
+  // takes the focus, so the name typed takes its place (S9).
+  const offeredPseudonym = base === undefined && !quick ? initial.pseudonym : null;
+  const pseudonymFocused = useRef(false);
 
   const allErrors = validateForm(form, today, mode, taken);
   const errors = attempts > 0 ? allErrors : typedErrors(form, allErrors);
@@ -325,13 +338,22 @@ export function ProfileQuestions({
   };
 
   const typeWeeks = (weeks: string) => {
-    setForm((current) => typedWeeks(current, weeks, asksDay));
+    setForm((current) => typedWeeks(current, weeks, asksDay, offeredDay));
   };
   // Another answer to "Enceinte ?" lets the day of a stored "Je ne sais pas" go.
+  // "Oui" with no way of giving the term yet takes weeks, the way most women
+  // know it (SCRUM-56, S5): the other ways stay answers beside it, and a tap
+  // (not the arrow keys moving through the answers) brings the weeks field.
   const answerPregnant = (pregnant: PregnantAnswer) => {
-    setForm((current) =>
-      current.pregnant === pregnant ? current : { ...current, pregnant, keptUnsureOn: null },
-    );
+    const inWeeks = pregnant === 'yes' && form.termKind === null;
+    if (inWeeks && tapped.current) focusAfterRender.current = weeksId;
+    setForm((current) => {
+      if (current.pregnant === pregnant) return current;
+      const answered = { ...current, pregnant, keptUnsureOn: null };
+      return pregnant === 'yes' && current.termKind === null
+        ? { ...answered, termKind: 'weeks' }
+        : answered;
+    });
   };
   // Another way of giving the term lets the day of a stored unknown term go.
   const chooseTermKind = (termKind: TermInput['kind']) => {
@@ -426,6 +448,17 @@ export function ProfileQuestions({
           value={form.pseudonym}
           autoComplete="off"
           spellCheck={false}
+          onFocus={(event) => {
+            if (form.pseudonym !== offeredPseudonym) return;
+            pseudonymFocused.current = true;
+            event.currentTarget.select();
+          }}
+          onClick={(event) => {
+            // The tap that gave the focus may have put the caret back: select again, once.
+            if (!pseudonymFocused.current) return;
+            pseudonymFocused.current = false;
+            if (form.pseudonym === offeredPseudonym) event.currentTarget.select();
+          }}
           onChange={(event) => {
             update({ pseudonym: event.target.value });
           }}
@@ -433,19 +466,29 @@ export function ProfileQuestions({
       )}
 
       <section className="profile__group">
-        <RadioGroup<PregnantAnswer>
-          question
-          row
-          legend={t('profile.pregnant')}
-          error={error('pregnant')}
-          options={[
-            { value: 'yes', label: t('profile.yes') },
-            { value: 'no', label: t('profile.no') },
-            { value: 'unknown', label: t('profile.dontKnow') },
-          ]}
-          value={form.pregnant}
-          onChange={answerPregnant}
-        />
+        <div
+          className="profile__answer"
+          onPointerDown={() => {
+            tapped.current = true;
+          }}
+          onKeyDown={() => {
+            tapped.current = false;
+          }}
+        >
+          <RadioGroup<PregnantAnswer>
+            question
+            row
+            legend={t('profile.pregnant')}
+            error={error('pregnant')}
+            options={[
+              { value: 'yes', label: t('profile.yes') },
+              { value: 'no', label: t('profile.no') },
+              { value: 'unknown', label: t('profile.dontKnow') },
+            ]}
+            value={form.pregnant}
+            onChange={answerPregnant}
+          />
+        </div>
         {form.pregnant === 'yes' ? (
           <>
             <RadioGroup<TermInput['kind']>
@@ -552,7 +595,7 @@ export function ProfileQuestions({
                       ...current,
                       termKind: 'weeks',
                       weeks: '',
-                      weeksDay: asksDay ? null : 'today',
+                      weeksDay: asksDay ? offeredDay : 'today',
                       weeksGivenOn: '',
                     }));
                   }}
@@ -714,6 +757,9 @@ export function ProfileQuestions({
             },
           }))}
           concealed={situationsHidden ? t('conceal.situations') : undefined}
+          // The answer expected most of the time comes first, set apart, so it
+          // is never taken for the end of a list nobody read (SCRUM-56, S6).
+          noneFirst
           none={{
             id: 'none',
             label: t('profile.noCondition'),
@@ -729,7 +775,7 @@ export function ProfileQuestions({
             way out is the delete offered with the notice (and below). */}
         {notCovered ? null : (
           <Button variant="primary" type="submit" className="profile__submit">
-            {t(quick ? 'quick.start' : 'profile.save')}
+            {t(quick ? 'quick.start' : (saveLabel ?? 'profile.save'))}
           </Button>
         )}
         {onDelete === undefined ? null : (
@@ -837,7 +883,8 @@ function freeNumber(from: number, taken: readonly string[], name: (n: number) =>
  * address. Saving goes home (the list of profiles in accompanied mode), which
  * says the profile was saved, or on to the check that opened this screen (for
  * want of a profile, or to update an outdated term), for the profile just
- * saved. A saved profile can be deleted with its history, after a last step.
+ * saved; a new profile made in accompanied mode opens her check
+ * ("Enregistrer et regarder ses produits", SCRUM-56). A saved profile can be deleted with its history, after a last step.
  */
 export function ProfileEdit({ target }: { target: ProfileTarget }) {
   const t = useT();
@@ -910,6 +957,8 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
 
   const ready = loaded.status === 'ready' ? loaded : null;
   const base = ready?.base;
+  // A new profile made in accompanied mode opens her check once saved.
+  const opensCheck = kind === 'new' && mode === 'accompanied' && ask.next === null;
 
   return (
     <main className="screen profile">
@@ -971,10 +1020,17 @@ export function ProfileEdit({ target }: { target: ProfileTarget }) {
                     setConfirming(true);
                   }
             }
+            saveLabel={opensCheck ? 'profile.saveAndCheck' : undefined}
             onSaved={(profile) => {
               if (ask.next !== null) {
                 start(profile.id);
                 navigate(ask.next, { replace: true });
+                return;
+              }
+              // A new woman in accompanied mode: her check, Back to the list (SCRUM-56, S8).
+              if (opensCheck) {
+                start(profile.id);
+                navigate('/check', { replace: true });
                 return;
               }
               // Home reads the pseudonym from the history entry to say which profile was saved.

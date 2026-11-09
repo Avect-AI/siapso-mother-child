@@ -3,7 +3,7 @@
 // Phone numbers here are made up: runs of the same digit, never a real number.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock, type Mode } from './support.js';
+import { addFirstCandidate, onboard, type Mode, unlock } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -122,8 +122,7 @@ test('offline: danger signs from Home, Check and Result, then who to call', asyn
   await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
 
   // From Check.
@@ -270,8 +269,7 @@ test.describe('on a small phone (360 x 560), a call is in the first screen', () 
     await page.getByRole('button', { name: 'Enregistrer' }).click();
     await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('kinkeliba');
-    await page.locator('.candidate').first().click();
-    await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+    await addFirstCandidate(page);
     await page.getByRole('button', { name: 'Voir le résultat' }).click();
     await page
       .getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' })

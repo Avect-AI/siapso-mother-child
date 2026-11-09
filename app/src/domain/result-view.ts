@@ -27,6 +27,7 @@ import {
 } from '@siapso/engine';
 import type { MessageKey, Vars } from '../i18n/translate.js';
 import { formatDate } from './dates.js';
+import { bandedName } from './dose-band.js';
 import type { PossibleMatch } from './possible-matches.js';
 import { displayOf } from './search-index.js';
 import { sourceWords } from './sources.js';
@@ -286,6 +287,8 @@ export interface ResultExtras {
   writtenOf?: (item: CheckedItem) => string | undefined;
   /** Whether the voice heard the name of an item (its written text, or its unrecognised text). */
   saidOf?: (item: CheckedItem) => boolean;
+  /** Whether she answered "Plus de 100 mg" to the dose of a box (named with it). */
+  aboveOf?: (item: CheckedItem) => boolean;
 }
 
 interface Scope extends ResultExtras {
@@ -337,8 +340,10 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
     if (item.ref.kind === 'unrecognised') {
       return [{ name: item.ref.text, typed: true, said: saidItem(scope, item) }];
     }
+    // A box whose dose is asked by a range says it: why an aspirin card applies or not.
     const shown = displayOf(pack, item.ref, lang, item.strengthUnknown === true).name;
-    return [{ name: keepUnits(shown), typed: false }];
+    const above = scope.aboveOf?.(item) === true;
+    return [{ name: keepUnits(bandedName(pack, item, shown, lang, scope.t, above)), typed: false }];
   });
   return names.length === 0 ? [{ name: scope.t(`level.${finding.level}`), typed: false }] : names;
 }
@@ -352,7 +357,8 @@ function possibleOf(scope: Scope, finding: Finding): { text: string; latin?: str
   const item = index === undefined ? undefined : scope.items[index];
   if (item !== undefined && item.ref.kind !== 'unrecognised') {
     const shown = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true);
-    const name = shown.detail === undefined ? shown.name : `${shown.name} (${shown.detail})`;
+    const banded = bandedName(scope.pack, item, shown.name, scope.lang, scope.t);
+    const name = shown.detail === undefined ? banded : `${banded} (${shown.detail})`;
     const key = item.ref.kind === 'plant' ? 'result.possiblePlant' : 'result.possibleProduct';
     const text = scope.t(key, { name });
     return shown.detailLang === 'la' && shown.detail !== undefined
@@ -374,7 +380,8 @@ function resemblesOf(scope: Scope, finding: Finding): string | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
   if (item === undefined || item.ref.kind === 'unrecognised') return undefined;
-  const name = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true).name;
+  const shown = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true).name;
+  const name = bandedName(scope.pack, item, shown, scope.lang, scope.t);
   return scope.t('result.resembles', { name });
 }
 

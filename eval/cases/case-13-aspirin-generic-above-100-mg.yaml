@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-13-aspirin-generic-above-100-mg
+title: '30 weeks, generic aspirin answered "Plus de 100 mg": flagged, as a box of unknown strength'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: aspirin-generic }
+expect:
+  level: before-next-dose
+  findings:
+    - {
+        check: C1,
+        rule: aspirin-analgesic-dose-pregnancy,
+        message: aspirin-analgesic-dose-pregnancy,
+        level: before-next-dose,
+        evidence: A,
+        items: [0],
+      }
+  reminders: [iptp-reminder]
+  notes: []

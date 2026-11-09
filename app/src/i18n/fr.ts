@@ -291,6 +291,8 @@ export const fr = {
     },
     noCondition: 'Aucune de ces situations',
     save: 'Enregistrer',
+    // A new profile in accompanied mode: saved, then her check opens (SCRUM-56).
+    saveAndCheck: 'Enregistrer et regarder ses produits',
     saveFailed: "Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
     // Deleting one profile and its history, after a last yes. Never red: not a danger sign.
     delete: 'Supprimer ce profil',
@@ -358,6 +360,11 @@ export const fr = {
   check: {
     // A passer-by: said instead of a pseudonym.
     quick: "Femme de passage : rien n'est enregistré",
+    // The situations answered for her, behind one tap whatever they are (one says HIV).
+    situationsHidden: 'Situations : touchez pour les afficher',
+    situationsShort: 'Situations',
+    situationsNone: 'Situations : aucune',
+    situationsList: 'Situations : {names}',
     // Woman mode: what she takes herself; accompanied mode: what the woman takes.
     titleWoman: 'Ce que vous prenez',
     titleAccompanied: "Ce qu'elle prend",
@@ -383,8 +390,17 @@ export const fr = {
     unitsMany: '{units} unités par jour',
     notRecognised: 'Produit non reconnu',
     notRecognisedPlant: 'Remède non reconnu',
-    // "Je ne sais pas" was answered to the strength question.
-    strengthUnknown: 'Dosage non connu',
+    // The strength is not given: "Je ne sais pas", or not asked since no rule
+    // reads it (SCRUM-56). The clinical committee decides the words (Q-C3).
+    strengthUnknown: 'Dosage non précisé',
+    // The dose answered by a range, for a box with no strength in the base (generic aspirin):
+    // on a line of its own, then after the name in a sentence or on a card.
+    strengthAtMost: '{strength} ou moins',
+    strengthAbove: 'Plus de {strength}',
+    nameAtMost: '{name}, {strength} ou moins',
+    nameAbove: '{name}, plus de {strength}',
+    // "Je ne sais pas" to that dose, in the same-box question.
+    nameUnknown: '{name}, dosage non précisé',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },
@@ -408,6 +424,8 @@ export const fr = {
     localName: 'Nom local : {name} ({lang})',
     // The brand a candidate was found by, when its name shown does not say it ("cytotek").
     boxName: 'Nom sur la boîte : {name}',
+    // The end of a row a tap adds at once (SCRUM-56), where a row that opens a screen has its chevron.
+    addAtOnce: 'Ajouter',
     notFound: 'Je ne trouve pas ce produit',
     notFoundPlant: 'Je ne trouve pas ce remède',
     notFoundHint: "Il sera ajouté tel qu'il est écrit, comme produit non reconnu.",
@@ -488,12 +506,17 @@ export const fr = {
     sameBoxYesNamed: 'Oui, la même que {name}',
     sameBoxNo: 'Non, une autre boîte',
     sameBoxError: "Dites si c'est la même boîte.",
+    // The same box answered with two dose ranges (generic aspirin): the more cautious reading stays.
+    sameBoxCautious: 'Pour la même boîte, la réponse la plus prudente est gardée : {name}.',
     // A known strength chosen while the family is listed without one, and she said it is the same box.
-    takesPlace: '{name}, dosage non connu, devient {product} dans la liste.',
+    takesPlace: '{name}, dosage non précisé, devient {product} dans la liste.',
     missing: "Ce produit n'est pas sur ce téléphone. Cherchez encore.",
     // The name typed names a substance the product chosen does not have ("efferalgan codéine").
     missingSubstances:
       "{substances} : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
+    // The strength typed with the name is that of no box of the product ("clamoxyl 3g").
+    strengthNotFound:
+      "Aucune boîte de ce produit à {strength} n'est connue. Comparez avec le dosage écrit sur la boîte.",
   },
   result: {
     title: 'Résultat',

@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC-BY-4.0
+id: case-13-aspirin-generic-100-mg-or-less
+title: '30 weeks, generic aspirin answered "100 mg ou moins": low-dose aspirin is not flagged'
+context:
+  pregnancy: { weeks: 30 }
+  items:
+    - { product: aspirin-generic, strength-at-most-mg: 100 }
+expect:
+  level: unknown
+  findings:
+    - { check: no-finding, message: nothing-applies, level: unknown, items: [0] }
+  reminders: [iptp-reminder]
+  notes: []

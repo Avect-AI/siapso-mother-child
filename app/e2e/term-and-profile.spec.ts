@@ -4,7 +4,7 @@
 // one profile can be deleted, and the danger signs now are asked afresh.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock } from './support.js';
+import { addFirstCandidate, herCheckThenProfiles, onboard, unlock } from './support.js';
 
 const DAY_MS = 86_400_000;
 
@@ -116,6 +116,7 @@ test('the list marks an outdated profile, and "still pregnant" asks for the term
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await pregnantProfile(page, 38, 'Bineta');
+  await herCheckThenProfiles(page, 'Bineta');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
     'Bineta Environ 38 semaines',
@@ -159,6 +160,7 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await unknownTermProfile(page);
+  await herCheckThenProfiles(page, 'Femme 1');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: /^Femme 1/ })).toBeVisible();
 
@@ -173,8 +175,7 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('codeine');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
   // The signs after the birth and of the baby are asked up front, with the pregnancy's.
@@ -250,8 +251,7 @@ test('a last period with the phone date set back is read as unknown, and the res
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   // The real date is later: the baby may be born, its signs are asked too.
   await expect(page.getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
@@ -295,7 +295,7 @@ test('a pseudonym is used once on the phone, and a long one is refused, never cu
   await onboard(page, 'accompanied');
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await pregnantProfile(page, 12, 'Awa');
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await herCheckThenProfiles(page, 'Awa');
 
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   const pseudonym = page.getByRole('textbox', { name: 'Surnom' });
@@ -320,13 +320,13 @@ test('a double tap on save makes one profile', async ({ page }) => {
   // Two clicks in the same task, before the page can render.
   await page.evaluate(() => {
     const save = [...document.querySelectorAll('button')].find(
-      (button) => button.textContent === 'Enregistrer',
+      (button) => button.textContent === 'Enregistrer et regarder ses produits',
     );
     save?.click();
     save?.click();
   });
 
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   expect(await storedAll(page, 'profiles')).toHaveLength(1);
 });
 
@@ -337,15 +337,14 @@ test('one profile is deleted with its history after a last yes; the others stay'
   for (const name of ['Awa', 'Binta']) {
     await page.getByRole('button', { name: 'Ajouter un profil' }).click();
     await pregnantProfile(page, 20, name);
-    await expect(page.getByText(new RegExp(`^Profil enregistré\\s: ${name}\\.$`))).toBeVisible();
+    await herCheckThenProfiles(page, name);
   }
   // A result for Awa, kept in the history of the phone.
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await list.getByRole('button', { name: /^Awa/ }).click();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -377,8 +376,7 @@ test('the danger signs now start unticked at each check, and a sign ticked after
   await pregnantProfile(page, 28);
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
 
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();

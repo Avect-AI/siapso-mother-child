@@ -65,10 +65,15 @@ async function addByKeyboard(page: Page, list: string, query: string, expected: 
   await expect(first).toBeFocused();
   await page.keyboard.press('Enter');
 
+  // A whole name with nothing to ask is added by its row (SCRUM-56); otherwise "yes".
   const yes = page.getByRole('button', { name: /^Oui, c'est ce/ });
-  await tabTo(page, yes);
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  const check = page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+  await expect(yes.or(check)).toBeVisible();
+  if (await yes.isVisible()) {
+    await tabTo(page, yes);
+    await page.keyboard.press('Enter');
+  }
+  await expect(check).toBeVisible();
 }
 
 test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and sees the result', async ({
@@ -106,7 +111,30 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });
 
-test('the strength on the box is asked for a brand, and units for a daily maximum', async ({
+test('DOLIPRANE without a count is added with its strength not given (SCRUM-56, S10)', async ({
+  page,
+}) => {
+  await startWithProfile(page);
+  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+  await page.getByRole('searchbox').fill('doliprane');
+  await page.locator('.candidate').first().click();
+
+  // No strength asked while no rule reads it; the daily count in sight.
+  await expect(
+    page.getByRole('textbox', { name: `Combien d'unités par jour${NBSP}?` }),
+  ).toHaveValue('');
+  await expect(
+    page.getByRole('group', { name: `Quel dosage est écrit sur la boîte${NBSP}?` }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+
+  const items = page.getByRole('list', { name: 'Produits ajoutés' });
+  await expect(items).toContainText('DOLIPRANE');
+  // Never a silent strength.
+  await expect(items).toContainText('Dosage non précisé');
+});
+
+test('the strength on the box is asked once a daily count is given, and kept with it', async ({
   page,
 }) => {
   await startWithProfile(page);
@@ -115,16 +143,17 @@ test('the strength on the box is asked for a brand, and units for a daily maximu
   await expect(page.locator('.candidate').first()).toContainText('DOLIPRANE');
   await page.locator('.candidate').first().click();
 
-  const question = page.getByRole('group', { name: `Quel dosage est écrit sur la boîte${NBSP}?` });
-  await expect(question).toBeVisible();
-  await expect(question.getByRole('radio', { checked: true })).toHaveCount(0);
-  // The brand is said once above the question: each answer starts with what the box shows.
-  await question.getByText('1000 mg, comprimé', { exact: true }).click();
+  // The count first: the strength then counts for the daily maximum.
   await page.getByRole('button', { name: 'Une unité de plus' }).click();
   await page.getByRole('button', { name: 'Une unité de plus' }).click();
   await expect(
     page.getByRole('textbox', { name: `Combien d'unités par jour${NBSP}?` }),
   ).toHaveValue('2');
+  const question = page.getByRole('group', { name: `Quel dosage est écrit sur la boîte${NBSP}?` });
+  await expect(question).toBeVisible();
+  await expect(question.getByRole('radio', { checked: true })).toHaveCount(0);
+  // The brand is said once above the question: each answer starts with what the box shows.
+  await question.getByText('1000 mg, comprimé', { exact: true }).click();
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
 
   const items = page.getByRole('list', { name: 'Produits ajoutés' });
@@ -159,6 +188,8 @@ test('check, search and confirm have no serious accessibility violation', async 
   ).toBeVisible();
   await expect(page.locator('.candidate').first()).toContainText('DOLIPRANE');
   await page.locator('.candidate').first().click();
+  // A daily count: the strength is then asked (SCRUM-56).
+  await page.getByRole('button', { name: 'Une unité de plus' }).click();
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
   await expect(page.getByText(/^Choisissez un dosage, ou/)).toBeVisible();
   await expectNoSeriousViolation(page);
@@ -197,6 +228,8 @@ test.describe('at 360 px with text at 200 percent', () => {
     await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     await page.getByRole('searchbox').fill('doliprane');
     await page.locator('.candidate').first().click();
+    // A daily count: the strength is then asked (SCRUM-56).
+    await page.getByRole('button', { name: 'Une unité de plus' }).click();
     await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
     await expectFitsAndTargets(page);
 
@@ -221,7 +254,8 @@ test.describe('at 360 px with text at 200 percent', () => {
     await expect(page.locator('.candidate').first()).toContainText('ACETYLSALICYLIQUE');
     await expectFitsAndTargets(page);
 
-    await page.locator('.candidate').first().click();
+    // Enter opens the confirm screen (the strength typed agrees: a tap would add it at once).
+    await page.getByRole('searchbox').press('Enter');
     await expect(page.locator('.confirm__name')).toContainText('ACETYLSALICYLIQUE');
     await expectFitsAndTargets(page);
 

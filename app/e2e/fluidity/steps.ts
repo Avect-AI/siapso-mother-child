@@ -4,7 +4,7 @@
 // Common answers: code 2468 tapped on the keypad, pregnant at 24 weeks given
 // today, not breastfeeding, no long-term situation.
 import type { Locator, Page } from '@playwright/test';
-import { CODE, onboard } from '../support.js';
+import { CODE, herCheckThenProfiles, onboard } from '../support.js';
 import type { Journey } from './meter.js';
 
 export const WEEKS = 24;
@@ -47,7 +47,7 @@ export async function relayWithProfiles(page: Page): Promise<void> {
     await page.getByRole('textbox', { name: 'Surnom' }).fill(name);
     await fillPregnant(page);
     await button(page, 'Enregistrer').click();
-    await page.getByText(`Profil enregistré : ${name}.`).waitFor();
+    await herCheckThenProfiles(page, name);
   }
 }
 
@@ -93,8 +93,9 @@ export async function pregnantAnswers(j: Journey): Promise<void> {
 
 /**
  * One product added from the check: the add button, the name typed, the first
- * candidate, then the confirm screen. `strength`: the answer tapped when a
- * strength question shows ("Je ne sais pas" by default).
+ * candidate, then the confirm screen when it has something to ask (SCRUM-56:
+ * otherwise the tap on the candidate adds it). `strength`: the answer tapped
+ * when a strength question shows ("Je ne sais pas" by default).
  */
 export async function addProduct(
   j: Journey,
@@ -102,13 +103,17 @@ export async function addProduct(
   { strength = 'Je ne sais pas' }: { strength?: string } = {},
 ): Promise<void> {
   const { page } = j;
+  const check = page.getByRole('heading', { level: 1, name: /^Ce qu/ });
   await j.tap(button(page, 'Ajouter un médicament'), `add ${query}`);
   await j.type(page.getByRole('searchbox'), query, `typed ${query}`, {
     then: page.locator('.candidate'),
   });
-  await j.tap(page.locator('.candidate'), `candidate ${query}`, {
-    then: button(page, /^Oui, c'est ce/),
-  });
+  const yes = button(page, /^Oui, c'est ce/);
+  await j.tap(page.locator('.candidate'), `candidate ${query}`, { then: yes.or(check) });
+  if (await check.isVisible()) {
+    j.notes.push(`${query}: added at one tap`);
+    return;
+  }
   const answers = page.locator('form.confirm__form input[type="radio"]');
   const chosen = page.locator('form.confirm__form input[type="radio"]:checked');
   if ((await answers.count()) > 0 && (await chosen.count()) === 0) {

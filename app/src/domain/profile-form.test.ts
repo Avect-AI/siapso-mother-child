@@ -398,6 +398,15 @@ describe('typing weeks', () => {
       weeksDay: 'today',
     });
   });
+
+  it('gives the day back to its default when one is offered (a passer-by: today, SCRUM-56 S7)', () => {
+    const before = common({ weeksDay: 'other', weeksGivenOn: '2026-09-24' });
+    expect(typedWeeks(before, '24', true, 'today')).toMatchObject({
+      weeks: '24',
+      weeksDay: 'today',
+      weeksGivenOn: '',
+    });
+  });
 });
 
 describe('weeksReadback', () => {

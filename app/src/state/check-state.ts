@@ -105,6 +105,8 @@ export interface CheckState {
    * labelled "Vous avez dit", not "Vous avez écrit".
    */
   saidOf: (item: CheckedItem) => boolean;
+  /** Whether she answered "Plus de 100 mg" to the dose of a box listed with no range (generic aspirin). */
+  aboveOf: (item: CheckedItem) => boolean;
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
@@ -142,6 +144,16 @@ export interface AddOptions {
    * the name was typed.
    */
   said?: boolean;
+  /**
+   * The listed item this one takes the place of: she said it is the same box,
+   * read another way (a dose range dropped for the more cautious reading).
+   */
+  replacing?: CheckedItem;
+  /**
+   * She answered "Plus de 100 mg" to the dose of this box (generic aspirin),
+   * said with its name; without it, a box written with no range says none.
+   */
+  above?: boolean;
 }
 
 /**
@@ -176,6 +188,8 @@ interface CheckData {
   declined: Readonly<Record<string, true>>;
   /** The items whose name the voice heard (written, or the unrecognised text), by refKey. */
   said: Readonly<Record<string, true>>;
+  /** The boxes listed with no range whose dose she answered "Plus de ...", by refKey. */
+  above: Readonly<Record<string, true>>;
   /** The unfinished lists of the other women of the visit, by profile id. */
   others: Readonly<Record<string, KeptList>>;
   /** The passer-by's answers, when the check is hers. */
@@ -183,7 +197,10 @@ interface CheckData {
 }
 
 /** A list waiting while another woman is looked at: its items and what was said about them. */
-type KeptList = Pick<CheckData, 'items' | 'lists' | 'families' | 'written' | 'declined' | 'said'>;
+type KeptList = Pick<
+  CheckData,
+  'items' | 'lists' | 'families' | 'written' | 'declined' | 'said' | 'above'
+>;
 
 type Action =
   | { type: 'start'; profileId: string }
@@ -211,6 +228,7 @@ const EMPTY: CheckData = {
   written: {},
   declined: {},
   said: {},
+  above: {},
   others: {},
   quick: null,
 };
@@ -230,8 +248,8 @@ function switched(state: CheckData, profileId: string, quick: Profile | null): C
   const left = state.profileId;
   let others = without(state.others, profileId);
   if (left !== null && state.quick?.id !== left && state.items.length > 0) {
-    const { items, lists, families, written, declined, said } = state;
-    others = { ...others, [left]: { items, lists, families, written, declined, said } };
+    const { items, lists, families, written, declined, said, above } = state;
+    others = { ...others, [left]: { items, lists, families, written, declined, said, above } };
   }
   const kept = quick === null ? state.others[profileId] : undefined;
   return { ...EMPTY, ...kept, profileId, quick, others };
@@ -242,12 +260,17 @@ function unknownStrength(item: CheckedItem): boolean {
 }
 
 /**
- * What an item is, for "never twice": the product, plant or text; for a
- * product whose strength is unknown, its family (another key than any known
- * strength, so it never takes a known strength's place).
+ * What an item is, for "never twice": the product, plant or text, with its
+ * dose range ("100 mg ou moins" is another box than one read above it, so
+ * neither takes the other's place); for a product whose strength is unknown,
+ * its family (another key than any known strength, so it never takes a known
+ * strength's place).
  */
 function identity(item: CheckedItem, families: CheckData['families']): string {
-  if (!unknownStrength(item) || item.ref.kind !== 'product') return refKey(item.ref);
+  if (!unknownStrength(item) || item.ref.kind !== 'product') {
+    const atMost = item.strengthAtMostMg;
+    return atMost === undefined ? refKey(item.ref) : `${refKey(item.ref)}@${String(atMost)}`;
+  }
   const family = families[item.ref.id];
   return family === undefined ? `unknown:${refKey(item.ref)}` : `unknown-family:${family}`;
 }
@@ -257,6 +280,7 @@ function sameItem(a: CheckedItem, b: CheckedItem): boolean {
     sameRef(a.ref, b.ref) &&
     a.unitsPerDay === b.unitsPerDay &&
     (a.strengthUnknown ?? false) === (b.strengthUnknown ?? false) &&
+    a.strengthAtMostMg === b.strengthAtMostMg &&
     (a.longTerm ?? false) === (b.longTerm ?? false)
   );
 }
@@ -264,7 +288,10 @@ function sameItem(a: CheckedItem, b: CheckedItem): boolean {
 /** The index of an item of unknown strength that a known strength of the same product or family replaces. */
 function unknownToReplace(state: CheckData, item: CheckedItem): number {
   const ref = item.ref;
-  if (unknownStrength(item) || ref.kind !== 'product') return -1;
+  // A dose range never takes the place of a box read as not known: it would read lower.
+  if (unknownStrength(item) || ref.kind !== 'product' || item.strengthAtMostMg !== undefined) {
+    return -1;
+  }
   const family = state.families[ref.id];
   return state.items.findIndex(
     (listed) =>
@@ -300,8 +327,28 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
   // Heard or typed, as it was last confirmed.
   const said =
     options.said === true ? { ...base.said, [key]: true as const } : without(base.said, key);
-  const state = { ...base, lists, families, written, declined, said };
+  // "Plus de ..." goes with the box listed without a range, as it was last confirmed.
+  const plain =
+    item.ref.kind === 'product' &&
+    item.strengthAtMostMg === undefined &&
+    item.strengthUnknown !== true;
+  let above = base.above;
+  if (plain) above = options.above === true ? { ...above, [key]: true } : without(above, key);
+  const state = { ...base, lists, families, written, declined, said, above };
   const same = identity(item, families);
+  const replacing = options.replacing;
+  const replaced =
+    replacing === undefined ? -1 : state.items.findIndex((listed) => sameItem(listed, replacing));
+  if (replaced >= 0) {
+    // Listed already as it is now read: the one replaced goes, never twice.
+    const elsewhere = state.items.some(
+      (listed, i) => i !== replaced && identity(listed, families) === same,
+    );
+    const items = elsewhere
+      ? state.items.filter((_, i) => i !== replaced)
+      : state.items.map((listed, i) => (i === replaced ? item : listed));
+    return { ...state, items, changed: { kind: 'updated', item } };
+  }
   let index = state.items.findIndex((listed) => identity(listed, families) === same);
   if (index < 0 && options.anotherBox !== true) index = unknownToReplace(state, item);
   if (index < 0) {
@@ -396,6 +443,15 @@ function checkedCopy(item: CheckedItem): CheckedItem {
   if (unknown !== undefined && typeof unknown !== 'boolean') {
     throw new TypeError(`strengthUnknown must be a boolean, not ${typeof unknown}`);
   }
+  const atMost: unknown = item.strengthAtMostMg;
+  if (
+    atMost !== undefined &&
+    !(typeof atMost === 'number' && Number.isFinite(atMost) && atMost > 0)
+  ) {
+    throw new RangeError(
+      `A dose range must be a number of mg greater than 0: ${typeof atMost === 'number' ? String(atMost) : typeof atMost}`,
+    );
+  }
   if (item.ref.kind === 'unrecognised' && item.ref.text.trim() === '') {
     throw new RangeError('An unrecognised item needs the text typed');
   }
@@ -454,6 +510,7 @@ export function useCheckStore(): CheckState {
     written,
     declined,
     said,
+    above,
     others,
     quick,
   } = data;
@@ -472,6 +529,13 @@ export function useCheckStore(): CheckState {
     [declined],
   );
   const saidOf = useCallback((item: CheckedItem) => said[refKey(item.ref)] === true, [said]);
+  const aboveOf = useCallback(
+    (item: CheckedItem) =>
+      item.strengthAtMostMg === undefined &&
+      item.strengthUnknown !== true &&
+      above[refKey(item.ref)] === true,
+    [above],
+  );
   return useMemo(
     () => ({
       profileId,
@@ -495,6 +559,7 @@ export function useCheckStore(): CheckState {
       writtenOf,
       declinedOf,
       saidOf,
+      aboveOf,
       clearChanged,
       setSigns,
       clearSigns,
@@ -522,6 +587,7 @@ export function useCheckStore(): CheckState {
       writtenOf,
       declinedOf,
       saidOf,
+      aboveOf,
       clearChanged,
       setSigns,
       clearSigns,

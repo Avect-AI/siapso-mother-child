@@ -4,7 +4,16 @@
 // everything at once. The codes here are made up.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, expectStart, expectWelcome, makeCode, onboard, unlock } from './support.js';
+import {
+  addFirstCandidate,
+  CODE,
+  expectStart,
+  expectWelcome,
+  herCheckThenProfiles,
+  makeCode,
+  onboard,
+  unlock,
+} from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -126,9 +135,9 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await page.getByRole('button', { name: 'Ajouter un profil' }).click();
   await page.getByRole('textbox', { name: 'Surnom' }).fill('Ndeye');
   await fillProfile(page);
+  await herCheckThenProfiles(page, 'Ndeye');
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await expect(list.getByRole('button', { name: 'Ndeye' })).toBeVisible();
-  await expect(page.getByText('Profil enregistré : Ndeye.')).toBeVisible();
   await expectNoSeriousViolation(page);
 
   // Her check and its result, then the quick exit.
@@ -136,8 +145,7 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Aucun de ces signes', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -152,9 +160,9 @@ test('accompanied mode: the code, the profiles, then a quick exit that Back cann
   }
   await expectNoSeriousViolation(page);
 
-  // Back through every entry of the visit (the signs, the check, the list,
-  // the welcome): never the result, the check or the list.
-  for (let step = 0; step < 4; step += 1) {
+  // Back through every entry of the visit (the signs, the check, the list and
+  // welcome): never the result, the check or the list.
+  for (let step = 0; step < 3; step += 1) {
     await page.goBack();
     await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
     const text = await pageText(page);
@@ -222,8 +230,7 @@ test('who to call from a fever result: once locked, and after a reload, no instr
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: "Oui, c'est ce remède" }).click();
+  await addFirstCandidate(page);
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
   await page.getByText('Fièvre', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
@@ -256,7 +263,9 @@ test('a product never shows in the address, even after an auto-lock and a reload
   await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('efavirenz');
-  await page.locator('.candidate').first().click();
+  await expect(page.locator('.candidate').first()).toBeVisible();
+  // Enter opens the confirm screen of the best candidate (a tap might add it at once).
+  await page.getByRole('searchbox').press('Enter');
   await expect(page.getByRole('button', { name: "Oui, c'est ce produit" })).toBeVisible();
   expect(page.url()).not.toMatch(/favirenz/i);
   expect(new URL(page.url()).hash).toBe('#/confirm/product');

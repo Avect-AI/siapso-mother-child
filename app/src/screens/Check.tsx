@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
-import type { CheckedItem } from '@siapso/engine';
+import type { CheckedItem, ConditionId } from '@siapso/engine';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { latestHistoryAt } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
 import { profileSummary } from '../domain/profile-summary.js';
+import { bandedName, doseBandLine, doseBandOf } from '../domain/dose-band.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
+import { joinNames } from '../domain/result-view.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
@@ -45,6 +47,8 @@ export function profilePathFor(mode: Mode): string {
 function Item({
   item,
   shown,
+  band,
+  named,
   list,
   written,
   said,
@@ -52,6 +56,10 @@ function Item({
 }: {
   item: CheckedItem;
   shown: ItemDisplay;
+  /** The dose range it is read in ("100 mg ou moins", "Plus de 100 mg"), when its dose is asked so. */
+  band: string | undefined;
+  /** Its name with that range, for the remove button: two boxes of one product told apart. */
+  named: string;
   /** The list an unrecognised text was typed in. */
   list: 'product' | 'plant' | undefined;
   /** The name she typed, when the item is shown under another name. */
@@ -82,6 +90,7 @@ function Item({
         {item.strengthUnknown === true ? (
           <p className="meta">{t('check.strengthUnknown')}</p>
         ) : null}
+        {band === undefined ? null : <p className="meta">{band}</p>}
         {/* Last in the product block, as on the confirm screen. */}
         {written === undefined ? null : (
           <p className="meta">
@@ -97,7 +106,7 @@ function Item({
       <Button
         variant="quiet"
         className="check__remove"
-        aria-label={t('check.removeNamed', { name: shown.name })}
+        aria-label={t('check.removeNamed', { name: named })}
         onClick={onRemove}
       >
         {t('check.remove')}
@@ -125,6 +134,47 @@ function Item({
  * (OutdatedTerm), and nothing can be added or looked at until the profile is
  * updated.
  */
+/**
+ * The situations answered for her, under who the check is for, so a "none"
+ * ticked by reflex can be seen and put right (SCRUM-56, the safety review):
+ * behind one tap whatever was answered, as on the profile screen, since one
+ * of them says HIV and showing "none" alone would tell the others apart. Hidden
+ * again at every new showing of the check.
+ */
+function SituationsLine({ conditions }: { conditions: readonly ConditionId[] }) {
+  const t = useT();
+  const lang = useLang();
+  const [shown, setShown] = useState(false);
+  if (!shown) {
+    return (
+      // One word on screen, beside the term, so the line takes no room of its own;
+      // its name says what a tap does.
+      <Button
+        variant="quiet"
+        className="check__situations"
+        aria-label={t('check.situationsHidden')}
+        onClick={() => {
+          setShown(true);
+        }}
+      >
+        {t('check.situationsShort')}
+      </Button>
+    );
+  }
+  return (
+    <span className="check__situations-shown">
+      {conditions.length === 0
+        ? t('check.situationsNone')
+        : t('check.situationsList', {
+            names: joinNames(
+              conditions.map((id) => t(`profile.condition.${id}`)),
+              lang,
+            ),
+          })}
+    </span>
+  );
+}
+
 export function Check() {
   const t = useT();
   const lang = useLang();
@@ -233,11 +283,20 @@ export function Check() {
     pack === null
       ? { name: item.ref.kind === 'unrecognised' ? item.ref.text : item.ref.id, detail: undefined }
       : displayOf(pack, item.ref, lang, item.strengthUnknown === true);
+  // A box whose dose is asked by a range is named with it: "Aspirine (générique), plus de 100 mg".
+  const namedOf = (item: CheckedItem): string =>
+    pack === null
+      ? shownOf(item).name
+      : bandedName(pack, item, shownOf(item).name, lang, t, check.aboveOf(item));
+  const bandOf = (item: CheckedItem): string | undefined => {
+    const band = pack === null ? undefined : doseBandOf(pack, item, check.aboveOf(item));
+    return band === undefined ? undefined : doseBandLine(t, band, lang);
+  };
   // In a sentence of the app ("... est ajouté à la liste."), a name she typed is quoted.
   const saidOf = (item: CheckedItem): string =>
     item.ref.kind === 'unrecognised'
       ? t('result.quoted', { text: shownOf(item).name })
-      : shownOf(item).name;
+      : namedOf(item);
 
   const openSearch = (kind: 'product' | 'plant') => {
     // One entry after this one: adding an item comes back here (check-flow.ts).
@@ -292,7 +351,8 @@ export function Check() {
                 {' '}
                 <span>{t(line.key, line.vars)}</span>
               </Fragment>
-            ))}
+            ))}{' '}
+            <SituationsLine key={profile.profile.id} conditions={profile.profile.conditions} />
           </p>
         )}
       </div>
@@ -313,6 +373,8 @@ export function Check() {
                 key={`${String(index)}:${item.ref.kind}:${'id' in item.ref ? item.ref.id : item.ref.text}`}
                 item={item}
                 shown={shown}
+                band={bandOf(item)}
+                named={namedOf(item)}
                 list={check.listOf(item)}
                 written={check.writtenOf(item)}
                 said={check.saidOf(item)}

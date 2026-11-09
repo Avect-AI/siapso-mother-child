@@ -171,6 +171,16 @@ describe('recordHistoryOnce', () => {
     expect(await recordHistoryOnce({ ...entry('p1', 4), packVersion: '0.2.0' })).toBe(true);
     expect(await recordHistoryOnce(entry('p2', 5))).toBe(true);
     expect(await listHistory('p1')).toHaveLength(4);
+    // A dose answered by a range ("100 mg ou moins") is another check than none.
+    const aspirin = { kind: 'product', id: 'aspirin-generic' } as const;
+    expect(
+      await recordHistoryOnce({
+        ...entry('p1', 6),
+        items: [{ ref: aspirin, strengthAtMostMg: 100 }],
+      }),
+    ).toBe(true);
+    expect(await recordHistoryOnce({ ...entry('p1', 7), items: [{ ref: aspirin }] })).toBe(true);
+    expect(await listHistory('p1')).toHaveLength(6);
   });
 
   it('records the same items again when the evaluation changed in the visit (level or rules)', async () => {

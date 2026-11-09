@@ -4,7 +4,7 @@
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { CODE, expectWelcome, onboard, unlock } from './support.js';
+import { addFirstCandidate, CODE, expectWelcome, onboard, unlock } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -179,8 +179,7 @@ async function pregnantAt(page: Page, weeks: number) {
 async function add(page: Page, list: string, query: string) {
   await page.getByRole('button', { name: list }).click();
   await page.getByRole('searchbox').fill(query);
-  await page.locator('.candidate').first().click();
-  await page.getByRole('button', { name: /^Oui, c'est ce/ }).click();
+  await addFirstCandidate(page);
   await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
 }
 
@@ -632,11 +631,8 @@ test.describe('at 360 px with text at 200 percent', () => {
     await answer(page, /^Ce terme date de quand/, "Aujourd'hui").click();
     await answer(page, /^Allaite/, 'Non').click();
     await page.getByText("Ancienne césarienne (cicatrice sur l'utérus)").click();
-    await page.getByRole('button', { name: 'Enregistrer' }).click();
-    await page
-      .getByRole('list', { name: 'Profils enregistrés sur ce téléphone' })
-      .getByRole('button', { name: /^Femme 1 / })
-      .click();
+    // Saved, her check opens (SCRUM-56).
+    await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
     await add(page, 'Ajouter un médicament', 'ibuprofene');
     await add(page, 'Ajouter un remède', 'huile de ricin');
     await add(page, 'Ajouter un remède', 'argile');

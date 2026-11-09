@@ -243,6 +243,30 @@ describe('buildResultView: orientation', () => {
     expect(fever.headline).toBe(pack.messages.fr['danger-sign-fever']?.orientation);
   });
 
+  it('names generic aspirin with the dose range it is read in, so the card says why (SCRUM-56)', () => {
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const context = contextOf({ pregnancy: weeks(30), items: [aspirin] });
+    const answered = buildResultView(
+      evaluate(pack, context),
+      pack,
+      context.items,
+      'accompanied',
+      'fr',
+      tOf('fr'),
+      [],
+      { aboveOf: () => true },
+    );
+    expect(onlyFinding(answered).names).toEqual(['Aspirine (générique), plus de 100\u00a0mg']);
+    // Listed without that answer (a long-term box, an older check): no range said.
+    const plain = viewOf(context, 'accompanied');
+    expect(onlyFinding(plain).names).toEqual(['Aspirine (générique)']);
+    const low = viewOf(
+      contextOf({ pregnancy: weeks(30), items: [{ ...aspirin, strengthAtMostMg: 100 }] }),
+      'accompanied',
+    );
+    expect(onlyFinding(low).names).toEqual(['Aspirine (générique), 100 mg ou moins']);
+  });
+
   it('says the unknown default in full, without a sentence the message already said', () => {
     // Kinkeliba's risk already says that nobody knows whether it can harm: only who and when.
     const plant = onlyFinding(
@@ -1176,6 +1200,22 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
     const own = view.findings.find((f) => f.level === 'unknown');
     expect(own?.title).toBe(text);
     expect(own?.possible).toBe(`Si ce n'est pas ce produit${NBSP}:`);
+  });
+
+  it('never says a dose range she did not give: generic aspirin a name looks like says its dose not given', () => {
+    for (const text of [
+      'aspirin protect 100',
+      'aspirine bayer 75',
+      'aspirine du rhone 500',
+      'aspirinne',
+    ]) {
+      const view = netViewOf(text, { pregnancy: weeks(30) }, 'accompanied', 'fr');
+      const card = view.findings.find((f) => f.possible?.startsWith('Ce nom ressemble') === true);
+      expect(card?.possible, text).toMatch(
+        /^Ce nom ressemble à Aspirine \(générique\), dosage non précisé /,
+      );
+      expect(card?.possible, text).not.toMatch(/plus de/);
+    }
   });
 
   it('says nothing of the kind on the grey card of a name that looks like nothing', () => {

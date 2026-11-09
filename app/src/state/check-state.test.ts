@@ -236,6 +236,78 @@ describe('useCheckStore', () => {
     expect(result.current.changed?.kind).toBe('added');
   });
 
+  it('lists two boxes of one product with two dose ranges apart, never one in place of the other', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
+    act(() => {
+      result.current.add(aspirin);
+    });
+    act(() => {
+      result.current.add(low);
+    });
+    // "Plus de 100 mg" then "100 mg ou moins": two boxes, the first still read above 100 mg.
+    expect(result.current.items).toEqual([aspirin, low]);
+    expect(result.current.changed?.kind).toBe('added');
+    act(() => {
+      result.current.add(low);
+    });
+    expect(result.current.changed?.kind).toBe('already');
+    expect(result.current.items).toHaveLength(2);
+
+    // Nor in the place of the same box read as not known ("Je ne sais pas").
+    const { result: other } = renderHook(() => useCheckStore());
+    act(() => {
+      other.current.add({ ...aspirin, strengthUnknown: true }, { family: 'substances:aspirin' });
+      other.current.add(low, { family: 'substances:aspirin' });
+    });
+    expect(other.current.items).toEqual([{ ...aspirin, strengthUnknown: true }, low]);
+  });
+
+  it('remembers "Plus de 100 mg" only when she answered it, for the box listed without a range', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    act(() => {
+      result.current.add(aspirin, { above: true });
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(true);
+    // Another box with a range leaves it as it was answered.
+    act(() => {
+      result.current.add({ ...aspirin, strengthAtMostMg: 100 });
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(true);
+    // The same box written again without that answer: no longer said.
+    act(() => {
+      result.current.add(aspirin);
+    });
+    expect(result.current.aboveOf(aspirin)).toBe(false);
+  });
+
+  it('puts an item in the place of the one it replaces, when she said it is the same box', () => {
+    const { result } = renderHook(() => useCheckStore());
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
+    act(() => {
+      result.current.add(low);
+      result.current.add(moringa);
+    });
+    act(() => {
+      result.current.add(aspirin, { replacing: low });
+    });
+    expect(result.current.items).toEqual([aspirin, moringa]);
+    expect(result.current.changed?.kind).toBe('updated');
+  });
+
+  it('refuses a dose range that is not a number greater than 0, as the engine does', () => {
+    const { result } = renderHook(() => useCheckStore());
+    for (const bad of [0, -100, Number.NaN, '100']) {
+      expect(() => {
+        result.current.add({ ...paracetamol, strengthAtMostMg: bad } as unknown as CheckedItem);
+      }).toThrow(RangeError);
+    }
+    expect(result.current.items).toEqual([]);
+  });
+
   it('refuses a strengthUnknown that is not a boolean, as the engine does', () => {
     const { result } = renderHook(() => useCheckStore());
     expect(() => {

@@ -72,7 +72,8 @@
         "unrecognised": { "type": "string", "pattern": "\\S" },
         "units-per-day": { "type": "number", "exclusiveMinimum": 0 },
         "long-term": { "type": "boolean" },
-        "strength-unknown": { "type": "boolean" }
+        "strength-unknown": { "type": "boolean" },
+        "strength-at-most-mg": { "type": "number", "exclusiveMinimum": 0 }
       },
       "oneOf": [
         { "properties": { "product": true }, "required": ["product"] },

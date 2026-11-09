@@ -52,7 +52,7 @@ function fakeTimers() {
 
 async function newProfile(user: UserEvent) {
   await renderApp({ settings: accompanied, hash: '#/profile/new' });
-  await screen.findByRole('button', { name: 'Enregistrer' });
+  await screen.findByRole('button', { name: /^Enregistrer/ });
   const name = screen.getByRole('textbox', { name: 'Surnom' });
   await user.clear(name);
   await user.type(name, 'Mariama');
@@ -135,7 +135,7 @@ describe('answers not saved at the auto-lock', () => {
 
   it('are never warned about when nothing was typed', async () => {
     await renderApp({ settings: accompanied, hash: '#/profile/new' });
-    await screen.findByRole('button', { name: 'Enregistrer' });
+    await screen.findByRole('button', { name: /^Enregistrer/ });
 
     fakeTimers();
     idle(AUTO_LOCK_MS - 1000);

@@ -586,6 +586,96 @@ export function strengthChoiceOf(
   return { options, preselected, matching };
 }
 
+/** Two strengths in mg the same, whatever the rounding of a decimal. */
+function sameMg(a: number, b: number): boolean {
+  return Math.abs(a - b) < 1e-6;
+}
+
+/**
+ * The strength typed in the query, in mg, when no box of the candidate's
+ * family is known at it ("clamoxyl 3g"): neither a component of that strength
+ * nor that strength in its name (a syrup's "125 mg/5 ml" holds no strength in
+ * mg). Undefined when none is typed, when a box has it, or for a remedy. The
+ * confirm screen then says so and asks: the number is never dropped silently.
+ */
+export function strengthNotFoundOf(
+  pack: Pack,
+  candidate: ConfirmCandidate,
+  query: string,
+): number | undefined {
+  const typed = parseStrength(query).strengthMg;
+  if (typed === undefined || candidate.kind !== 'product') return undefined;
+  const members = [candidate.id, ...candidate.variants]
+    .map((id) => productOf(pack, id))
+    .filter((p): p is Product => p !== undefined);
+  const known = members.some(
+    (p) =>
+      p.components.some((c) => c.strengthMg !== undefined && sameMg(c.strengthMg, typed)) ||
+      [p.names.fr, p.names.en].some((name) => {
+        const named = parseStrength(name).strengthMg;
+        return named !== undefined && sameMg(named, typed);
+      }),
+  );
+  return known ? undefined : typed;
+}
+
+/**
+ * The dose question of a box the pack has no strength for, which a strength
+ * threshold reads (generic aspirin, SCRUM-56): the threshold in mg, asked as
+ * "100 mg ou moins / Plus de 100 mg / Je ne sais pas" (CheckedItem.strengthAtMostMg).
+ * Undefined for a remedy, a box whose components all have a strength or more
+ * than one has none, a substance no threshold reads, or a family with a box
+ * at or below the threshold (the strength question offers that box). The
+ * lowest threshold of the substance: at most it keeps every threshold rule
+ * off, and above it reads as not known, which every one of them reads.
+ */
+export function doseRangeOf(
+  pack: Pack,
+  candidate: ConfirmCandidate,
+  productId: string,
+): number | undefined {
+  if (candidate.kind !== 'product') return undefined;
+  return rangeOf(pack, productId, [candidate.id, ...candidate.variants]);
+}
+
+/**
+ * The dose range of a listed product (doseRangeOf), its family read from the
+ * pack: the threshold in mg, or undefined.
+ */
+export function productDoseRangeOf(pack: Pack, productId: string): number | undefined {
+  const family = productFamilyOf(pack, productId);
+  const members = family === undefined ? undefined : indexedOf(pack).members.get(family);
+  return rangeOf(pack, productId, members ?? [productId]);
+}
+
+function rangeOf(pack: Pack, productId: string, memberIds: readonly string[]): number | undefined {
+  const unknown = productOf(pack, productId)?.components.filter((c) => c.strengthMg === undefined);
+  const [only] = unknown ?? [];
+  if (only === undefined || (unknown?.length ?? 0) > 1) return undefined;
+  const thresholds = pack.rules.flatMap(({ when: { subject, strengthAboveMg } }) =>
+    strengthAboveMg !== undefined &&
+    subject !== undefined &&
+    'substance' in subject &&
+    subject.substance === only.substance
+      ? [strengthAboveMg]
+      : [],
+  );
+  if (thresholds.length === 0) return undefined;
+  const threshold = Math.min(...thresholds);
+  const offered = memberIds.some((id) =>
+    productOf(pack, id)?.components.some(
+      (c) =>
+        c.substance === only.substance && c.strengthMg !== undefined && c.strengthMg <= threshold,
+    ),
+  );
+  return offered ? undefined : threshold;
+}
+
+/** A strength in mg as the language writes it ("3000 mg", "0,4 mg"). */
+export function strengthText(mg: number, lang: Lang): string {
+  return milligrams(mg, lang);
+}
+
 /**
  * How a candidate is shown on the search screen, and on the confirm screen
  * until a strength is chosen. The product itself when its strength is chosen

@@ -349,6 +349,32 @@ describe('contextFromProfile: conditions, items and signs', () => {
     ]);
   });
 
+  it('merges a long-term box into the checked one read the same way only, its dose range included', () => {
+    const aspirin: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
+    const low: CheckedItem = { ...aspirin, strengthAtMostMg: 100 };
+    // Two checked boxes, "100 mg ou moins" then without a range, and a long-term one without.
+    const two = contextFromProfile(
+      profile({ longTermItems: [aspirin] }),
+      { items: [low, aspirin], signs: [] },
+      TODAY,
+    );
+    expect(two.items).toEqual([low, { ...aspirin, longTerm: true }]);
+
+    // The same range merges; another range, or none, is a box of its own, each read as said.
+    const same = contextFromProfile(
+      profile({ longTermItems: [low] }),
+      { items: [low], signs: [] },
+      TODAY,
+    );
+    expect(same.items).toEqual([{ ...low, longTerm: true }]);
+    const apart = contextFromProfile(
+      profile({ longTermItems: [aspirin] }),
+      { items: [low], signs: [] },
+      TODAY,
+    );
+    expect(apart.items).toEqual([low, { ...aspirin, longTerm: true }]);
+  });
+
   it('keeps the larger units per day of a product both checked and long-term (safer for a maximum dose)', () => {
     const largerLongTerm = contextFromProfile(
       profile({ longTermItems: [{ ...doliprane, unitsPerDay: 3 }] }),

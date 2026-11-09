@@ -223,6 +223,18 @@ describe('contextOf', () => {
       strengthUnknown: true,
     });
   });
+
+  it('maps strength-at-most-mg, a dose answered by a range ("100 mg ou moins")', async () => {
+    const bounded = contextOf(
+      await sample((t) =>
+        t.replace('units-per-day: 3, long-term: true', 'strength-at-most-mg: 100'),
+      ),
+    );
+    expect(bounded.items[0]).toStrictEqual({
+      ref: { kind: 'product', id: 'advil-400-mg-63646874' },
+      strengthAtMostMg: 100,
+    });
+  });
 });
 
 describe('projectOf', () => {

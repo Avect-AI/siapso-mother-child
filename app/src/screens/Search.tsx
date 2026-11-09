@@ -8,7 +8,14 @@ import {
 } from '@siapso/resolver';
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { candidateDisplayOf, localNameOf, type BrowseEntry } from '../domain/search-index.js';
+import type { CheckedItem } from '@siapso/engine';
+import { oneTapItem } from '../domain/one-tap.js';
+import {
+  candidateDisplayOf,
+  localNameOf,
+  writtenNameOf,
+  type BrowseEntry,
+} from '../domain/search-index.js';
 import { useLang, useT, useTNodes } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
@@ -65,12 +72,15 @@ function CandidateButton({
   candidate,
   query,
   showKind = false,
+  addsAtOnce = false,
   onChoose,
 }: {
   candidate: Candidate;
   query: string;
   /** Say which list it is from (medicine or remedy): the lookalikes mix both. */
   showKind?: boolean;
+  /** A tap adds it at once (SCRUM-56): the row ends in "Ajouter", not the chevron of a screen. */
+  addsAtOnce?: boolean;
   onChoose: () => void;
 }) {
   const t = useT();
@@ -115,7 +125,7 @@ function CandidateButton({
             </span>
           ) : null}
         </span>
-        <Chevron />
+        {addsAtOnce ? <span className="candidate__add">{t('search.addAtOnce')}</span> : <Chevron />}
       </button>
     </li>
   );
@@ -159,7 +169,14 @@ export function Search({ kind }: { kind: EntryKind }) {
   const [entry] = useState(flowState);
   const [text, setText] = useState(entry.query ?? '');
   const [query, setQuery] = useState(text);
-  const [leaving, setLeaving] = useState(false);
+  // Set by the first add or move away, at once: a second click in the same
+  // task, before React renders again, must not add or go back twice.
+  const leaving = useRef(false);
+  const leave = (): boolean => {
+    if (leaving.current) return false;
+    leaving.current = true;
+    return true;
+  };
   // The products and remedies the text looks like, asked about before it is added as typed.
   const [lookalikes, setLookalikes] = useState<Candidate[] | null>(null);
   // The whole list of the kind, after a name said found nothing.
@@ -171,6 +188,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   // The voice screen, the text in the field kept on this entry for the way
   // back (the letters typed just before the tap included).
   const toVoiceScreen = () => {
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     navigate(VOICE_PATH, { state: inSession({ fromSearch: true }) });
   };
@@ -228,8 +246,7 @@ export function Search({ kind }: { kind: EntryKind }) {
    * the field, perhaps typed since, is kept on this entry for the way back.
    */
   const choose = (candidate: Candidate, foundBy: string) => {
-    if (leaving) return;
-    setLeaving(true);
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     // The product goes in the entry's state, never in the address.
     navigate(confirmPath(candidate.kind), {
@@ -242,6 +259,37 @@ export function Search({ kind }: { kind: EntryKind }) {
         heard: fromVoice ? true : undefined,
       }),
     });
+  };
+
+  /** What a tap on `candidate` adds at once, or null when its confirm screen must ask first. */
+  const atOnce = (candidate: Candidate, foundBy: string): CheckedItem | null =>
+    pack === null
+      ? null
+      : oneTapItem(pack, candidate, foundBy, { heard: fromVoice, items: check.items });
+
+  /**
+   * A tap on a named row (SCRUM-56, S11): the tap is the confirmation when
+   * nothing must be asked or said first (domain/one-tap.ts), and the product
+   * goes to the list, the check saying it was added; otherwise its confirm
+   * screen. Never from Enter, which picks no row by name.
+   */
+  const tap = (candidate: Candidate, foundBy: string) => {
+    if (leaving.current) return;
+    const item = atOnce(candidate, foundBy);
+    if (item === null || pack === null) {
+      choose(candidate, foundBy);
+      return;
+    }
+    if (!leave()) return;
+    keepOnEntry({ query: text, heard: fromVoice });
+    // The name she typed, when the product is shown under another one ("cytotec").
+    const written = writtenNameOf(pack, candidate, foundBy, lang);
+    check.add(item, {
+      ...(candidate.kind === 'product' ? { family: candidate.family } : {}),
+      ...(written === undefined ? {} : { written }),
+      ...(written !== undefined && fromVoice ? { said: true } : {}),
+    });
+    backToCheck(navigate, entry.stepsToCheck);
   };
 
   // Enter in the field opens the best candidate for what is typed now, confirm screen first.
@@ -257,8 +305,7 @@ export function Search({ kind }: { kind: EntryKind }) {
    * `declined` when she said it is none of the products proposed.
    */
   const addAsTyped = (declined = false) => {
-    if (leaving || typed === '') return;
-    setLeaving(true);
+    if (typed === '' || !leave()) return;
     check.add(
       { ref: { kind: 'unrecognised', text: typed } },
       {
@@ -273,7 +320,7 @@ export function Search({ kind }: { kind: EntryKind }) {
 
   // "Not found": first, whether it is one of the products or remedies the text looks like.
   const notFound = () => {
-    if (leaving || typed === '') return;
+    if (leaving.current || typed === '') return;
     const found = index === null ? [] : lookalikesOf(index, typed, kind);
     if (found.length > 0) setLookalikes(found);
     else addAsTyped();
@@ -281,8 +328,7 @@ export function Search({ kind }: { kind: EntryKind }) {
 
   // A remedy or a medicine family from the whole list: its confirm screen, as a candidate.
   const chooseEntry = (chosen: BrowseEntry) => {
-    if (leaving) return;
-    setLeaving(true);
+    if (!leave()) return;
     keepOnEntry({ query: text, heard: fromVoice });
     navigate(confirmPath(chosen.kind), {
       state: flowEntry({
@@ -303,6 +349,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   };
 
   const lookInOtherList = () => {
+    if (!leave()) return;
     navigate(searchPath(OTHER[kind]), {
       replace: true,
       state: flowEntry({ stepsToCheck: entry.stepsToCheck, query: text }),
@@ -437,8 +484,9 @@ export function Search({ kind }: { kind: EntryKind }) {
                 candidate={candidate}
                 query={typed}
                 showKind
+                addsAtOnce={atOnce(candidate, typed) !== null}
                 onChoose={() => {
-                  choose(candidate, typed);
+                  tap(candidate, typed);
                 }}
               />
             ))}
@@ -471,8 +519,9 @@ export function Search({ kind }: { kind: EntryKind }) {
                 key={candidate.id}
                 candidate={candidate}
                 query={query}
+                addsAtOnce={atOnce(candidate, query) !== null}
                 onChoose={() => {
-                  choose(candidate, query);
+                  tap(candidate, query);
                 }}
               />
             ))}
