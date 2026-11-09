@@ -17,6 +17,8 @@ export default tseslint.config(
       'app/public/pack/**',
       // Voice pack conversion: Python venv and converted files (git-ignored).
       'app/public/voice/**',
+      // Prescription reading pack (git-ignored, pnpm ocr:install-local).
+      'app/public/ocr/**',
       'speech/convert/.venv/**',
       'speech/convert/out/**',
       '**/playwright-report',

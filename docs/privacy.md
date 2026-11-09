@@ -41,7 +41,7 @@ The inventory of the browser's storage for the app's origin (live test round 1, 
 - **Store `pack`:** the knowledge pack in use and the one before, public content.
 - **Local storage:** the tabs' epoch of random marks (`siapso-session-epoch`), nothing about a profile.
 - **Session storage:** a random mark of the visit (`siapso-visit`).
-- **Cache Storage:** the service worker's copy of the app and the knowledge pack (and the voice pack once installed), nothing about a profile.
+- **Cache Storage:** the service worker's copy of the app and the knowledge pack (and the voice pack once installed), nothing about a profile. The prescription reading pack, once installed, has a cache of its own (`siapso-ocr-pack`): its models, ONNX Runtime and pdf.js files and its manifest, never a photo, a PDF or a text read from one; whether it is installed says nothing about a profile (`docs/ocr.md`).
 - **Cookies:** none.
 - **Visible from it all:** the number of profiles and of results per profile, the size of each record, and the times at which the browser wrote its files.
 

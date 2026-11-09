@@ -8,5 +8,9 @@
 *.onnx binary
 *.wav binary
 *.exe binary
+# Scanned page fixtures of the reading pack (CCITT Group 4, JBIG2, JPEG 2000).
+*.ccitt binary
+*.jbig2 binary
+*.j2k binary
 # BDPM import test fixture: Windows-1252 and CRLF, as the official files
 tools/knowledge/test/fixtures/bdpm/*.txt -text

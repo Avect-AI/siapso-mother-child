@@ -3,6 +3,7 @@ packages:
   - engine
   - resolver
   - speech
+  - ocr
   - app
   - tools/*
   - server
