@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getStoredSettings } from '../data/db.js';
 import { listHistory, recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
@@ -166,5 +166,60 @@ describe('Settings', () => {
     ).toBeChecked();
     expect(screen.queryByRole('button', { name: 'Changer de mode' })).toBeNull();
     expect(await getStoredSettings()).toMatchObject({ lang: 'fr', mode: 'woman' });
+  });
+});
+
+describe('Settings, country of use', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('says the country whose emergency numbers who to call shows, with the way to change it, locked too', async () => {
+    await renderApp({ settings: woman, hash: '#/settings', locked: true });
+    expect(await screen.findByText('Pays : Sénégal')).toBeVisible();
+    expect(screen.getByText("Qui appeler montre les numéros d'urgence de ce pays.")).toBeVisible();
+    const change = screen.getByRole('link', { name: 'Changer le pays' });
+    expect(change).toHaveAttribute('href', '#/country');
+    expect(change).toHaveClass('button--secondary');
+    // The way back stays the one primary action.
+    expect(document.querySelectorAll('main .button--primary')).toHaveLength(1);
+  });
+
+  it('says when the country is not known, or not in the list', async () => {
+    const { unmount } = await renderApp({
+      settings: woman,
+      hash: '#/settings',
+      phone: { languages: ['en-US'], timeZone: 'UTC' },
+    });
+    expect(await screen.findByText('Pays : inconnu')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Choisir le pays' })).toHaveAttribute(
+      'href',
+      '#/country',
+    );
+    unmount();
+
+    await renderApp({ settings: { ...woman, country: 'other' }, hash: '#/settings' });
+    expect(await screen.findByText('Pays : autre pays')).toBeVisible();
+  });
+
+  it('says the country is to choose when the language and the time zone of the phone disagree', async () => {
+    await renderApp({
+      settings: woman,
+      hash: '#/settings',
+      phone: { languages: ['fr-SN'], timeZone: 'Africa/Bamako' },
+    });
+    expect(await screen.findByText('Pays : à choisir')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Choisir le pays' })).toHaveAttribute(
+      'href',
+      '#/country',
+    );
+  });
+
+  it('says the country fixed by the deployment, with no way to change it', async () => {
+    vi.stubGlobal('fetch', () => Promise.resolve(Response.json({ country: 'CI' })));
+    await renderApp({ settings: { ...woman, country: 'GH' }, hash: '#/settings' });
+    expect(await screen.findByText("Pays : Côte d'Ivoire")).toBeVisible();
+    expect(screen.getByText("Ce pays est fixé avec l'application.")).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Changer le pays' })).toBeNull();
   });
 });

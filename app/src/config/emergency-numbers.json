@@ -1,0 +1,1578 @@
+{
+  "about": "Public national emergency numbers by country of use, shown as call links on who to call (app/src/config/emergency.ts). Each number is confirmed by at least two sources of two publishers, each fetched on the date given (checkedOn), with the date the page gives itself when it has one (pageUpdated). Every medical number (samu, ambulance, emergency) has at least one national source: the telecom regulator, a ministry of the country, the service itself, or the state press (state news agency, state daily or broadcaster) reporting the government. A number whose sources disagree, or that has too few sources, is left out and listed with why: no number is guessed. In each country: the medical numbers first, then the fire brigade or civil protection, then the police (listed when the file has no medical number for the country, and in Cameroon); who to call shows the medical numbers alone as the emergency numbers, the others under \"Autres numéros (non médicaux)\". A number marked caveat not-all-networks is said to the person as maybe not working from every network. timeZones are the IANA zones of the country in zone.tab, one country each, used to find the country of a phone offline; weakTimeZones are zones other countries may report as theirs (canonical links in the tz database), never enough alone. A country with detect false is never found from the phone, only chosen by hand.",
+  "teamCheck": "TEAM CHECK: before a pilot, the team must confirm every number of the pilot country with the health authorities of the pilot district (that it answers there, from every mobile operator, free of charge), and add a number left out only once an official source gives it.",
+  "attribution": [
+    "The quoted texts (says) belong to their publishers and are quoted to cite each source.",
+    "Contains public sector information licensed under the Open Government Licence v3.0 (UK Foreign, Commonwealth and Development Office travel advice, gov.uk)."
+  ],
+  "weakTimeZones": ["Africa/Abidjan", "Africa/Lagos"],
+  "countries": [
+    {
+      "code": "SN",
+      "timeZones": ["Africa/Dakar"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "1515",
+          "sources": [
+            {
+              "url": "https://samu.sn/",
+              "publisher": "SAMU National (Senegal)",
+              "kind": "service",
+              "checkedOn": "2026-11-06",
+              "says": "Numéro d’urgence gratuit : 1515"
+            },
+            {
+              "url": "https://www.expat.com/en/guide/africa/senegal/37424-emergency-numbers-and-safety-in-senegal.html",
+              "publisher": "Expat.com",
+              "kind": "compilation",
+              "pageUpdated": "2026-04-07",
+              "checkedOn": "2026-11-06",
+              "says": "When a medical emergency occurs in Senegal, your first call should be to SAMU National at 1515."
+            },
+            {
+              "url": "https://www.senpages.com/dossiers/sante-hopitaux-urgences",
+              "publisher": "Senpages",
+              "kind": "compilation",
+              "checkedOn": "2026-11-06",
+              "says": "1515 le numéro du SAMU national [...] gratuit, 24h/24 (ce n’est pas le « 15 »)"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/senegal/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 18"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/senegal",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-15",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 18"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/senegal/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-29",
+              "checkedOn": "2026-11-06",
+              "says": "Pompiers : 18"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "samu",
+          "phone": "15",
+          "why": "The sources disagree: the UK FCDO (\"Ambulance: 15\") and Canada (\"medical assistance: 15\") give 15, the SAMU national's own site gives only 1515, and Senpages says the SAMU is 1515, not 15."
+        },
+        {
+          "service": "emergency",
+          "phone": "112",
+          "why": "One source only (France: \"tous secours (112)\")."
+        }
+      ],
+      "notes": [
+        "The Ministry of Health site (sante.gouv.sn) showed a maintenance page on 2026-11-05.",
+        "Do not confuse 1515 with the private SOS Médecins line +221 33 889 15 15."
+      ]
+    },
+    {
+      "code": "ML",
+      "timeZones": ["Africa/Bamako"],
+      "numbers": [
+        {
+          "service": "ambulance",
+          "phone": "15",
+          "sources": [
+            {
+              "url": "https://itu.int/itudoc/itu-t/number/m/mli/79972_ww9-fr.doc",
+              "publisher": "CRT Mali (telecom regulator), numbering plan filed with the ITU",
+              "kind": "regulator",
+              "pageUpdated": "2005-09-28",
+              "checkedOn": "2026-11-06",
+              "says": "Services d'urgence Numéro Service 15 Santé 17 Police 18 Pompiers"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/mali/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 15"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/mali",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-09",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 15"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/mali/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 18"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/mali",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-09",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 18"
+            }
+          ]
+        }
+      ],
+      "leftOut": [],
+      "notes": [
+        "No organised pre-hospital emergency service is documented: the UK FCDO says \"Emergency response capacity is very limited\" and \"If no help is available, take local advice and arrange your own transport locally.\"",
+        "The regulator's numbering plan dates from 2005; France lists only the police line 80 331 in Bamako."
+      ]
+    },
+    {
+      "code": "MR",
+      "timeZones": ["Africa/Nouakchott"],
+      "numbers": [],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "phone": "101",
+          "why": "One source only (UK FCDO: \"Ambulance: 101\"); Canada and France give no medical number."
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "why": "The sources disagree: Canada (\"Firefighters: 18\") and France (\"Pompiers : 18\") give 18, the UK FCDO gives \"Fire: 118\"."
+        },
+        {
+          "service": "police",
+          "phone": "17",
+          "why": "The sources disagree: Canada and France give 17, the UK FCDO gives \"Police: 117\"."
+        }
+      ],
+      "notes": [
+        "To confirm locally (Direction générale de la Sécurité civile, Ministry of Health, SAMU Nouakchott) before any number is added."
+      ]
+    },
+    {
+      "code": "GM",
+      "timeZones": ["Africa/Banjul"],
+      "numbers": [
+        {
+          "service": "ambulance",
+          "phone": "116",
+          "caveat": "not-all-networks",
+          "sources": [
+            {
+              "url": "https://pura.gm/wp-content/uploads/2021/06/Annual-Report_2018.pdf",
+              "publisher": "PURA (Public Utilities Regulatory Authority, The Gambia)",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "PURA in consultation with the operators have availed the free emergency calls number 116 to the Hospital Ambulance service, 117 to the Police and 118 to the Fire and Rescue Services"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/gambia-the",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 116"
+            },
+            {
+              "url": "https://www.anwb.nl/vakantie/gambia/reisvoorbereiding/voor-vertrek",
+              "publisher": "ANWB",
+              "kind": "compilation",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 116"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://gfrs.gov.gm/?p=2188",
+              "publisher": "Gambia Fire and Rescue Service",
+              "kind": "service",
+              "checkedOn": "2026-11-06",
+              "says": "The commonly used emergency number (118) can cause delays due to the automated recording system, which requires callers to wait for approximately 30 seconds before being connected."
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/gambia-the",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            },
+            {
+              "url": "https://www.anwb.nl/vakantie/gambia/reisvoorbereiding/voor-vertrek",
+              "publisher": "ANWB",
+              "kind": "compilation",
+              "checkedOn": "2026-11-06",
+              "says": "Brandweer: 118"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "112",
+          "why": "No reliable source; only weak compilations mention it."
+        }
+      ],
+      "notes": [
+        "The regulator's source is its 2018 annual report. The Point (2026-01-23) reports that emergency numbers \"remain non-toll free and largely restricted to Qcell subscribers\": the app says 116 may not work from every network, and gives the health post first.",
+        "The UK FCDO says there is no single emergency number like 999 in The Gambia; the fire service says 118 plays a recording of about 30 seconds before it connects.",
+        "Mobile numbers moved from 7 to 9 digits in September 2026: check that the short numbers still work."
+      ]
+    },
+    {
+      "code": "GN",
+      "timeZones": ["Africa/Conakry"],
+      "numbers": [],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "No national number: the UK FCDO says \"There are no emergency services in Guinea.\" and Canada that ambulance services are not available."
+        },
+        {
+          "service": "firefighters",
+          "why": "The sources disagree: Canada gives \"firefighters: 1717\", France \"Pompiers : 18\"."
+        },
+        {
+          "service": "police",
+          "phone": "122",
+          "why": "Canada and France give 122 for the gendarmerie, but France says it is reserved for emergencies such as armed attacks, and the UK gives it for Conakry only: not a number for a medical emergency."
+        }
+      ],
+      "notes": []
+    },
+    {
+      "code": "GW",
+      "timeZones": ["Africa/Bissau"],
+      "numbers": [
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/guinea-bissau/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Police: 117"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/guinea-bissau",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "police: 117"
+            },
+            {
+              "url": "https://www.mtn.com/emergency-contacts/",
+              "publisher": "MTN Group",
+              "kind": "operator",
+              "checkedOn": "2026-11-06",
+              "says": "117 (free)"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "The sources disagree: the UK FCDO gives 1313, Canada and MTN give 119, a WHO country story (2022) gives 112."
+        },
+        {
+          "service": "firefighters",
+          "why": "The sources disagree: the UK FCDO gives 1313, Canada and MTN give 118."
+        }
+      ],
+      "notes": [
+        "The police is listed because this file has no medical number for Guinea-Bissau. A medical number needs local confirmation."
+      ]
+    },
+    {
+      "code": "CV",
+      "timeZones": ["Atlantic/Cape_Verde"],
+      "numbers": [
+        {
+          "service": "ambulance",
+          "phone": "130",
+          "sources": [
+            {
+              "url": "https://boe.incv.cv/Bulletins/Download/2044",
+              "publisher": "Government of Cabo Verde, Council of Ministers Resolution no. 67/2015 (Boletim Oficial)",
+              "kind": "ministry",
+              "pageUpdated": "2015-07-27",
+              "checkedOn": "2026-11-06",
+              "says": "Hospital 130 / Bombeiros 131 / Polícia Nacional 132"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/cape-verde/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 130"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cabo-verde",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-05-26",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 130"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/cap-vert/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "Hôpital : 130"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "131",
+          "sources": [
+            {
+              "url": "https://boe.incv.cv/Bulletins/Download/2044",
+              "publisher": "Government of Cabo Verde, Council of Ministers Resolution no. 67/2015 (Boletim Oficial)",
+              "kind": "ministry",
+              "pageUpdated": "2015-07-27",
+              "checkedOn": "2026-11-06",
+              "says": "Hospital 130 / Bombeiros 131 / Polícia Nacional 132"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/cape-verde/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 131"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cabo-verde",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-05-26",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 131"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/cap-vert/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "Sapeurs-pompiers : 131"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "112",
+          "why": "A 2009 decree made 112 the national emergency number, but no source fetched says it works today."
+        }
+      ],
+      "notes": [
+        "The 2015 resolution says the short numbers are free, that there is no pre-hospital medical emergency structure, and that the fire brigades (bombeiros) run the ambulances."
+      ]
+    },
+    {
+      "code": "CI",
+      "timeZones": ["Africa/Abidjan"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "185",
+          "sources": [
+            {
+              "url": "https://www.artci.ci/plan_de_numerotation/",
+              "publisher": "ARTCI (telecom regulator of Côte d'Ivoire)",
+              "kind": "regulator",
+              "pageUpdated": "2014-01-20",
+              "checkedOn": "2026-11-06",
+              "says": "185 S.A.M.U Urgence médicale publique"
+            },
+            {
+              "url": "https://ci.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-08",
+              "checkedOn": "2026-11-06",
+              "says": "Urgence médicale SAMU : 185"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/cote-d-ivoire/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 185"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cote-d-ivoire-ivory-coast",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-02",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 185"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "180",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/cote-d-ivoire/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 180"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cote-d-ivoire-ivory-coast",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-02",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 180"
+            },
+            {
+              "url": "https://ci.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-08",
+              "checkedOn": "2026-11-06",
+              "says": "Pompiers : 180"
+            },
+            {
+              "url": "https://www.aip.ci/cote-divoire-aip-le-gspm-appelle-a-une-implication-citoyenne-accrue-face-a-la-recrudescence-des-sinistres/",
+              "publisher": "Agence Ivoirienne de Presse (state news agency)",
+              "kind": "state-press",
+              "pageUpdated": "2025-06-11",
+              "checkedOn": "2026-11-06",
+              "says": "le numéro vert 180"
+            }
+          ]
+        }
+      ],
+      "leftOut": [],
+      "notes": [
+        "The regulator's list dates from 2014 and says calls to emergency numbers are free; a 2010 press article says the SAMU's interventions themselves were billed.",
+        "The UK FCDO says emergency services outside Abidjan are unreliable."
+      ]
+    },
+    {
+      "code": "BF",
+      "timeZones": ["Africa/Ouagadougou"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "15",
+          "sources": [
+            {
+              "url": "https://www.wakatsera.com/burkina-urgences-medicales-plus-de-15-500-interventions-realises-en-un-an/",
+              "publisher": "Ministry of Health of Burkina Faso, communiqué signed DCRP/MS (published by Wakat Séra)",
+              "kind": "ministry",
+              "pageUpdated": "2026-07-23",
+              "checkedOn": "2026-11-06",
+              "says": "Pour toute intervention du SAMU à Ouagadougou où à Bobo-Dioulasso, contactez le 15."
+            },
+            {
+              "url": "https://www.sidwaya.info/urgences-medicales-le-samu-est-pour-la-population-il-faut-en-faire-un-usage-responsable-directeur-general-professeur-armel-flavien-kabore/",
+              "publisher": "Sidwaya (state daily)",
+              "kind": "state-press",
+              "pageUpdated": "2025-05-19",
+              "checkedOn": "2026-11-06",
+              "says": "Il suffit de composer le numéro gratuit 15 pour être mis en contact avec un professionnel de santé"
+            },
+            {
+              "url": "https://www.sidwaya.info/prise-en-charge-des-urgences-medicales-le-samu-de-bobo-dioulasso-operationnel/",
+              "publisher": "Sidwaya (state daily)",
+              "kind": "state-press",
+              "pageUpdated": "2025-11-10",
+              "checkedOn": "2026-11-06",
+              "says": "le numéro 15 est un numéro gratuit, simple et accessible à tous"
+            },
+            {
+              "url": "https://burkina24.com/2025/04/11/burkina-faso-le-samu-entre-en-service-pour-ameliorer-lacces-aux-soins-durgence/",
+              "publisher": "Burkina 24",
+              "kind": "press",
+              "pageUpdated": "2025-04-11",
+              "checkedOn": "2026-11-06",
+              "says": "à travers le 15, numéro d'appel court et gratuit, un agent de santé pour répondre aux sollicitations d'urgences graves."
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/burkina-faso/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 18"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/burkina-faso",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "18 for firefighters"
+            },
+            {
+              "url": "https://bf.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-04-13",
+              "checkedOn": "2026-11-06",
+              "says": "Pompiers : 18"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "112",
+          "why": "One source only (UK FCDO, outside Ouagadougou)."
+        }
+      ],
+      "notes": [
+        "The SAMU answers on 15, free of charge, in Ouagadougou and Bobo-Dioulasso only (communiqué of 2026-07-22); its primary interventions and the medical transfers of pregnant women are free.",
+        "The Ministry of Health site (sante.gov.bf) refused the connection on 2026-11-06: its communiqué is read as Wakat Séra published it, and that page does not spell out DCRP/MS.",
+        "The UK FCDO says to call 18 from Ouagadougou and ask for an ambulance, and that outside it the emergency services are unlikely to respond."
+      ]
+    },
+    {
+      "code": "NE",
+      "timeZones": ["Africa/Niamey"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "15",
+          "sources": [
+            {
+              "url": "https://anp.ne/lancement-officiel-ce-22-octobre-des-activites-de-lantenne-samu-niger-de-maradi/",
+              "publisher": "Agence Nigérienne de Presse (state news agency)",
+              "kind": "state-press",
+              "pageUpdated": "2025-10-22",
+              "checkedOn": "2026-11-06",
+              "says": "l’appel du numéro vert, le 15, est gratuit",
+              "note": "Reports the launch of the SAMU antenna of Maradi by the Minister of Health."
+            },
+            {
+              "url": "https://www.lesahel.org/lancement-officiel-des-activites-de-lantenne-regionale-samu-tahoua-promouvoir-lassistance-medicale-durgence-dans-les-regions/",
+              "publisher": "Le Sahel (ONEP, state daily)",
+              "kind": "state-press",
+              "pageUpdated": "2025-09-18",
+              "checkedOn": "2026-11-06",
+              "says": "les appels du numéro vert (le 15) et toutes les interventions de secours d'urgence du SAMU-Niger sont entièrement gratuits",
+              "note": "Reports the launch of the SAMU antenna of Tahoua."
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/niger/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-23",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 15"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/niger",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-15",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 15"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/niger/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-23",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 18"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/niger",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-15",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 18"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "samu",
+          "phone": "118",
+          "why": "One source only (Swiss FDFA sheet of 2020: \"15 ou 118\")."
+        }
+      ],
+      "notes": [
+        "The SAMU answers on 15, free of charge, in Niamey and in its regional antennas (Tahoua since 2025-09-15, Maradi since 2025-10-22); it aims to cover the eight regions.",
+        "The government sites (gouv.ne, sante.gouv.ne) could not be reached on 2026-11-06; the APA News article of 2025-10-23 answered HTTP 403 and is not cited. The police (17, UK FCDO and Canada) is not listed: the file has a medical number for Niger."
+      ]
+    },
+    {
+      "code": "TG",
+      "timeZones": ["Africa/Lome"],
+      "numbers": [
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/togo/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 118"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/togo",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            },
+            {
+              "url": "https://tg.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-01-28",
+              "checkedOn": "2026-11-06",
+              "says": "Urgence secours/pompiers : 118"
+            }
+          ]
+        },
+        {
+          "service": "police",
+          "phone": "161",
+          "sources": [
+            {
+              "url": "https://travel.gc.ca/destinations/togo",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-13",
+              "checkedOn": "2026-11-06",
+              "says": "police: 117, or 161 from a cellular telephone"
+            },
+            {
+              "url": "https://tg.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-01-28",
+              "checkedOn": "2026-11-06",
+              "says": "Urgence police : 117 (depuis un fixe) ou 161 (depuis un portable)"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "phone": "8200",
+          "why": "The UK FCDO gives \"Ambulance: 8200\", but it is the line of a private company (Multi Assistance Togo) whose full care is for its subscribers; no second source."
+        }
+      ],
+      "notes": [
+        "The police is listed because this file has no medical number for Togo; 161 is the number from a mobile phone (117 from a landline)."
+      ]
+    },
+    {
+      "code": "BJ",
+      "timeZones": ["Africa/Porto-Novo"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "112",
+          "sources": [
+            {
+              "url": "https://arcep.bj/wp-content/uploads/2026/06/Numéros-courts-daccès-aux-services-durgence-ou-dintérêt-général-et-aux-services-dassistance.pdf",
+              "publisher": "ARCEP Benin (telecom regulator)",
+              "kind": "regulator",
+              "pageUpdated": "2026-06-01",
+              "checkedOn": "2026-11-06",
+              "says": "112 Attribué SAMU-BENIN"
+            },
+            {
+              "url": "https://bj.diplomatie.gouv.fr/en-cas-durgence",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-04-08",
+              "checkedOn": "2026-11-06",
+              "says": "SAMU : 112"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://arcep.bj/wp-content/uploads/2026/06/Numéros-courts-daccès-aux-services-durgence-ou-dintérêt-général-et-aux-services-dassistance.pdf",
+              "publisher": "ARCEP Benin (telecom regulator)",
+              "kind": "regulator",
+              "pageUpdated": "2026-06-01",
+              "checkedOn": "2026-11-06",
+              "says": "118 Attribué Sapeur Pompier"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/benin/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire and ambulance: 118"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/benin",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "166",
+          "why": "France gives \"Urgences (appel gratuit) : 166\", but the regulator ARCEP assigns 166 to the Ministry of the Interior; no second source."
+        }
+      ],
+      "notes": ["In Benin 112 is assigned to the SAMU."]
+    },
+    {
+      "code": "GH",
+      "timeZones": ["Africa/Accra"],
+      "numbers": [
+        {
+          "service": "emergency",
+          "phone": "112",
+          "sources": [
+            {
+              "url": "https://www.nca.org.gh/wp-content/uploads/2021/11/NUMBERING-PLAN-FOR-GHANA.pdf",
+              "publisher": "National Communications Authority (Ghana)",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "Emergency SOS 112 Operational"
+            },
+            {
+              "url": "https://moh.gov.gh/?p=4447",
+              "publisher": "Ghana Ministry of Health",
+              "kind": "ministry",
+              "checkedOn": "2026-11-06",
+              "says": "the number to dial on all mobile networks is 112"
+            },
+            {
+              "url": "https://www.itu.int/en/ITU-T/Workshops-and-Seminars/2026/0414/Documents/Gifty%20Selby.pdf",
+              "publisher": "National Signals Bureau (Ghana), presentation at an ITU-ATU workshop",
+              "kind": "service",
+              "pageUpdated": "2026-04-14",
+              "checkedOn": "2026-11-06",
+              "says": "Ghana's Operational Experience with Emergency Number 112"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/ghana/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "999 or 112 (ambulance, fire, police, coast guard and mountain rescue)"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/ghana",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-02",
+              "checkedOn": "2026-11-06",
+              "says": "emergency services: 112"
+            }
+          ]
+        },
+        {
+          "service": "ambulance",
+          "phone": "193",
+          "sources": [
+            {
+              "url": "https://www.nca.org.gh/wp-content/uploads/2021/11/NUMBERING-PLAN-FOR-GHANA.pdf",
+              "publisher": "National Communications Authority (Ghana)",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance 193 Operational"
+            },
+            {
+              "url": "https://www.itu.int/en/ITU-T/Workshops-and-Seminars/2026/0414/Documents/Gifty%20Selby.pdf",
+              "publisher": "National Signals Bureau (Ghana), presentation at an ITU-ATU workshop",
+              "kind": "service",
+              "pageUpdated": "2026-04-14",
+              "checkedOn": "2026-11-06",
+              "says": "193/112 [...] National Ambulance HQ",
+              "note": "From a diagram of the deck: \"193/112\" with an arrow to \"National Ambulance HQ\"."
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/ghana",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-02",
+              "checkedOn": "2026-11-06",
+              "says": "ambulance: 193"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "192",
+          "sources": [
+            {
+              "url": "https://www.nca.org.gh/wp-content/uploads/2021/11/NUMBERING-PLAN-FOR-GHANA.pdf",
+              "publisher": "National Communications Authority (Ghana)",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "Fire Service 192 Operational"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/ghana",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-02",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 192"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "999",
+          "why": "The numbering plan of the regulator marks \"National Security 190 & 999 Not Operational\", though the UK FCDO and France still give 999: 112 is the number to give."
+        }
+      ],
+      "notes": [
+        "The UK FCDO and France are wrong on 192 and 193: France gives \"Ambulance : 192\" and \"Pompiers : 193\", the UK FCDO \"192 (police)\"; the regulator's plan gives Fire Service 192 and Ambulance 193, as Canada does.",
+        "The same ITU deck shows 999 routed to the national call centre, while the regulator's plan marks it not operational: 999 stays out, 112 is given.",
+        "The regulator's plan shows no date (its file dates from 2017); the ITU deck says some areas lack strong connectivity on some operators."
+      ]
+    },
+    {
+      "code": "NG",
+      "timeZones": ["Africa/Lagos"],
+      "numbers": [
+        {
+          "service": "emergency",
+          "phone": "112",
+          "sources": [
+            {
+              "url": "https://ncc.gov.ng/node/1397",
+              "publisher": "Nigerian Communications Commission",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "The National Emergency Number 112 established by the Nigerian Communications Commission (NCC)"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/nigeria/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Telephone: 112 (ambulance, fire, police)"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/nigeria",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-21",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance - 112 or 199"
+            },
+            {
+              "url": "https://von.gov.ng/nemsas-reaffirms-112-emergency-medical-line/",
+              "publisher": "Voice of Nigeria (federal state broadcaster)",
+              "kind": "state-press",
+              "pageUpdated": "2026-08-20",
+              "checkedOn": "2026-11-06",
+              "says": "the toll-free 112 emergency line serves as a central contact point for medical emergencies"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "emergency",
+          "phone": "199",
+          "why": "Canada gives \"112 or 199\", but the FCDO, the NCC and NEMSAS give only 112."
+        }
+      ],
+      "notes": [
+        "NEMSAS (Voice of Nigeria, 2026-08-20) lists the emergency call centres of Benue and Imo states as not operational.",
+        "The UK FCDO says there is no national ambulance service."
+      ]
+    },
+    {
+      "code": "CM",
+      "timeZones": ["Africa/Douala"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "119",
+          "sources": [
+            {
+              "url": "https://art.cm/sites/default/files/documents/NART%2059-Final-2%20net.pdf",
+              "publisher": "ART (telecom regulator of Cameroon), Nouvelles de l'ART no. 59",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "S'assurer permanemment que les numéros d'urgence et d'utilité publique, notamment le 1510, le 113, le 117, le 118 et le 119 sont fonctionnels"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cameroon",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 119"
+            },
+            {
+              "url": "https://www.mtn.com/emergency-contacts/",
+              "publisher": "MTN Group",
+              "kind": "operator",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance (SAMU) 119 (free)"
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://art.cm/sites/default/files/documents/NART%2059-Final-2%20net.pdf",
+              "publisher": "ART (telecom regulator of Cameroon), Nouvelles de l'ART no. 59",
+              "kind": "regulator",
+              "checkedOn": "2026-11-06",
+              "says": "S'assurer permanemment que les numéros d'urgence et d'utilité publique, notamment le 1510, le 113, le 117, le 118 et le 119 sont fonctionnels"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cameroon",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            },
+            {
+              "url": "https://www.mtn.com/emergency-contacts/",
+              "publisher": "MTN Group",
+              "kind": "operator",
+              "checkedOn": "2026-11-06",
+              "says": "Fire brigade 118 (free)"
+            }
+          ]
+        },
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/cameroon/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Police: 117"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/cameroon",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "police: 117"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/cameroun/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-05",
+              "checkedOn": "2026-11-06",
+              "says": "Police Secours : 17 (ou 117 à partir du portable) dans les villes de Yaoundé, Douala et Garoua"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "phone": "112",
+          "why": "One source only (UK FCDO: \"Ambulance: 112\")."
+        }
+      ],
+      "notes": [
+        "The UK FCDO stands alone against 119 and 118 (\"Fire: 119\"). The regulator (April 2020) lists 119 and 118 among the emergency numbers that must work and be free, without naming their services; Canada and MTN name them.",
+        "The police 117 covers Yaoundé, Douala and Garoua (France)."
+      ]
+    },
+    {
+      "code": "TD",
+      "timeZones": ["Africa/Ndjamena"],
+      "numbers": [
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://www.alwihdainfo.com/Tchad-Lancement-du-numero-vert-117-de-la-police-nationale_a135335.html",
+              "publisher": "Alwihda Info",
+              "kind": "press",
+              "pageUpdated": "2024-09-13",
+              "checkedOn": "2026-11-06",
+              "says": "a lancé le numéro vert de la Police Nationale, le 117"
+            },
+            {
+              "url": "https://tchadinfos.com/2024/09/13/securite-la-police-nationale-rend-operationnel-son-numero-vert-le-117/",
+              "publisher": "Tchadinfos",
+              "kind": "press",
+              "pageUpdated": "2024-09-13",
+              "checkedOn": "2026-11-06",
+              "says": "Le numéro vert est, d'après la Police nationale, accessible tous les jours et 24h/24."
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/chad/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Police: 2020 or 117"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "The sources disagree: the UK FCDO gives \"Ambulance and fire: 112 or 18\", Canada gives landline numbers, and Tchadinfos (2023) reports that 18 no longer works in N'Djamena."
+        },
+        {
+          "service": "police",
+          "phone": "2020",
+          "why": "The UK FCDO (\"2020 or 117\") and Canada give 2020, but the national police opened 117 as its free line on 2024-09-13: 117 is the number to give."
+        }
+      ],
+      "notes": [
+        "The police is listed because this file has no medical number for Chad; 117 is the free line of the national police for people in distress, 24 hours a day."
+      ]
+    },
+    {
+      "code": "CF",
+      "timeZones": ["Africa/Bangui"],
+      "numbers": [
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/central-african-republic/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 118"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/central-african-republic",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            }
+          ]
+        },
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/central-african-republic/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Telephone: 117 (ambulance, fire, police)"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/central-african-republic",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-14",
+              "checkedOn": "2026-11-06",
+              "says": "police: 117"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "The sources disagree: the UK FCDO gives 117 and \"Ambulance: 610600\", Canada \"medical assistance: 114\"."
+        }
+      ],
+      "notes": [
+        "The UK FCDO says emergency services are unlikely to respond outside Bangui.",
+        "The police is listed because this file has no medical number for the Central African Republic."
+      ]
+    },
+    {
+      "code": "GA",
+      "timeZones": ["Africa/Libreville"],
+      "numbers": [
+        {
+          "service": "police",
+          "phone": "177",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/gabon/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Police: 177"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/gabon",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-15",
+              "checkedOn": "2026-11-06",
+              "says": "police: 177"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/gabon/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-15",
+              "checkedOn": "2026-11-06",
+              "says": "Police secours : 177"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "The sources disagree: the UK FCDO gives \"Ambulance: 117\", France \"Ambulance SMUR : 1333\", Canada 1300, 0174 or 0880 for SOS Médecins, and Gabon Media Time (2021) reports these short numbers unreachable."
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "why": "The sources disagree: France gives 18 from a landline and 112 from a mobile, the UK FCDO gives \"Fire: 177\"."
+        }
+      ],
+      "notes": ["The police is listed because this file has no medical number for Gabon."]
+    },
+    {
+      "code": "CG",
+      "timeZones": ["Africa/Brazzaville"],
+      "numbers": [
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://travel.gc.ca/destinations/congo-brazzaville",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-08",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 118"
+            },
+            {
+              "url": "https://www.mtn.com/emergency-contacts/",
+              "publisher": "MTN Group",
+              "kind": "operator",
+              "checkedOn": "2026-11-06",
+              "says": "Fire Department 118 (free)"
+            }
+          ]
+        },
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://travel.gc.ca/destinations/congo-brazzaville",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-08",
+              "checkedOn": "2026-11-06",
+              "says": "police: 117"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/congo/conseils-aux-voyageurs-securite",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-30",
+              "checkedOn": "2026-11-06",
+              "says": "centre d’appel Police secours (numéro d’appel national : 117)"
+            },
+            {
+              "url": "https://www.mtn.com/emergency-contacts/",
+              "publisher": "MTN Group",
+              "kind": "operator",
+              "checkedOn": "2026-11-06",
+              "says": "Police Services 117 (free)"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "No national number: the UK FCDO says \"There's no central number for emergency services in the Republic of Congo.\""
+        }
+      ],
+      "notes": ["The police is listed because this file has no medical number for Congo."]
+    },
+    {
+      "code": "CD",
+      "timeZones": ["Africa/Kinshasa", "Africa/Lubumbashi"],
+      "numbers": [],
+      "leftOut": [
+        {
+          "service": "ambulance",
+          "why": "No national number: the UK FCDO says \"There is no general emergency medical number\" and Canada \"There is no centralized number to reach emergency services.\""
+        },
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "why": "One source only (UK FCDO, Kinshasa)."
+        },
+        {
+          "service": "police",
+          "phone": "112",
+          "why": "One government publisher only (UK FCDO, Kinshasa), the others are press."
+        }
+      ],
+      "notes": ["The UK FCDO advises to contact a hospital for an ambulance."]
+    },
+    {
+      "code": "MG",
+      "timeZones": ["Indian/Antananarivo"],
+      "numbers": [
+        {
+          "service": "firefighters",
+          "phone": "118",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/madagascar/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire / Telephone: 18 / Mobile: 118"
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/madagascar/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-15",
+              "checkedOn": "2026-11-06",
+              "says": "Pompiers : 118 (mobiles uniquement)"
+            }
+          ]
+        },
+        {
+          "service": "police",
+          "phone": "117",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/madagascar/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance or police emergency / Telephone: 17 / Mobile: 117"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/madagascar",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-10-09",
+              "checkedOn": "2026-11-06",
+              "says": "Dial 117 for emergency assistance."
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "samu",
+          "phone": "124",
+          "why": "Only travel and insurance sites give it; no government or WHO page."
+        }
+      ],
+      "notes": [
+        "117 is the police emergency line (Police secours) from a mobile phone, 17 from a landline; the UK FCDO says it also takes ambulance requests. No Malagasy source naming it could be fetched.",
+        "The police is listed because this file has no medical number for Madagascar."
+      ]
+    },
+    {
+      "code": "MA",
+      "timeZones": ["Africa/Casablanca"],
+      "numbers": [],
+      "leftOut": [
+        {
+          "service": "civil-protection",
+          "phone": "150",
+          "why": "The sources disagree: the UK FCDO and Canada give 150 (ambulance and fire), France gives \"Protection civile (pompiers, ambulance) : 15\"."
+        },
+        {
+          "service": "samu",
+          "phone": "141",
+          "why": "France and the press (Hespress, 2026-03-30, a pilot in Rabat-Salé-Kénitra) only; national coverage not shown."
+        }
+      ],
+      "notes": [
+        "A Moroccan official source should settle 15 or 150 (perhaps one for landlines, one for mobiles) before any number is added."
+      ]
+    },
+    {
+      "code": "DZ",
+      "timeZones": ["Africa/Algiers"],
+      "numbers": [
+        {
+          "service": "civil-protection",
+          "phone": "14",
+          "sources": [
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/algeria/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 14"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/algeria",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-09",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 14"
+            },
+            {
+              "url": "https://lechodalgerie.dz/la-protection-civile-rappelle-ses-numeros-durgence-1021-et-14mesures-preventives-renforcees-pour-proteger-les-citoyens-face-aux-fortes-chaleurs/",
+              "publisher": "L'Echo d'Algérie",
+              "kind": "press",
+              "pageUpdated": "2025-08-18",
+              "checkedOn": "2026-11-06",
+              "says": "contacter immédiatement son numéro vert 1021 ou le numéro d'urgence 14"
+            }
+          ]
+        }
+      ],
+      "leftOut": [
+        {
+          "service": "civil-protection",
+          "phone": "1021",
+          "why": "No national source found (protectioncivile.dz refused the connection): the UK FCDO (\"Ambulance: 1021\") and the press only."
+        },
+        {
+          "service": "samu",
+          "why": "No reliable source for a national SAMU number."
+        }
+      ],
+      "notes": ["In Algeria the Civil Protection runs fire and ambulance rescue."]
+    },
+    {
+      "code": "TN",
+      "timeZones": ["Africa/Tunis"],
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "190",
+          "sources": [
+            {
+              "url": "https://santetunisie.rns.tn/fr/sante-en-tunisie/medecine-d-urgence/les-services-d-aide-medicale-urgente-samu",
+              "publisher": "Tunisian Ministry of Health",
+              "kind": "ministry",
+              "pageUpdated": "2026-11-04",
+              "checkedOn": "2026-11-06",
+              "says": "Le public y accède par un numéro gratuit qui est le 190."
+            },
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/tunisie/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-15",
+              "checkedOn": "2026-11-06",
+              "says": "SAMU : 190"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/tunisia/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 190"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/tunisia",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-05-26",
+              "checkedOn": "2026-11-06",
+              "says": "medical assistance: 190"
+            }
+          ]
+        },
+        {
+          "service": "civil-protection",
+          "phone": "198",
+          "sources": [
+            {
+              "url": "https://www.diplomatie.gouv.fr/fr/information-par-pays/tunisie/conseils-aux-voyageurs-contacts-utiles",
+              "publisher": "French Ministry for Europe and Foreign Affairs",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-09-15",
+              "checkedOn": "2026-11-06",
+              "says": "Protection civile Tunis : 198 (numéro unique)."
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/tunisia/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire and car accidents: 198"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/tunisia",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-05-26",
+              "checkedOn": "2026-11-06",
+              "says": "firefighters: 198"
+            }
+          ]
+        }
+      ],
+      "leftOut": [],
+      "notes": []
+    },
+    {
+      "code": "FR",
+      "timeZones": ["Europe/Paris"],
+      "detect": false,
+      "numbers": [
+        {
+          "service": "samu",
+          "phone": "15",
+          "sources": [
+            {
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F33954",
+              "publisher": "Service-public.gouv.fr (French government)",
+              "kind": "ministry",
+              "pageUpdated": "2026-08-25",
+              "checkedOn": "2026-11-06",
+              "says": "Samu (service d'aide médicale urgente), par exemple en cas de malaise cardiaque, en composant le 15"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/france/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Ambulance: 15"
+            }
+          ]
+        },
+        {
+          "service": "emergency",
+          "phone": "112",
+          "sources": [
+            {
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F33954",
+              "publisher": "Service-public.gouv.fr (French government)",
+              "kind": "ministry",
+              "pageUpdated": "2026-08-25",
+              "checkedOn": "2026-11-06",
+              "says": "Dans tous les cas, vous pouvez aussi composer le 112."
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/france/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Telephone 112 (ambulance, fire, police)"
+            },
+            {
+              "url": "https://travel.gc.ca/destinations/france",
+              "publisher": "Global Affairs Canada",
+              "kind": "foreign-ministry",
+              "pageUpdated": "2026-11-05",
+              "checkedOn": "2026-11-06",
+              "says": "Dial 112 for emergency assistance."
+            }
+          ]
+        },
+        {
+          "service": "firefighters",
+          "phone": "18",
+          "sources": [
+            {
+              "url": "https://www.service-public.gouv.fr/particuliers/vosdroits/F33954",
+              "publisher": "Service-public.gouv.fr (French government)",
+              "kind": "ministry",
+              "pageUpdated": "2026-08-25",
+              "checkedOn": "2026-11-06",
+              "says": "Pompiers, par exemple en cas d'incendie ou d'accident de la route, en composant le 18"
+            },
+            {
+              "url": "https://www.gov.uk/foreign-travel-advice/france/getting-help",
+              "publisher": "UK Foreign, Commonwealth and Development Office",
+              "kind": "foreign-ministry",
+              "checkedOn": "2026-11-06",
+              "says": "Fire: 18"
+            }
+          ]
+        }
+      ],
+      "leftOut": [],
+      "notes": [
+        "Chosen by hand only, never found from the phone (detect false): many phones in West and Central Africa use French (France) as their language, which would otherwise show the numbers of France there."
+      ]
+    }
+  ]
+}

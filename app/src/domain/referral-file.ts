@@ -7,6 +7,7 @@
 // build config cannot load the engine package, so the engine's forbidden
 // wording check is given by the caller.
 import type { Lang, Localized } from '@siapso/engine';
+import { isCountryCode, type CountryCode } from '../config/emergency.js';
 import { isReferralContact, isServiceNumber, REFERRAL_ROLES, tidyPhone } from './contacts.js';
 import type { EmergencyNumber, ReferralContact } from './types.js';
 import { careUnderWayWording } from './wording.js';
@@ -20,6 +21,8 @@ export interface ReferralConfig {
   nationalCircuit?: Localized;
   /** The emergency numbers in place of the built-in ones, when the deployment file gives at least one. */
   emergencyNumbers?: EmergencyNumber[];
+  /** The country of use of the deployment, before the one chosen or found on the phone (domain/country.ts). */
+  country?: CountryCode;
 }
 
 export interface ReadReferralFile {
@@ -68,7 +71,8 @@ function localizedText(
  * and a number the phone can dial, given the id "deployment:<index>"; the
  * national circuit when it is written in both languages and says nothing the
  * app never says; the emergency numbers on the same terms, only when at least
- * one is left (else the built-in ones stay). Numbers may use "-" or "." as
+ * one is left (else the built-in ones stay); the country of use, a code of
+ * the emergency numbers file ("SN"). Numbers may use "-" or "." as
  * separators. Entries left empty, as in the example file, are skipped
  * quietly; any other entry left out is listed with why.
  */
@@ -79,7 +83,7 @@ export function readReferralFile(
   const leftOut: string[] = [];
   if (!isRecord(data))
     return { config: { contacts: [] }, leftOut: ['the file is not a JSON object'] };
-  const { contacts, nationalCircuit, emergencyNumbers } = data;
+  const { contacts, nationalCircuit, emergencyNumbers, country } = data;
 
   if (contacts !== undefined && !Array.isArray(contacts)) leftOut.push('contacts: not a list');
   const listed: unknown[] = Array.isArray(contacts) ? contacts : [];
@@ -144,5 +148,13 @@ export function readReferralFile(
     return [{ name: name.words, phone }];
   });
   if (numbers.length > 0) config.emergencyNumbers = numbers;
+
+  const code = typeof country === 'string' ? country.trim() : country;
+  if (isCountryCode(code)) config.country = code;
+  else if (code !== undefined && code !== '') {
+    leftOut.push(
+      `country: ${JSON.stringify(code)} is not a country of the emergency numbers file (app/src/config/emergency-numbers.json)`,
+    );
+  }
   return { config, leftOut };
 }

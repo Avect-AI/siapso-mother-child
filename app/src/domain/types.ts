@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, ConditionId, Lang, Localized } from '@siapso/engine';
+import type { CountryChoice } from './country.js';
 
 export type Mode = 'woman' | 'accompanied';
 
@@ -7,6 +8,13 @@ export interface Settings {
   lang: Lang;
   mode: Mode | null;
   onboarded: boolean;
+  /**
+   * The country of use chosen on the phone (Settings or who to call), whose
+   * emergency numbers who to call shows (domain/country.ts); "other": not in
+   * the list. Not chosen: found from the phone. It says nothing about a
+   * profile, so it changes locked too, as the language does.
+   */
+  country?: CountryChoice;
 }
 
 /**

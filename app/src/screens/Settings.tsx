@@ -1,14 +1,19 @@
 // SPDX-License-Identifier: MIT
 import type { Lang } from '@siapso/engine';
-import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useLocation } from 'wouter';
+import type { CountryCode } from '../config/emergency.js';
+import { fetchDeploymentReferral } from '../data/referral.js';
 import type { Mode } from '../domain/types.js';
 import { translate, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
+import { useCountryOfUse } from '../state/country.js';
+import { inVisit } from '../state/entry-state.js';
 import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { COUNTRY_BACK, COUNTRY_PATH } from './Country.js';
 
 type Group = 'lang' | 'mode';
 
@@ -24,10 +29,13 @@ type Group = 'lang' | 'mode';
  * app into English or into the other mode. An applied choice is stored and
  * said ("Réglage enregistré."), and the focus goes back to the answer chosen;
  * changing the mode never deletes a profile, a check or a contact (woman mode
- * opens the first profile made, the others stay on the phone). It links to the
- * knowledge base status, the about screen and the voice screen (install the
- * voice at the health post), which need no code. The one primary action goes
- * back to the start.
+ * opens the first profile made, the others stay on the phone). Then, at any
+ * time too, the country of use, whose emergency numbers who to call shows
+ * ("Pays : Sénégal", domain/country.ts), with a way to the country screen;
+ * none when the deployment file fixes it. It links to the knowledge base
+ * status, the about screen and the voice screen (install the voice at the
+ * health post), which need no code. The one primary action goes back to the
+ * start.
  */
 export function Settings() {
   const t = useT();
@@ -42,6 +50,30 @@ export function Settings() {
   const modeGroup = useRef<HTMLDivElement>(null);
   // The group whose choice was just applied: its button is gone, the focus goes to its answer.
   const focusAfter = useRef<Group | null>(null);
+  // The deployment file's country, once read: it comes before any other.
+  const [deployed, setDeployed] = useState<CountryCode | undefined>(undefined);
+  const { country, source, ask } = useCountryOfUse(deployed);
+  const countryLineId = useId();
+
+  useEffect(() => {
+    let live = true;
+    // Never rejects: no file, offline without a copy, or too slow, is no country.
+    void fetchDeploymentReferral().then(({ country: fixed }) => {
+      if (live) setDeployed(fixed);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const countryName =
+    country !== null
+      ? t(`countries.${country}`)
+      : source === 'chosen'
+        ? t('country.otherName')
+        : ask !== undefined
+          ? t('country.toChoose')
+          : t('country.unknown');
 
   const langToApply = pendingLang !== null && pendingLang !== settings.lang ? pendingLang : null;
   const modeToApply = pendingMode !== null && pendingMode !== settings.mode ? pendingMode : null;
@@ -131,6 +163,31 @@ export function Settings() {
           )}
         </div>
       ) : null}
+      {/* The country of use: it says nothing about a profile, locked too. */}
+      <div className="settings__group settings__country">
+        <p id={countryLineId} className="settings__country-name">
+          {t('call.country', { country: countryName })}
+        </p>
+        <p className="settings__country-hint">
+          {source === 'deployment'
+            ? t('settings.countryFixed')
+            : country === null
+              ? t('country.lead')
+              : t('settings.countryHint')}
+        </p>
+        {source === 'deployment' ? null : (
+          <Link
+            className="button button--secondary settings__country-change"
+            href={COUNTRY_PATH}
+            state={inVisit({ [COUNTRY_BACK]: true })}
+            aria-describedby={countryLineId}
+          >
+            {country === null && source === null
+              ? t('call.chooseCountry')
+              : t('call.changeCountry')}
+          </Link>
+        )}
+      </div>
       <p className="settings__status" role="status">
         {changed ? t('settings.changed') : ''}
       </p>

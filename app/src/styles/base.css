@@ -1793,6 +1793,74 @@ a {
   width: 100%;
 }
 
+/* The country of use: the country in bold, what it is for, then the way to change it. */
+.settings__country-name {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+.settings__country-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+.settings__country-change {
+  width: 100%;
+  text-decoration: none;
+}
+
+/*
+ * Country of use: the question and what it is for, the search, then one
+ * country a row (a whole-width answer to tap, as the rows of the profiles),
+ * "Pays choisi" under the one in use, then a country not in the list, a
+ * little apart.
+ */
+.country__intro {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.country__empty {
+  color: var(--color-text-muted);
+}
+
+.country__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.country__choice {
+  width: 100%;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: var(--touch-target-large);
+  text-align: start;
+  overflow-wrap: break-word;
+}
+
+.country__label {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.country__name {
+  font-weight: var(--font-weight-strong);
+}
+
+.country__status {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-body);
+}
+
+.country__other {
+  margin-top: var(--space-2);
+}
+
 /* Settings: what the last choice did, in words; out of the layout while silent. */
 .settings__status {
   font-weight: var(--font-weight-strong);
@@ -2143,6 +2211,79 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 
 .referral__emergency .dial-link {
   width: 100%;
+}
+
+/*
+ * Under the emergency numbers: the country they are those of, then a quiet
+ * way to change it, beside it while it fits. A quiet button: the boxed
+ * buttons of who to call are the calls.
+ */
+.referral__country {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-3);
+}
+
+.referral__country p {
+  overflow-wrap: break-word;
+}
+
+/*
+ * Where to go, said first when no medical number is sure to answer (none, or
+ * one that may not work from every network): the orientation at title size,
+ * as on the danger signs.
+ */
+.referral__go {
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-heading);
+  line-height: var(--line-height-tight);
+  overflow-wrap: break-word;
+}
+
+/* A number that may not work from every network: ink and the triangle under its link. */
+.referral__caveat {
+  margin-top: var(--space-2);
+  overflow-wrap: break-word;
+}
+
+/* The numbers that are not medical, named as such above them. */
+.referral__others {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+/* The phone names two countries: the question, then one whole-width answer each. */
+.referral__ask {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.referral__ask-question {
+  font-weight: var(--font-weight-strong);
+}
+
+/*
+ * No number for the country of use: what to do, in bold, then the way to
+ * choose the country, a whole-width box (the first action of the screen when
+ * no country is known and no contact is listed), never a guessed number.
+ */
+.referral__no-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.referral__call-country {
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: break-word;
+}
+
+.referral__choose {
+  width: 100%;
+  min-height: var(--touch-target-large);
+  text-decoration: none;
 }
 
 .referral__national h2 {

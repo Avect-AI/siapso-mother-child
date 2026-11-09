@@ -7,6 +7,7 @@ import { codeOpened } from '../data/code-guard.js';
 import { closeAppDb, getStoredVerifier, storeSettings, storeVerifier } from '../data/db.js';
 import { PackLoadError, type LoadedPack } from '../data/pack-loader.js';
 import type { CodeVerifier } from '../domain/code.js';
+import type { PhoneHints } from '../domain/country.js';
 import type { Settings } from '../domain/types.js';
 import { AppProvider } from '../state/app-state.js';
 import { VoiceProvider } from '../voice/voice-context.js';
@@ -15,6 +16,13 @@ import { openVaultOf, verifierOf } from './verifier.js';
 
 /** The code of the phone in tests. */
 export const TEST_CODE = '2468';
+
+/**
+ * The phone of the tests, whatever the machine they run on: set to French
+ * (Senegal), in Dakar, as in the pilot. Who to call then shows the numbers of
+ * Senegal (domain/country.ts) unless a test gives another phone.
+ */
+export const SENEGAL_PHONE: PhoneHints = { languages: ['fr-SN', 'fr'], timeZone: 'Africa/Dakar' };
 
 /** A pack with only what the shell reads; the loader is replaced, so parsePack never sees it. */
 export function shellPack(dangerSigns: DangerSign[] = []): Pack {
@@ -94,6 +102,7 @@ export async function renderApp({
   verifier,
   voice,
   children,
+  phone = SENEGAL_PHONE,
 }: {
   /** The state of the history entry of `hash`, as a screen leaves it. */
   entryState?: unknown;
@@ -115,6 +124,8 @@ export async function renderApp({
   /** The voice service (test/voice.ts); by default the page's, which jsdom cannot use. */
   voice?: VoiceService;
   children?: ReactNode;
+  /** What the phone says of where it is: a phone in Senegal by default. */
+  phone?: PhoneHints;
 } = {}) {
   if (settings) await seedSettings(settings);
   if (verifier) await storeVerifier(verifier);
@@ -127,6 +138,7 @@ export async function renderApp({
       packRollback={packRollback}
       packPrevious={packPrevious}
       acceptsUnsigned={acceptsUnsigned}
+      phone={phone}
       // Open as if the code had just been given, on a phone past the welcome only.
       session={{ startUnlocked: open ?? (!locked && settings?.onboarded === true) }}
       {...(storageTimeoutMs === undefined ? {} : { storageTimeoutMs })}

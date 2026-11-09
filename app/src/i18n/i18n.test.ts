@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 import { findForbiddenWording, type Lang } from '@siapso/engine';
 import { describe, expect, expectTypeOf, it } from 'vitest';
+import { COUNTRIES, EMERGENCY_SERVICES, isMedical, NUMBER_CAVEATS } from '../config/emergency.js';
 import { careUnderWayWording } from '../domain/wording.js';
 import { en } from './en.js';
 import { fr, type Dictionary } from './fr.js';
@@ -95,6 +96,20 @@ describe('dictionaries', () => {
     for (const [key, value] of leaves(fr)) {
       expect(placeholders(english.get(key) as string), key).toEqual(placeholders(value as string));
     }
+  });
+
+  it('name every country and every service of the emergency numbers file, and nothing else', () => {
+    const codes = COUNTRIES.map((country) => country.code).sort();
+    expect(Object.keys(fr.countries).sort()).toEqual(codes);
+    expect(Object.keys(en.countries).sort()).toEqual(codes);
+    // A call link for each medical service, and the noun of each other one.
+    const medical = EMERGENCY_SERVICES.filter(isMedical).sort();
+    expect(Object.keys(fr.call.dialService).sort()).toEqual(medical);
+    expect(Object.keys(en.call.dialService).sort()).toEqual(medical);
+    const others = EMERGENCY_SERVICES.filter((service) => !isMedical(service)).sort();
+    expect(Object.keys(fr.call.serviceName).sort()).toEqual(others);
+    expect(Object.keys(en.call.serviceName).sort()).toEqual(others);
+    expect(Object.keys(fr.call.caveats).sort()).toEqual([...NUMBER_CAVEATS].sort());
   });
 
   it('catch forbidden wording, em dashes and emoji (the checks are not vacuous)', () => {

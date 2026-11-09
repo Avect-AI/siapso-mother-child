@@ -45,6 +45,20 @@ precedence = "override"
 SPDX-FileCopyrightText = "2026 AVECT AI SARL"
 SPDX-License-Identifier = "CC-BY-4.0"
 
+# The national emergency numbers by country (data, CC BY 4.0). Each number
+# cites its sources: the short texts quoted in "says" belong to their
+# publishers and are quoted to cite them. The UK FCDO travel advice is
+# public sector information under the Open Government Licence v3.0.
+[[annotations]]
+path = "app/src/config/emergency-numbers.json"
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "2026 AVECT AI SARL",
+  "Quoted source texts: their publishers, each named in the file, quoted to cite the source",
+  "Contains public sector information licensed under the Open Government Licence v3.0 (UK Foreign, Commonwealth and Development Office travel advice)",
+]
+SPDX-License-Identifier = "CC-BY-4.0"
+
 # Code that quotes the text "SPDX-License-Identifier" in strings or comments
 # (checks and their tests): declared here so the tool does not parse the quote.
 [[annotations]]

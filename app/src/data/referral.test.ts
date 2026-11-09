@@ -252,6 +252,25 @@ describe('parseReferral', () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
+  it('reads the country of the deployment, a country of the emergency numbers file', () => {
+    expect(parseReferral({ contacts: [], country: 'ML' })).toEqual({ contacts: [], country: 'ML' });
+    expect(parseReferral({ contacts: [], country: ' CI ' })).toEqual({
+      contacts: [],
+      country: 'CI',
+    });
+    expect(warnings()).toEqual([]);
+  });
+
+  it('leaves out a country the file does not have, saying so; an empty one quietly', () => {
+    expect(parseReferral({ contacts: [], country: '' })).toEqual({ contacts: [] });
+    expect(warnings()).toEqual([]);
+    expect(parseReferral({ contacts: [], country: 'XX' })).toEqual({ contacts: [] });
+    expect(parseReferral({ contacts: [], country: 'sn' })).toEqual({ contacts: [] });
+    expect(parseReferral({ contacts: [], country: 221 })).toEqual({ contacts: [] });
+    expect(warnings()).toHaveLength(3);
+    expect(warnings()[0]).toMatch(/country: "XX" is not a country of the emergency numbers/);
+  });
+
   it('reads the committed example as roles with no name and no number, so no contact', () => {
     const example: unknown = JSON.parse(
       readFileSync(
@@ -259,10 +278,13 @@ describe('parseReferral', () => {
         'utf8',
       ),
     );
-    const { contacts, emergencyNumbers } = example as {
+    const { contacts, emergencyNumbers, country } = example as {
       contacts: { role: string; name: string; phone: string }[];
       emergencyNumbers: { name: { fr: string; en: string }; phone: string }[];
+      country: string;
     };
+    // The country is shown empty too: the phone finds it.
+    expect(country).toBe('');
     expect(contacts.length).toBeGreaterThan(0);
     for (const contact of contacts) {
       expect(contact.name).toBe('');
@@ -384,6 +406,14 @@ describe('loadReferral', () => {
       fetch: serving(JSON.stringify({ ...deployment, emergencyNumbers })).fetch,
     });
     expect(loaded.emergencyNumbers).toEqual(emergencyNumbers);
+    expect(loaded.country).toBeUndefined();
+  });
+
+  it("passes on the deployment's country", async () => {
+    const loaded = await loadReferral({
+      fetch: serving(JSON.stringify({ ...deployment, country: 'GH' })).fetch,
+    });
+    expect(loaded.country).toBe('GH');
   });
 
   it('lists a number once: a deployed contact with the number of a saved one is left out', async () => {
