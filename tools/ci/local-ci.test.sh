@@ -187,6 +187,7 @@ reset_settings() {
 Refs: SCRUM-1
 
 Signed-off-by: Fixture Author <fixture@example.org>'
+  pr_email='fixture@example.org'
   pr_change=change_a_file
   main_moves=no
   args='--skip-docker'
@@ -235,7 +236,7 @@ fixture() {
   git -C "$seed" switch -q -c ci/SCRUM-1-a-topic
   "$pr_change" "$seed"
   git -C "$seed" add -A
-  printf '%s\n' "$pr_message" | git -C "$seed" commit -q -F -
+  printf '%s\n' "$pr_message" | git -C "$seed" -c user.email="$pr_email" commit -q -F -
   git -C "$seed" push -q origin HEAD:refs/heads/ci/SCRUM-1-a-topic HEAD:refs/pull/7/head
   git -C "$seed" rev-parse HEAD >"$1/head"
   if [ "$main_moves" = yes ]; then
@@ -395,6 +396,15 @@ fails_dco_for_a_commit_not_signed_off() {
 
 Refs: SCRUM-1'
 }
+passes_dco_for_a_noreply_author() {
+  args='--only developer-certificate-of-origin'
+  pr_email='12345+fixture@users.noreply.github.com'
+  pr_message='feat: add a change
+
+Refs: SCRUM-1
+
+Signed-off-by: Fixture Author <12345+fixture@users.noreply.github.com>'
+}
 fails_hygiene_for_a_bad_commit_message() {
   args='--only text-hygiene'
   pr_message='Added a change.
@@ -463,6 +473,7 @@ scenario passes skips_the_server_image_and_runs_one_worker 'skipped'
 scenario refuses refuses_without_docker '--skip-docker'
 scenario fails fails_a_job_at_its_first_failed_step 'FAILED: run: pnpm lint'
 scenario fails fails_dco_for_a_commit_not_signed_off "has no 'Signed-off-by' line"
+scenario passes passes_dco_for_a_noreply_author
 scenario fails fails_hygiene_for_a_bad_commit_message 'Hygiene check failed'
 scenario fails fails_hygiene_for_a_bad_title 'Hygiene check failed'
 scenario fails fails_hygiene_for_an_attributed_body 'Hygiene check failed'
