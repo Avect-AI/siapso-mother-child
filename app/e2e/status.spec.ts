@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock } from './support.js';
+import { expectStart, onboard, unlock } from './support.js';
 
 interface Manifest {
   version: string;
@@ -76,7 +76,7 @@ test('Status and About open from Home and the settings, offline, with the versio
   await page.getByRole('link', { name: 'À propos' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'À propos' })).toBeVisible();
   await page.getByRole('button', { name: "Revenir à l'accueil" }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
 });
 
 test('both screens open before the code and render in English', async ({ page }) => {

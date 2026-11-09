@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, Pack } from '@siapso/engine';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { listHistory, recordHistoryOnce } from '../data/history.js';
+import { listHistory, recordHistory } from '../data/history.js';
 import { listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
@@ -12,17 +12,18 @@ import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { probeSession } from '../test/session-probe.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
 
-// Every result that would be kept goes through recordHistoryOnce, called as
-// the result shows: watched, so a check that keeps nothing can be told apart.
+// Every result that would be kept goes through recordHistory, called as the
+// result shows on the check (SCRUM-56, S15): watched, so a check that keeps
+// nothing can be told apart.
 vi.mock('../data/history.js', async (importOriginal) => {
   const history = await importOriginal<typeof import('../data/history.js')>();
-  return { ...history, recordHistoryOnce: vi.fn(history.recordHistoryOnce) };
+  return { ...history, recordHistory: vi.fn(history.recordHistory) };
 });
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
   await storeTestCode();
-  vi.mocked(recordHistoryOnce).mockClear();
+  vi.mocked(recordHistory).mockClear();
 });
 
 vi.setConfig({ testTimeout: 30_000 });
@@ -128,19 +129,18 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
-    await user.click(await screen.findByRole('button', { name: 'Voir le résultat' }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await user.click(await screen.findByRole('button', { name: 'Non, aucun de ces signes' }));
 
     expect(
       await screen.findByRole('heading', {
-        level: 1,
+        level: 2,
         name: 'Résultat, sans enregistrer',
       }),
     ).toBeVisible();
     // An NSAID from 20 weeks, as for a profile at 24 weeks.
     expect(
-      await screen.findByRole('heading', { level: 2, name: /^À montrer avant la prochaine prise/ }),
+      await screen.findByRole('heading', { level: 3, name: /^À montrer avant la prochaine prise/ }),
     ).toBeVisible();
     expect(
       screen.getByText(/^Terme utilisé pour ce résultat\s: environ 24 semaines/),
@@ -149,7 +149,7 @@ describe('Regarder sans enregistrer', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(recordHistoryOnce).not.toHaveBeenCalled();
+    expect(recordHistory).not.toHaveBeenCalled();
     const id = probe.current().profileId ?? '';
     expect(await listHistory(id)).toEqual([]);
     expect(await listProfiles()).toHaveLength(1);
@@ -166,18 +166,16 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       probe.current().add(ADVIL);
     });
-    await user.click(await screen.findByRole('button', { name: 'Voir le résultat' }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Aucun de ces signes' }));
-    await user.click(screen.getByRole('button', { name: 'Voir le résultat' }));
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await user.click(await screen.findByRole('button', { name: 'Non, aucun de ces signes' }));
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Résultat pour Awa' }),
+      await screen.findByRole('heading', { level: 2, name: 'Résultat pour Awa' }),
     ).toBeVisible();
-    await screen.findByRole('heading', { level: 2, name: /^À montrer avant la prochaine prise/ });
-    await act(async () => {
-      await Promise.resolve();
+    await screen.findByRole('heading', { level: 3, name: /^À montrer avant la prochaine prise/ });
+    await waitFor(() => {
+      expect(recordHistory).toHaveBeenCalledTimes(1);
     });
-    expect(recordHistoryOnce).toHaveBeenCalledTimes(1);
   });
 
   it('reads "Je ne sais pas" as a possible pregnancy of unknown term', async () => {
@@ -246,9 +244,9 @@ describe('Regarder sans enregistrer', () => {
     act(() => {
       window.location.hash = '#/check';
     });
-    // Her own profile, never the passer-by's answers.
+    // Her own check, never the passer-by's answers.
     expect(
-      await screen.findByRole('heading', { level: 1, name: /^(Ce que vous prenez|Mon profil)$/ }),
+      await screen.findByRole('heading', { level: 1, name: /^Un médicament ou un remède/ }),
     ).toBeVisible();
     expect(document.body.textContent).not.toMatch(/Femme de passage|Environ 24 semaines/);
   });

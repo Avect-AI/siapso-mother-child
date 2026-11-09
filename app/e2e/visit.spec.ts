@@ -8,6 +8,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import {
   addFirstCandidate,
+  CHECK_TITLE,
   expectStart,
   herCheckThenProfiles,
   onboard,
@@ -51,7 +52,6 @@ async function addProfile(page: Page, pseudonym: string) {
 
 /** From the check: a remedy found by its name, confirmed. */
 async function addRemedy(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill(name);
   await addFirstCandidate(page);
 }
@@ -133,26 +133,23 @@ test('a depot keeper checks a passer-by without a profile, and nothing is kept',
 
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
   await expect(page.locator('.check__profile')).toContainText('Femme de passage');
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('Advil 400');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
-    page.getByRole('heading', { level: 1, name: 'Résultat, sans enregistrer' }),
+    page.getByRole('heading', { level: 2, name: 'Résultat, sans enregistrer' }),
   ).toBeVisible();
   // An anti-inflammatory at 24 weeks, as for a profile.
   await expect(
-    page.getByRole('heading', { level: 2, name: /^À montrer avant la prochaine prise/ }),
+    page.getByRole('heading', { level: 3, name: /^À montrer avant la prochaine prise/ }),
   ).toBeVisible();
   await expectNoSeriousViolation(page);
   expect(await countIn(page, 'profiles')).toBe(0);
   expect(await countIn(page, 'history')).toBe(0);
 
-  // The way back leads to the list of profiles, never to her answers.
-  await page.getByRole('button', { name: 'Revenir à la liste' }).click();
+  // The way back leads to the list of profiles, never to her answers (the result is on the check).
   await page.goBack();
   await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
 });
@@ -206,12 +203,10 @@ test('a midwife finds a woman among many, with "Ajouter un profil" at the top', 
 test('a long list of strengths keeps the one typed and "yes" in the first screen', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answerPregnant(page, '20');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('Doliprane 1000 mg');
   await page.locator('.candidate').first().click();
 
@@ -226,7 +221,7 @@ test('a long list of strengths keeps the one typed and "yes" in the first screen
   await question.getByRole('radio').last().scrollIntoViewIfNeeded();
   await expect(page.getByRole('button', { name: "Oui, c'est ce produit" })).toBeInViewport();
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 });
 
 for (const { width, height } of [
@@ -240,11 +235,8 @@ for (const { width, height } of [
       page,
     }) => {
       await onboard(page, 'woman');
-      await page.getByRole('link', { name: 'Mon profil' }).click();
       await answerPregnant(page, '20');
       await page.getByRole('button', { name: 'Enregistrer' }).click();
-      await page.getByRole('button', { name: 'Regarder un produit' }).click();
-      await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
       await page.getByRole('searchbox').fill('doliprane');
       await page.locator('.candidate').first().click();
       // A daily count: the strength is then asked (SCRUM-56).

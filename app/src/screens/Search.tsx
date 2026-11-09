@@ -1,32 +1,19 @@
 // SPDX-License-Identifier: MIT
-import {
-  normalize,
-  search,
-  type Candidate,
-  type EntryKind,
-  type ResolverIndex,
-} from '@siapso/resolver';
+import { search, type Candidate, type EntryKind } from '@siapso/resolver';
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
 import type { CheckedItem } from '@siapso/engine';
 import { oneTapItem } from '../domain/one-tap.js';
-import {
-  candidateDisplayOf,
-  localNameOf,
-  writtenNameOf,
-  type BrowseEntry,
-} from '../domain/search-index.js';
-import { useLang, useT, useTNodes } from '../i18n/index.js';
+import { candidateDisplayOf, writtenNameOf, type BrowseEntry } from '../domain/search-index.js';
+import { useLang, useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { inSession } from '../state/entry-state.js';
 import { useSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
-import { Chevron } from '../ui/Chevron.js';
 import { Notice } from '../ui/Notice.js';
 import { TextField } from '../ui/TextField.js';
 import { useVoiceInput } from '../voice/use-voice-input.js';
-import { localNameKey } from './local-name.js';
 import {
   backToCheck,
   confirmPath,
@@ -36,100 +23,19 @@ import {
   oneMoreStep,
   searchPath,
 } from './check-flow.js';
+import {
+  CandidateButton,
+  LIMIT_SHOWN_FROM,
+  lookalikesOf,
+  OTHER,
+  SEARCH_MAX_LENGTH,
+  SearchLimit,
+  useSearchedText,
+} from './search-parts.js';
 import { BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
 import { VOICE_PATH } from './VoicePack.js';
 
-/** The pause after the last key before the candidates follow what is typed. */
-export const SEARCH_DEBOUNCE_MS = 150;
-
-/** The longest name the field takes; free text is kept as typed, so the limit is shown near it. */
-export const SEARCH_MAX_LENGTH = 80;
-/** From this length on, the field says how long the name is. */
-const LIMIT_SHOWN_FROM = 60;
-/** At most this many lookalikes, both lists together. */
-const LOOKALIKES_MAX = 4;
-
-const OTHER: Record<EntryKind, EntryKind> = { product: 'plant', plant: 'product' };
-
-/**
- * The products and remedies a name looks like, in both lists, as the search
- * proposes them (at the resolver's threshold), best first, the list searched
- * first on equal scores.
- */
-function lookalikesOf(index: ResolverIndex, text: string, kind: EntryKind): Candidate[] {
-  const found = [
-    ...search(index, text, { kinds: [kind] }),
-    ...search(index, text, { kinds: [OTHER[kind]] }),
-  ];
-  return found
-    .map((candidate, order) => ({ candidate, order }))
-    .sort((a, b) => b.candidate.score - a.candidate.score || a.order - b.order)
-    .slice(0, LOOKALIKES_MAX)
-    .map(({ candidate }) => candidate);
-}
-
-function CandidateButton({
-  candidate,
-  query,
-  showKind = false,
-  addsAtOnce = false,
-  onChoose,
-}: {
-  candidate: Candidate;
-  query: string;
-  /** Say which list it is from (medicine or remedy): the lookalikes mix both. */
-  showKind?: boolean;
-  /** A tap adds it at once (SCRUM-56): the row ends in "Ajouter", not the chevron of a screen. */
-  addsAtOnce?: boolean;
-  onChoose: () => void;
-}) {
-  const t = useT();
-  const tNodes = useTNodes();
-  const lang = useLang();
-  const { pack } = useApp();
-  if (pack === null) return null;
-  const shown = candidateDisplayOf(pack, candidate, query, lang);
-  const local = localNameOf(pack, candidate, candidate.matched);
-  // The brand a name was found by, when the name shown does not hold it ("cytotek": Cytotec).
-  const boxName =
-    candidate.matchedLang === 'brand' &&
-    !normalize(shown.name).includes(normalize(candidate.matched))
-      ? candidate.matched
-      : undefined;
-  return (
-    <li>
-      {/* The chevron says it opens (the confirm screen), unlike an answer that is ticked. */}
-      <button type="button" className="candidate" onClick={onChoose}>
-        <span className="candidate__text">
-          <span className="candidate__name">{shown.name}</span>
-          {shown.detail === undefined ? null : (
-            // A Latin name is read with Latin rules (WCAG 3.1.2).
-            <span className="candidate__detail" lang={shown.detailLang}>
-              {shown.detail}
-            </span>
-          )}
-          {local === undefined ? null : (
-            <span className="candidate__local">
-              {tNodes(localNameKey(local, lang), {
-                name: <span lang={local.lang}>{local.text}</span>,
-                lang: t(`nameLang.${local.lang}`),
-              })}
-            </span>
-          )}
-          {boxName === undefined ? null : (
-            <span className="candidate__local">{t('search.boxName', { name: boxName })}</span>
-          )}
-          {showKind ? (
-            <span className="candidate__kind">
-              {t(candidate.kind === 'product' ? 'search.kindProduct' : 'search.kindPlant')}
-            </span>
-          ) : null}
-        </span>
-        {addsAtOnce ? <span className="candidate__add">{t('search.addAtOnce')}</span> : <Chevron />}
-      </button>
-    </li>
-  );
-}
+export { SEARCH_DEBOUNCE_MS, SEARCH_MAX_LENGTH } from './search-parts.js';
 
 /**
  * Search: one large field, which takes the focus when the screen opens; the
@@ -151,6 +57,12 @@ function CandidateButton({
  * to type the name or to choose it from the whole list. Without an installed
  * voice, the microphone opens the voice screen. The keyboard path is whole
  * without it.
+ *
+ * Since the check screen has its own field (SCRUM-56, S12), this screen opens
+ * from it for "Je ne trouve pas ce produit" when the name looks like products
+ * or remedies (the question "Ce nom ressemble à :" asked at once, its entry's
+ * `notFound`) and for the whole list of a kind after the voice found nothing
+ * (`browse`).
  */
 export function Search({ kind }: { kind: EntryKind }) {
   const t = useT();
@@ -168,7 +80,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   // Read once: the state of this history entry (the way back, the text typed before).
   const [entry] = useState(flowState);
   const [text, setText] = useState(entry.query ?? '');
-  const [query, setQuery] = useState(text);
+  const [query, setQuery] = useSearchedText(text);
   // Set by the first add or move away, at once: a second click in the same
   // task, before React renders again, must not add or go back twice.
   const leaving = useRef(false);
@@ -177,10 +89,16 @@ export function Search({ kind }: { kind: EntryKind }) {
     leaving.current = true;
     return true;
   };
-  // The products and remedies the text looks like, asked about before it is added as typed.
-  const [lookalikes, setLookalikes] = useState<Candidate[] | null>(null);
+  // The products and remedies the text looks like, asked about before it is
+  // added as typed; at once when "Je ne trouve pas ce produit" of the check
+  // opened this screen (the pack is there: the check has shown its rows).
+  const [lookalikes, setLookalikes] = useState<Candidate[] | null>(() => {
+    const found =
+      entry.notFound === true && index !== null ? lookalikesOf(index, text.trim(), kind) : [];
+    return found.length > 0 ? found : null;
+  });
   // The whole list of the kind, after a name said found nothing.
-  const [browsing, setBrowsing] = useState(false);
+  const [browsing, setBrowsing] = useState(entry.browse === true);
   // The text in the field is what the voice heard, not edited since (kept on
   // the entry, so Back from a confirm screen finds it so too).
   const [fromVoice, setFromVoice] = useState(entry.heard === true);
@@ -212,19 +130,16 @@ export function Search({ kind }: { kind: EntryKind }) {
     if (lookalikes !== null) lookalikeHeading.current?.focus();
   }, [lookalikes]);
 
+  // The text is kept on this entry, so coming back from the confirm screen
+  // finds it, with the question or the whole list it was on.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(text);
-    }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [text]);
-
-  // The text is kept on this entry, so coming back from the confirm screen finds it.
-  useEffect(() => {
-    keepOnEntry({ query, heard: fromVoice });
-  }, [query, fromVoice]);
+    keepOnEntry({
+      query,
+      heard: fromVoice,
+      notFound: lookalikes === null ? undefined : true,
+      browse: browsing ? true : undefined,
+    });
+  }, [query, fromVoice, lookalikes, browsing]);
 
   const typed = text.trim();
   const candidates = useMemo(
@@ -396,7 +311,6 @@ export function Search({ kind }: { kind: EntryKind }) {
   const lookalikeLists =
     lookalikeKinds.size > 1 ? 'Both' : lookalikeKinds.has('plant') ? 'Plant' : 'Product';
   const limitShown = text.length >= LIMIT_SHOWN_FROM;
-  const limitReached = text.length >= SEARCH_MAX_LENGTH;
 
   return (
     <main className="screen search">
@@ -417,8 +331,9 @@ export function Search({ kind }: { kind: EntryKind }) {
             autoCorrect="off"
             spellCheck={false}
             enterKeyHint="search"
-            // The screen exists to type a name: the field takes the focus when it opens (App.tsx).
-            data-autofocus=""
+            // The screen exists to type a name: the field takes the focus when it opens
+            // (App.tsx), unless it opens on the question or the whole list (SCRUM-56).
+            data-autofocus={lookalikes === null && !browsing ? '' : undefined}
             aria-describedby={limitShown ? limitId : undefined}
             onChange={(event) => {
               setText(event.target.value);
@@ -440,17 +355,7 @@ export function Search({ kind }: { kind: EntryKind }) {
             />
           ) : null}
         </div>
-        {limitShown ? (
-          <p id={limitId} className="search__limit">
-            {limitReached
-              ? t('search.limitReached', { max: SEARCH_MAX_LENGTH })
-              : t('search.limit', { count: text.length, max: SEARCH_MAX_LENGTH })}
-          </p>
-        ) : null}
-        {/* Said once the limit is reached, while typing; the count above is only read with the field. */}
-        <p className="sr-only search__limit-said" aria-live="polite">
-          {limitReached ? t('search.limitReached', { max: SEARCH_MAX_LENGTH }) : ''}
-        </p>
+        <SearchLimit id={limitId} length={text.length} />
       </form>
 
       {voice.supported ? (
@@ -473,20 +378,21 @@ export function Search({ kind }: { kind: EntryKind }) {
 
       {lookalikes === null ? null : (
         <section className="search__lookalikes" aria-labelledby={lookalikeId}>
-          <h2 id={lookalikeId} ref={lookalikeHeading} tabIndex={-1}>
+          <h2 id={lookalikeId} ref={lookalikeHeading} tabIndex={-1} data-autofocus="">
             {t('search.lookalikeTitle')}
           </h2>
           <p>{t(`search.lookalikeAsk${lookalikeLists}`)}</p>
           <ul className="candidates" aria-labelledby={lookalikeId}>
             {lookalikes.map((candidate) => (
+              // A resemblance after "not found" is never a whole name she gave: its
+              // confirm screen always asks first (SCRUM-56, spec section 11).
               <CandidateButton
                 key={`${candidate.kind}:${candidate.id}`}
                 candidate={candidate}
                 query={typed}
                 showKind
-                addsAtOnce={atOnce(candidate, typed) !== null}
                 onChoose={() => {
-                  tap(candidate, typed);
+                  choose(candidate, typed);
                 }}
               />
             ))}

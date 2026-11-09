@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 import type { CheckedItem, ConditionId } from '@siapso/engine';
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { latestHistoryAt } from '../data/history.js';
+import { checkEntryOf, latestHistoryAt, recordHistory } from '../data/history.js';
 import { listProfiles } from '../data/profiles.js';
 import { todayIso } from '../domain/dates.js';
+import { emptyForm, pseudonymKey } from '../domain/profile-form.js';
 import { profileSummary } from '../domain/profile-summary.js';
 import { bandedName, doseBandLine, doseBandOf } from '../domain/dose-band.js';
 import { displayOf, type ItemDisplay } from '../domain/search-index.js';
 import { joinNames } from '../domain/result-view.js';
+import { signsAnswerKey } from '../domain/signs.js';
+import { isStale } from '../domain/staleness.js';
 import { latestDay, profileTermStatus } from '../domain/term.js';
-import type { Mode, Profile } from '../domain/types.js';
+import type { HistoryEntry, Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
 import { useApp, withTimeout } from '../state/app-state.js';
 import { activeProfile, useCheck, type CheckChange } from '../state/check-state.js';
@@ -18,12 +21,58 @@ import { useWarmSearchIndex } from '../state/search-index.js';
 import { Button } from '../ui/Button.js';
 import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
-import { flowEntry, searchPath } from './check-flow.js';
+import { CheckSearch } from './CheckSearch.js';
+import { CheckSigns } from './CheckSigns.js';
+import { OfflineReadiness } from './OfflineReadiness.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+import { ProfileQuestions } from './ProfileEdit.js';
+import { CheckResult, type ShownResult } from './Result.js';
+import { profileNoteText, useProfileNote, type ProfileNote } from './saved-note.js';
 import { Typed } from './Typed.js';
 
 /** How long her profile may take to read before the screen says it is loading. */
 const CHECK_LOADING_DELAY_MS = 600;
+
+/** The milliseconds from `now` to the next midnight of the phone, and one more second. */
+export function untilMidnight(now: Date): number {
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+  return next.getTime() - now.getTime();
+}
+
+/**
+ * A new reading of her profile and of the day (SCRUM-56, 8.3, her term kept
+ * current): when the page shows again (visibility, focus of the window, a page
+ * restored from the back-forward cache) and at midnight, the check reads them
+ * again (at unlock it is shown again, so it reads them then too). Two windows
+ * side by side never change visibility, hence the focus.
+ */
+function useReading(): { reading: number; today: string } {
+  // Today from the phone's clock, handed to pure code.
+  const [now, setNow] = useState(() => ({ reading: 0, today: todayIso(new Date()) }));
+  const again = useCallback(() => {
+    setNow((before) => ({ reading: before.reading + 1, today: todayIso(new Date()) }));
+  }, []);
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'hidden') again();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', again);
+    window.addEventListener('pageshow', again);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', again);
+      window.removeEventListener('pageshow', again);
+    };
+  }, [again]);
+  useEffect(() => {
+    const timer = setTimeout(again, untilMidnight(new Date()));
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [now.reading, again]);
+  return now;
+}
 
 /** The last change to the list, said under it. */
 type Change =
@@ -116,25 +165,6 @@ function Item({
 }
 
 /**
- * Check: what the woman takes, being looked at. The items added (name,
- * substances and strengths, units per day when given), each with a way off the
- * list; a medicine or a remedy is added through the search screen. Under the
- * list, in words, what just changed (added, taken off with a way to put it
- * back). The one primary action goes on to the result, through the danger
- * signs present now, once at least one item is listed.
- *
- * The check is for the active profile: hers in woman mode, the one chosen in
- * the list of profiles in accompanied mode (without a choice, the list opens),
- * or a passer-by looked up without saving (her answers in memory, "Femme de
- * passage : rien n'est enregistré" said in place of a pseudonym; accompanied
- * mode only), named with where she
- * stands (the term used, the baby's age). Without any
- * profile, the profile screen opens first, then comes back here. When her term
- * is outdated (past 42 weeks), the check asks first whether the baby is born
- * (OutdatedTerm), and nothing can be added or looked at until the profile is
- * updated.
- */
-/**
  * The situations answered for her, under who the check is for, so a "none"
  * ticked by reflex can be seen and put right (SCRUM-56, the safety review):
  * behind one tap whatever was answered, as on the profile screen, since one
@@ -175,28 +205,114 @@ function SituationsLine({ conditions }: { conditions: readonly ConditionId[] }) 
   );
 }
 
+/**
+ * Her first check in woman mode (SCRUM-56, 8.3): the questions of her
+ * profile, in its order and with its defaults, where the search will be.
+ * Saved, they are her profile (`self`, under her code, as the profile screen
+ * keeps it); the check then folds them into the line of her term. Her
+ * pseudonym is the one offered ("Moi"), asked only when a profile of the
+ * phone already has it. Its heading takes the focus when the check opens
+ * (App.tsx reads data-autofocus): the first question is right under it.
+ */
+function AboutHer({
+  today,
+  taken,
+  onSaved,
+}: {
+  today: string;
+  taken: readonly string[];
+  onSaved: (profile: Profile) => void;
+}) {
+  const t = useT();
+  const headingId = useId();
+  // Read once: a language change keeps the answers typed (ProfileQuestions reads it once too).
+  const [initial] = useState(() => emptyForm(t('profile.pseudonymMine'), today, 'today'));
+  const named = taken.some((name) => pseudonymKey(name) === pseudonymKey(initial.pseudonym));
+  return (
+    <section className="check__about" aria-labelledby={headingId}>
+      <h2 id={headingId} tabIndex={-1} data-autofocus="">
+        {t('check.aboutTitle')}
+      </h2>
+      <p className="meta">{t('profile.lead')}</p>
+      <ProfileQuestions
+        mode="woman"
+        today={today}
+        base={undefined}
+        self
+        // The check's screen key: answers typed come back after an auto-lock (state/draft.ts).
+        draftKey="check"
+        taken={taken}
+        initial={initial}
+        named={named}
+        onSaved={onSaved}
+      />
+    </section>
+  );
+}
+
+/**
+ * Check: what the woman takes, being looked at. One field searches the
+ * medicines and the remedies (SCRUM-56, S12: CheckSearch), its candidates
+ * under it, each added by a tap or by the "yes" of the question under it;
+ * then the items added (name, substances and strengths, units per day when
+ * given), each with a way off the list. Under the list, in words, what just
+ * changed (added, taken off with a way to put it back). Once at least one
+ * item is listed, the danger signs present now are asked under the list
+ * (S13: CheckSigns), asked again at every showing of the check, and their
+ * answer opens the result.
+ *
+ * The check is for the active profile: hers in woman mode, the one chosen in
+ * the list of profiles in accompanied mode (without a choice, the list opens),
+ * or a passer-by looked up without saving (her answers in memory, "Femme de
+ * passage : rien n'est enregistré" said in place of a pseudonym; accompanied
+ * mode only), named with where she stands (the term used, the baby's age).
+ * When her term is outdated (past 42 weeks), the check asks first whether
+ * the baby is born (OutdatedTerm), and nothing can be added or looked at
+ * until the profile is updated.
+ *
+ * In woman mode the check is her start (SCRUM-56, S4), with what Home said
+ * around it: what the app is for while nothing is listed, a profile just
+ * saved, the settings that could not be kept, then at the end whether the
+ * phone opens the app without the Internet, the quiet links (her profile,
+ * the settings, the knowledge base, about) and the closing line. Her first
+ * check asks about her where the search will be (AboutHer); her answers are
+ * her profile once saved, and the field takes the focus. In accompanied
+ * mode, a check without any profile opens the profile screen first, then
+ * comes back here. An out-of-date knowledge base is said above the field.
+ */
 export function Check() {
   const t = useT();
   const lang = useLang();
-  const { settings, pack, packError, storageTimeoutMs } = useApp();
+  const { settings, pack, packError, storageTimeoutMs, settingsUnavailable, online } = useApp();
   const check = useCheck();
   const [, navigate] = useLocation();
   const mode: Mode = settings.mode ?? 'woman';
+  // Woman mode: her check is her start (SCRUM-56, S4).
+  const woman = mode === 'woman';
   const [stored, setStored] = useState<{
     profile: Profile;
     today: string;
     lastAt: string | undefined;
   } | null>(null);
-  // Today from the phone's clock, once, handed to pure code.
-  const [today] = useState(() => todayIso(new Date()));
+  // A new reading of her profile and of the day: when the page shows again, at midnight.
+  const { reading, today } = useReading();
   const [failed, setFailed] = useState(false);
+  // Her first check in woman mode: no profile yet, so the questions about her (AboutHer).
+  const [ask, setAsk] = useState<{ today: string; taken: readonly string[] } | null>(null);
+  // A profile just saved, said once: by the profile screen (on the entry) or on this check.
+  const leftNote = useProfileNote();
+  const [note, setNote] = useState<ProfileNote | null>(leftNote);
+  // Her answers just saved on the check: the field takes the focus once it shows.
+  const focusField = useRef(false);
   const [change, setChange] = useState<Change | null>(null);
-  // After a removal or an undo, the row whose button takes the focus (else the first add button).
+  // After a removal or an undo, the row whose button takes the focus (else the search field).
   const focusRow = useRef<number | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
-  const addRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLInputElement>(null);
   const emptyId = useId();
   const { start, profileId, changed, clearChanged, quick } = check;
+  // Read once, before it is said and cleared: an item was just added on another screen.
+  const [justAdded] = useState(() => changed !== null);
   // A passer-by checked without saving: her answers are in memory, never stored.
   // Accompanied mode only: woman mode never shows a passer-by's answers.
   const passerBy =
@@ -208,6 +324,49 @@ export function Check() {
   useWarmSearchIndex(pack);
   // True once the profile has taken a moment to read: the loading status speaks then.
   const slow = useLiveRegionReady(CHECK_LOADING_DELAY_MS);
+
+  // The danger signs answer is kept within this check only (SCRUM-56, S14):
+  // leaving the check (Back, the band, her profile, the list of profiles, a
+  // lock, the quick exit) forgets it, so it is asked again, nothing chosen.
+  const { clearSigns } = check;
+  useEffect(
+    () => () => {
+      clearSigns();
+    },
+    [clearSigns],
+  );
+
+  // Her answers as last read (her id and when her profile was saved).
+  const readAnswers = useRef<string | null>(null);
+
+  // One history entry per check (S15): the highest level shown during it,
+  // written in order (each write is the whole entry, under the same id).
+  const entry = useRef<HistoryEntry | undefined>(undefined);
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  const onShown = useCallback(
+    ({ evaluation, checked, signs }: ShownResult) => {
+      if (profileId === null) return;
+      const next = checkEntryOf(entry.current, {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        profileId,
+        evaluation,
+        items: checked,
+        signs,
+      });
+      // Nothing new to keep (a render again, a change of language).
+      if (entry.current !== undefined && JSON.stringify(next) === JSON.stringify(entry.current)) {
+        return;
+      }
+      entry.current = next;
+      writes.current = writes.current
+        .then(() => recordHistory(next))
+        .catch((failure: unknown) => {
+          console.warn('Evaluation not kept in the history on this device', failure);
+        });
+    },
+    [profileId],
+  );
 
   // What the confirm or search screen just did to the list (added, already
   // there, updated) is said once, after this screen is up, so the live region
@@ -240,8 +399,16 @@ export function Check() {
       .then(({ profiles, active, lastAt }) => {
         if (!live) return;
         if (active === undefined) {
+          // Her first check in woman mode: the questions about her, here (SCRUM-56, 8.3).
+          if (mode === 'woman') {
+            setAsk({
+              today: todayIso(new Date()),
+              taken: profiles.map((other) => other.pseudonym),
+            });
+            return;
+          }
           // Accompanied mode with profiles, none chosen: she is chosen in the list.
-          if (mode === 'accompanied' && profiles.length > 0) {
+          if (profiles.length > 0) {
             navigate('/', { replace: true });
             return;
           }
@@ -249,7 +416,13 @@ export function Check() {
           navigate(profilePathFor(mode), { replace: true, state: { next: '/check' } });
           return;
         }
+        setAsk(null);
         start(active.id);
+        // Her answers changed since the check read them (saved elsewhere meanwhile):
+        // the danger signs answer was about her as she was, so it is asked again (S14).
+        const before = readAnswers.current;
+        if (before !== null && before !== `${active.id}@${active.updatedAt}`) clearSigns();
+        readAnswers.current = `${active.id}@${active.updatedAt}`;
         // Today from the phone's clock, handed to pure code.
         setStored({ profile: active, today: todayIso(new Date()), lastAt });
       })
@@ -260,7 +433,30 @@ export function Check() {
     return () => {
       live = false;
     };
-  }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs]);
+  }, [mode, profileId, passerBy, start, navigate, storageTimeoutMs, reading, clearSigns]);
+
+  // Her answers saved on the check: back to its top (the band and its danger
+  // signs in view, her term folded under the title), and the field, there now,
+  // takes the focus for the first name.
+  useEffect(() => {
+    if (!focusField.current || stored === null) return;
+    focusField.current = false;
+    document.documentElement.scrollTop = 0;
+    fieldRef.current?.focus();
+  }, [stored]);
+
+  // Her answers saved as her profile (AboutHer): the check is hers from now on.
+  const aboutHerSaved = useCallback(
+    (saved: Profile) => {
+      focusField.current = true;
+      readAnswers.current = `${saved.id}@${saved.updatedAt}`;
+      setAsk(null);
+      setNote({ kind: 'saved', name: saved.pseudonym });
+      setStored({ profile: saved, today: todayIso(new Date()), lastAt: undefined });
+      start(saved.id);
+    },
+    [start],
+  );
 
   // Once the list itself has changed (a render for another reason, such as the
   // profile read meanwhile, must not move the focus on the list before it).
@@ -270,7 +466,7 @@ export function Check() {
     focusRow.current = null;
     const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('.check__remove') ?? [];
     const next = buttons[Math.min(index, buttons.length - 1)];
-    (next ?? addRef.current?.querySelector('button'))?.focus();
+    (next ?? fieldRef.current)?.focus();
   }, [check.items]);
 
   const putBack = (removed: Extract<Change, { kind: 'removed' }>) => {
@@ -298,17 +494,12 @@ export function Check() {
       ? t('result.quoted', { text: shownOf(item).name })
       : namedOf(item);
 
-  const openSearch = (kind: 'product' | 'plant') => {
-    // One entry after this one: adding an item comes back here (check-flow.ts).
-    navigate(searchPath(kind), { state: flowEntry({ stepsToCheck: 1 }) });
-  };
-
   // Nothing until her profile is read: without one, the profile screen opens
   // instead, so the check never shows first, nor takes the focus, before it.
   // The heading comes with the profile and takes the focus then (App.tsx).
   // When storage is slow, a status says it is loading, after a moment only
   // (a phone that answers at once never shows it).
-  if (profile === null && !failed) {
+  if (profile === null && ask === null && !failed) {
     return (
       <main className="screen check">
         <p className="check__loading" role="status">
@@ -332,13 +523,16 @@ export function Check() {
   }
 
   const empty = check.items.length === 0;
+  // An old base is said before she looks at a product, not only on the status screen.
+  const stale = pack !== null && isStale(pack.date, today);
   return (
     <main className="screen check">
       <div className="check__intro">
         <h1 tabIndex={-1}>
           {t(mode === 'accompanied' ? 'check.titleAccompanied' : 'check.titleWoman')}
         </h1>
-        <p>{t('check.lead')}</p>
+        {/* Her start: what the app is for, until a product is listed (SCRUM-56, S4). */}
+        {woman && empty ? <p>{t('home.lead')}</p> : null}
         {profile === null ? null : (
           <p className="meta check__profile">
             {passerBy !== null ? <span>{t('check.quick')}</span> : null}
@@ -353,89 +547,127 @@ export function Check() {
               </Fragment>
             ))}{' '}
             <SituationsLine key={profile.profile.id} conditions={profile.profile.conditions} />
+            {/* Her profile, one tap away, in the line of her term (SCRUM-56, 8.7). */}
+            {woman ? (
+              <>
+                {' '}
+                <a className="button button--quiet check__edit" href="#/profile">
+                  {t('check.edit')}
+                </a>
+              </>
+            ) : null}
           </p>
         )}
+        {/* A profile just saved, said once, until a product is listed. */}
+        {woman ? (
+          <p className="check__saved" role="status">
+            {note !== null && empty ? profileNoteText(note, t) : ''}
+          </p>
+        ) : null}
       </div>
+      {woman && settingsUnavailable ? <Notice>{t('settings.unavailable')}</Notice> : null}
       {failed ? <Notice>{t('profile.loadFailed')}</Notice> : null}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
+      {stale ? <Notice>{t('status.stale')}</Notice> : null}
 
-      {empty ? (
-        <p id={emptyId} className="check__empty">
-          {t('check.empty')}
-        </p>
+      {ask !== null && profile === null ? (
+        // Her first check: nothing to look up before her term is known (8.5).
+        <AboutHer today={ask.today} taken={ask.taken} onSaved={aboutHerSaved} />
       ) : (
-        <ul ref={listRef} className="check__items" aria-label={t('check.listLabel')}>
-          {check.items.map((item, index) => {
-            const shown = shownOf(item);
-            return (
-              <Item
-                // Items have no id; the list only changes by adding at the end or removing.
-                key={`${String(index)}:${item.ref.kind}:${'id' in item.ref ? item.ref.id : item.ref.text}`}
-                item={item}
-                shown={shown}
-                band={bandOf(item)}
-                named={namedOf(item)}
-                list={check.listOf(item)}
-                written={check.writtenOf(item)}
-                said={check.saidOf(item)}
-                onRemove={() => {
-                  focusRow.current = index;
-                  setChange({ kind: 'removed', item, index });
-                  check.remove(index);
-                }}
-              />
-            );
-          })}
-        </ul>
+        <>
+          {/* When her profile could not be read, the heading takes the focus, so the notice is read first. */}
+          <CheckSearch field={fieldRef} autoFocus={!failed} startEmpty={justAdded} />
+
+          {empty ? (
+            <p id={emptyId} className="check__empty">
+              {t('check.empty')}
+            </p>
+          ) : (
+            <ul ref={listRef} className="check__items" aria-label={t('check.listLabel')}>
+              {check.items.map((item, index) => {
+                const shown = shownOf(item);
+                return (
+                  <Item
+                    // Items have no id; the list only changes by adding at the end or removing.
+                    key={`${String(index)}:${item.ref.kind}:${'id' in item.ref ? item.ref.id : item.ref.text}`}
+                    item={item}
+                    shown={shown}
+                    band={bandOf(item)}
+                    named={namedOf(item)}
+                    list={check.listOf(item)}
+                    written={check.writtenOf(item)}
+                    said={check.saidOf(item)}
+                    onRemove={() => {
+                      focusRow.current = index;
+                      setChange({ kind: 'removed', item, index });
+                      check.remove(index);
+                    }}
+                  />
+                );
+              })}
+            </ul>
+          )}
+          {/* What just changed in the list, in words; a removal can be undone (no time limit). */}
+          <p className="check__status" role="status">
+            {change === null ? '' : t(CHANGE_MESSAGES[change.kind], { name: saidOf(change.item) })}
+          </p>
+          {change?.kind === 'removed' ? (
+            <Button
+              variant="quiet"
+              className="check__undo"
+              onClick={() => {
+                putBack(change);
+              }}
+            >
+              {t('check.putBack')}
+            </Button>
+          ) : null}
+
+          {/* The danger signs present now, once a product is listed (S13): no result without an answer. */}
+          {empty ? null : (
+            <CheckSigns
+              profile={profile?.profile ?? null}
+              today={profile?.today ?? today}
+              notBefore={notBefore}
+              mode={mode}
+            />
+          )}
+          {/* The result under the answer (S15), worked out again at each change. */}
+          {empty ||
+          profile === null ||
+          !check.signsGivenFor(signsAnswerKey(profile.profile, profile.today, notBefore)) ? null : (
+            <CheckResult
+              profile={profile.profile}
+              today={profile.today}
+              notBefore={notBefore}
+              passerBy={passerBy !== null}
+              onShown={onShown}
+            />
+          )}
+        </>
       )}
-      {/* What just changed in the list, in words; a removal can be undone (no time limit). */}
-      <p className="check__status" role="status">
-        {change === null ? '' : t(CHANGE_MESSAGES[change.kind], { name: saidOf(change.item) })}
-      </p>
-      {change?.kind === 'removed' ? (
-        <Button
-          variant="quiet"
-          className="check__undo"
-          onClick={() => {
-            putBack(change);
-          }}
-        >
-          {t('check.putBack')}
-        </Button>
+
+      {/* Her start, at its end: what Home said there (SCRUM-56, S4). */}
+      {woman ? (
+        <div className="check__closing">
+          <OfflineReadiness online={online} />
+          {profile === null ? null : (
+            <a className="button button--quiet check__link" href="#/profile">
+              {t('home.profileMine')}
+            </a>
+          )}
+          <a className="button button--quiet check__link" href="#/settings">
+            {t('home.settings')}
+          </a>
+          <a className="button button--quiet check__link" href="#/status">
+            {t('nav.status')}
+          </a>
+          <a className="button button--quiet check__link" href="#/about">
+            {t('nav.about')}
+          </a>
+          <p className="meta">{t('home.closing')}</p>
+        </div>
       ) : null}
-
-      <div ref={addRef} className="check__add">
-        <Button
-          variant="secondary"
-          onClick={() => {
-            openSearch('product');
-          }}
-        >
-          {t('check.addMedicine')}
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            openSearch('plant');
-          }}
-        >
-          {t('check.addRemedy')}
-        </Button>
-      </div>
-
-      <Button
-        variant="primary"
-        className="check__result"
-        disabled={empty}
-        aria-describedby={empty ? emptyId : undefined}
-        onClick={() => {
-          // The danger signs present now come first, then the result (one entry
-          // after this one, then two: their ways back come here, check-flow.ts).
-          navigate('/signs', { state: flowEntry({ stepsToCheck: 1 }) });
-        }}
-      >
-        {t('check.seeResult')}
-      </Button>
     </main>
   );
 }

@@ -9,6 +9,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   addFirstCandidate,
   CODE,
+  expectStart,
   expectWelcome,
   seedBeforeUpdate,
   storedCodeLength,
@@ -189,14 +190,12 @@ test('a phone updated from the version in clear: sealed at the first code, reada
   await unlock(page);
   await list.getByRole('button', { name: new RegExp(`^${AMINATA}`) }).click();
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
   await expect(
-    page.getByRole('heading', { level: 1, name: `Résultat pour ${AMINATA}` }),
+    page.getByRole('heading', { level: 2, name: `Résultat pour ${AMINATA}` }),
   ).toBeVisible();
 
   // Her profile opens with her answers; her situations show at a tap only.
@@ -296,7 +295,9 @@ test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digi
   await expect(page.getByRole('status').filter({ hasText: 'Ouverture en cours.' })).toHaveCount(0);
   await expect(title).toBeVisible();
   await page.getByRole('button', { name: 'Ouvrir' }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible({
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Un médicament ou un remède/ }),
+  ).toBeVisible({
     timeout: 20_000,
   });
   // Kept with the right code, in the transaction that made the verifier again.
@@ -307,5 +308,5 @@ test('a code kept without its length waits for "Ouvrir"; once kept, its 4th digi
   await expect(title).toBeVisible();
   const keypad = page.getByRole('group', { name: 'Clavier du code' });
   for (const digit of CODE) await keypad.getByRole('button', { name: digit, exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
 });

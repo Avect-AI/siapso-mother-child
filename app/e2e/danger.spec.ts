@@ -104,51 +104,63 @@ async function openDangerAndBack(page: Page, from: RegExp | string) {
   await expect(page.getByRole('heading', { level: 1, name: from })).toBeVisible();
 }
 
-test('offline: danger signs from Home, Check and Result, then who to call', async ({ page }) => {
+test('offline: danger signs from her start, her check and the result, then who to call', async ({
+  page,
+}) => {
   const warnings = referralWarnings(page);
   await onboardOffline(page, 'woman');
 
-  // From Home.
+  // From her start, her check with the questions about her (SCRUM-56, S4).
   await openDangerAndBack(page, 'Un médicament ou un remède ?');
 
-  // The profile, then the check, offline.
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
+  // Her answers, then a product, offline.
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('14');
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
+  await expect(page.getByRole('searchbox')).toBeFocused();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
 
   // From Check.
-  await openDangerAndBack(page, 'Ce que vous prenez');
+  await openDangerAndBack(page, 'Un médicament ou un remède ?');
 
-  // The signs present now, "none" first; a fever now.
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  // The signs present now on the check (SCRUM-56, S13): in words, then "no" or "yes"; a fever now.
+  const asked = page.getByRole('heading', {
+    level: 2,
+    name: 'Avez-vous un de ces signes maintenant ?',
+  });
+  await expect(asked).toBeVisible();
+  await expect(page.locator('.check__sign-words')).toContainText('Fièvre');
+  await expectNoSeriousViolation(page);
+  await expectThumbTargets(page);
+  await page.getByRole('button', { name: 'Oui, au moins un' }).click();
   const question = page.getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' });
-  await expect(question.getByRole('checkbox').first()).toHaveAccessibleName('Aucun de ces signes');
-  // The heading of the new screen has the focus once the list is shown.
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Avez-vous un de ces signes maintenant ?' }),
-  ).toBeFocused();
+  // Nothing ticked, the focus on the first sign of the list.
+  await expect(question.getByRole('checkbox').first()).toBeFocused();
+  await expect(question.getByRole('checkbox', { checked: true })).toHaveCount(0);
   await expectNoSeriousViolation(page);
   await expectThumbTargets(page);
   await question.getByText('Fièvre', { exact: true }).click();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
   // The result leads with the danger.
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
   const fever = 'Allez au poste de santé maintenant pour faire un test.';
   await expect(page.getByRole('alert')).toContainText(fever);
   await expect(page.getByRole('article').first()).toHaveClass(/level--danger/);
 
-  // From Result.
-  await openDangerAndBack(page, 'Résultat');
+  // From the result, on the check: Back comes to the check, which was left, so the
+  // signs are asked again (SCRUM-56, S14); the fever answered again.
+  await openDangerAndBack(page, 'Un médicament ou un remède ?');
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+  await question.getByText('Fièvre', { exact: true }).click();
+  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.locator('.check__danger')).toBeFocused();
 
   // Who to call, from the banner: the same instruction, the sign to say, the circuit.
   await page.getByRole('button', { name: 'Voir qui appeler' }).click();
@@ -257,20 +269,19 @@ test.describe('on a small phone (360 x 560), a call is in the first screen', () 
     });
   }
 
-  /** Home, her profile, a remedy, a fever now, the result, then "Voir qui appeler". */
+  /** Her start: her answers, a remedy, a fever now, the result, then "Voir qui appeler". */
   async function fromAFeverResultToCall(page: Page) {
     await page.goto('/#/');
-    await page.getByRole('button', { name: 'Regarder un produit' }).click();
     await answer(page, /^Enceinte/, 'Oui').click();
     await answer(page, 'Terme de la grossesse', 'En semaines').click();
     await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('14');
     await answer(page, /^Allaite/, 'Non').click();
     await page.getByText('Aucune de ces situations').click();
     await page.getByRole('button', { name: 'Enregistrer' }).click();
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('kinkeliba');
     await addFirstCandidate(page);
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    // The signs present now, on the check (SCRUM-56, S13): "Oui, au moins un", then the sign.
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
     await page
       .getByRole('group', { name: 'Avez-vous un de ces signes maintenant ?' })
       .getByText('Fièvre', { exact: true })

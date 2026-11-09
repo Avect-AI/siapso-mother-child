@@ -39,6 +39,11 @@ export interface EvalQuery {
 
 export interface Baseline {
   top3: number;
+  /**
+   * The bar of the rows of the check screen (SCRUM-56): both lists together,
+   * at most CHECK_ROWS candidates. Checked when given.
+   */
+  top4?: number;
   p95Ms: number;
 }
 
@@ -46,7 +51,15 @@ export interface Tally {
   count: number;
   top1: number;
   top3: number;
+  /** A hit among the CHECK_ROWS rows the check screen shows. */
+  top4: number;
 }
+
+/**
+ * The candidates the check screen shows for a name, both lists together
+ * (SCRUM-56, app/src/screens/search-parts.tsx CHECK_ROWS).
+ */
+export const CHECK_ROWS = 4;
 
 export interface Report {
   perType: Record<QueryType, Tally>;
@@ -107,23 +120,45 @@ export function parseBaseline(text: string): Baseline {
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error('baseline.json must be an object with "top3" and "p95Ms"');
   }
-  const { top3, p95Ms } = data as Record<string, unknown>;
-  if (typeof top3 !== 'number' || !Number.isFinite(top3) || top3 < 0 || top3 > 1) {
+  const record = data as Record<string, unknown>;
+  const { top3, p95Ms } = record;
+  if (!isRatio(top3)) {
     throw new Error('baseline.json: "top3" must be a number from 0 to 1');
   }
   if (typeof p95Ms !== 'number' || !Number.isFinite(p95Ms) || p95Ms <= 0) {
     throw new Error('baseline.json: "p95Ms" must be a number greater than 0');
   }
-  return { top3, p95Ms };
+  if (!('top4' in record)) return { top3, p95Ms };
+  const { top4 } = record;
+  if (!isRatio(top4)) {
+    throw new Error('baseline.json: "top4" must be a number from 0 to 1');
+  }
+  return { top3, top4, p95Ms };
 }
 
-/** The bars that a measure does not meet; a measure that is not a number fails. */
-export function failures(top3: number, p95: number, baseline: Baseline): string[] {
+function isRatio(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+/**
+ * The bars that a measure does not meet; a measure that is not a number
+ * fails. `top4`, the rows of the check screen, is checked when the baseline
+ * gives its bar.
+ */
+export function failures(top3: number, p95: number, baseline: Baseline, top4?: number): string[] {
   const found: string[] = [];
   if (!Number.isFinite(top3)) {
     found.push(`top-3 accuracy is not a number (${String(top3)})`);
   } else if (top3 < baseline.top3) {
     found.push(`top-3 accuracy ${top3.toFixed(3)} is below the baseline ${String(baseline.top3)}`);
+  }
+  if (baseline.top4 !== undefined && top4 !== undefined) {
+    const rows = 'top-4 accuracy (the rows of the check screen)';
+    if (!Number.isFinite(top4)) {
+      found.push(`${rows} is not a number (${String(top4)})`);
+    } else if (top4 < baseline.top4) {
+      found.push(`${rows} ${top4.toFixed(3)} is below the baseline ${String(baseline.top4)}`);
+    }
   }
   if (!Number.isFinite(p95)) {
     found.push(`p95 latency is not a number (${String(p95)})`);
@@ -143,10 +178,13 @@ export function percentile95(values: number[]): number {
 }
 
 function emptyTally(): Tally {
-  return { count: 0, top1: 0, top3: 0 };
+  return { count: 0, top1: 0, top3: 0, top4: 0 };
 }
 
-/** Runs every query once and tallies top-1 and top-3 hits. */
+/**
+ * Runs every query once, both lists together, and tallies top-1 and top-3
+ * hits, and top-4: a hit among the rows the check screen shows (CHECK_ROWS).
+ */
 export function evaluate(index: ResolverIndex, queries: EvalQuery[]): Report {
   const perType = Object.fromEntries(QUERY_TYPES.map((type) => [type, emptyTally()])) as Record<
     QueryType,
@@ -156,17 +194,22 @@ export function evaluate(index: ResolverIndex, queries: EvalQuery[]): Report {
   const misses: Report['misses'] = [];
   for (const item of queries) {
     const wanted = expectedList(item);
-    const found = search(index, item.query);
-    const hits = found.map((candidate) =>
+    // The first three are those of the default limit: the ranking does not depend on it.
+    const rows = search(index, item.query, { limit: CHECK_ROWS });
+    const found = rows.slice(0, 3);
+    const hits = rows.map((candidate) =>
       wanted.some((e) => e.kind === candidate.kind && e.id === candidate.id),
     );
     // A noise query is right only when no candidate is proposed at all.
-    const top1 = item.expect === NO_CANDIDATE ? found.length === 0 : hits[0] === true;
-    const top3 = item.expect === NO_CANDIDATE ? found.length === 0 : hits.some(Boolean);
+    const noise = item.expect === NO_CANDIDATE;
+    const top1 = noise ? rows.length === 0 : hits[0] === true;
+    const top3 = noise ? rows.length === 0 : hits.slice(0, 3).some(Boolean);
+    const top4 = noise ? rows.length === 0 : hits.some(Boolean);
     for (const tally of [perType[item.type], overall]) {
       tally.count += 1;
       if (top1) tally.top1 += 1;
       if (top3) tally.top3 += 1;
+      if (top4) tally.top4 += 1;
     }
     if (!top3) {
       misses.push({
@@ -197,7 +240,7 @@ const ratio = (hits: number, count: number): string =>
   count === 0 ? 'n/a' : (hits / count).toFixed(3);
 
 function row(label: string, tally: Tally): string {
-  return `${label.padEnd(12)} ${String(tally.count).padStart(5)} ${ratio(tally.top1, tally.count).padStart(8)} ${ratio(tally.top3, tally.count).padStart(8)}`;
+  return `${label.padEnd(12)} ${String(tally.count).padStart(5)} ${ratio(tally.top1, tally.count).padStart(8)} ${ratio(tally.top3, tally.count).padStart(8)} ${ratio(tally.top4, tally.count).padStart(8)}`;
 }
 
 /**
@@ -232,18 +275,25 @@ async function run(root: string, out: (line: string) => void, schemas: string): 
   const report = evaluate(index, queries);
   const p95 = measureP95(index, queries);
 
-  out(`${'type'.padEnd(12)} ${'n'.padStart(5)} ${'top-1'.padStart(8)} ${'top-3'.padStart(8)}`);
+  out(
+    `${'type'.padEnd(12)} ${'n'.padStart(5)} ${'top-1'.padStart(8)} ${'top-3'.padStart(8)} ${'top-4'.padStart(8)}`,
+  );
   for (const type of QUERY_TYPES) out(row(type, report.perType[type]));
   out(row('overall', report.overall));
   for (const miss of report.misses) {
     out(`miss: [${miss.type}] "${miss.query}" -> ${miss.got.join(', ') || '(no candidate)'}`);
   }
   const top3 = report.overall.top3 / report.overall.count;
+  const top4 = report.overall.top4 / report.overall.count;
   out(`index: ${String(index.size)} entries, ${String(queries.length)} queries`);
+  out(
+    `candidates: both lists together, at most ${String(CHECK_ROWS)} rows as on the check screen (top-4)`,
+  );
   out(`p95 latency: ${p95.toFixed(3)} ms over ${String(REPETITIONS)} repetitions`);
-  out(`baseline: top-3 >= ${String(baseline.top3)}, p95 <= ${String(baseline.p95Ms)} ms`);
+  const rowsBar = baseline.top4 === undefined ? '' : `, top-4 >= ${String(baseline.top4)}`;
+  out(`baseline: top-3 >= ${String(baseline.top3)}${rowsBar}, p95 <= ${String(baseline.p95Ms)} ms`);
 
-  const failed = failures(top3, p95, baseline);
+  const failed = failures(top3, p95, baseline, top4);
   for (const failure of failed) out(`FAIL: ${failure}`);
   return failed.length > 0 ? 1 : 0;
 }

@@ -124,11 +124,10 @@ export const fr = {
     // button says what it holds, never a secret.
     reminders: 'Rappels : touchez pour les afficher',
   },
+  // Around the check in woman mode, her start (SCRUM-56, S4).
   home: {
-    title: 'Un médicament ou un remède ?',
-    lead: 'Sachez à qui le montrer, et quand.',
     // Never "vérifier": the tool flags and refers, it does not verify.
-    check: 'Regarder un produit',
+    lead: 'Sachez à qui le montrer, et quand.',
     packUnavailable:
       "Les informations sur les produits ne sont pas encore sur ce téléphone. Ouvrez l'application une fois avec Internet.",
     closing: 'Cet outil ne remplace pas un soignant.',
@@ -365,18 +364,18 @@ export const fr = {
     situationsShort: 'Situations',
     situationsNone: 'Situations : aucune',
     situationsList: 'Situations : {names}',
-    // Woman mode: what she takes herself; accompanied mode: what the woman takes.
-    titleWoman: 'Ce que vous prenez',
+    // Woman mode: her start, what she came for (SCRUM-56, S4); accompanied mode: what the woman takes.
+    titleWoman: 'Un médicament ou un remède ?',
     titleAccompanied: "Ce qu'elle prend",
     // Said only when the profile takes a moment to read.
     loading: 'Chargement en cours.',
-    lead: 'Ajoutez chaque médicament et chaque remède, un par un.',
     profile: 'Profil : {name}',
+    // Woman mode, in the line of her term: her profile, to change her answers.
+    edit: 'Modifier',
+    // Her first check in woman mode: her answers, kept as her profile (SCRUM-56, 8.3).
+    aboutTitle: 'À propos de vous',
     listLabel: 'Produits ajoutés',
     empty: "Rien n'est encore ajouté. Ajoutez au moins un produit pour voir le résultat.",
-    addMedicine: 'Ajouter un médicament',
-    addRemedy: 'Ajouter un remède',
-    seeResult: 'Voir le résultat',
     // Taken off the list being looked at, never off the treatment.
     remove: 'Retirer',
     removeNamed: 'Retirer {name} de la liste',
@@ -401,6 +400,13 @@ export const fr = {
     nameAbove: '{name}, plus de {strength}',
     // "Je ne sais pas" to that dose, in the same-box question.
     nameUnknown: '{name}, dosage non précisé',
+    // The one field of the check (SCRUM-56, S12): medicines and remedies together.
+    field: 'Nom du médicament ou du remède',
+    // Short: two lines at most on a small phone, so the list and what follows stay in the first screen.
+    fieldHint: 'Le nom sur la boîte ou celui du remède, même mal écrit.',
+    noneFound: 'Aucun médicament ni remède ne correspond à ce nom.',
+    // The question under a candidate a tap does not add at once (S11), in place of the confirm screen.
+    confirmNamed: 'Est-ce bien {name} ?',
     // The name she typed, when the product is shown under another name (Cytotec, Misoprostol).
     writtenAs: 'Vous avez écrit : {text}',
   },
@@ -524,9 +530,11 @@ export const fr = {
     titleFor: 'Résultat pour {name}',
     // A passer-by checked without a profile: nothing of it is kept.
     titleQuick: 'Résultat, sans enregistrer',
+    // The result on the check, worked out again as the list changes: its new level, said once.
+    levelNow: 'Résultat mis à jour : {level}',
     loading: 'Le résultat se prépare.',
-    failed: "Le résultat n'a pas pu être donné. Revenez à la liste.",
-    profileMissing: "Ce profil n'est plus sur ce téléphone. Revenez à la liste.",
+    // The list stays above the result on the check (SCRUM-56): no way back to name.
+    failed: "Le résultat n'a pas pu être donné.",
     // The overview of the cards, most urgent first, when there are several.
     summary: 'Résumé',
     // Default orientation of each level (spec section 10), when a message gives none.
@@ -796,14 +804,24 @@ export const fr = {
         'Écrivez de 6 à 15 chiffres, avec des espaces si vous voulez, et un + seulement au début.',
     },
   },
-  // Danger signs now, asked once in a check before the result (spec section 7.1, screen 8).
+  // Danger signs now, asked on the check before the result (SCRUM-56, S13): the
+  // signs in words, then "no" or "yes", "yes" opening the list to tick.
   signs: {
     titleWoman: 'Avez-vous un de ces signes maintenant ?',
     titleAccompanied: 'A-t-elle un de ces signes maintenant ?',
-    hint: 'Cochez Aucun de ces signes, ou chaque signe présent maintenant.',
-    none: 'Aucun de ces signes',
+    // A group and its signs in words: "Pendant la grossesse : fièvre, ...".
+    groupWords: '{group} : {signs}',
+    noneNow: 'Non, aucun de ces signes',
+    someNow: 'Oui, au moins un',
+    listHint: 'Cochez chaque signe présent maintenant.',
+    listError:
+      'Cochez au moins un signe présent maintenant, ou répondez : Non, aucun de ces signes.',
+    // The answer kept within the check (SCRUM-56, S14), above the result.
+    answeredNone: 'Signes de danger maintenant : aucun',
+    answeredSome: 'Signes de danger maintenant : {signs}',
+    change: 'Changer',
+    changeNamed: 'Changer la réponse sur les signes de danger',
     showAll: 'Voir tous les signes',
-    error: 'Répondez : Aucun de ces signes, ou les signes présents maintenant.',
     loading: 'La liste se prépare.',
     seeResult: 'Voir le résultat',
   },

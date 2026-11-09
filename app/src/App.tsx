@@ -14,16 +14,13 @@ import { ContactEdit, Contacts, contactScreenKey, type ContactTarget } from './s
 import { Danger } from './screens/Danger.js';
 import { CONTACT_EDIT_PATH, editedId, PROFILE_EDIT_PATH } from './screens/edit-route.js';
 import { FORGOT_PATH, ForgotCode } from './screens/ForgotCode.js';
-import { Home } from './screens/Home.js';
 import { Neutral, UNLOCK_PATH } from './screens/Neutral.js';
 import { ProfileEdit, profileScreenKey, type ProfileTarget } from './screens/ProfileEdit.js';
 import { Profiles } from './screens/Profiles.js';
 import { QUICK_PATH, QuickCheck } from './screens/QuickCheck.js';
 import { CALL_PATH, Referral } from './screens/Referral.js';
-import { Result } from './screens/Result.js';
 import { Search } from './screens/Search.js';
 import { Settings } from './screens/Settings.js';
-import { SignsNow } from './screens/SignsNow.js';
 import { Status } from './screens/Status.js';
 import { Unlock } from './screens/Unlock.js';
 import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
@@ -64,7 +61,6 @@ type Screen =
   | 'about'
   | 'licences'
   | 'voice'
-  | 'home'
   | 'profiles'
   | 'danger'
   | 'call'
@@ -146,9 +142,10 @@ function profileTarget(location: string, mode: Mode | null): ProfileTarget | nul
  * language at any time. Every other screen shows something about a profile
  * and opens only with the code: while locked, the code screen takes its
  * place (at start or after an auto-lock, so the code brings the same screen
- * back), or the neutral screen after a quick exit. In accompanied mode the
- * start is the list of profiles. The contacts open in both modes, behind the
- * code. Unknown routes get null and are sent home.
+ * back), or the neutral screen after a quick exit. In woman mode the start
+ * is her check (SCRUM-56, S4: /check is the same screen, sent to /), in
+ * accompanied mode the list of profiles. The contacts open in both modes,
+ * behind the code. Unknown routes get null and are sent home.
  */
 function screenFor(
   location: string,
@@ -194,7 +191,7 @@ function screenFor(
   if (check) return check.screen;
   if (contact !== null) return contact === 'list' ? 'contacts' : 'contact';
   if (location !== '/') return null;
-  return settings.mode === 'accompanied' ? 'profiles' : 'home';
+  return settings.mode === 'accompanied' ? 'profiles' : 'check';
 }
 
 /** The route in the address now (the hash), as wouter reads it. */
@@ -303,7 +300,7 @@ function Screens() {
   // search: its label says what the heading says); not on the first screen of
   // a load, which starts there anyway. A screen that shows its heading only
   // once it has read what it needs (the check, her profile) gets the focus
-  // then, unless something already took it.
+  // then, unless something else took it meanwhile.
   useEffect(() => {
     const previous = shown.current;
     if (previous !== key) {
@@ -320,13 +317,17 @@ function Screens() {
       now.focus();
       return;
     }
+    // The control that opened the screen, when it stays on screen (the band's
+    // "Carnet" to her check, which reads her profile first): the focus still
+    // goes on, unless it moved meanwhile.
+    const opener = document.activeElement;
     const observer = new MutationObserver(() => {
       const found = target();
       if (found === null) return;
       observer.disconnect();
       focusOwed.current = false;
       const active = document.activeElement;
-      if (active === null || active === document.body) found.focus();
+      if (active === null || active === document.body || active === opener) found.focus();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => {
@@ -335,6 +336,15 @@ function Screens() {
   }, [key]);
 
   if (screen === null) return <Redirect to="/" replace />;
+  // Her check is her start in woman mode (SCRUM-56, S4): one address for it, so
+  // the band's "Carnet" says it is the page shown and Back never finds it twice.
+  const checkPath = settings.mode === 'woman' ? '/' : '/check';
+  // The danger signs and the result are on the check (SCRUM-56, S13 and S15): an old link goes there.
+  if (screen === 'signs' || screen === 'result') return <Redirect to={checkPath} replace />;
+  // Its own element (a key): a redirect rendered in its place just before would not navigate again.
+  if (screen === 'check' && location !== checkPath) {
+    return <Redirect key="check" to={checkPath} replace />;
+  }
   if (screen === 'loading') return null;
   if (screen === 'unlocked') return <AfterUnlock />;
   if (screen === 'unlock' && location !== UNLOCK_PATH) return <LockAway location={location} />;
@@ -357,7 +367,7 @@ function Screens() {
         offlineLabel={t('header.offline')}
         online={online}
         current={
-          screen === 'home' || screen === 'profiles'
+          screen === 'profiles' || (screen === 'check' && location === '/')
             ? 'home'
             : screen === 'danger'
               ? 'danger'
@@ -382,7 +392,6 @@ function Screens() {
         </Suspense>
       ) : null}
       {screen === 'voice' ? <VoicePack /> : null}
-      {screen === 'home' ? <Home /> : null}
       {screen === 'profiles' ? <Profiles /> : null}
       {/* A new epoch (a lock, two minutes idle while locked) starts them again:
           the signs ticked are forgotten. */}
@@ -401,8 +410,6 @@ function Screens() {
       {screen === 'confirm' && check?.screen === 'confirm' ? (
         <Confirm key={key} kind={check.kind} />
       ) : null}
-      {screen === 'signs' ? <SignsNow /> : null}
-      {screen === 'result' ? <Result /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}
         message={t('autoLock.soon')}

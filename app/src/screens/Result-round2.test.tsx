@@ -50,10 +50,13 @@ async function openResult(items: CheckedItem[], settings: Settings, signs: strin
     for (const item of items) check.add(item);
     check.setSigns(signs);
   });
-  act(() => {
-    window.location.hash = '#/result';
-  });
-  await screen.findByRole('heading', { level: 1, name: /^Résultat/ });
+  // Woman mode: her check is her start, on show already (SCRUM-56, S4).
+  if (settings.mode !== 'woman') {
+    act(() => {
+      window.location.hash = '#/check';
+    });
+  }
+  await screen.findByRole('heading', { level: 2, name: /^Résultat/ });
   await screen.findAllByRole('article');
   return userEvent.setup();
 }

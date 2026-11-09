@@ -2,7 +2,7 @@
 
 # Name resolver evaluation set
 
-`queries.yaml` holds realistic queries a mother or a health worker could type, or a speech model could transcribe, to name a medicine or a remedy. `pnpm eval:resolver` builds the knowledge pack in memory, runs every query through `@siapso/resolver` and reports top-1 and top-3 accuracy per type and overall, and the p95 latency.
+`queries.yaml` holds realistic queries a mother or a health worker could type, or a speech model could transcribe, to name a medicine or a remedy. `pnpm eval:resolver` builds the knowledge pack in memory, runs every query through `@siapso/resolver` on both lists together (medicines and remedies, as the one field of the check screen searches them, SCRUM-56) and reports top-1, top-3 and top-4 accuracy per type and overall, and the p95 latency. Top-4 counts the rows the check screen shows under its field (at most 4).
 
 ## Format
 
@@ -23,6 +23,7 @@ Every expected id must exist in the registry (a test checks it). Do not remove a
 `baseline.json` holds the bar that CI enforces:
 
 - `top3`: the minimum top-3 accuracy (the measured value rounded down to two decimals, never below 0.90);
+- `top4`: the minimum top-4 accuracy, the rows of the check screen (rounded down the same way; checked when present; 0.996 measured on 2026-11-06, bar 0.99);
 - `p95Ms`: the maximum p95 latency in milliseconds of one query: each query is timed on its own and the 95th percentile is taken over 20 passes of the whole query set (after one warm-up pass). The target is 50 ms on an entry-level phone; 12 ms on the CI runner leaves room for a 4x slowdown.
 
 The script exits with code 1 when a bar is not met, and also when it cannot measure honestly: an empty query file, a baseline whose `top3` (from 0 to 1) or `p95Ms` (greater than 0) is missing or not a number, or a measure that is not a number.

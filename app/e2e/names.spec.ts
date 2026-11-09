@@ -5,7 +5,7 @@
 // knows for it.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { onboard } from './support.js';
+import { aboutHer, CHECK_TITLE, onboard } from './support.js';
 
 const NBSP = ' ';
 
@@ -17,30 +17,19 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-function answer(page: Page, question: string | RegExp, label: string) {
-  return page.getByRole('group', { name: question }).getByText(label, { exact: true });
-}
-
-/** Welcome in French, woman mode, then her profile: pregnant at `weeks` weeks, with `situation`. */
+/** Welcome in French, woman mode, then her answers on her check: pregnant at `weeks` weeks, with `situation`. */
 async function pregnantAt(page: Page, weeks: number, situation: string) {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
-  await answer(page, /^Enceinte/, 'Oui').click();
-  await answer(page, 'Terme de la grossesse', 'En semaines').click();
-  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
-  await answer(page, /^Allaite/, 'Non').click();
-  await page.getByText(situation, { exact: true }).click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await aboutHer(page, weeks, situation);
 }
 
 /** Types `name` among the medicines, then keeps it as typed through the question "not found" asks first. */
 async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   // The field has the focus: the name is typed at once.
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
+  // Once its rows are there: "not found" moves down as they come.
+  await expect(page.locator('.candidate').first()).toBeVisible();
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
 
   const lookalikes = page.getByRole('list', { name: `Ce nom ressemble à${NBSP}:` });
@@ -58,10 +47,9 @@ async function addAsTyped(page: Page, name: string, lookalike: RegExp) {
 }
 
 async function seeResult(page: Page) {
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
 }
 
 test('huile de ricin typed among the medicines at term with a scar: asked first, the danger stays', async ({
@@ -119,7 +107,6 @@ test('Advil typed as free text at 28 weeks: the card of what it looks like, befo
 
 test('a brand typed for a generic keeps the name typed, up to the result', async ({ page }) => {
   await pregnantAt(page, 10, 'Aucune de ces situations');
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.keyboard.type('cytotec');
   // Its row says the name on the box; a brand found whole is added by the tap (SCRUM-56).
   await expect(page.locator('.candidate').first()).toContainText(
@@ -138,12 +125,12 @@ test('a brand typed for a generic keeps the name typed, up to the result', async
 
 /** Types `name` among the medicines and keeps it as typed: through the question when one is asked. */
 async function addTyped(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await expect(page.getByRole('searchbox')).toBeFocused();
   await page.keyboard.type(name);
   await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
-  const none = page.getByRole('button', { name: /^Non, aucun de ces / });
-  const check = page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+  // "Non, aucun de ces médicaments" (or "produits", "remèdes"), never the danger signs answer.
+  const none = page.getByRole('button', { name: /^Non, aucun de ces (?!signes)/ });
+  const check = page.getByRole('heading', { level: 1, name: CHECK_TITLE });
   await expect(none.or(check)).toBeVisible();
   if (await none.isVisible()) await none.click();
   await expect(check).toBeVisible();

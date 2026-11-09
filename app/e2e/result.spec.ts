@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addFirstCandidate, onboard, type Mode } from './support.js';
+import { addOnCheck, CHECK_TITLE, onboard, type Mode } from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -17,15 +17,17 @@ function answer(page: Page, question: string | RegExp, label: string) {
 
 /**
  * Welcome in French, a mode and the code, then the profile: pregnant at
- * `weeks` weeks, no situation. Woman mode goes from Home, accompanied mode
- * adds the profile in the list, then opens it.
+ * `weeks` weeks, no situation. Woman mode answers on her first check (SCRUM-56,
+ * 8.3), accompanied mode adds the profile in the list, then opens it.
  */
 async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await onboard(page, mode);
-  await (mode === 'woman'
-    ? page.getByRole('button', { name: 'Regarder un produit' }).click()
-    : page.getByRole('button', { name: 'Ajouter un profil' }).click());
-  await expect(page.getByRole('heading', { level: 1, name: /profil$/i })).toBeVisible();
+  if (mode === 'woman') {
+    await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
+  } else {
+    await page.getByRole('button', { name: 'Ajouter un profil' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: /profil$/i })).toBeVisible();
+  }
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
@@ -35,33 +37,31 @@ async function pregnantAt(page: Page, weeks: number, mode: Mode = 'woman') {
   await page.getByText('Aucune de ces situations').click();
   // Saved, her check opens, a new profile in accompanied mode included (SCRUM-56).
   await page.getByRole('button', { name: /^Enregistrer/ }).click();
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+  await expect(page.getByRole('searchbox')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 const womanAt = (page: Page, weeks: number) => pregnantAt(page, weeks, 'woman');
 
 /** From the check: "Voir le résultat", "Aucun de ces signes" on the danger signs now, then the result. */
 async function seeResult(page: Page) {
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: /^Résultat/ })).toBeVisible();
 }
 
-/** Adds the first candidate for `query` from one list, confirmed. */
-async function add(page: Page, list: 'Ajouter un médicament' | 'Ajouter un remède', query: string) {
-  await page.getByRole('button', { name: list }).click();
-  await page.getByRole('searchbox').fill(query);
-  await addFirstCandidate(page);
-  // "Ce que vous prenez" in woman mode, "Ce qu'elle prend" in accompanied mode.
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+/** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56), confirmed. */
+async function add(page: Page, query: string) {
+  await addOnCheck(page, query);
+  // Her start in woman mode, "Ce qu'elle prend" in accompanied mode.
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the closing lines', async ({
   page,
 }) => {
   await womanAt(page, 30);
-  await add(page, 'Ajouter un médicament', 'ibuprofene');
+  await add(page, 'ibuprofene');
   await seeResult(page);
 
   const card = page.getByRole('article');
@@ -69,7 +69,7 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   await expect(card.locator('.result-card__level')).toHaveText(
     'À montrer avant la prochaine prise',
   );
-  await expect(card.getByRole('heading', { level: 2 })).toHaveAccessibleName(
+  await expect(card.getByRole('heading', { level: 3 })).toHaveAccessibleName(
     'À montrer avant la prochaine prise. Ibuprofène (générique)',
   );
   await expect(card.locator('.result-card__orientation')).toHaveText(
@@ -94,16 +94,39 @@ test('ibuprofen at 30 weeks: show it before the next dose, to whom, and the clos
   );
   await expectNoSeriousViolation(page);
 
-  // Back keeps the list, so a forgotten product can be added.
-  await page.getByRole('button', { name: 'Revenir à la liste' }).click();
+  // On the check (SCRUM-56, S15): the list above, a forgotten product added at
+  // once, the answer kept (S14), the result worked out again.
   await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText(
     'Ibuprofène (générique)',
   );
+  await add(page, 'kinkeliba');
+  await expect(page.getByRole('article')).toHaveCount(2);
+  await expect(page.getByText(/^Signes de danger maintenant\s: aucun$/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toHaveCount(0);
+  // Her check, her start (SCRUM-56, S4): the start address, nothing after it.
+  expect(new URL(page.url()).hash).toMatch(/^(#\/)?$/);
+});
+
+test('a danger is seen: a product that makes one after a first result takes the focus to the banner', async ({
+  page,
+}) => {
+  await womanAt(page, 30);
+  await add(page, 'kinkeliba');
+  await seeResult(page);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+
+  // Misoprostol at 30 weeks: a danger. The banner speaks, takes the focus and comes into view.
+  await add(page, 'cytotec');
+  const banner = page.locator('.check__danger');
+  await expect(banner).toBeFocused();
+  await expect(banner).toBeInViewport();
+  await expect(page.getByRole('alert')).toContainText('Danger');
+  await expectNoSeriousViolation(page);
 });
 
 test('kinkeliba without a danger sign: we do not know, and who to show it to', async ({ page }) => {
   await womanAt(page, 14);
-  await add(page, 'Ajouter un remède', 'kinkeliba');
+  await add(page, 'kinkeliba');
   await seeResult(page);
 
   const card = page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' });
@@ -123,7 +146,7 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
   page,
 }) => {
   await pregnantAt(page, 30, 'accompanied');
-  await add(page, 'Ajouter un médicament', 'advil 400');
+  await add(page, 'advil 400');
   await seeResult(page);
 
   const card = page.getByRole('article');
@@ -140,7 +163,7 @@ test('accompanied mode: who and when before the details, sources, nothing sidewa
   await expect(card.locator('.result-card__meta')).toContainText(
     'Notices de médicaments des États-Unis (openFDA), documents en anglais',
   );
-  await expect(page.getByRole('heading', { level: 2, name: 'Rappels' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 3, name: 'Rappels' })).toBeVisible();
   await expectNoSeriousViolation(page);
 
   // Long source records (a DOI, a label set id) break instead of widening the page.

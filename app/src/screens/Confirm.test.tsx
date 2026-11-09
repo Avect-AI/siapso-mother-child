@@ -10,6 +10,7 @@ import { inSession } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { openSearchScreen } from '../test/search-screen.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -21,6 +22,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const NBSP = ' ';
 const PRODUCT_TITLE = `Est-ce bien ce produit${NBSP}?`;
 const STRENGTH = `Quel dosage est écrit sur la boîte${NBSP}?`;
@@ -42,7 +45,7 @@ async function confirmFirst(list: 'Ajouter un médicament' | 'Ajouter un remède
     children: probe.element,
   });
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: list }));
+  await openSearchScreen(list);
   await user.type(await screen.findByRole('searchbox'), query);
   const candidates = await screen.findByRole('list');
   // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).
@@ -64,7 +67,7 @@ async function giveCount(user: ReturnType<typeof userEvent.setup>, n: number) {
 }
 
 async function backOnCheck() {
-  return screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' });
+  return screen.findByRole('heading', { level: 1, name: START });
 }
 
 const ASPIRIN: CheckedItem = { ref: { kind: 'product', id: 'aspirin-generic' } };
@@ -72,7 +75,7 @@ const ASPIRIN_CARD = 'aspirin-analgesic-dose-pregnancy';
 
 /** From the check, adds generic aspirin again with a dose answered. */
 async function addAspirin(user: ReturnType<typeof userEvent.setup>, answer: string) {
-  await user.click(screen.getByRole('button', { name: 'Ajouter un médicament' }));
+  await openSearchScreen('Ajouter un médicament');
   await user.type(await screen.findByRole('searchbox'), 'aspirine');
   await screen.findByRole('list');
   await user.keyboard('{Enter}');
@@ -114,7 +117,7 @@ describe('Confirm: a remedy', () => {
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
     expect(screen.getByText('Moringa')).toBeVisible();
     // Back to the check entry itself: no confirm or search entry stacked after it.
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
   });
 
   it('goes back to the check once, however fast "yes" is pressed twice', async () => {
@@ -128,8 +131,8 @@ describe('Confirm: a remedy', () => {
     expect(await backOnCheck()).toBeVisible();
     await new Promise((resolve) => setTimeout(resolve, 50));
     // Still on the check: a second way back would have gone past it.
-    expect(window.location.hash).toBe('#/check');
-    expect(screen.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
+    expect(screen.getByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'plant', id: 'moringa' } }]);
   });
 
@@ -348,7 +351,7 @@ describe('Confirm: the strength on the box', () => {
     expect(await backOnCheck()).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'product', id: 'aspirin-generic' } }]);
 
-    await user.click(screen.getByRole('button', { name: 'Ajouter un médicament' }));
+    await openSearchScreen('Ajouter un médicament');
     await user.type(await screen.findByRole('searchbox'), 'aspirine');
     await screen.findByRole('list');
     await user.keyboard('{Enter}');
@@ -798,7 +801,7 @@ describe('Confirm: a product already listed', () => {
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
     await backOnCheck();
 
-    await user.click(screen.getByRole('button', { name: 'Ajouter un médicament' }));
+    await openSearchScreen('Ajouter un médicament');
     await user.type(await screen.findByRole('searchbox'), 'paracetamol 500');
     const candidates = await screen.findByRole('list', { name: 'Propositions' });
     expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
@@ -825,7 +828,7 @@ describe('Confirm: a product already listed', () => {
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce remède" }));
     await backOnCheck();
 
-    await user.click(screen.getByRole('button', { name: 'Ajouter un remède' }));
+    await openSearchScreen('Ajouter un remède');
     await user.type(await screen.findByRole('searchbox'), 'kinkeliba');
     const candidates = await screen.findByRole('list', { name: 'Propositions' });
     expect(within(candidates).getAllByRole('button').length).toBeGreaterThan(0);
@@ -839,14 +842,17 @@ describe('Confirm: a product already listed', () => {
     await screen.findByText('Kinkéliba est déjà dans la liste.');
   });
 
-  it('leaves the focus on the heading of the check after an add', async () => {
+  it('gives the focus to the field of the check after an add, for the next name (SCRUM-56)', async () => {
     const { user } = await confirmFirst('Ajouter un remède', 'nebeday');
     await user.click(screen.getByRole('button', { name: "Oui, c'est ce remède" }));
 
-    const heading = await backOnCheck();
+    await backOnCheck();
+    const field = screen.getByRole('searchbox', { name: 'Nom du médicament ou du remède' });
     await waitFor(() => {
-      expect(heading).toHaveFocus();
+      expect(field).toHaveFocus();
     });
+    // The text typed on the search screen is not brought back: the item is added.
+    expect(field).toHaveValue('');
   });
 });
 
@@ -881,9 +887,7 @@ describe('Confirm: opened directly', () => {
       entryState: { id: 'efavirenz-generic', visit: 'a visit before', epoch: 'an epoch before' },
     });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(window.location.href).not.toContain('efavirenz');
     expect(JSON.stringify(window.history.state)).not.toContain('efavirenz');
   });
@@ -928,7 +932,7 @@ describe('Confirm: opened directly', () => {
 
 /** From the check, searches `query` among the medicines again and opens its first candidate. */
 async function searchAgain(user: ReturnType<typeof userEvent.setup>, query: string) {
-  await user.click(await screen.findByRole('button', { name: 'Ajouter un médicament' }));
+  await openSearchScreen('Ajouter un médicament');
   await user.type(await screen.findByRole('searchbox'), query);
   const candidates = await screen.findByRole('list', { name: 'Propositions' });
   // Enter opens the confirm screen of the best candidate (a tap may add it at once, SCRUM-56).

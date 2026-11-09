@@ -8,6 +8,7 @@ import { profileOf } from '../test/knowledge-pack.js';
 import { openVaultOf, verifierOf } from '../test/verifier.js';
 import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import {
+  checkEntryOf,
   forgetVisit,
   HISTORY_PER_PROFILE,
   historyEntryOf,
@@ -278,5 +279,104 @@ describe('historyEntryOf', () => {
     });
     // A copy: changing the check later does not change the history.
     expect(made.items[0]).not.toBe(items[0]);
+  });
+});
+
+describe('checkEntryOf: one entry per check, the highest level shown kept (SCRUM-56, S15)', () => {
+  const PACK = { version: '0.1.0', date: '2026-11-04', clinicallyValidated: false };
+  const ADVIL = { ref: { kind: 'product' as const, id: 'advil' } };
+  const KINKELIBA = { ref: { kind: 'plant' as const, id: 'kinkeliba' } };
+
+  function evaluationAt(
+    level: Evaluation['level'],
+    ruleIds: readonly string[],
+    lower: readonly string[] = [],
+  ): Evaluation {
+    const finding = (ruleId: string, at: Evaluation['level']) => ({
+      level: at,
+      check: 'C1' as const,
+      ruleId,
+      items: [0],
+      message: ruleId,
+      capped: false,
+      sources: [],
+    });
+    return {
+      level,
+      findings: [
+        ...ruleIds.map((id) => finding(id, level)),
+        ...lower.map((id) => finding(id, 'unknown')),
+      ],
+      reminders: [],
+      notes: [],
+      pack: PACK,
+    };
+  }
+
+  const shown = (evaluation: Evaluation, items: HistoryEntry['items'], signs: string[] = []) => ({
+    id: 'new-id',
+    at: '2026-11-04T09:30:00.000Z',
+    profileId: 'p1',
+    evaluation,
+    items,
+    signs,
+  });
+
+  it('starts with the level shown and the rule ids of its findings at that level', () => {
+    const first = checkEntryOf(
+      undefined,
+      shown(evaluationAt('danger', ['misoprostol-scar']), [ADVIL, KINKELIBA]),
+    );
+    expect(first).toMatchObject({
+      id: 'new-id',
+      at: '2026-11-04T09:30:00.000Z',
+      level: 'danger',
+      ruleIds: ['misoprostol-scar'],
+      items: [ADVIL, KINKELIBA],
+    });
+  });
+
+  it('keeps a danger shown once when the product is taken off: never lowered', () => {
+    const first = checkEntryOf(
+      { ...entry('p1', 1), id: 'h1', level: 'unknown', ruleIds: [] },
+      shown(evaluationAt('danger', ['misoprostol-scar']), [ADVIL, KINKELIBA]),
+    );
+    const after = checkEntryOf(first, shown(evaluationAt('unknown', []), [KINKELIBA], ['fever']));
+    // The same entry (its id and the time of its first showing), the last list and signs.
+    expect(after).toMatchObject({
+      id: 'h1',
+      at: first.at,
+      level: 'danger',
+      ruleIds: ['misoprostol-scar'],
+      items: [KINKELIBA],
+      signs: ['fever'],
+    });
+  });
+
+  it('takes a higher level with its rule ids, and adds the rule ids of another showing at the same level', () => {
+    const before = checkEntryOf(
+      undefined,
+      shown(evaluationAt('before-next-dose', ['nsaid'], ['grey']), [ADVIL]),
+    );
+    expect(before).toMatchObject({ level: 'before-next-dose', ruleIds: ['nsaid'] });
+    const same = checkEntryOf(
+      before,
+      shown(evaluationAt('before-next-dose', ['codeine', 'nsaid']), [ADVIL]),
+    );
+    expect(same.ruleIds).toEqual(['nsaid', 'codeine']);
+    const higher = checkEntryOf(same, shown(evaluationAt('danger', ['scar']), [ADVIL]));
+    expect(higher).toMatchObject({ level: 'danger', ruleIds: ['scar'], id: before.id });
+  });
+
+  it('is written again under the same id: one entry for the check', async () => {
+    const first = checkEntryOf(undefined, {
+      ...shown(evaluationAt('danger', ['scar']), [ADVIL]),
+      id: 'p1-check',
+    });
+    await recordHistory(first);
+    await recordHistory(checkEntryOf(first, shown(evaluationAt('unknown', []), [KINKELIBA])));
+    const kept = await listHistory('p1');
+    expect(kept).toHaveLength(1);
+    expect(kept[0]).toMatchObject({ id: 'p1-check', level: 'danger', items: [KINKELIBA] });
   });
 });

@@ -9,6 +9,8 @@ import { inSession, sessionState } from '../state/entry-state.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, noPack, renderApp, storeTestCode } from '../test/render-app.js';
+import { openSearchScreen } from '../test/search-screen.js';
+import { navigate } from 'wouter/use-hash-location';
 import { SEARCH_DEBOUNCE_MS } from './Search.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
@@ -21,6 +23,8 @@ beforeEach(async () => {
 vi.setConfig({ testTimeout: 20_000 });
 
 const woman: Settings = { lang: 'fr', mode: 'woman', onboarded: true };
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 const NBSP = ' ';
 const LOOKALIKE = `Ce nom ressemble à${NBSP}:`;
 let pack: Pack;
@@ -45,7 +49,7 @@ async function openSearch(list: 'Ajouter un médicament' | 'Ajouter un remède',
     children: probe.element,
   });
   const user = userEvent.setup();
-  await user.click(await screen.findByRole('button', { name: list }));
+  await openSearchScreen(list);
   const field = await screen.findByRole('searchbox');
   return { user, field, probe };
 }
@@ -213,9 +217,7 @@ describe('Search', () => {
     await user.type(field, 'feuilles du marché');
     await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'feuilles du marché' } },
     ]);
@@ -254,9 +256,7 @@ describe('Search', () => {
     await user.type(field, '  poudre du marché ');
     await user.click(screen.getByRole('button', { name: 'Je ne trouve pas ce produit' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'poudre du marché' } },
     ]);
@@ -266,9 +266,11 @@ describe('Search', () => {
     expect(name).toHaveClass('typed');
     expect(screen.getByText('Produit non reconnu')).toBeVisible();
     // The line that says it was added quotes it too.
-    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
-      '« poudre du marché » est ajouté à la liste.',
-    );
+    await waitFor(() => {
+      expect(document.querySelector('.check__status')).toHaveTextContent(
+        '« poudre du marché » est ajouté à la liste.',
+      );
+    });
   });
 
   it('adds nothing when a candidate is chosen: the confirm screen opens', async () => {
@@ -431,9 +433,7 @@ describe('Search', () => {
       "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
     );
     await user.click(none);
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'unrecognised', text: 'huile de ricin' } },
     ]);
@@ -443,7 +443,7 @@ describe('Search', () => {
     ).toBe(true);
   });
 
-  it('adds a lookalike of the other list found by its whole name at a tap, the name typed kept', async () => {
+  it('asks first about a lookalike of the other list, even one found by its whole name, the name typed kept', async () => {
     const { user, field, probe } = await openSearch('Ajouter un remède');
     await user.type(field, 'cytotec');
     await user.click(await screen.findByRole('button', { name: 'Je ne trouve pas ce remède' }));
@@ -455,16 +455,39 @@ describe('Search', () => {
     expect(first).toHaveTextContent('Nom sur la boîte : Cytotec');
     expect(screen.getByText("Est-ce l'un de ces médicaments ?")).toBeVisible();
     expect(screen.getByRole('button', { name: 'Non, aucun de ces médicaments' })).toBeVisible();
-    // A brand found whole, nothing to ask: the tap on its named row adds it (SCRUM-56).
+    // She said she does not find it: a resemblance always asks (SCRUM-56, spec section 11).
+    expect(first).not.toHaveAccessibleName(/Ajouter$/);
     await user.click(first as HTMLElement);
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce produit${NBSP}?` }),
     ).toBeVisible();
+    expect(probe.current().items).toEqual([]);
+    await user.click(screen.getByRole('button', { name: "Oui, c'est ce produit" }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([
       { ref: { kind: 'product', id: 'misoprostol-generic' } },
     ]);
     expect(screen.getByRole('list', { name: 'Produits ajoutés' })).toHaveTextContent('cytotec');
+  });
+
+  it('asks "Ce nom ressemble à :" at once when the check opened it for a name it does not find (SCRUM-56)', async () => {
+    await saveProfile(profileOf());
+    await renderApp({ settings: woman, hash: '#/check', packLoader: loaderOf(pack) });
+    await screen.findByRole('heading', { level: 1, name: START });
+    act(() => {
+      navigate('/search/product', {
+        state: inSession({ stepsToCheck: 1, query: 'huile de ricin', notFound: true }),
+      });
+    });
+
+    const heading = await screen.findByRole('heading', { level: 2, name: LOOKALIKE });
+    await waitFor(() => {
+      expect(heading).toHaveFocus();
+    });
+    expect(screen.getByRole('searchbox')).toHaveValue('huile de ricin');
+    expect(screen.getByRole('button', { name: 'Non, aucun de ces remèdes' })).toBeVisible();
   });
 
   it('says the name on the box a misspelt brand was found by, in the question too', async () => {
@@ -515,9 +538,7 @@ describe('Search', () => {
     await user.type(screen.getByRole('searchbox'), 'doliprane');
     await user.click(screen.getByRole('button', { name: 'Je ne trouve pas ce produit' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(probe.current().items).toEqual([{ ref: { kind: 'unrecognised', text: 'doliprane' } }]);
   });
 });
@@ -534,10 +555,8 @@ describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', ()
 
     await user.click(candidates()[0] as HTMLElement);
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
-    expect(window.location.hash).toBe('#/check');
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toHaveLength(1);
     expect(probe.current().items[0]?.ref).toMatchObject({ kind: 'product' });
     expect(await screen.findByText(/est ajouté à la liste\.$/)).toBeVisible();
@@ -558,11 +577,9 @@ describe('Search: a tap adds at once when nothing is to ask (SCRUM-56, S11)', ()
       row.click();
     });
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ce que vous prenez' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(go).toHaveBeenCalledTimes(1);
-    expect(window.location.hash).toBe('#/check');
+    expect(window.location.hash).toBe('#/');
     expect(probe.current().items).toHaveLength(1);
   });
 

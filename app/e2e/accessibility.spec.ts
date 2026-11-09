@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectWelcome, makeCode, onboard } from './support.js';
+import { expectStart, expectWelcome, makeCode, onboard } from './support.js';
 
 /** Runs axe on the page as it is and fails on any serious or critical violation. */
 async function expectNoSeriousViolation(page: Page) {
@@ -83,7 +83,8 @@ test.describe('at 360 px with text at 200 percent', () => {
     await expectNoSidewaysScroll(page);
 
     await makeCode(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    // Her check, asking about her first (SCRUM-56, S4 and 8.3).
+    await expectStart(page, 'woman');
     await expectNoSidewaysScroll(page);
 
     await page.getByRole('link', { name: 'Signes de danger' }).click();

@@ -6,7 +6,7 @@
 // (domain/crypto.ts): what is stored is its random id, its profile's random
 // id (the index that deletes it with her profile) and the sealed entry. Read
 // and written only while the code is open in this page (vault.ts).
-import type { CheckedItem, Evaluation } from '@siapso/engine';
+import { LEVELS, levelRank, type CheckedItem, type Evaluation, type Level } from '@siapso/engine';
 import { isSealed, UnsealError } from '../domain/crypto.js';
 import type { HistoryEntry } from '../domain/types.js';
 import { requireCode } from './code-guard.js';
@@ -55,6 +55,50 @@ export function historyEntryOf({
     items: items.map((item) => ({ ...item, ref: { ...item.ref } })),
     signs: [...signs],
   };
+}
+
+/**
+ * The entry of a check whose result is on the check screen and changes as
+ * products are added or taken off (SCRUM-56, S15): one entry per check, with
+ * the id and the time of its first showing, the last list and signs, and the
+ * highest level shown during the check with the rule ids of its findings at
+ * that level (the ids of every showing at that level, each once), so a
+ * product taken off later never lowers what the history says: a danger shown
+ * once stays in her history. `previous` is the entry written so far for this
+ * check, undefined at its first showing.
+ */
+export function checkEntryOf(
+  previous: HistoryEntry | undefined,
+  shown: {
+    id: string;
+    at: string;
+    profileId: string;
+    evaluation: Evaluation;
+    items: readonly CheckedItem[];
+    signs: readonly string[];
+  },
+): HistoryEntry {
+  const { evaluation } = shown;
+  const now = historyEntryOf({
+    ...shown,
+    ...(previous ? { id: previous.id, at: previous.at } : {}),
+  });
+  const atLevel = [
+    ...new Set(
+      evaluation.findings.flatMap((f) =>
+        f.level === evaluation.level && f.ruleId !== undefined ? [f.ruleId] : [],
+      ),
+    ),
+  ];
+  // A level kept by another version that this one does not know reads lowest.
+  const kept = previous === undefined ? -1 : LEVELS.indexOf(previous.level as Level);
+  if (previous === undefined || levelRank(evaluation.level) > kept) {
+    return { ...now, level: evaluation.level, ruleIds: atLevel };
+  }
+  if (levelRank(evaluation.level) < kept) {
+    return { ...now, level: previous.level, ruleIds: [...previous.ruleIds] };
+  }
+  return { ...now, ruleIds: [...new Set([...previous.ruleIds, ...atLevel])] };
 }
 
 function isSealedEntry(record: SealedHistoryEntry | HistoryEntry): record is SealedHistoryEntry {

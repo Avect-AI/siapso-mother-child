@@ -76,7 +76,6 @@ describe('history entries', () => {
     const user = userEvent.setup();
     await renderApp({ settings: woman, hash: '#/' });
     const states = recordStates();
-    await user.click(await screen.findByRole('button', { name: 'Regarder un produit' }));
     await user.click(await screen.findByRole('button', { name: 'Oui, le bébé est né' }));
 
     // Her profile opens to say the baby is born, then comes back to the check.

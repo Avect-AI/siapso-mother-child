@@ -4,7 +4,15 @@
 // screen reader hears.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type BrowserContext, type Locator, type Page } from '@playwright/test';
-import { addFirstCandidate, CODE, expectWelcome, onboard, unlock } from './support.js';
+import {
+  aboutHer,
+  addOnCheck,
+  CHECK_TITLE,
+  CODE,
+  expectWelcome,
+  onboard,
+  unlock,
+} from './support.js';
 
 async function expectNoSeriousViolation(page: Page) {
   const results = await new AxeBuilder({ page }).analyze();
@@ -164,23 +172,15 @@ function bandRows(page: Page): Promise<number> {
   });
 }
 
-/** Her profile, pregnant at `weeks` weeks, from Home; ends on the check. */
+/** Her answers on her first check, pregnant at `weeks` weeks (SCRUM-56, 8.3); ends on the check. */
 async function pregnantAt(page: Page, weeks: number) {
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await answer(page, /^Enceinte/, 'Oui').click();
-  await answer(page, 'Terme de la grossesse', 'En semaines').click();
-  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill(String(weeks));
-  await answer(page, /^Allaite/, 'Non').click();
-  await page.getByText('Aucune de ces situations').click();
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await aboutHer(page, weeks);
 }
 
-async function add(page: Page, list: string, query: string) {
-  await page.getByRole('button', { name: list }).click();
-  await page.getByRole('searchbox').fill(query);
-  await addFirstCandidate(page);
-  await expect(page.getByRole('heading', { level: 1, name: /^Ce qu/ })).toBeVisible();
+/** Adds the first candidate for `query` on the check's field (both lists, SCRUM-56). */
+async function add(page: Page, query: string) {
+  await addOnCheck(page, query);
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 }
 
 test.describe('on a small phone (320 x 640)', () => {
@@ -217,7 +217,7 @@ test.describe('on a small phone (320 x 640)', () => {
     await expectWithin(page, heading, keypad);
     await tapCode(page);
     await tapCode(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
 
     // The code asked again: its 4th digit tries it (SCRUM-56), a wrong code said,
     // and "Ouvrir" still in the first screen for a keyboard.
@@ -238,7 +238,7 @@ test.describe('on a small phone (320 x 640)', () => {
     expect(action.bottom).toBeLessThanOrEqual(640);
     await expectNoSeriousViolation(page);
     await tapCode(page, CODE.slice(3));
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
   });
 
   test('the band keeps to two rows, offline too, the danger shortcut always in its place', async ({
@@ -294,7 +294,7 @@ test.describe('on a desktop (1280 x 800)', () => {
   }) => {
     await expectShortcutInOnePlace(page, context);
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     expect(await bandRows(page)).toBe(1);
     await context.setOffline(true);
     await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
@@ -340,7 +340,7 @@ test.describe('at the one-row breakpoint', () => {
   }) => {
     await expectShortcutInOnePlace(page, context);
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
     expect(await bandRows(page)).toBe(1);
@@ -384,7 +384,6 @@ test.describe('on a 360 px phone, a long name in the search field', () => {
   test('keeps the clear mark apart from the end of the name', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     const field = page.getByRole('searchbox');
     await field.fill('Advil 400 mg comprimé pelliculé, boîte de vingt');
     await field.blur();
@@ -430,7 +429,7 @@ test.describe('on a small phone (320 x 640) with text at 200 percent', () => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
     await unlock(page);
-    await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await largeText(page);
     const band = page.getByRole('banner');
     for (const control of [
@@ -509,30 +508,26 @@ test.describe('on a 360 px phone', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Profiles' })).toBeVisible();
   });
 
-  test('the check never shows before the profile screen it opens', async ({ page }) => {
+  test('her first check asks about her first, its questions focused, no search before them', async ({
+    page,
+  }) => {
     await onboard(page, 'woman');
-    await page.evaluate(() => {
-      const seen: string[] = [];
-      (window as unknown as { seenHeadings: string[] }).seenHeadings = seen;
-      new MutationObserver(() => {
-        const text = document.querySelector('main h1')?.textContent;
-        if (text !== undefined && seen.at(-1) !== text) seen.push(text);
-      }).observe(document.body, { childList: true, subtree: true, characterData: true });
-    });
-    await page.getByRole('button', { name: 'Regarder un produit' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeFocused();
-    const seen = await page.evaluate(
-      () => (window as unknown as { seenHeadings: string[] }).seenHeadings,
-    );
-    expect(seen).not.toContain('Ce que vous prenez');
+    // Her start is her check (SCRUM-56, S4); her answers come before any product (8.3).
+    const about = page.getByRole('region', { name: 'À propos de vous' });
+    await expect(about.getByRole('heading', { level: 2 })).toBeFocused();
+    await expect(page.getByRole('searchbox')).toHaveCount(0);
+    await expectNoSeriousViolation(page);
   });
 
   test('"Voir tous les signes" takes the focus to the first sign it shows', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await add(page, 'Ajouter un médicament', 'ibuprofene');
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
-    const showAll = page.getByRole('button', { name: 'Voir tous les signes' });
+    await add(page, 'ibuprofene');
+    // The list of the signs, on the check (SCRUM-56, S13).
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+    const showAll = page.locator('.check__signs-list').getByRole('button', {
+      name: 'Voir tous les signes',
+    });
     await showAll.focus();
     await page.keyboard.press('Enter');
     const postpartum = page.getByRole('group', { name: "Après l'accouchement" });
@@ -543,7 +538,6 @@ test.describe('on a 360 px phone', () => {
   test('Wolof and Latin names are marked with their language', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('nebeday');
     const first = page.locator('.candidate').first();
     await expect(first.getByText('nebeday', { exact: true })).toHaveAttribute('lang', 'wo');
@@ -554,7 +548,6 @@ test.describe('on a 360 px phone', () => {
   test('a number and its unit stay on one line in a product name', async ({ page }) => {
     await onboard(page, 'woman');
     await pregnantAt(page, 20);
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     await page.getByRole('searchbox').fill('Doliprane 1000 mg');
     await page.locator('.candidate').first().click();
     const name = page.locator('.confirm__name');
@@ -633,14 +626,13 @@ test.describe('at 360 px with text at 200 percent', () => {
     await page.getByText("Ancienne césarienne (cicatrice sur l'utérus)").click();
     // Saved, her check opens (SCRUM-56).
     await page.getByRole('button', { name: 'Enregistrer et regarder ses produits' }).click();
-    await add(page, 'Ajouter un médicament', 'ibuprofene');
-    await add(page, 'Ajouter un remède', 'huile de ricin');
-    await add(page, 'Ajouter un remède', 'argile');
-    await add(page, 'Ajouter un remède', 'kinkeliba');
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
-    await page.getByText('Aucun de ces signes', { exact: true }).click();
-    await page.getByRole('button', { name: 'Voir le résultat' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: /^Résultat/ })).toBeVisible();
+    await add(page, 'ibuprofene');
+    await add(page, 'huile de ricin');
+    await add(page, 'argile');
+    await add(page, 'kinkeliba');
+    // The danger signs present now, on the check (SCRUM-56, S13).
+    await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+    await expect(page.getByRole('heading', { level: 2, name: /^Résultat/ })).toBeVisible();
     // The banner names its instruction once: no group named by the same words.
     await expect(page.locator('.danger-banner[role="group"]')).toHaveCount(0);
     await expectNoSeriousViolation(page);
@@ -668,5 +660,43 @@ test.describe('at 360 px with text at 200 percent', () => {
     await page.setViewportSize({ width: 320, height: 800 });
     expect(await cutWords(page, '.result-summary')).toEqual([]);
     expect(await cutWords(page, '.result-card__orientation')).toEqual([]);
+  });
+});
+
+test.describe('the check with its result, at 320 x 640 with text at 200 percent (SCRUM-56, S15)', () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  test('never scrolls sideways, keeps 48 px targets, and brings a danger into view', async ({
+    page,
+  }) => {
+    await onboard(page, 'woman');
+    await pregnantAt(page, 30);
+    await add(page, 'kinkeliba');
+    await largeText(page);
+    await page.getByRole('button', { name: 'Oui, au moins un' }).click();
+    await page.getByText('Fièvre', { exact: true }).click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+
+    // The danger takes the focus and its instruction comes into view.
+    await expect(page.locator('.check__danger')).toBeFocused();
+    await expect(page.locator('.check__danger .danger-banner__head')).toBeInViewport();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    const small = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('main a, main button, main input')]
+        .filter((el) => !(el instanceof HTMLInputElement && el.closest('label.option')))
+        .filter((el) => !el.closest('.sr-only'))
+        .map((el) => ({
+          text: el.textContent || el.getAttribute('type'),
+          box: el.getBoundingClientRect(),
+        }))
+        .filter(({ box }) => box.width > 0 && (box.width < 48 || box.height < 48))
+        .map(({ text }) => text),
+    );
+    expect(small).toEqual([]);
+    expect(await cutWords(page, '.check__result .result-card__title')).toEqual([]);
+    await expectNoSeriousViolation(page);
   });
 });

@@ -11,6 +11,8 @@ import { renderApp, storeTestCode } from '../test/render-app.js';
 import { verifierOf } from '../test/verifier.js';
 
 vi.setConfig({ testTimeout: 30_000 });
+// Her check, the start in woman mode (SCRUM-56, S4); a no-break space before "?".
+const START = 'Un médicament ou un remède\u00a0?';
 
 /** How many reads of the settings never answer, as a slow storage (the reads of the code do). */
 const hang = vi.hoisted(() => ({ settings: 0 }));
@@ -93,7 +95,7 @@ describe('a welcome cut short', () => {
     ).toBeVisible();
     await user.click(screen.getByRole('button', { name: /^Je suis enceinte/ }));
 
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     expect(await getStoredSettings()).toEqual({ lang: 'fr', mode: 'woman', onboarded: true });
   });
 
@@ -105,7 +107,7 @@ describe('a welcome cut short', () => {
 
     await enterCode(user);
 
-    expect(await screen.findByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+    expect(await screen.findByRole('heading', { level: 1, name: START })).toBeVisible();
     await vi.waitFor(async () => {
       expect(await getStoredSettings()).toEqual({ lang: 'fr', mode: 'woman', onboarded: true });
     });
@@ -156,7 +158,7 @@ describe('a code that could not be made', () => {
     });
     expect(screen.getByLabelText('Code')).toHaveValue('');
     expect(screen.getByLabelText('Code')).toBeEnabled();
-    expect(screen.queryByRole('button', { name: 'Regarder un produit' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 1, name: START })).toBeNull();
     transaction.mockRestore();
   });
 });

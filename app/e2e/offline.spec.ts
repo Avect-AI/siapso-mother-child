@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { expect, test, type Page } from '@playwright/test';
-import { onboard, unlock, waitForServiceWorkerControl } from './support.js';
+import { expectStart, onboard, unlock, waitForServiceWorkerControl } from './support.js';
 
 /** Number of packs kept in the app's IndexedDB ('current', and 'previous' after an update). */
 function storedPacks(page: Page): Promise<number> {
@@ -56,7 +56,7 @@ function cachedPaths(page: Page): Promise<string[]> {
   });
 }
 
-test('after one load the precache alone starts the app, Home and the danger signs in airplane mode', async ({
+test('after one load the precache alone starts the app, her check and the danger signs in airplane mode', async ({
   page,
   context,
 }) => {
@@ -77,7 +77,8 @@ test('after one load the precache alone starts the app, Home and the danger sign
 
   // A reload locks: the code, offline too.
   await unlock(page);
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  // Her start, her check (SCRUM-56, S4).
+  await expectStart(page, 'woman');
   await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
   await expect(page.getByText(/Les informations sur les produits/)).toHaveCount(0);
 
@@ -101,14 +102,18 @@ test('after one load the precache alone starts the app, Home and the danger sign
   await expect(fresh.getByText('Allez au poste de santé maintenant.')).toBeVisible();
 });
 
-test('Home says the phone is ready without the Internet once the precache controls the page', async ({
+test('her check says the phone is ready without the Internet once the precache controls the page', async ({
   page,
   context,
 }) => {
   await onboard(page, 'woman');
 
-  // Until then it asks to keep the Internet on; then, without a reload, it is ready.
-  const ready = page.getByRole('main').getByText('Prêt sans Internet', { exact: true });
+  // At the end of her check, her start (SCRUM-56, S4): until then it asks to keep
+  // the Internet on; then, without a reload, it is ready.
+  const ready = page
+    .getByRole('main')
+    .locator('.check__closing')
+    .getByText('Prêt sans Internet', { exact: true });
   await expect(ready).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/^Gardez Internet encore un moment/)).toHaveCount(0);
   expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);

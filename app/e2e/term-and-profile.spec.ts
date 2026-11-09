@@ -4,7 +4,13 @@
 // one profile can be deleted, and the danger signs now are asked afresh.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { addFirstCandidate, herCheckThenProfiles, onboard, unlock } from './support.js';
+import {
+  addFirstCandidate,
+  CHECK_TITLE,
+  herCheckThenProfiles,
+  onboard,
+  unlock,
+} from './support.js';
 
 const DAY_MS = 86_400_000;
 
@@ -41,7 +47,10 @@ function storedAll(page: Page, store: 'profiles' | 'history'): Promise<unknown[]
   );
 }
 
-/** The profile screen filled: a pseudonym, pregnant at `weeks` weeks, no situation; then saved. */
+/**
+ * Her answers given (on her first check in woman mode, SCRUM-56, 8.3, or on the
+ * profile screen): a pseudonym, pregnant at `weeks` weeks, no situation; then saved.
+ */
 async function pregnantProfile(page: Page, weeks: number, pseudonym?: string) {
   if (pseudonym !== undefined) await page.getByRole('textbox', { name: 'Surnom' }).fill(pseudonym);
   await answer(page, /^Enceinte/, 'Oui').click();
@@ -63,14 +72,13 @@ async function daysLater(page: Page, days: number) {
 test('an outdated term asks whether the baby is born before any check, then updates the profile', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await pregnantProfile(page, 30);
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 
   // 100 days later she has given birth: 30 weeks then is past 42 now.
   await daysLater(page, 100);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
   await expect(
     page.getByRole('heading', {
@@ -78,8 +86,8 @@ test('an outdated term asks whether the baby is born before any check, then upda
       name: /^Votre terme noté a passé 42 semaines\. Votre bébé est-il né/,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Ajouter un médicament' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Voir le résultat' })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toHaveCount(0);
   // The danger signs stay one tap away.
   await expect(
     page.getByRole('banner').getByRole('link', { name: 'Signes de danger' }),
@@ -102,7 +110,7 @@ test('an outdated term asks whether the baby is born before any check, then upda
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   // Back on her check, as a breastfeeding mother now.
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
   await expect(page.getByText('Allaite, bébé de 2 semaines')).toBeVisible();
   // Kept sealed: one record, nothing readable in it.
   const stored = await storedAll(page, 'profiles');
@@ -173,22 +181,20 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
   ).toBeVisible();
   await list.getByRole('button', { name: /^Femme 1/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('codeine');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
 
-  // The signs after the birth and of the baby are asked up front, with the pregnancy's.
-  const signs = page.getByRole('group', { name: /^A-t-elle un de ces signes maintenant/ });
+  // The signs after the birth and of the baby are asked up front, with the pregnancy's,
+  // in words on the check (SCRUM-56, S13).
+  const words = page.locator('.check__sign-words');
   for (const group of ['Pendant la grossesse', "Après l'accouchement", 'Chez le bébé']) {
-    await expect(signs.getByRole('group', { name: group })).toBeVisible();
+    await expect(words).toContainText(group);
   }
   await expect(page.getByRole('button', { name: 'Voir tous les signes' })).toHaveCount(0);
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
-    page.getByRole('heading', { level: 1, name: /^Résultat pour Femme 1/ }),
+    page.getByRole('heading', { level: 2, name: /^Résultat pour Femme 1/ }),
   ).toBeVisible();
   await expect(
     page.getByText(/^Nous ne savons pas si le bébé est né\s: ce résultat tient compte/),
@@ -209,13 +215,12 @@ test('an unknown term said 40 days ago may be past the birth: the check goes on 
 });
 
 test('an unknown term said 300 days ago asks whether the baby is born first', async ({ page }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await unknownTermProfile(page);
   await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 
   await daysLater(page, 300);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
   await expect(
     page.getByRole('heading', {
@@ -223,14 +228,14 @@ test('an unknown term said 300 days ago asks whether the baby is born first', as
       name: /^Votre terme noté a passé 42 semaines\. Votre bébé est-il né/,
     }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Ajouter un médicament' })).toHaveCount(0);
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
 });
 
 test('a last period with the phone date set back is read as unknown, and the result says why', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'Date des dernières règles').click();
   const lmp = page.getByLabel('Premier jour des dernières règles');
@@ -248,15 +253,11 @@ test('a last period with the phone date set back is read as unknown, and the res
 
   // The phone's date set 30 days back: before the day the profile was saved.
   await daysLater(page, -30);
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('ibuprofene');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
   // The real date is later: the baby may be born, its signs are asked too.
-  await expect(page.getByRole('group', { name: 'Chez le bébé' })).toBeVisible();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
+  await expect(page.locator('.check__sign-words')).toContainText('Chez le bébé');
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
 
   await expect(
     page.getByText(
@@ -271,8 +272,8 @@ test('a last period with the phone date set back is read as unknown, and the res
 test('the month field keeps "34", says it looks like weeks, and takes it as weeks in one tap', async ({
   page,
 }) => {
+  // Her answers on her first check (SCRUM-56, 8.3).
   await onboard(page, 'woman');
-  await page.getByRole('link', { name: 'Mon profil' }).click();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En mois').click();
   const months = page.getByRole('textbox', { name: /^Dans quel mois de grossesse/ });
@@ -342,13 +343,11 @@ test('one profile is deleted with its history after a last yes; the others stay'
   // A result for Awa, kept in the history of the phone.
   const list = page.getByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
   await list.getByRole('button', { name: /^Awa/ }).click();
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat pour Awa' })).toBeVisible();
+  // The danger signs present now, on the check (SCRUM-56, S13).
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat pour Awa' })).toBeVisible();
   await expect.poll(async () => (await storedAll(page, 'history')).length).toBe(1);
 
   await page.goto('/#/');
@@ -368,34 +367,80 @@ test('one profile is deleted with its history after a last yes; the others stay'
   expect(await storedAll(page, 'history')).toEqual([]);
 });
 
-test('the danger signs now start unticked at each check, and a sign ticked after Back counts', async ({
+test('the danger signs answer is kept within one check and never stale (SCRUM-56, S14)', async ({
   page,
 }) => {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
   await pregnantProfile(page, 28);
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
   await page.getByRole('searchbox').fill('kinkeliba');
   await addFirstCandidate(page);
 
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await page.getByText('Aucun de ces signes', { exact: true }).click();
-  await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  const none = page.getByRole('button', { name: 'Non, aucun de ces signes' });
+  const some = page.getByRole('button', { name: 'Oui, au moins un' });
+  const result = page.getByRole('heading', { level: 2, name: 'Résultat' });
+  await none.click();
+  await expect(result).toBeVisible();
   await expect(page.getByText(/^Terme utilisé pour ce résultat/)).toHaveText(/environ 28 semaines/);
 
-  // Back: asked again, nothing ticked; a fever ticked then is in the result Forward opens.
-  await page.goBack();
-  const fever = page.getByRole('checkbox', { name: 'Fièvre', exact: true });
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
-  await fever.check();
-  await page.goForward();
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
-  await expect(page.locator('article.level--danger').first()).toBeVisible();
-
-  // A new look from the list: nothing ticked from before.
-  await page.getByRole('button', { name: 'Revenir à la liste' }).click();
+  // "Changer": asked again, nothing chosen, the result hidden until the new answer.
+  await page.getByRole('button', { name: 'Changer la réponse sur les signes de danger' }).click();
+  await expect(result).toHaveCount(0);
+  await expect(some).toHaveAttribute('aria-expanded', 'false');
+  // A danger sign answered: the banner takes the focus and comes into view.
+  await some.click();
+  await page.getByRole('checkbox', { name: 'Fièvre', exact: true }).check();
   await page.getByRole('button', { name: 'Voir le résultat' }).click();
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
-  await expect(fever).not.toBeChecked();
+  await expect(page.locator('.check__danger')).toBeFocused();
+  await expect(page.locator('.check__danger')).toBeInViewport();
+
+  // The band's "Signes de danger", then Back: the check was left, asked again.
+  await page.getByRole('banner').getByRole('link', { name: 'Signes de danger' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Signes de danger' })).toBeVisible();
+  await page.goBack();
+  await expect(some).toHaveAttribute('aria-expanded', 'false');
+  await expect(result).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: 'Fièvre', exact: true })).toHaveCount(0);
+
+  // Her profile changed and saved: asked again on the check.
+  await none.click();
+  await expect(result).toBeVisible();
+  await page.getByRole('banner').getByRole('link').first().click();
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('29');
+  // New weeks: the day they were known is asked again.
+  const when = answer(page, /^Ce terme date de quand/, "Aujourd'hui");
+  if ((await when.count()) > 0) await when.click();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(none).toBeVisible();
+  await expect(result).toHaveCount(0);
+  // The list is kept; the term read again.
+  await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
+  await none.click();
+  await expect(page.getByText(/^Terme utilisé pour ce résultat/)).toHaveText(/environ 29 semaines/);
+});
+
+test('her term read again mid-check: past 42 weeks, the page shown again asks whether the baby is born (8.3)', async ({
+  page,
+}) => {
+  // Just before midnight, 42 weeks given today.
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 23, 59, 30));
+  await onboard(page, 'woman');
+  await pregnantProfile(page, 42);
+  await page.getByRole('searchbox').fill('kinkeliba');
+  await addFirstCandidate(page);
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toBeVisible();
+
+  // A minute later, past midnight: the page hidden then shown reads her term again.
+  await page.clock.setFixedTime(new Date(2026, 10, 5, 0, 0, 30));
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Votre terme noté a passé 42 semaines/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Résultat' })).toHaveCount(0);
+  await expect(page.getByRole('article')).toHaveCount(0);
+  await expectNoSeriousViolation(page);
 });

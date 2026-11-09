@@ -7,10 +7,8 @@ import {
   type Evaluation,
 } from '@siapso/engine';
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Redirect, useLocation } from 'wouter';
-import { historyEntryOf, recordHistoryOnce } from '../data/history.js';
+import { useLocation } from 'wouter';
 import { contextFromProfile } from '../domain/context.js';
-import { todayIso } from '../domain/dates.js';
 import { isStale } from '../domain/staleness.js';
 import { babyLine } from '../domain/profile-summary.js';
 import {
@@ -25,16 +23,10 @@ import {
   type RiskView,
   type SourceView,
 } from '../domain/result-view.js';
-import {
-  babyMayBeBorn,
-  latestDay,
-  profileTermStatus,
-  type ProfileTermStatus,
-} from '../domain/term.js';
+import { babyMayBeBorn, profileTermStatus, type ProfileTermStatus } from '../domain/term.js';
 import type { Mode, Profile } from '../domain/types.js';
 import { useLang, useT, type MessageKey } from '../i18n/index.js';
-import { useApp, withTimeout } from '../state/app-state.js';
-import { readCheckProfile } from '../state/check-profile.js';
+import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
 import { inSession } from '../state/entry-state.js';
 import { Button } from '../ui/Button.js';
@@ -43,20 +35,8 @@ import { DangerBanner } from '../ui/DangerBanner.js';
 import { LevelIcon } from '../ui/LevelIcon.js';
 import { Notice } from '../ui/Notice.js';
 import { ResultCard } from '../ui/ResultCard.js';
-import { backToCheck, flowState } from './check-flow.js';
-import { OutdatedTerm } from './OutdatedTerm.js';
 import { Typed } from './Typed.js';
 import { CALL_PATH } from './Referral.js';
-
-type Loaded =
-  | { status: 'loading' }
-  /**
-   * The profile, today on the phone's clock when it was read, and when her
-   * last result was kept (a phone date before it is a clock set back).
-   */
-  | { status: 'ready'; profile: Profile; today: string; lastAt: string | undefined }
-  | { status: 'missing' }
-  | { status: 'failed' };
 
 /**
  * Under the title, what the result was worked out on: the term used (and the
@@ -356,7 +336,7 @@ function Finding({ finding, onCall }: { finding: FindingView; onCall?: () => voi
       level={finding.level}
       levelLabel={finding.levelLabel}
       title={<Names names={finding.names} typed={finding.typed} said={finding.said} labelled />}
-      headingLevel={2}
+      headingLevel={3}
       orientation={typeof finding.orientation === 'string' ? finding.orientation : null}
       {...(finding.callNow === true
         ? { action: <CallNow onCall={finding.level === 'danger' ? onCall : undefined} /> }
@@ -468,7 +448,7 @@ function Notes({
     );
   return (
     <section className="result__notes" aria-labelledby={id}>
-      <h2 id={id}>{t(heading)}</h2>
+      <h3 id={id}>{t(heading)}</h3>
       {concealAll ? <Concealed label={t(concealLabel)}>{items}</Concealed> : items}
     </section>
   );
@@ -506,86 +486,83 @@ function Closing({ view }: { view: ResultView }) {
 }
 
 /**
- * Result: what to do about each product, read aloud to the woman. When a
- * finding is a danger, the danger banner leads, with the screen's one
- * primary action (who to call). Then, when the base is more than 90 days
- * old, a notice; when there are several findings, a summary (level, then
- * product, most urgent first); then the version and "not clinically
- * validated", short, so the first screen says them; then the situations of
- * the profile that the base does not read yet (both modes), then one card per
- * item set and check (the highest level of each; in accompanied mode its
- * details, evidence, sources and rules behind "Pourquoi ?"), then the notes
- * and, in accompanied mode, the reminders, then the fixed sentences, the
- * knowledge base version and "not clinically validated" in full, then the way
- * back to the list, which keeps the check so a forgotten product can be added.
+ * What a check shows of the evaluation, for the history (SCRUM-56, S15): the
+ * evaluation, the items of the context (as the history keeps them) and the
+ * signs it was worked out with.
+ */
+export interface ShownResult {
+  evaluation: Evaluation;
+  checked: CheckedItem[];
+  signs: string[];
+}
+
+/** The live line of the result: the level now, said once when it changes. */
+function levelOf(view: ResultView): string {
+  return view.levelNote === undefined ? view.levelLabel : `${view.levelLabel} (${view.levelNote})`;
+}
+
+/**
+ * The result of the check, on the check screen under the danger signs
+ * answer (SCRUM-56, S15): what to do about each product, read aloud to the
+ * woman, worked out again whenever the list, her answers, the signs or the day
+ * change (the engine is pure and fast). Its heading "Résultat" (h2). When a
+ * finding is a danger, the danger banner leads, with who to call; a result
+ * that is a danger when it first shows, and a level that becomes a danger,
+ * take the focus to the banner, which comes into view; any other result takes
+ * the focus to its heading when it first shows (the answer was a button
+ * press); a later change of level is said once by a live line. Then what the
+ * result was worked out on, then, when the base is more than 90 days old, a
+ * notice; when there are several findings, a summary (level, then product,
+ * most urgent first); then the version and "not clinically validated", short,
+ * so the first screen says them; then the situations of the profile that the
+ * base does not read yet (both modes), then one card per item set and check
+ * (the highest level of each; in accompanied mode its details, evidence,
+ * sources and rules behind "Pourquoi ?"), then the notes and, in accompanied
+ * mode, the reminders, then the fixed sentences, the knowledge base version
+ * and "not clinically validated" in full. The list is above: no way back.
  * Text she typed is always quoted, never said as the app's own words.
  *
- * Every evaluation is kept in the history on the phone. While the pack or
- * the profile loads, the screen says so; when either cannot be read, or the
- * check cannot be evaluated, it says so in words with the way back, never a
- * blank screen. Without a check in progress it goes to the check.
+ * `onShown` hands each evaluation shown to the check, which keeps one
+ * history entry per check (never for a passer-by). When the pack cannot be
+ * read or the check cannot be evaluated, it says so in words, never a blank.
  */
-export function Result() {
+export function CheckResult({
+  profile,
+  today,
+  notBefore,
+  passerBy,
+  onShown,
+}: {
+  profile: Profile;
+  today: string;
+  /** A day the app has already seen (the check's), for where her term stands. */
+  notBefore: string | undefined;
+  /** A passer-by looked up without saving: her result is shown, never kept. */
+  passerBy: boolean;
+  onShown: (shown: ShownResult) => void;
+}) {
   const t = useT();
   const lang = useLang();
-  const { settings, pack, packError, storageTimeoutMs } = useApp();
+  const { settings, pack, packError } = useApp();
   const check = useCheck();
   const [, navigate] = useLocation();
-  // Read once: how many history entries back the check is.
-  const [entry] = useState(flowState);
-  const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, signs, signsGiven, quick } = check;
-  // A passer-by looked up without saving (accompanied mode only): her result
-  // is shown, never kept.
-  const passerBy = mode === 'accompanied' && quick !== null && quick.id === profileId;
-  const recorded = useRef<Evaluation | null>(null);
+  const { items, signs } = check;
+  const titleId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
+  // The level shown last, to say a change once and to bring a new danger into view.
+  const lastLevel = useRef<string | null>(null);
+  const lastDanger = useRef(false);
+  const [levelSaid, setLevelSaid] = useState('');
 
-  // Each reading of the profile and the phone's date; a new one when the app
-  // comes back to the front (a result left open for days must not keep its term).
-  const [reading, setReading] = useState(0);
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState !== 'hidden') setReading((n) => n + 1);
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (profileId === null) return;
-    let live = true;
-    // A passer-by's answers are in memory; a profile is read from the phone.
-    withTimeout(readCheckProfile(profileId, passerBy ? quick : null), storageTimeoutMs).then(
-      ({ profile, lastAt }) => {
-        // Today from the phone's clock, handed to pure code (the term and the context).
-        const today = todayIso(new Date());
-        if (!live) return;
-        setLoaded(profile ? { status: 'ready', profile, today, lastAt } : { status: 'missing' });
-      },
-      (failure: unknown) => {
-        console.warn('Profile not read on this device', failure);
-        if (live) setLoaded({ status: 'failed' });
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [profileId, quick, passerBy, storageTimeoutMs, reading]);
-
-  // A day the app has already seen: the knowledge pack's date, her last result.
-  const notBefore = loaded.status === 'ready' ? latestDay(pack?.date, loaded.lastAt) : undefined;
-  const term =
-    loaded.status === 'ready' ? profileTermStatus(loaded.profile, loaded.today, notBefore) : null;
-  const outdated = term?.status === 'outdated';
+  const term = profileTermStatus(profile, today, notBefore);
 
   const evaluated = useMemo((): Evaluated | null => {
-    // An outdated term is updated first: no result is worked out on it.
-    if (pack === null || loaded.status !== 'ready' || outdated) return null;
+    // The check shows the outdated-term step instead: no result on such a term.
+    if (pack === null || term.status === 'outdated') return null;
     try {
-      const context = contextFromProfile(loaded.profile, { items, signs }, loaded.today, notBefore);
+      const context = contextFromProfile(profile, { items, signs }, today, notBefore);
       // A name typed as not recognised is evaluated as what it clearly names
       // too; a resemblance short of a clear name is not kept after she said
       // "none of these", and never makes the result a danger.
@@ -605,7 +582,7 @@ export function Result() {
       console.warn('The check could not be evaluated', failure);
       return { status: 'failed' };
     }
-  }, [pack, loaded, outdated, notBefore, items, signs, check.declinedOf]);
+  }, [pack, profile, today, notBefore, term.status, items, signs, check.declinedOf]);
 
   const view = useMemo((): ResultView | 'failed' | null => {
     if (evaluated === null || pack === null) return null;
@@ -632,68 +609,50 @@ export function Result() {
     }
   }, [evaluated, pack, mode, lang, t, check.writtenOf, check.saidOf, check.aboveOf]);
 
-  // Each check once in the history of this visit (not on every opening of the
-  // screen), on the phone only; a failure to keep it never hides the result.
-  // A passer-by's check is never kept.
-  useEffect(() => {
-    if (evaluated?.status !== 'ready' || profileId === null || !signsGiven || passerBy) return;
-    if (recorded.current === evaluated.evaluation) return;
-    recorded.current = evaluated.evaluation;
-    const kept = historyEntryOf({
-      id: crypto.randomUUID(),
-      at: new Date().toISOString(),
-      profileId,
-      evaluation: evaluated.evaluation,
-      items: evaluated.checked,
-      signs,
-    });
-    recordHistoryOnce(kept).catch((failure: unknown) => {
-      console.warn('Evaluation not kept in the history on this device', failure);
-    });
-  }, [evaluated, profileId, signs, signsGiven, passerBy]);
-
-  if (profileId === null || items.length === 0) return <Redirect to="/check" replace />;
-  // The signs present now are asked before any result (a typed address, an old entry).
-  if (!signsGiven) return <Redirect to="/signs" replace />;
-  // The guard on the result: an outdated term asks whether the baby is born instead.
-  if (outdated && loaded.status === 'ready') {
-    return (
-      <main className="screen result">
-        <OutdatedTerm mode={mode} profile={loaded.profile} passerBy={passerBy} />
-      </main>
-    );
-  }
-
-  const back = () => {
-    backToCheck(navigate, entry.stepsToCheck);
-  };
-
   let problem: MessageKey | null = null;
   if (pack === null && packError !== null) problem = 'home.packUnavailable';
-  else if (loaded.status === 'failed') problem = 'profile.loadFailed';
-  else if (loaded.status === 'missing') problem = 'result.profileMissing';
   else if (view === 'failed') problem = 'result.failed';
   const ready = problem === null && view !== null && view !== 'failed' ? view : null;
 
+  // Each evaluation shown goes to the check, which keeps the history entry.
+  useEffect(() => {
+    if (evaluated?.status !== 'ready' || ready === null || passerBy) return;
+    onShown({ evaluation: evaluated.evaluation, checked: evaluated.checked, signs });
+  }, [evaluated, ready, passerBy, signs, onShown]);
+
+  // The focus at the first showing and at a change of level (WCAG 3.2.2: it
+  // follows a button press or a product added or taken off).
+  useEffect(() => {
+    if (ready === null) return;
+    const level = levelOf(ready);
+    const first = lastLevel.current === null;
+    const becameDanger = ready.danger && !lastDanger.current;
+    lastDanger.current = ready.danger;
+    if (!first && level !== lastLevel.current && !becameDanger) {
+      // Said once by the live line; the focus stays where she is.
+      setLevelSaid(t('result.levelNow', { level }));
+    }
+    lastLevel.current = level;
+    const target = ready.danger && (first || becameDanger) ? bannerRef.current : null;
+    const focused = target ?? (first ? headingRef.current : null);
+    if (focused === null) return;
+    focused.focus({ preventScroll: true });
+    if (typeof focused.scrollIntoView === 'function') focused.scrollIntoView({ block: 'start' });
+  }, [ready, t]);
+
   let title = t('result.title');
   if (passerBy) title = t('result.titleQuick');
-  else if (mode === 'accompanied' && loaded.status === 'ready') {
-    title = t('result.titleFor', { name: loaded.profile.pseudonym });
-  }
+  else if (mode === 'accompanied') title = t('result.titleFor', { name: profile.pseudonym });
 
   // What the result was worked out on: under the title, or under the danger
   // banner when there is one (the danger instruction comes first).
   const profileLines =
-    loaded.status === 'ready' && term !== null && ready !== null ? (
-      <ProfileLines profile={loaded.profile} today={loaded.today} term={term} mode={mode} />
-    ) : null;
+    ready === null ? null : (
+      <ProfileLines profile={profile} today={today} term={term} mode={mode} />
+    );
   // A knowledge base out of date is said where the decision is read: at the
   // top of the result, after the danger banner when there is one.
-  const stale =
-    ready !== null &&
-    pack !== null &&
-    loaded.status === 'ready' &&
-    isStale(pack.date, loaded.today);
+  const stale = ready !== null && pack !== null && isStale(pack.date, today);
   const staleNotice = stale ? <Notice>{t('status.stale')}</Notice> : null;
 
   // Who to call from a danger: the banner's action and a product danger card's
@@ -729,11 +688,17 @@ export function Result() {
       : undefined;
 
   return (
-    <main className="screen result">
+    <section className="result check__result" aria-labelledby={titleId}>
       <div className="result__intro">
-        <h1 tabIndex={-1}>{title}</h1>
+        <h2 id={titleId} ref={headingRef} tabIndex={-1}>
+          {title}
+        </h2>
         {ready?.danger === true ? null : profileLines}
       </div>
+      {/* A change of level after the first showing, said once. */}
+      <p className="sr-only" role="status">
+        {levelSaid}
+      </p>
       {ready?.danger === true ? null : staleNotice}
       {problem === null ? null : <Notice>{t(problem)}</Notice>}
       {problem === null && ready === null ? (
@@ -744,19 +709,17 @@ export function Result() {
       {ready === null ? null : (
         <>
           {ready.danger ? (
-            <DangerBanner
-              levelLabel={
-                ready.levelNote === undefined
-                  ? ready.levelLabel
-                  : `${ready.levelLabel} (${ready.levelNote})`
-              }
-              title={ready.headline}
-              action={t('result.dangerAction')}
-              headingLevel={2}
-              onAction={() => {
-                callFromDanger?.();
-              }}
-            />
+            <div ref={bannerRef} className="check__danger" tabIndex={-1}>
+              <DangerBanner
+                levelLabel={levelOf(ready)}
+                title={ready.headline}
+                action={t('result.dangerAction')}
+                headingLevel={3}
+                onAction={() => {
+                  callFromDanger?.();
+                }}
+              />
+            </div>
           ) : null}
           {ready.danger ? profileLines : null}
           {ready.danger ? staleNotice : null}
@@ -780,7 +743,7 @@ export function Result() {
           </div>
           <Notes heading="result.notes" notes={ready.notes} />
           {/* Accompanied mode: always there, always hidden, so that a reminder
-              left out (the IPTp one, for HIV with cotrimoxazole) says nothing;
+              left out (the IPTp reminder, for HIV with cotrimoxazole) says nothing;
               the button says what it holds (docs/privacy.md). */}
           {mode === 'accompanied' ? (
             <Notes
@@ -794,15 +757,6 @@ export function Result() {
           <Closing view={ready} />
         </>
       )}
-      {problem === null && ready === null ? null : (
-        <Button
-          variant={ready?.danger === true ? 'secondary' : 'primary'}
-          className="result__back"
-          onClick={back}
-        >
-          {t('result.backToList')}
-        </Button>
-      )}
-    </main>
+    </section>
   );
 }

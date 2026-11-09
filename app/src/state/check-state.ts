@@ -8,7 +8,8 @@
 //
 // In accompanied mode a visit goes from woman to woman: the unfinished list
 // of each woman waits in memory while another one is looked at, and comes
-// back when she is chosen again (her danger signs are asked again). Those
+// back when she is chosen again (her danger signs are asked again; within one
+// check the answer is kept while products are added or taken off). Those
 // lists are forgotten at every lock and at the quick exit; the list on
 // screen follows the check (kept across an auto-lock with the screen held,
 // forgotten at the quick exit). A passer-by can be looked up without a
@@ -36,6 +37,17 @@ export interface CheckState {
   signs: string[];
   /** The signs question was answered: an empty `signs` is then "none of these", not "not asked yet". */
   signsGiven: boolean;
+  /**
+   * What the answer was given for (signsAnswerKey: her answers as saved, the
+   * day, the groups of signs asked); null when given without one, or none.
+   */
+  signsFor: string | null;
+  /**
+   * Whether the signs question is answered for this key (signsAnswerKey): an
+   * answer given for another day, other answers of hers or other signs to ask
+   * does not count, so no result is ever shown on it (S14, 8.5).
+   */
+  signsGivenFor: (key: string) => boolean;
   /**
    * The answers of a passer-by checked without a profile, in memory only (never
    * stored, no history), when the check is hers; null otherwise.
@@ -110,8 +122,17 @@ export interface CheckState {
   /** What the last add did, until the check screen has said so (clearChanged); null otherwise. */
   changed: CheckChange | null;
   clearChanged: () => void;
-  /** The answer to the signs question: the signs present now, or none (empty). */
-  setSigns: (signs: string[]) => void;
+  /**
+   * The answer to the signs question: the signs present now, or none (empty),
+   * given for `forKey` (signsAnswerKey) when the screen knows it.
+   */
+  setSigns: (signs: string[], forKey?: string) => void;
+  /**
+   * An answer given before the check knew what it was for (no key) is taken
+   * for `forKey`, the first key the check shows it under; from then on it is
+   * forgotten like any other when that key changes. No effect otherwise.
+   */
+  adoptSigns: (forKey: string) => void;
   /** No answer to the signs question (yet): the result asks it first. */
   clearSigns: () => void;
   /** Back to no check at all, for no profile: every list and the passer-by forgotten. */
@@ -177,6 +198,7 @@ interface CheckData {
   items: CheckedItem[];
   signs: string[];
   signsGiven: boolean;
+  signsFor: string | null;
   changed: CheckChange | null;
   /** The list each unrecognised text was typed in, by refKey. */
   lists: Readonly<Record<string, EntryKind>>;
@@ -213,8 +235,9 @@ type Action =
   | { type: 'remove'; index: number }
   | { type: 'restore'; index: number; item: CheckedItem }
   | { type: 'clearChanged' }
-  | { type: 'signs'; signs: string[] }
+  | { type: 'signs'; signs: string[]; forKey: string | null }
   | { type: 'clearSigns' }
+  | { type: 'adoptSigns'; forKey: string }
   | { type: 'reset' };
 
 const EMPTY: CheckData = {
@@ -222,6 +245,7 @@ const EMPTY: CheckData = {
   items: [],
   signs: [],
   signsGiven: false,
+  signsFor: null,
   changed: null,
   lists: {},
   families: {},
@@ -364,21 +388,21 @@ function added(base: CheckData, item: CheckedItem, options: AddOptions): CheckDa
 
 /** No answer to the signs question: they are asked again before the result. */
 function withoutSigns(state: CheckData): CheckData {
-  return state.signsGiven || state.signs.length > 0
-    ? { ...state, signs: [], signsGiven: false }
+  return state.signsGiven || state.signs.length > 0 || state.signsFor !== null
+    ? { ...state, signs: [], signsGiven: false, signsFor: null }
     : state;
 }
 
 /**
- * A change to the list asks the signs again: the answer given was about the
- * list as it was (a sign that started since must not be read as none).
+ * The danger signs answer is kept within one check (SCRUM-56, S14, a change
+ * of the rule of the implementation design, section 2): adding or taking off
+ * a product does not ask it again. It is forgotten when another woman or a
+ * passer-by is looked at, when the passer-by's answers change or she is let
+ * go, at the quick exit (reset), and on clearSigns: the check screen calls it
+ * when it is left and when her answers change, the session at every lock,
+ * "Changer" and "Oui, au moins un" when the question is asked again.
  */
 function reduce(state: CheckData, action: Action): CheckData {
-  const next = reduceList(state, action);
-  return next.items === state.items ? next : withoutSigns(next);
-}
-
-function reduceList(state: CheckData, action: Action): CheckData {
   switch (action.type) {
     case 'start':
       if (state.profileId === action.profileId) return state;
@@ -424,9 +448,18 @@ function reduceList(state: CheckData, action: Action): CheckData {
     case 'clearChanged':
       return state.changed === null ? state : { ...state, changed: null };
     case 'signs':
-      return { ...state, signs: [...new Set(action.signs)], signsGiven: true };
+      return {
+        ...state,
+        signs: [...new Set(action.signs)],
+        signsGiven: true,
+        signsFor: action.forKey,
+      };
     case 'clearSigns':
       return withoutSigns(state);
+    case 'adoptSigns':
+      return state.signsGiven && state.signsFor === null
+        ? { ...state, signsFor: action.forKey }
+        : state;
     case 'reset':
       return EMPTY;
   }
@@ -491,11 +524,14 @@ export function useCheckStore(): CheckState {
   const clearChanged = useCallback(() => {
     dispatch({ type: 'clearChanged' });
   }, []);
-  const setSigns = useCallback((signs: string[]) => {
-    dispatch({ type: 'signs', signs });
+  const setSigns = useCallback((signs: string[], forKey?: string) => {
+    dispatch({ type: 'signs', signs, forKey: forKey ?? null });
   }, []);
   const clearSigns = useCallback(() => {
     dispatch({ type: 'clearSigns' });
+  }, []);
+  const adoptSigns = useCallback((forKey: string) => {
+    dispatch({ type: 'adoptSigns', forKey });
   }, []);
   const reset = useCallback(() => {
     dispatch({ type: 'reset' });
@@ -505,6 +541,7 @@ export function useCheckStore(): CheckState {
     items,
     signs,
     signsGiven,
+    signsFor,
     changed,
     lists,
     written,
@@ -529,6 +566,10 @@ export function useCheckStore(): CheckState {
     [declined],
   );
   const saidOf = useCallback((item: CheckedItem) => said[refKey(item.ref)] === true, [said]);
+  const signsGivenFor = useCallback(
+    (key: string) => signsGiven && signsFor === key,
+    [signsGiven, signsFor],
+  );
   const aboveOf = useCallback(
     (item: CheckedItem) =>
       item.strengthAtMostMg === undefined &&
@@ -542,6 +583,8 @@ export function useCheckStore(): CheckState {
       items,
       signs,
       signsGiven,
+      signsFor,
+      signsGivenFor,
       changed,
       quick,
       start,
@@ -563,6 +606,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     }),
     [
@@ -570,6 +614,8 @@ export function useCheckStore(): CheckState {
       items,
       signs,
       signsGiven,
+      signsFor,
+      signsGivenFor,
       changed,
       quick,
       start,
@@ -591,6 +637,7 @@ export function useCheckStore(): CheckState {
       clearChanged,
       setSigns,
       clearSigns,
+      adoptSigns,
       reset,
     ],
   );

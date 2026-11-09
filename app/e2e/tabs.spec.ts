@@ -5,21 +5,42 @@
 // a tab that missed the message cannot write her profile back. The code here
 // is made up.
 import { expect, test, type Page } from '@playwright/test';
-import { CODE, expectWelcome, makeCode, onboard, unlock } from './support.js';
+import {
+  addOnCheck,
+  checkField,
+  CODE,
+  expectStart,
+  expectWelcome,
+  makeCode,
+  onboard,
+  unlock,
+} from './support.js';
 
 function answer(page: Page, question: string | RegExp, label: string) {
   return page.getByRole('group', { name: question }).getByText(label, { exact: true });
 }
 
-/** Her profile form, filled with something only she knows: pregnant, 20 weeks, HIV. */
+/**
+ * Her answers on her first check (SCRUM-56, 8.3), with something only she
+ * knows: pregnant, 20 weeks, HIV; not saved yet.
+ */
 async function fillHerProfile(page: Page) {
-  await page.getByRole('link', { name: 'Mon profil' }).click();
-  await page.getByRole('textbox', { name: 'Surnom' }).fill('Aminata');
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
   await answer(page, /^Enceinte/, 'Oui').click();
   await answer(page, 'Terme de la grossesse', 'En semaines').click();
   await page.getByRole('textbox', { name: 'Nombre de semaines' }).fill('20');
   await answer(page, /^Allaite/, 'Non').click();
   await page.getByText('VIH, avec cotrimoxazole').click();
+}
+
+/** Her answers saved as her profile, then named Aminata on her profile screen, saved too. */
+async function saveHerProfileAsAminata(page: Page) {
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await page.getByRole('textbox', { name: 'Surnom' }).fill('Aminata');
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
 }
 
 /** How many profiles the app's IndexedDB holds (sealed: nothing in them is readable). */
@@ -47,7 +68,7 @@ async function secondTab(page: Page): Promise<Page> {
   const other = await page.context().newPage();
   await other.goto('/');
   await unlock(other);
-  await expect(other.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(other, 'woman');
   return other;
 }
 
@@ -63,7 +84,6 @@ async function eraseFrom(page: Page) {
 test('"Quitter" in one tab hides her profile in the other at once', async ({ page }) => {
   await onboard(page, 'woman');
   await fillHerProfile(page);
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
 
   const other = await secondTab(page);
   await other.getByRole('banner').getByRole('button', { name: 'Quitter' }).click();
@@ -74,17 +94,16 @@ test('"Quitter" in one tab hides her profile in the other at once', async ({ pag
   await expect(page.getByText('Aminata')).toHaveCount(0);
   await expect(page.getByText('VIH, avec cotrimoxazole')).toHaveCount(0);
   expect(page.url()).toMatch(/#\/$/);
-  // The code opens the start, not the form it was on.
+  // The code opens the start, her check, its answers not kept.
   await page.getByRole('button', { name: 'Ouvrir' }).click();
   await unlock(page);
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
+  await expect(page.getByRole('checkbox', { name: 'VIH, avec cotrimoxazole' })).not.toBeChecked();
 });
 
 test('an erase in one tab sends the other to the welcome', async ({ page }) => {
   await onboard(page, 'woman');
-  await fillHerProfile(page);
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await saveHerProfileAsAminata(page);
   await page.getByRole('link', { name: 'Mon profil' }).click();
 
   const other = await page.context().newPage();
@@ -178,9 +197,7 @@ test('a tab left on the welcome after an erase never makes a second code over he
   // She makes her code again and saves her profile.
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page);
-  await fillHerProfile(page);
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await saveHerProfileAsAminata(page);
   const hers = await storedCode(page);
 
   // The partner, in the other tab, tries to make his own.
@@ -205,9 +222,7 @@ test('the app opened twice on a new phone keeps one code, even in a tab that hea
   await expectWelcome(deaf);
 
   await onboard(page, 'woman');
-  await fillHerProfile(page);
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await saveHerProfileAsAminata(page);
   const hers = await storedCode(page);
 
   await tryToMakeACode(deaf, '1397');
@@ -234,7 +249,7 @@ test('a tab that missed the erase cannot write her profile under the next code e
   await eraseFrom(page);
   await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
   await makeCode(page, '1397');
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expectStart(page, 'woman');
 
   await stale.getByRole('button', { name: 'Enregistrer' }).click();
 
@@ -245,6 +260,31 @@ test('a tab that missed the erase cannot write her profile under the next code e
       .or(stale.getByRole('heading', { level: 1, name: 'Entrez votre code' })),
   ).toBeVisible();
   expect(await storedProfiles(page)).toBe(0);
-  await page.getByRole('link', { name: 'Mon profil' }).click();
-  await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+  // Her check asks about her: no profile on the phone.
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
+});
+
+test('a lock while two tabs are open forgets the danger signs answer of a check (SCRUM-56, S14)', async ({
+  page,
+}) => {
+  await page.clock.install();
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(checkField(page)).toBeFocused();
+  await addOnCheck(page, 'kinkeliba');
+  await page.getByRole('button', { name: 'Non, aucun de ces signes' }).click();
+  const result = page.getByRole('heading', { level: 2, name: 'Résultat' });
+  await expect(result).toBeVisible();
+
+  // Another tab open, then two minutes without a touch: every tab locks.
+  const other = await secondTab(page);
+  await other.clock.fastForward('02:01');
+  await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  await unlock(page);
+
+  // Her check given back with its list; the answer never comes back after a lock.
+  await expect(page.getByRole('list', { name: 'Produits ajoutés' })).toContainText('Kinkéliba');
+  await expect(page.getByRole('button', { name: 'Non, aucun de ces signes' })).toBeVisible();
+  await expect(result).toHaveCount(0);
 });

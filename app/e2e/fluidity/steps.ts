@@ -4,7 +4,7 @@
 // Common answers: code 2468 tapped on the keypad, pregnant at 24 weeks given
 // today, not breastfeeding, no long-term situation.
 import type { Locator, Page } from '@playwright/test';
-import { CODE, herCheckThenProfiles, onboard } from '../support.js';
+import { checkField, CODE, herCheckThenProfiles, onboard } from '../support.js';
 import type { Journey } from './meter.js';
 
 export const WEEKS = 24;
@@ -30,13 +30,12 @@ async function fillPregnant(page: Page): Promise<void> {
   await page.getByText('Aucune de ces situations').click();
 }
 
-/** Woman mode, her profile saved: ends on her check. */
+/** Woman mode, her profile saved on her first check (SCRUM-56, S4): ends on her check. */
 export async function womanWithProfile(page: Page): Promise<void> {
   await onboard(page, 'woman');
-  await button(page, 'Regarder un produit').click();
   await fillPregnant(page);
   await button(page, 'Enregistrer').click();
-  await button(page, 'Ajouter un médicament').waitFor();
+  await checkField(page).waitFor();
 }
 
 /** Accompanied mode with two saved profiles, Awa and Fatou: ends on the list of profiles. */
@@ -92,10 +91,11 @@ export async function pregnantAnswers(j: Journey): Promise<void> {
 }
 
 /**
- * One product added from the check: the add button, the name typed, the first
- * candidate, then the confirm screen when it has something to ask (SCRUM-56:
- * otherwise the tap on the candidate adds it). `strength`: the answer tapped
- * when a strength question shows ("Je ne sais pas" by default).
+ * One product added on the check (SCRUM-56, S12): the name typed in its
+ * field (which has the focus when the check opens and after each add), the
+ * first row, then "Est-ce bien ... ?" under it when it has something to ask
+ * (otherwise the tap on the row adds it). `strength`: the answer tapped when a
+ * strength question shows ("Je ne sais pas" by default).
  */
 export async function addProduct(
   j: Journey,
@@ -103,45 +103,62 @@ export async function addProduct(
   { strength = 'Je ne sais pas' }: { strength?: string } = {},
 ): Promise<void> {
   const { page } = j;
-  const check = page.getByRole('heading', { level: 1, name: /^Ce qu/ });
-  await j.tap(button(page, 'Ajouter un médicament'), `add ${query}`);
-  await j.type(page.getByRole('searchbox'), query, `typed ${query}`, {
-    then: page.locator('.candidate'),
-  });
+  const field = checkField(page);
+  const listed = await page.locator('.check__item').count();
+  // The product the add lists, at the end of the list.
+  const added = page.locator('.check__item').nth(listed);
+  await j.type(field, query, `typed ${query}`, { then: page.locator('.candidate') });
   const yes = button(page, /^Oui, c'est ce/);
-  await j.tap(page.locator('.candidate'), `candidate ${query}`, { then: yes.or(check) });
-  if (await check.isVisible()) {
+  await j.tap(page.locator('.candidate'), `candidate ${query}`, { then: yes.or(added) });
+  if (await added.isVisible()) {
     j.notes.push(`${query}: added at one tap`);
     return;
   }
-  const answers = page.locator('form.confirm__form input[type="radio"]');
-  const chosen = page.locator('form.confirm__form input[type="radio"]:checked');
+  const form = page.locator('.check__question form.confirm__form');
+  const answers = form.locator('input[type="radio"]');
+  const chosen = form.locator('input[type="radio"]:checked');
   if ((await answers.count()) > 0 && (await chosen.count()) === 0) {
     j.notes.push(`${query}: strength question with ${String(await answers.count())} answers`);
-    let target = page.locator('form.confirm__form label').filter({ hasText: strength });
+    let target = form.locator('label').filter({ hasText: strength });
     if ((await target.count()) === 0) {
       // A long list: every strength on demand.
       await j.tap(button(page, /^Voir tous les dosages/), 'voir tous les dosages');
-      target = page.locator('form.confirm__form label').filter({ hasText: strength });
+      target = form.locator('label').filter({ hasText: strength });
     }
     await j.tap(target, `strength ${strength}`);
   }
-  await j.tap(button(page, /^Oui, c'est ce/), `oui ${query}`, {
-    then: page.getByRole('heading', { level: 1, name: /^Ce qu/ }),
-  });
+  await j.tap(yes, `oui ${query}`, { then: added });
 }
 
-/** From the list to the result: "Voir le résultat", no sign (or `sign`), "Voir le résultat". */
+/** The prescription of the pharmacist's journey (spec section 3.1), as typed at the counter. */
+export const PRESCRIPTION = ['clamoxyl 1g', 'bi profenid', 'doliprane 1000', 'tardyferon b9'];
+
+/** Every "Pourquoi ?" of the result opened, from the first card down. */
+export async function openEveryWhy(j: Journey): Promise<void> {
+  const whys = j.page.locator('main details.result-card__why:not([open]) > summary');
+  let opened = 0;
+  while ((await whys.count()) > 0) {
+    opened += 1;
+    await j.tap(whys.first(), `pourquoi ${String(opened)}`);
+  }
+  j.notes.push(`"Pourquoi ?" opened: ${String(opened)}`);
+}
+
+/**
+ * From the list to the result, with the danger signs question of the check
+ * (SCRUM-56, S13): "Non, aucun de ces signes"; or, with `sign`, "Oui, au moins
+ * un", the sign, then "Voir le résultat".
+ */
 export async function toResult(j: Journey, { sign }: { sign?: string } = {}): Promise<void> {
   const { page } = j;
-  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat', {
-    then: page.getByRole('heading', { level: 1, name: /signes maintenant/ }),
+  const result = page.getByRole('heading', { level: 2, name: /^Résultat/ });
+  if (sign === undefined) {
+    await j.tap(button(page, 'Non, aucun de ces signes'), 'non aucun signe', { then: result });
+    return;
+  }
+  await j.tap(button(page, 'Oui, au moins un'), 'oui au moins un', {
+    then: page.getByText(sign, { exact: true }),
   });
-  await j.tap(
-    page.getByText(sign ?? 'Aucun de ces signes', { exact: true }),
-    sign === undefined ? 'aucun signe' : `signe ${sign}`,
-  );
-  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat 2', {
-    then: page.getByRole('heading', { level: 1, name: /^Résultat/ }),
-  });
+  await j.tap(page.getByText(sign, { exact: true }), `signe ${sign}`);
+  await j.tap(button(page, 'Voir le résultat'), 'voir le resultat', { then: result });
 }

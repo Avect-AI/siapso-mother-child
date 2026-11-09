@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { onboard } from './support.js';
+import { CHECK_TITLE, checkField, onboard } from './support.js';
 
 const NBSP = ' ';
 
@@ -13,13 +13,12 @@ async function expectNoSeriousViolation(page: Page) {
   expect(serious).toEqual([]);
 }
 
-/** Welcome in French, woman mode, then her profile (pregnant, term unknown), as the check asks for it. */
+/** Welcome in French, woman mode, then her answers on her first check (pregnant, term unknown). */
 async function startWithProfile(page: Page) {
   await onboard(page, 'woman');
-  await page.getByRole('button', { name: 'Regarder un produit' }).click();
 
-  // No profile yet: the profile screen comes first, then the check.
-  await expect(page.getByRole('heading', { level: 1, name: 'Mon profil' })).toBeVisible();
+  // No profile yet: her check asks about her first (SCRUM-56, 8.3).
+  await expect(page.getByRole('region', { name: 'À propos de vous' })).toBeVisible();
   await page
     .getByRole('group', { name: /^Enceinte/ })
     .getByText('Oui', { exact: true })
@@ -34,7 +33,7 @@ async function startWithProfile(page: Page) {
     .click();
   await page.getByText('Aucune de ces situations').click();
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+  await expect(checkField(page)).toBeVisible();
 }
 
 /** Presses Tab until `target` has the focus (at most 20 times). */
@@ -46,11 +45,12 @@ async function tabTo(page: Page, target: Locator) {
   await expect(target).toBeFocused();
 }
 
-/** From the check, adds a product by keyboard only: the search, its first candidate, yes. */
-async function addByKeyboard(page: Page, list: string, query: string, expected: RegExp) {
-  await tabTo(page, page.getByRole('button', { name: list }));
-  await page.keyboard.press('Enter');
-  const field = page.getByRole('searchbox');
+/**
+ * On the check, adds a product by keyboard only (SCRUM-56, S12): its field,
+ * its first row, then "yes" in the question under it when the row asks.
+ */
+async function addByKeyboard(page: Page, query: string, expected: RegExp) {
+  const field = checkField(page);
   await tabTo(page, field);
   await page.keyboard.type(query);
   const first = page.locator('.candidate').first();
@@ -67,55 +67,66 @@ async function addByKeyboard(page: Page, list: string, query: string, expected: 
 
   // A whole name with nothing to ask is added by its row (SCRUM-56); otherwise "yes".
   const yes = page.getByRole('button', { name: /^Oui, c'est ce/ });
-  const check = page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' });
-  await expect(yes.or(check)).toBeVisible();
+  await expect
+    .poll(async () => (await yes.isVisible()) || (await field.inputValue()) === '')
+    .toBe(true);
   if (await yes.isVisible()) {
+    // The question under the row has the focus: its answers follow it.
+    await expect(page.getByRole('heading', { level: 2, name: /^Est-ce bien/ })).toBeFocused();
     await tabTo(page, yes);
     await page.keyboard.press('Enter');
   }
-  await expect(check).toBeVisible();
+  // The field again, empty, for the next name.
+  await expect(field).toHaveValue('');
+  await expect(field).toBeFocused();
 }
 
 test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and sees the result', async ({
   page,
 }) => {
   await startWithProfile(page);
+  // She came to look up a product: the field has the focus.
+  await expect(checkField(page)).toBeFocused();
+  const entries = await page.evaluate(() => window.history.length);
 
-  await addByKeyboard(page, 'Ajouter un médicament', 'ibuprofene', /^Ibuprofène/);
-  await addByKeyboard(page, 'Ajouter un remède', 'kinkiliba', /^Kinkéliba/);
+  await addByKeyboard(page, 'ibuprofene', /^Ibuprofène/);
+  await addByKeyboard(page, 'kinkiliba', /^Kinkéliba/);
 
   const items = page.getByRole('list', { name: 'Produits ajoutés' }).getByRole('listitem');
   await expect(items).toHaveCount(2);
   await expect(items.nth(0)).toContainText('Ibuprofène (générique)');
   await expect(items.nth(1)).toContainText('Kinkéliba');
 
-  // Back from the check goes home: the search and confirm steps are not stacked behind it.
-  await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
+  // The danger signs present now, by keyboard too, on the check (SCRUM-56, S13).
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Avez-vous un de ces signes maintenant ?' }),
+  ).toBeVisible();
+  await tabTo(page, page.getByRole('button', { name: 'Non, aucun de ces signes' }));
   await page.keyboard.press('Enter');
-  // The danger signs present now, by keyboard too: "none" first, then on to the result.
-  const signsTitle = 'Avez-vous un de ces signes maintenant ?';
-  await expect(page.getByRole('heading', { level: 1, name: signsTitle })).toBeVisible();
-  await tabTo(page, page.getByRole('checkbox', { name: 'Aucun de ces signes' }));
-  await page.keyboard.press('Space');
-  await tabTo(page, page.getByRole('button', { name: 'Voir le résultat' }));
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+  // The result on the check, its heading focused (SCRUM-56, S15).
+  const result = page.getByRole('heading', { level: 2, name: 'Résultat' });
+  await expect(result).toBeFocused();
   await expect(page.getByRole('list', { name: 'Résumé' })).toContainText('Ibuprofène (générique)');
   await expect(page.getByRole('article', { name: 'On ne sait pas. Kinkéliba' })).toBeVisible();
-  // Back from the result asks the signs again, with nothing ticked ("now" may have changed).
-  await page.goBack();
-  await expect(page.getByRole('checkbox', { name: 'Aucun de ces signes' })).not.toBeChecked();
-  await page.goBack();
-  await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
-  await page.goBack();
-  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  // "Changer" by keyboard: asked again, nothing chosen.
+  await tabTo(
+    page,
+    page.getByRole('button', { name: 'Changer la réponse sur les signes de danger' }),
+  );
+  await page.keyboard.press('Enter');
+  await expect(result).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Oui, au moins un' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+  // Her check is one history entry: no step of it is stacked (SCRUM-56, 8.3).
+  expect(await page.evaluate(() => window.history.length)).toBe(entries);
 });
 
 test('DOLIPRANE without a count is added with its strength not given (SCRUM-56, S10)', async ({
   page,
 }) => {
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('doliprane');
   await page.locator('.candidate').first().click();
 
@@ -138,7 +149,6 @@ test('the strength on the box is asked once a daily count is given, and kept wit
   page,
 }) => {
   await startWithProfile(page);
-  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
   await page.getByRole('searchbox').fill('doliprann');
   await expect(page.locator('.candidate').first()).toContainText('DOLIPRANE');
   await page.locator('.candidate').first().click();
@@ -164,34 +174,42 @@ test('the strength on the box is asked once a daily count is given, and kept wit
   );
 });
 
-test('check, search and confirm have no serious accessibility violation', async ({ page }) => {
+test('the check with its rows and questions, and the search screen, have no serious accessibility violation', async ({
+  page,
+}) => {
   await startWithProfile(page);
   await expectNoSeriousViolation(page);
 
-  await page.getByRole('button', { name: 'Ajouter un remède' }).click();
-  await page.getByRole('searchbox').fill('nebeday');
+  await checkField(page).fill('nebeday');
   await expect(page.locator('.candidate').first()).toContainText('Moringa');
   await expectNoSeriousViolation(page);
 
+  // A local name asks first, under its row.
   await page.locator('.candidate').first().click();
   await expect(page.getByRole('button', { name: "Oui, c'est ce remède" })).toBeVisible();
+  await expect(page.locator('.candidate').first()).toHaveAttribute('aria-expanded', 'true');
   await expectNoSeriousViolation(page);
 
-  // Back on the remedies: a medicine name offers the other list, keeping the text.
   await page.getByRole('button', { name: 'Non, chercher encore' }).click();
-  await page.getByRole('searchbox').fill('doliprane');
-  await expect(page.getByText('Ce nom correspond à un médicament.')).toBeVisible();
-  await expectNoSeriousViolation(page);
-  await page.getByRole('button', { name: 'Chercher parmi les médicaments' }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Ajouter un médicament' }),
-  ).toBeVisible();
+  await checkField(page).fill('doliprane');
   await expect(page.locator('.candidate').first()).toContainText('DOLIPRANE');
   await page.locator('.candidate').first().click();
   // A daily count: the strength is then asked (SCRUM-56).
   await page.getByRole('button', { name: 'Une unité de plus' }).click();
   await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
   await expect(page.getByText(/^Choisissez un dosage, ou/)).toBeVisible();
+  await expectNoSeriousViolation(page);
+
+  // A name it does not find, that looks like products: the search screen asks first.
+  await checkField(page).fill('advill');
+  await expect(page.locator('.candidate').first()).toContainText('ADVIL');
+  await page.getByRole('button', { name: 'Je ne trouve pas ce produit' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: /^Ce nom ressemble à/ })).toBeFocused();
+  await expectNoSeriousViolation(page);
+  await page.locator('.search__lookalikes .candidate').first().click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: /^Est-ce bien ce produit/ }),
+  ).toBeVisible();
   await expectNoSeriousViolation(page);
 });
 
@@ -225,7 +243,6 @@ test.describe('at 360 px with text at 200 percent', () => {
     page,
   }) => {
     await startWithProfile(page);
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     await page.getByRole('searchbox').fill('doliprane');
     await page.locator('.candidate').first().click();
     // A daily count: the strength is then asked (SCRUM-56).
@@ -235,10 +252,9 @@ test.describe('at 360 px with text at 200 percent', () => {
 
     await page.getByRole('radio', { name: 'Je ne sais pas' }).check();
     await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await expectFitsAndTargets(page);
 
-    await page.getByRole('button', { name: 'Ajouter un remède' }).click();
     await page.getByRole('searchbox').fill('nebeday');
     await expect(page.locator('.candidate').first()).toContainText('Moringa');
     await expectFitsAndTargets(page);
@@ -249,18 +265,17 @@ test.describe('at 360 px with text at 200 percent', () => {
   }) => {
     await startWithProfile(page);
     await page.addStyleTag({ content: 'html { font-size: 200%; }' });
-    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
     await page.getByRole('searchbox').fill('acide acetylsalicylique biogaran 100');
     await expect(page.locator('.candidate').first()).toContainText('ACETYLSALICYLIQUE');
     await expectFitsAndTargets(page);
 
-    // Enter opens the confirm screen (the strength typed agrees: a tap would add it at once).
-    await page.getByRole('searchbox').press('Enter');
+    // Enter opens the question of the first row (the strength typed agrees: a tap would add it).
+    await checkField(page).press('Enter');
     await expect(page.locator('.confirm__name')).toContainText('ACETYLSALICYLIQUE');
     await expectFitsAndTargets(page);
 
     await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Ce que vous prenez' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: CHECK_TITLE })).toBeVisible();
     await expectFitsAndTargets(page);
   });
 });
