@@ -71,7 +71,9 @@ describe('About', () => {
     expect(screen.getByText(/CC BY 4\.0/)).toBeVisible();
     expect(screen.getByText(/SIL OFL 1\.1/)).toBeVisible();
     expect(screen.getByText('https://github.com/Avect-AI/siapso-mother-child')).toBeVisible();
-    expect(screen.getByText('Le dépôt est privé pendant le développement.')).toBeVisible();
+    expect(
+      screen.getByText('Le code source est public : chacun peut le lire et vérifier les règles.'),
+    ).toBeVisible();
   });
 
   it('shows the intended use in English, identical to the shared source', async () => {
@@ -80,7 +82,9 @@ describe('About', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'About' })).toBeVisible();
     expect(screen.getByText(INTENDED_USE)).toBeVisible();
     expect(screen.getByText('This tool does not take the place of a health worker.')).toBeVisible();
-    expect(screen.getByText('The repository is private during development.')).toBeVisible();
+    expect(
+      screen.getByText('The source code is public: anyone can read it and check the rules.'),
+    ).toBeVisible();
   });
 
   it('lists every source of the pack with its licence, and a link when it has an address', async () => {

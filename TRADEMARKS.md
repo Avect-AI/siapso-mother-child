@@ -23,4 +23,4 @@ The default app name `Carnet` (`VITE_APP_NAME`) is neutral and may be reused.
 
 ## Questions
 
-Contact: `<to be completed by the team>`.
+Contact: open an issue on this repository.

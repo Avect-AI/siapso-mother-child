@@ -36,7 +36,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at the Avect-AI maintainers (a dedicated, private reporting address will be published here before the repository becomes public). All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at the Avect-AI maintainers, privately, through GitHub's private vulnerability reporting (the Security tab of this repository, then "Report a vulnerability"), with "Code of Conduct" in the title. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 

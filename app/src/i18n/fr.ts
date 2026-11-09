@@ -876,7 +876,7 @@ export const fr = {
       'Transformers.js (licence Apache-2.0), ONNX Runtime Web et les modèles Whisper (MIT) : seulement pour la voix, une fois installée.',
     licencesLink: 'Lire les licences des logiciels tiers',
     repositoryTitle: 'Code source',
-    repositoryPrivate: 'Le dépôt est privé pendant le développement.',
+    repositoryPublic: 'Le code source est public : chacun peut le lire et vérifier les règles.',
   },
   // Voice input in the search (SCRUM-31): the model only writes what it
   // heard; the candidates are confirmed as typed ones. The recording "se

@@ -42,6 +42,7 @@ case "$1 $2" in
           cat "$FAKE_GH/behind-by" 2>/dev/null || echo 0
         fi
         ;;
+      user) echo '12345+a-maintainer@users.noreply.github.com' ;;
       *) echo "fake gh: unexpected arguments: $*" >&2; exit 2 ;;
     esac
     ;;
@@ -115,6 +116,7 @@ scenario() {
 }
 
 merges_when_the_four_pass() { all_pass; }
+merges_with_the_noreply_address() { all_pass; }
 merges_with_another_check_skipped() { all_pass 'Optional=skipping'; }
 refuses_a_skipped_dco() {
   listing 'Text hygiene=pass' 'Developer Certificate of Origin=skipping' \
@@ -202,6 +204,7 @@ refuses_when_the_comparison_answers_nothing() {
 }
 
 scenario merge merges_when_the_four_pass 'squash-merged'
+scenario merge merges_with_the_noreply_address 'as 12345+a-maintainer@users.noreply.github.com'
 scenario merge merges_with_another_check_skipped 'squash-merged'
 scenario merge waits_for_the_checks_to_be_reported 'squash-merged'
 scenario refuse refuses_a_skipped_dco 'Developer Certificate of Origin: skipping'

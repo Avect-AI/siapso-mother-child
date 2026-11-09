@@ -2,7 +2,7 @@
 
 Offline safety information on medicines and traditional remedies during pregnancy and breastfeeding, for the community health workers and women of rural Senegal.
 
-> Private repository during development. It will be published as open source (MIT for code, CC BY 4.0 for content) once the first release is audited. The clinical content is not clinically validated: see [MEDICAL_DISCLAIMER.md](MEDICAL_DISCLAIMER.md).
+> Open source: MIT for code, CC BY 4.0 for content. The clinical content is not clinically validated yet: see [MEDICAL_DISCLAIMER.md](MEDICAL_DISCLAIMER.md). Security reports: [SECURITY.md](SECURITY.md).
 
 ## What it does
 
