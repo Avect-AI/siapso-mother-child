@@ -9,6 +9,8 @@ import { probeCheck } from '../test/check-probe.js';
 import { enterCode } from '../test/code-steps.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
 import { loaderOf, renderApp, storeTestCode } from '../test/render-app.js';
+import { fakeSpeech } from '../test/voice.js';
+import { createVoiceService } from '../voice/voice-service.js';
 
 // Profile data is written only while a code is on the phone (data/code-guard.ts).
 beforeEach(async () => {
@@ -112,6 +114,37 @@ describe('Quick exit', () => {
     });
     // The check was forgotten: Awa is chosen again from the list.
     expect(await screen.findByRole('button', { name: /^Awa / })).toBeVisible();
+  });
+
+  it.each([
+    ['#/settings', 'Réglages'],
+    ['#/about', 'À propos'],
+    ['#/status', 'Base de connaissances'],
+    ['#/voice', "Parler au lieu d'écrire"],
+  ])(
+    'is on %s before the code (it says what the app is for), and leaves the neutral screen',
+    async (hash, title) => {
+      await renderApp({
+        settings: woman,
+        hash,
+        locked: true,
+        packLoader: loaderOf(pack),
+        voice: createVoiceService(fakeSpeech().port),
+      });
+      expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible();
+      const user = userEvent.setup();
+
+      await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Quitter' }));
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+      expect(window.location.hash).toBe('#/');
+    },
+  );
+
+  it('is not on the code screen, which says nothing of what the app is for', async () => {
+    await renderApp({ settings: woman, locked: true });
+    await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' });
+    expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
   });
 
   it('keeps the danger signs one tap away from the neutral screen', async () => {

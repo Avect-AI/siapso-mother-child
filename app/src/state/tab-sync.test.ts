@@ -1,41 +1,60 @@
 // SPDX-License-Identifier: MIT
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EPOCH_KEY, joinTabs, type MarkStore, type TabEvent, type TabLink } from './tab-sync.js';
+import {
+  CHECK_DELAY_MS,
+  EPOCH_KEY,
+  joinTabs,
+  type MarkStore,
+  type TabEvent,
+  type TabLink,
+} from './tab-sync.js';
 
 const links: TabLink[] = [];
 
-/** The copy of the epoch in IndexedDB, shared by the tabs of a test. */
+/** The copy of the epoch token in IndexedDB, shared by the tabs of a test. */
 function markStore() {
-  let marks: Record<string, string> = {};
+  let stored: unknown = undefined;
   return {
-    read: () => Promise.resolve({ ...marks }),
-    add: (event: TabEvent, mark: string) => {
-      marks = { ...marks, [event]: mark };
+    read: () => Promise.resolve(stored),
+    write: (token: string) => {
+      stored = token;
       return Promise.resolve();
+    },
+    get stored() {
+      return stored;
     },
   };
 }
 
-/** A tab of the app; `deaf` misses every message, as a frozen or cached tab does. */
+/** A tab of the app; `deaf` has no channel, as an old browser, or a frozen tab that missed it. */
 function tab({ deaf = false, marks }: { deaf?: boolean; marks?: MarkStore } = {}) {
   const events: TabEvent[] = [];
+  const ids: (string | undefined)[] = [];
   const onRecheck = vi.fn();
+  const onMissed = vi.fn();
   if (deaf) vi.stubGlobal('BroadcastChannel', undefined);
   const link = joinTabs({
-    onEvent: (event) => {
+    onEvent: (event, id) => {
       events.push(event);
+      ids.push(id);
     },
+    onMissed,
     onRecheck,
     ...(marks === undefined ? {} : { marks }),
   });
   vi.unstubAllGlobals();
   links.push(link);
-  return { link, events, onRecheck };
+  return { link, events, ids, onRecheck, onMissed };
 }
 
 function setVisibility(state: 'hidden' | 'visible') {
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: state });
   document.dispatchEvent(new Event('visibilitychange'));
+}
+
+/** Lets the check after a storage event or a return run (it waits for the channel first). */
+function afterTheCheck() {
+  return new Promise((resolve) => setTimeout(resolve, CHECK_DELAY_MS + 30));
 }
 
 afterEach(() => {
@@ -46,7 +65,7 @@ afterEach(() => {
 });
 
 describe('tabs of the app', () => {
-  it('tells every other tab when one exits, locks or erases, never itself', async () => {
+  it('tells every other tab which event happened on the channel, never itself', async () => {
     const a = tab();
     const b = tab();
     const c = tab();
@@ -56,116 +75,113 @@ describe('tabs of the app', () => {
       expect(b.events).toEqual(['quick-exit']);
       expect(c.events).toEqual(['quick-exit']);
     });
-    b.link.announce('erase');
+    b.link.announce('profile-deleted', 'profile-7');
     await vi.waitFor(() => {
-      expect(a.events).toEqual(['erase']);
+      expect(a.events).toEqual(['profile-deleted']);
     });
+    expect(a.ids).toEqual(['profile-7']);
     expect(b.events).toEqual(['quick-exit']);
   });
 
-  it('a tab that missed the message reads the stored epoch when it comes back', async () => {
-    const asleep = tab({ deaf: true });
-    const awake = tab();
-
-    awake.link.announce('lock');
-    // Nothing reaches a frozen tab, or one kept in the back-forward cache.
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(asleep.events).toEqual([]);
-
-    window.dispatchEvent(new Event('focus'));
-    expect(asleep.events).toEqual(['lock']);
-    // Once only: the epoch read is now the one it knows.
-    window.dispatchEvent(new Event('pageshow'));
-    expect(asleep.events).toEqual(['lock']);
-    // The tab that announced it knows its own epoch already.
-    expect(awake.events).toEqual([]);
+  it('keeps one random token in storage, which says nothing of the event or the profile', () => {
+    const marks = markStore();
+    const link = tab({ marks }).link;
+    const seen = new Set<string>();
+    for (const [event, id] of [
+      ['quick-exit', undefined],
+      ['lock', undefined],
+      ['erase', undefined],
+      ['profile-deleted', 'profile-id-1'],
+    ] as const) {
+      link.announce(event, id);
+      const text = localStorage.getItem(EPOCH_KEY) ?? '';
+      // One token, the same shape whatever happened.
+      expect(text).toMatch(/^[0-9a-f]{32}$/);
+      expect(marks.stored).toBe(text);
+      expect(seen.has(text)).toBe(false);
+      seen.add(text);
+    }
+    // Nothing in a token tells an event: its last digits take every value for one event.
+    const lastDigits = (event: TabEvent) => {
+      const digits = new Set<string>();
+      for (let i = 0; i < 64; i += 1) {
+        link.announce(event);
+        digits.add((localStorage.getItem(EPOCH_KEY) ?? '').slice(-1));
+      }
+      return digits.size;
+    };
+    expect(lastDigits('quick-exit')).toBeGreaterThan(8);
+    expect(lastDigits('lock')).toBeGreaterThan(8);
   });
 
-  it('checks when the page shows again and when it comes back from the back-forward cache', () => {
-    const asleep = tab({ deaf: true });
-    const awake = tab();
-
-    awake.link.announce('quick-exit');
-    setVisibility('hidden');
-    expect(asleep.events).toEqual([]);
-    setVisibility('visible');
-    expect(asleep.events).toEqual(['quick-exit']);
-
-    awake.link.announce('lock');
-    window.dispatchEvent(new Event('pageshow'));
-    expect(asleep.events).toEqual(['quick-exit', 'lock']);
-  });
-
-  it('applies the strongest event missed: an erase before an exit, an exit before a lock', () => {
-    const asleep = tab({ deaf: true });
-    const awake = tab();
-
-    awake.link.announce('lock');
-    awake.link.announce('erase');
-    awake.link.announce('quick-exit');
-    window.dispatchEvent(new Event('focus'));
-
-    expect(asleep.events).toEqual(['erase']);
-  });
-
-  it('keeps no private data in storage: only marks', () => {
-    tab().link.announce('erase');
-    const stored = JSON.parse(localStorage.getItem(EPOCH_KEY) ?? 'null') as Record<string, unknown>;
-    expect(Object.keys(stored)).toEqual(['erase']);
-    expect(stored['erase']).toMatch(/^[0-9a-f-]{36}$/);
-  });
-
-  it('reads the wrong codes again when another tab counted one, and when the tab comes back', async () => {
+  it('a fresh token at each start or unlock says nothing to a tab that hears the channel', async () => {
     const a = tab();
     const b = tab();
+    const before = localStorage.getItem(EPOCH_KEY);
 
-    a.link.announceLockout();
-    await vi.waitFor(() => {
-      expect(b.onRecheck).toHaveBeenCalledTimes(1);
-    });
-    expect(a.onRecheck).not.toHaveBeenCalled();
+    a.link.refresh();
+    expect(localStorage.getItem(EPOCH_KEY)).not.toBe(before);
+    window.dispatchEvent(new StorageEvent('storage', { key: EPOCH_KEY }));
     window.dispatchEvent(new Event('focus'));
-    expect(b.onRecheck).toHaveBeenCalledTimes(2);
+    await afterTheCheck();
+
     expect(b.events).toEqual([]);
+    expect(b.onMissed).not.toHaveBeenCalled();
   });
 
-  it('still tells the other tabs when storage refuses the epoch, and never makes up an event', async () => {
-    const a = tab();
-    const b = tab();
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('quota', 'QuotaExceededError');
-    });
-
-    a.link.announce('quick-exit');
-    await vi.waitFor(() => {
-      expect(b.events).toEqual(['quick-exit']);
-    });
-    window.dispatchEvent(new Event('focus'));
-    expect(a.events).toEqual([]);
-    expect(b.events).toEqual(['quick-exit']);
-    vi.restoreAllMocks();
-  });
-
-  it('reads the code again when another tab made one', async () => {
+  it('a tab that hears the channel waits for it: a storage event first is no missed event', async () => {
     const a = tab();
     const b = tab();
 
-    a.link.announceCode();
+    a.link.announce('lock');
+    // The storage event may come before the channel's message.
+    window.dispatchEvent(new StorageEvent('storage', { key: EPOCH_KEY }));
+    await afterTheCheck();
 
-    await vi.waitFor(() => {
-      expect(b.onRecheck).toHaveBeenCalledTimes(1);
-    });
-    expect(b.events).toEqual([]);
+    expect(b.events).toEqual(['lock']);
+    expect(b.onMissed).not.toHaveBeenCalled();
   });
 
-  it('a tab with no channel hears the epoch change in local storage at once (storage event)', () => {
+  it('a tab with no channel hears the token change in local storage, and takes the safest way', async () => {
     const deaf = tab({ deaf: true });
-    tab().link.announce('quick-exit');
+    tab().link.announce('lock');
 
     // The browser fires it in the other tabs; here, by hand.
     window.dispatchEvent(new StorageEvent('storage', { key: EPOCH_KEY }));
+    await afterTheCheck();
 
-    expect(deaf.events).toEqual(['quick-exit']);
+    // It cannot tell which event: never a guess, the quick exit and a recheck.
+    expect(deaf.events).toEqual([]);
+    expect(deaf.onMissed).toHaveBeenCalledTimes(1);
+    // Once only for one change.
+    window.dispatchEvent(new Event('focus'));
+    await afterTheCheck();
+    expect(deaf.onMissed).toHaveBeenCalledTimes(1);
+  });
+
+  it('a tab that missed any event (lock, exit, erase, deletion, code) takes the safest way when it comes back', async () => {
+    for (const event of ['lock', 'quick-exit', 'erase', 'profile-deleted'] as const) {
+      const asleep = tab({ deaf: true });
+      const awake = tab();
+      awake.link.announce(event, event === 'profile-deleted' ? 'p1' : undefined);
+
+      setVisibility('hidden');
+      setVisibility('visible');
+      await afterTheCheck();
+
+      expect(asleep.onMissed, event).toHaveBeenCalledTimes(1);
+      expect(asleep.events).toEqual([]);
+      for (const link of links.splice(0)) link.close();
+    }
+    // A code changed elsewhere: told on the channel as a recheck, missed as a change of token.
+    const asleep = tab({ deaf: true });
+    const awake = tab();
+    awake.link.announceCode();
+    awake.link.refresh();
+    window.dispatchEvent(new Event('pageshow'));
+    await afterTheCheck();
+    expect(asleep.onMissed).toHaveBeenCalledTimes(1);
+    expect(asleep.onRecheck).toHaveBeenCalled();
   });
 
   it('a tab with no channel and no local storage reads the copy in IndexedDB when it comes back', async () => {
@@ -183,35 +199,59 @@ describe('tabs of the app', () => {
 
     other.link.announce('lock');
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(deaf.events).toEqual([]);
+    expect(deaf.onMissed).not.toHaveBeenCalled();
     window.dispatchEvent(new Event('focus'));
 
     await vi.waitFor(() => {
-      expect(deaf.events).toEqual(['lock']);
+      expect(deaf.onMissed).toHaveBeenCalledTimes(1);
     });
-    // Once only, and never in the tab that announced it.
-    window.dispatchEvent(new Event('pageshow'));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(deaf.events).toEqual(['lock']);
-    expect(other.events).toEqual([]);
+    expect(other.onMissed).not.toHaveBeenCalled();
     vi.restoreAllMocks();
   });
 
-  it('applies an event once when it comes by several ways', async () => {
-    const marks = markStore();
-    const b = tab({ marks });
-    const a = tab({ marks });
-    await new Promise((resolve) => setTimeout(resolve, 10));
+  it('still tells the other tabs when storage refuses the token, and never makes up an event', async () => {
+    const a = tab();
+    const b = tab();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
 
     a.link.announce('quick-exit');
     await vi.waitFor(() => {
       expect(b.events).toEqual(['quick-exit']);
     });
-    window.dispatchEvent(new StorageEvent('storage', { key: EPOCH_KEY }));
     window.dispatchEvent(new Event('focus'));
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await afterTheCheck();
+    expect(a.events).toEqual([]);
+    expect(a.onMissed).not.toHaveBeenCalled();
+    expect(b.onMissed).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
 
-    expect(b.events).toEqual(['quick-exit']);
+  it('reads the wrong codes again when another tab counted one, and when the tab comes back', async () => {
+    const a = tab();
+    const b = tab();
+
+    a.link.announceLockout();
+    await vi.waitFor(() => {
+      expect(b.onRecheck).toHaveBeenCalledTimes(1);
+    });
+    expect(a.onRecheck).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('focus'));
+    expect(b.onRecheck).toHaveBeenCalledTimes(2);
+    expect(b.events).toEqual([]);
+  });
+
+  it('reads the code again when another tab made one', async () => {
+    const a = tab();
+    const b = tab();
+
+    a.link.announceCode();
+
+    await vi.waitFor(() => {
+      expect(b.onRecheck).toHaveBeenCalledTimes(1);
+    });
+    expect(b.events).toEqual([]);
   });
 
   it('stops listening once closed', async () => {
@@ -222,8 +262,10 @@ describe('tabs of the app', () => {
     a.link.announce('quick-exit');
     await new Promise((resolve) => setTimeout(resolve, 20));
     window.dispatchEvent(new Event('focus'));
+    await afterTheCheck();
 
     expect(b.events).toEqual([]);
     expect(b.onRecheck).not.toHaveBeenCalled();
+    expect(b.onMissed).not.toHaveBeenCalled();
   });
 });

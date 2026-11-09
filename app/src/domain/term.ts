@@ -24,6 +24,20 @@ const MAX_TERM_DAYS = MAX_TERM_WEEKS * DAYS_PER_WEEK;
  */
 export const UNKNOWN_HOLDS_DAYS = 28;
 
+/**
+ * Days "past 42 weeks, still pregnant" holds: from the next day the baby may
+ * be born (breastfeeding read as possible), and after a week the question is
+ * asked again. A conservative engineering default for the clinical committee
+ * to confirm (spec section 13).
+ */
+export const POST_TERM_HOLDS_DAYS = 7;
+
+/**
+ * A last period or weeks that put the term today at 45 weeks or more: no
+ * pregnancy lasts so long, the date is looked at again (a year typed wrong).
+ */
+const POST_TERM_MAX_DAYS = 45 * 7;
+
 /** The last month of pregnancy; a month 9 estimate runs to the end of the unknown range. */
 const LAST_MONTH = 9;
 
@@ -32,17 +46,23 @@ export interface TermDisplay {
   weeksMax: number;
   precision: TermPrecision;
   label: { key: MessageKey; vars: Record<string, number> };
+  /** Past 42 weeks and still pregnant: the screens say to go to the health post today. */
+  postTerm?: true;
 }
 
 /**
  * A stored term read today:
  * - ok: its range and words;
  * - possibly-past: the upper end of the term is past 42+0 weeks (or a "Je ne
- *   sais pas" is older than 28 days) but the lower end is not: the baby may be
- *   born. The range is held at 42 weeks and breastfeeding is read as possible;
+ *   sais pas" is older than 28 days) but the lower end is not, and the answer
+ *   was not given today (she was seen pregnant today): the baby may be born.
+ *   The range is held at 42 weeks for the rules and breastfeeding is read as
+ *   possible; its words say the real range ("Entre 41 et 51 semaines");
  * - outdated: the lower end is past 42+0 (or a "Je ne sais pas" older than 42
  *   weeks), or a value cannot be read: it must be given again;
  * - clock: a day after today, which only a phone clock set back can give.
+ * "Past 42 weeks, still pregnant" reads as 42 weeks and over: ok on its day,
+ * possibly past for a week, then outdated (POST_TERM_HOLDS_DAYS).
  */
 export type TermReading =
   | { status: 'ok'; term: TermDisplay }
@@ -123,10 +143,23 @@ function isWhole(value: number, min: number, max: number): boolean {
   return Number.isInteger(value) && value >= min && value <= max;
 }
 
-/** A term today in days of amenorrhoea: the earliest and latest it may be. */
+/** A term today in days of amenorrhoea: the earliest and latest it may be, and days since it was given. */
 interface DayRange {
   minDays: number;
   maxDays: number;
+  /** Days since the answer (0 for a last period: she gave it as a date). */
+  since: number;
+}
+
+/** "Past 42 weeks, still pregnant": 42 weeks and over, estimated. */
+export function postTermDisplay(): TermDisplay {
+  return {
+    weeksMin: MAX_TERM_WEEKS,
+    weeksMax: MAX_TERM_WEEKS,
+    precision: 'estimated',
+    postTerm: true,
+    label: { key: 'profile.term.postTerm', vars: {} },
+  };
 }
 
 /**
@@ -136,7 +169,7 @@ interface DayRange {
  * rounded out); a last period is one day.
  */
 function dayRangeOf(
-  term: Exclude<TermInput, { kind: 'unknown' }>,
+  term: Extract<TermInput, { kind: 'lmp' | 'weeks' | 'months' }>,
   todayIso: string,
   fallback?: string,
 ): DayRange | 'outdated' | 'clock' {
@@ -144,7 +177,7 @@ function dayRangeOf(
     case 'lmp': {
       if (!isIsoDate(term.date) || !isIsoDate(todayIso)) return 'outdated';
       const days = daysBetween(term.date, todayIso);
-      return days < 0 ? 'clock' : { minDays: days, maxDays: days };
+      return days < 0 ? 'clock' : { minDays: days, maxDays: days, since: 0 };
     }
     case 'weeks': {
       if (!isWhole(term.weeks, 0, MAX_GIVEN_WEEKS)) return 'outdated';
@@ -152,7 +185,7 @@ function dayRangeOf(
       if (days === null) return 'outdated';
       if (days < 0) return 'clock';
       const start = term.weeks * DAYS_PER_WEEK + days;
-      return { minDays: start, maxDays: start + DAYS_PER_WEEK - 1 };
+      return { minDays: start, maxDays: start + DAYS_PER_WEEK - 1, since: days };
     }
     case 'months': {
       if (!isWhole(term.months, 1, LAST_MONTH)) return 'outdated';
@@ -163,9 +196,39 @@ function dayRangeOf(
       return {
         minDays: weeksMin * DAYS_PER_WEEK + days,
         maxDays: weeksMax * DAYS_PER_WEEK + days,
+        since: days,
       };
     }
   }
+}
+
+/**
+ * Whether a last period or weeks typed put the term today past 42+0 weeks:
+ * 'post-term' while it stays under 45 weeks (still pregnant, she is past
+ * term: TermInput post-term, with the advice to be seen today), 'too-long'
+ * from 45 weeks on (no pregnancy lasts so long: the date is looked at again),
+ * 'no' otherwise (and for what cannot be read).
+ */
+export function pastTermToday(
+  term: Extract<TermInput, { kind: 'lmp' | 'weeks' }>,
+  todayIso: string,
+): 'no' | 'post-term' | 'too-long' {
+  const range = dayRangeOf(term, todayIso);
+  if (range === 'outdated' || range === 'clock' || range.minDays <= MAX_TERM_DAYS) return 'no';
+  return range.minDays < POST_TERM_MAX_DAYS ? 'post-term' : 'too-long';
+}
+
+/** "Past 42 weeks, still pregnant", read by how long ago it was said. */
+function readPostTerm(
+  givenOn: string | undefined,
+  todayIso: string,
+  fallback?: string,
+): TermReading {
+  const days = daysSince(givenOn, todayIso, fallback);
+  if (days === null) return { status: 'outdated' };
+  if (days < 0) return { status: 'clock' };
+  if (days > POST_TERM_HOLDS_DAYS) return { status: 'outdated' };
+  return { status: days === 0 ? 'ok' : 'possibly-past', term: postTermDisplay() };
 }
 
 /** An unknown term (or a "Je ne sais pas" to the pregnancy), read by how long ago it was said. */
@@ -188,19 +251,23 @@ function readUnknown(
  */
 export function readTerm(term: TermInput, todayIso: string, fallback?: string): TermReading {
   if (term.kind === 'unknown') return readUnknown(term.givenOn, todayIso, fallback);
+  if (term.kind === 'post-term') return readPostTerm(term.givenOn, todayIso, fallback);
   const range = dayRangeOf(term, todayIso, fallback);
   if (range === 'outdated' || range === 'clock') return { status: range };
   if (range.minDays > MAX_TERM_DAYS) return { status: 'outdated' };
   const weeksMin = Math.floor(range.minDays / DAYS_PER_WEEK);
-  const weeksMax = Math.min(Math.floor(range.maxDays / DAYS_PER_WEEK), MAX_TERM_WEEKS);
-  const status = range.maxDays > MAX_TERM_DAYS ? 'possibly-past' : 'ok';
+  const weeksTo = Math.floor(range.maxDays / DAYS_PER_WEEK);
+  // Held at 42 for the rules; the words say the real upper end.
+  const weeksMax = Math.min(weeksTo, MAX_TERM_WEEKS);
+  // A term given today: she was seen (or said she is) pregnant today.
+  const status = range.maxDays > MAX_TERM_DAYS && range.since > 0 ? 'possibly-past' : 'ok';
   const term_: TermDisplay =
     term.kind === 'months'
       ? {
           weeksMin,
           weeksMax,
           precision: 'estimated',
-          label: { key: 'profile.term.estimated', vars: { min: weeksMin, max: weeksMax } },
+          label: { key: 'profile.term.estimated', vars: { min: weeksMin, max: weeksTo } },
         }
       : { weeksMin, weeksMax, precision: 'exact', label: weeksLabel(weeksMin) };
   return { status, term: term_ };

@@ -105,13 +105,36 @@ export const fr = {
     // yes, never a refusal. Never red: it is not a danger sign.
     weakTitle: 'Ce code est facile à deviner',
     weakLead:
-      "Une année, un même chiffre répété ou des chiffres qui se suivent (comme 1234) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une année de naissance.",
+      "Une date, une année, un même chiffre répété, des chiffres qui se suivent ou qui reviennent (comme 1234, 1212 ou 2580) sont les premiers codes qu'une autre personne essaie. N'utilisez pas une date ou une année de naissance.",
     weakOther: 'Choisir un autre code',
     weakKeep: 'Garder ce code',
+  },
+  // A new code behind the current one (Réglages, after the code): the data stay.
+  changeCode: {
+    link: 'Changer le code',
+    title: 'Changer le code',
+    currentLead: "Tapez d'abord le code actuel.",
+    currentLabel: 'Code actuel',
+    newTitle: 'Choisissez le nouveau code',
+    newLead: 'De 4 à 6 chiffres. Gardez-le pour vous : il prend la place du code actuel.',
+    newLabel: 'Nouveau code',
+    confirmTitle: 'Tapez le nouveau code une deuxième fois',
+    same: "Le nouveau code est le même que l'actuel : choisissez-en un autre.",
+    changing: 'Le nouveau code se prépare.',
+    failed:
+      "Le code n'a pas pu être changé sur ce téléphone : le code actuel reste le bon. Essayez encore.",
+    doneTitle: 'Le code est changé',
+    doneLead:
+      "Le nouveau code ouvre l'application et les réponses enregistrées. L'ancien code n'ouvre plus rien.",
+    back: 'Revenir aux réglages',
+    cancel: 'Garder le code actuel',
   },
   // Shortly before the two minutes run out, while a form has answers not saved.
   autoLock: {
     soon: "L'application va se verrouiller : touchez l'écran pour continuer.",
+    // A passer-by: her answers go with the lock (never given back).
+    soonPasserBy:
+      "L'application va se verrouiller : ses réponses seront effacées. Touchez l'écran pour continuer.",
     stay: 'Continuer',
     // Answers kept in memory across an auto-lock, given back after the code.
     restored: 'Vos réponses sont revenues, mais elles ne sont pas encore enregistrées.',
@@ -179,6 +202,9 @@ export const fr = {
     update: 'Mettre à jour',
     updateNamed: 'Mettre à jour le profil de {name}',
     deleted: 'Profil supprimé : {name}.',
+    // A lock let a passer-by go: said once, so the keeper knows why her answers are gone.
+    passerByCleared:
+      'Pour sa confidentialité, les réponses de la femme de passage ont été effacées.',
   },
   // Where a profile stands, in plain words: on the list, the check and the result.
   profileStatus: {
@@ -195,6 +221,19 @@ export const fr = {
     babyOneMonth: 'Allaite, bébé de 1 mois',
     babyMonths: 'Allaite, bébé de {months} mois',
   },
+  // Past 42 weeks and still pregnant: to be seen today, the check goes on.
+  postTerm: {
+    adviceWoman:
+      "Allez au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.",
+    adviceAccompanied:
+      "Elle doit aller au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.",
+    call: 'Voir qui appeler',
+    // 10 to 12 typed as months: past term, or weeks in the wrong field.
+    pastNineWoman: 'Avez-vous dépassé 9 mois ?',
+    pastNineAccompanied: 'Elle a dépassé 9 mois ?',
+    pastNineYes: 'Oui, plus de 9 mois',
+    pastNineNo: 'Non, ce sont des semaines',
+  },
   // A pregnancy profile whose term is past 42 weeks: asked before any check.
   outdated: {
     titleWoman: 'Votre terme noté a passé 42 semaines. Votre bébé est-il né ?',
@@ -203,6 +242,11 @@ export const fr = {
     leadAccompanied: 'Mettez son profil à jour avant de regarder un produit.',
     // A passer-by has no profile: her answers are given again.
     leadPasserBy: 'Reprenez ses réponses avant de regarder un produit.',
+    // "Mettre à jour" on a profile where the baby may be born: the same question, first.
+    titleMaybeWoman: 'Votre terme noté a peut-être passé 42 semaines. Votre bébé est-il né ?',
+    titleMaybeAccompanied: 'Le terme noté a peut-être passé 42 semaines. Le bébé est-il né ?',
+    leadMaybeWoman: 'Dites-le avant de mettre votre profil à jour.',
+    leadMaybeAccompanied: 'Dites-le avant de mettre son profil à jour.',
     born: 'Oui, le bébé est né',
     notBorn: 'Non, toujours enceinte',
   },
@@ -261,10 +305,17 @@ export const fr = {
       exact: 'Environ {weeks} semaines',
       estimated: 'Entre {min} et {max} semaines (estimé)',
       unknown: 'Terme inconnu',
+      // Past 42 weeks and still pregnant: read as 42 weeks and over.
+      postTerm: 'Plus de 42 semaines',
       // Weeks known another day: the term today, then as noted ("26 semaines le 24/09").
       since: "{term} aujourd'hui ({weeks} semaines le {date})",
     },
     termCorrect: 'Corriger le nombre de semaines',
+    // A new number of weeks: the day they date from is asked again, and said so.
+    weeksDayReset: 'Le nombre de semaines a changé : redites de quand date ce terme.',
+    // The phone's date is before the last save: no term worked out from it.
+    clockBehind:
+      'La date du téléphone semble fausse : elle est avant le jour où ce profil a été enregistré. Regardez la date du téléphone.',
     // The baby's age read back in the weeks the rules use (months are converted).
     babyAgeShown: 'Âge calculé',
     breastfeeding: 'Allaite ?',
@@ -293,6 +344,8 @@ export const fr = {
     noCondition: 'Aucune de ces situations',
     save: 'Enregistrer',
     saveFailed: "Ce profil n'a pas pu être enregistré sur ce téléphone. Essayez encore.",
+    // Deleted meanwhile (in another tab): never written back.
+    goneOnSave: "Ce profil a été supprimé de ce téléphone : il n'est pas enregistré.",
     // Deleting one profile and its history, after a last yes. Never red: not a danger sign.
     delete: 'Supprimer ce profil',
     deleteTitle: 'Supprimer le profil {name} ?',
@@ -316,8 +369,16 @@ export const fr = {
     loadFailed:
       "Les profils n'ont pas pu être lus sur ce téléphone. Fermez l'application, puis rouvrez-la.",
     notFound: "Ce profil n'est pas sur ce téléphone. Revenez à l'accueil.",
+    // Said under the pseudonym, never a refusal: the list could mix two women up.
+    warning: {
+      near: 'Un surnom proche est déjà sur ce téléphone : {name}. Choisissez un surnom bien différent, pour ne pas les confondre.',
+      realName: 'Ce surnom ressemble à un prénom et un nom : un surnom, jamais le vrai nom.',
+    },
     error: {
       pseudonym: 'Écrivez un surnom.',
+      // A pseudonym heads her result: never a dose nor "Sans danger".
+      pseudonymWording:
+        'Ce surnom ressemble à une dose ou à un avis sur un produit : écrivez un autre surnom.',
       pseudonymNumber: 'Pas de numéro de téléphone : écrivez un surnom.',
       pseudonymLong: 'Écrivez un surnom de 40 caractères au plus.',
       pseudonymTaken: 'Ce surnom est déjà sur ce téléphone : écrivez-en un autre.',
@@ -325,16 +386,24 @@ export const fr = {
       choose: 'Choisissez une réponse.',
       date: 'Écrivez une date.',
       dateFuture: "Cette date est après aujourd'hui : choisissez aujourd'hui ou une date passée.",
+      // 45 weeks or more: no pregnancy lasts so long. Never "Je ne sais pas" to a term she knows.
       lmpTooOld:
-        'Cette date remonte à plus de 42 semaines : le terme est dépassé. Si le bébé est né, répondez Non à Enceinte. Sinon, choisissez Je ne sais pas.',
+        'Cette date remonte à 45 semaines ou plus : une grossesse ne dure pas si longtemps. Regardez la date. Si le bébé est né, répondez Non à Enceinte.',
       clockBehind:
         "Ce terme a été noté après la date du téléphone. Regardez la date du téléphone, ou écrivez le mois d'aujourd'hui.",
       monthsLooksLikeWeeks:
         'Ce nombre ressemble à des semaines : un mois de grossesse va de 1 à 9.',
+      // 10 to 12 months: past term, or weeks in the wrong field. Asked, never converted.
+      monthsPastNine: 'Un mois de grossesse va de 1 à 9 : répondez à la question en dessous.',
+      // A date after the phone's date, on a profile saved later: the clock was set back.
+      phoneDate:
+        'La date du téléphone semble fausse : ce terme a été noté après elle. Regardez la date du téléphone.',
       birthTooOld:
         'Cette date remonte à plus de 2 ans. Pour un enfant de plus de 2 ans, choisissez En semaines et écrivez 104.',
       weeksMovedOn:
-        "Le terme a avancé depuis qu'il a été noté et dépasse 42 semaines : écrivez le terme d'aujourd'hui, ou choisissez Je ne sais pas.",
+        "Le terme a avancé depuis qu'il a été noté et dépasserait 45 semaines aujourd'hui : écrivez le terme d'aujourd'hui.",
+      postTermOutdated:
+        "Ce terme dépassé a été noté il y a plus d'une semaine : donnez le terme d'aujourd'hui.",
       monthsOutdated: "Ce mois a été donné il y a longtemps : écrivez le mois d'aujourd'hui.",
       babyAgeMovedOn:
         "L'âge noté a avancé et dépasse 2 ans : écrivez l'âge d'aujourd'hui. Pour un enfant de plus de 2 ans, choisissez En semaines et écrivez 104.",
@@ -619,9 +688,9 @@ export const fr = {
     // The phone's date before a day the app has already seen: the term read as
     // unknown, breastfeeding as possible (the real date is later), and said why.
     termClockWoman:
-      "Terme inconnu : la date du téléphone est avant un jour où l'application a déjà servi. Votre bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement. Regardez la date du téléphone.",
+      "La date du téléphone semble fausse : elle est avant un jour où l'application a déjà servi. Regardez la date du téléphone. En attendant, le terme est inconnu et votre bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement.",
     termClockAccompanied:
-      "Terme inconnu : la date du téléphone est avant un jour où l'application a déjà servi. Le bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement. Regardez la date du téléphone.",
+      "La date du téléphone semble fausse : elle est avant un jour où l'application a déjà servi. Regardez la date du téléphone. En attendant, le terme est inconnu et le bébé est peut-être né : ce résultat tient compte de toute la grossesse et de l'allaitement.",
     // The baby may be born (possibly past term): breastfeeding is read as possible too.
     mayBeBornWoman:
       "Nous ne savons pas si votre bébé est né : ce résultat tient compte de la grossesse et de l'allaitement.",
@@ -666,6 +735,8 @@ export const fr = {
     closing: 'Cet outil ne remplace pas un soignant.',
     // The check is kept: a forgotten product can still be added.
     backToList: 'Revenir à la liste',
+    // A passer-by served: she is let go, and the questions open for the next one.
+    nextPasserBy: 'Femme suivante',
   },
   // Level names (DESIGN.md, Levels): always shown with their pictogram.
   level: {
@@ -780,6 +851,10 @@ export const fr = {
     titleAccompanied: 'A-t-elle un de ces signes maintenant ?',
     hint: 'Cochez Aucun de ces signes, ou chaque signe présent maintenant.',
     none: 'Aucun de ces signes',
+    // "Aucun" tapped while signs are ticked: they are taken off only on yes.
+    noneConfirm: 'Retirer les signes cochés ({signs}) ?',
+    noneYes: 'Oui, aucun de ces signes',
+    noneKeep: 'Non, garder ces signes',
     showAll: 'Voir tous les signes',
     error: 'Répondez : Aucun de ces signes, ou les signes présents maintenant.',
     loading: 'La liste se prépare.',

@@ -47,10 +47,18 @@ describe('profileSummary', () => {
     ).toEqual(['À mettre à jour']);
   });
 
-  it('says a term that may be past the birth is to be confirmed, after the term held at 42', () => {
+  it('says a term that may be past the birth is to be confirmed, after its real range', () => {
     expect(
       words({ pregnant: true, term: { kind: 'months', months: 9, givenOn: '2026-10-28' } }),
-    ).toEqual(['Entre 37 et 42 semaines (estimé)', 'À confirmer : le bébé est peut-être né']);
+    ).toEqual(['Entre 37 et 43 semaines (estimé)', 'À confirmer : le bébé est peut-être né']);
+    // A hundred days after month 7: the range says why the baby may be born.
+    expect(
+      words({ pregnant: true, term: { kind: 'months', months: 7, givenOn: '2026-07-27' } }),
+    ).toEqual(['Entre 41 et 51 semaines (estimé)', 'À confirmer : le bébé est peut-être né']);
+    // 42 weeks given today: she was seen pregnant today, nothing to confirm.
+    expect(words({ pregnant: true, term: { kind: 'weeks', weeks: 42, givenOn: TODAY } })).toEqual([
+      'Environ 42 semaines',
+    ]);
     expect(words({ pregnant: true, term: { kind: 'unknown', givenOn: '2026-09-01' } })).toEqual([
       'Terme inconnu',
       'À confirmer : le bébé est peut-être né',

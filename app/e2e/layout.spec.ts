@@ -134,6 +134,19 @@ async function expectShortcutInOnePlace(
   expect(locked).toEqual(place);
   expect(exit).not.toBeNull();
   if (exit !== null && locked !== null) expect(overlaps(exit, locked)).toBe(false);
+
+  // Before the code, a screen that says what the app is for has "Quitter" too
+  // (live test round 2): the shortcut keeps its place there as well.
+  await page.getByRole('link', { name: 'Réglages' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Réglages' })).toBeVisible();
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Quitter' })).toBeVisible();
+  // Measured at the top of the page, as in the other states.
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+  });
+  expect(await shortcutBox(page)).toEqual(place);
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
 }
 
 /**
@@ -234,6 +247,25 @@ test.describe('on a small phone (320 x 640)', () => {
     expect(action.scrolled).toBe(0);
     expect(action.bottom).toBeLessThanOrEqual(640);
     await expectNoSeriousViolation(page);
+  });
+
+  test('offline, the code step of the welcome keeps "Continuer" in the first screen', async ({
+    page,
+    context,
+  }) => {
+    // Live test round 2 (carry-over): "Hors ligne" in the band pushed it 3 px below.
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Français' }).click();
+    await context.setOffline(true);
+    await page.getByRole('button', { name: /^Je suis enceinte/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Choisissez un code' })).toBeVisible();
+    await expect(page.getByRole('banner').getByText('Hors ligne')).toBeVisible();
+
+    await tapCode(page);
+    const action = await buttonBottom(page, 'Continuer');
+    expect(action.scrolled).toBe(0);
+    expect(action.bottom).toBeLessThanOrEqual(640);
+    await context.setOffline(false);
   });
 
   test('the band keeps to two rows, offline too, the danger shortcut always in its place', async ({

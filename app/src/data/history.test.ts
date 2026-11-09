@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HistoryEntry } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
 import { profileOf } from '../test/knowledge-pack.js';
-import { openVaultOf, verifierOf } from '../test/verifier.js';
+import { openVaultOf, plantWithKeyOf, verifierOf } from '../test/verifier.js';
 import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import {
   forgetVisit,
@@ -112,7 +112,7 @@ describe('history at rest', () => {
 
   it('leaves out an entry its code does not open, and lets it go first when over 20', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    await openVaultOf('1357');
+    await plantWithKeyOf('1357');
     await recordHistory(entry('p1', 30));
     await openVaultOf('2468');
     await recordHistory(entry('p1', 1));

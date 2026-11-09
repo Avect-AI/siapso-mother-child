@@ -9,6 +9,7 @@ import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { RadioGroup } from '../ui/ChoiceGroup.js';
 import { Notice } from '../ui/Notice.js';
+import { CHANGE_CODE_PATH } from './ChangeCode.js';
 
 type Group = 'lang' | 'mode';
 
@@ -42,6 +43,16 @@ export function Settings() {
   const modeGroup = useRef<HTMLDivElement>(null);
   // The group whose choice was just applied: its button is gone, the focus goes to its answer.
   const focusAfter = useRef<Group | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  // Started again by a lock (App.tsx keys it on the epoch), the screen it
+  // replaced took the focus with it: the heading takes it, as a new screen's does.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (active === null || active === document.body || !active.isConnected) {
+      heading.current?.focus();
+    }
+  }, []);
 
   const langToApply = pendingLang !== null && pendingLang !== settings.lang ? pendingLang : null;
   const modeToApply = pendingMode !== null && pendingMode !== settings.mode ? pendingMode : null;
@@ -79,7 +90,9 @@ export function Settings() {
 
   return (
     <main className="screen settings">
-      <h1 tabIndex={-1}>{t('settings.title')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('settings.title')}
+      </h1>
       {settingsUnavailable ? <Notice>{t('settings.unavailable')}</Notice> : null}
       <div ref={langGroup} className="settings__group">
         <RadioGroup<Lang>
@@ -135,6 +148,12 @@ export function Settings() {
         {changed ? t('settings.changed') : ''}
       </p>
       <div className="settings__more">
+        {/* Behind the code only: the current code is asked first. */}
+        {unlocked ? (
+          <a className="button button--secondary" href={`#${CHANGE_CODE_PATH}`}>
+            {t('changeCode.link')}
+          </a>
+        ) : null}
         <a className="button button--secondary" href="#/status">
           {t('nav.status')}
         </a>

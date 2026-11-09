@@ -4,8 +4,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { closeAppDb } from '../data/db.js';
-import { listProfiles, saveProfile } from '../data/profiles.js';
+import { deleteProfile, listProfiles, saveProfile } from '../data/profiles.js';
 import type { Settings } from '../domain/types.js';
+import { SESSION_CHANNEL } from '../state/tab-sync.js';
 import { probeCheck } from '../test/check-probe.js';
 import { breakIndexedDB, hangIndexedDB } from '../test/idb.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
@@ -221,6 +222,49 @@ describe('Check', () => {
     expect(probe.current().profileId).toBe('a');
   });
 
+  it('leaves the check of a woman deleted in another tab, and the list no longer names her', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Fatou' }));
+    const probe = probeCheck();
+    await renderApp({
+      settings: accompanied,
+      hash: '#/',
+      packLoader: loaderOf(pack),
+      children: probe.element,
+    });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    await user.click(within(list).getByRole('button', { name: /^Awa / }));
+    expect(await screen.findByText('Profil : Awa')).toBeVisible();
+
+    await deleteProfile('a');
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'profile-deleted', mark: 'e'.repeat(31) + '3', id: 'a' });
+    other.close();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(screen.queryByText(/Awa/)).toBeNull();
+    expect(probe.current().pendingOf('a')).toBe(0);
+  });
+
+  it('stays on the check when another woman is deleted in another tab', async () => {
+    await saveProfile(profileOf({ id: 'a', pseudonym: 'Awa' }));
+    await saveProfile(profileOf({ id: 'b', pseudonym: 'Fatou' }));
+    await renderApp({ settings: accompanied, hash: '#/', packLoader: loaderOf(pack) });
+    const user = userEvent.setup();
+    const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
+    await user.click(within(list).getByRole('button', { name: /^Awa / }));
+    expect(await screen.findByText('Profil : Awa')).toBeVisible();
+
+    await deleteProfile('b');
+    const other = new BroadcastChannel(SESSION_CHANNEL);
+    other.postMessage({ event: 'profile-deleted', mark: 'e'.repeat(31) + '7', id: 'b' });
+    other.close();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.getByRole('heading', { level: 1, name: "Ce qu'elle prend" })).toBeVisible();
+  });
+
   it('asks first whether the baby is born when her term is past 42 weeks, and lists nothing', async () => {
     await saveProfile(
       profileOf({
@@ -266,9 +310,27 @@ describe('Check', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Modifier le profil' }),
     ).toBeVisible();
-    expect(screen.getByRole('textbox', { name: /^Dans quel mois de grossesse/ })).toHaveValue('');
+    // Still pregnant past 42 weeks: to be seen today, and the term read as more than 42 weeks.
+    const advice =
+      "Elle doit aller au poste de santé aujourd'hui : une grossesse de plus de 42 semaines doit être vue.";
+    expect(screen.getByText(advice)).toBeVisible();
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
     // Her id is never in the address (edit-route.ts).
     expect(window.location.hash).toBe('#/profile/edit');
+
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    // The check goes on, the advice with who to call above it.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: "Ce qu'elle prend" }),
+    ).toBeVisible();
+    expect(await screen.findByText(advice)).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Voir qui appeler' })).toHaveAttribute(
+      'href',
+      '#/danger/call',
+    );
+    expect(screen.getByText('Plus de 42 semaines')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
   });
 
   it('asks her in her own words in woman mode, and "the baby is born" opens her profile', async () => {
@@ -301,7 +363,7 @@ describe('Check', () => {
     const user = userEvent.setup();
     const list = await screen.findByRole('list', { name: 'Profils enregistrés sur ce téléphone' });
     expect(within(list).getByRole('button', { name: /^Bineta/ })).toHaveAccessibleName(
-      /^Bineta Entre 37 et 42 semaines \(estimé\) À confirmer\s: le bébé est peut-être né$/,
+      /^Bineta Entre 37 et 43 semaines \(estimé\) À confirmer\s: le bébé est peut-être né$/,
     );
     // Her id goes in the entry's state, never in the address (edit-route.ts).
     expect(
@@ -315,6 +377,14 @@ describe('Check', () => {
     ).toBeVisible();
     expect(await screen.findByText(/^À confirmer\s: le bébé est peut-être né$/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'Ajouter un médicament' })).toBeVisible();
+  });
+
+  it('sends accompanied mode to the list when no woman is chosen and none is saved, never to a new profile', async () => {
+    // A passer-by's check, let go at a lock: Back or the code lands here.
+    await renderApp({ settings: accompanied, hash: '#/check', packLoader: loaderOf(pack) });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+    expect(window.location.hash).toBe('#/');
   });
 
   it('sends accompanied mode to the list when no woman is chosen, never to one by default', async () => {

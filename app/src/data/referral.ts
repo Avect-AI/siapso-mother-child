@@ -142,9 +142,10 @@ export async function saveContacts(contacts: readonly ReferralContact[]): Promis
     phone,
   }));
   // Sealed before the transaction: a transaction cannot wait for WebCrypto.
-  const sealed = await sealRecord(copies, CONTACTS_SCOPE);
+  // Written only while the code it was sealed under is the one stored.
+  const { sealed, fingerprint } = await sealRecord(copies, CONTACTS_SCOPE);
   const tx = (await openAppDb()).transaction(['contacts', 'settings'], 'readwrite');
-  await requireCode(tx);
+  await requireCode(tx, fingerprint);
   await tx.objectStore('contacts').put({ sealed }, 'saved');
   await tx.done;
 }

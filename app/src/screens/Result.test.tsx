@@ -6,6 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { listHistory } from '../data/history.js';
 import type { LoadedPack } from '../data/pack-loader.js';
 import { saveProfile } from '../data/profiles.js';
+import { AUTO_LOCK_MS, LOCK_WARNING_MS } from '../domain/code.js';
 import type { Profile, Settings } from '../domain/types.js';
 import { probeCheck } from '../test/check-probe.js';
 import { knowledgePack, profileOf } from '../test/knowledge-pack.js';
@@ -116,6 +117,57 @@ async function openResult({
   await screen.findByRole('heading', { level: 1, name: heading });
   return { probe, view, user: userEvent.setup() };
 }
+
+describe('Result: the auto-lock on a danger result (live test round 2)', () => {
+  const WARNING = "L'application va se verrouiller : touchez l'écran pour continuer.";
+
+  /** From now on the timers are faked: a touch starts the two minutes on them. */
+  function fakeTimers() {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    act(() => {
+      window.dispatchEvent(new Event('pointerdown'));
+    });
+  }
+
+  function idle(ms: number) {
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+  }
+
+  it('warns 30 s before the lock, and "Continuer" keeps the danger on screen', async () => {
+    await saveProfile(profileOf({ term: { kind: 'weeks', weeks: 14, givenOn: '2026-11-04' } }));
+    await openResult({ items: [KINKELIBA], signs: ['fever'] });
+    expect((await screen.findAllByRole('article'))[0]).toHaveClass('level--danger');
+
+    fakeTimers();
+    idle(AUTO_LOCK_MS - LOCK_WARNING_MS - 1000);
+    expect(screen.queryByText(WARNING)).toBeNull();
+    idle(1000);
+    expect(screen.getByText(WARNING)).toBeVisible();
+
+    act(() => {
+      screen.getByRole('button', { name: 'Continuer' }).click();
+    });
+    expect(screen.queryByText(WARNING)).toBeNull();
+    idle(AUTO_LOCK_MS - 1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Résultat' })).toBeVisible();
+    // Untouched, it still locks: the agreed trade-off.
+    idle(1000);
+    expect(screen.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  });
+
+  it('never warns on a result with no danger', async () => {
+    await saveProfile(profileOf());
+    await openResult({ items: [KINKELIBA] });
+    await screen.findAllByRole('article');
+
+    fakeTimers();
+    idle(AUTO_LOCK_MS - 1000);
+
+    expect(screen.queryByText(WARNING)).toBeNull();
+  });
+});
 
 describe('Result: a danger sign and a remedy we know nothing about', () => {
   it('leads with the danger, then every finding with its level, then the closing lines', async () => {
@@ -670,7 +722,9 @@ describe('Result: the term it was worked out on', () => {
 
     const card = await screen.findByRole('article');
     expect(
-      screen.getByText(/la date du téléphone est avant un jour où l'application a déjà servi/),
+      screen.getByText(
+        /^La date du téléphone semble fausse\s: elle est avant un jour où l'application a déjà servi/,
+      ),
     ).toBeVisible();
     expect(
       within(card).getByText(/^Terme inconnu\s: ce résultat tient compte de toute la grossesse/),
@@ -694,7 +748,7 @@ describe('Result: the term it was worked out on', () => {
     const cards = await screen.findAllByRole('article');
     expect(
       screen.getByText(
-        /la date du téléphone est avant un jour où l'application a déjà servi\. Le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
+        /Regardez la date du téléphone\. En attendant, le terme est inconnu et le bébé est peut-être né\s: ce résultat tient compte de toute la grossesse et de l'allaitement\./,
       ),
     ).toBeVisible();
     // The breastfeeding rule on codeine applies (baby of unknown age).
@@ -710,7 +764,28 @@ describe('Result: the term it was worked out on', () => {
 
     await screen.findByRole('article');
     expect(
-      screen.getByText(/\. Votre bébé est peut-être né\s: ce résultat tient compte/),
+      screen.getByText(
+        /le terme est inconnu et votre bébé est peut-être né\s: ce résultat tient compte/,
+      ),
+    ).toBeVisible();
+  });
+
+  it('says to go to the health post today past 42 weeks, with who to call, on the term used', async () => {
+    await saveProfile(profileOf({ term: { kind: 'post-term', givenOn: '2026-11-04' } }));
+    await openResult({ items: [ADVIL] });
+
+    await screen.findByRole('article');
+    expect(
+      screen.getByText(
+        /^Allez au poste de santé aujourd'hui\s: une grossesse de plus de 42 semaines doit être vue\.$/,
+      ),
+    ).toBeVisible();
+    expect(screen.getAllByRole('link', { name: 'Voir qui appeler' })[0]).toHaveAttribute(
+      'href',
+      '#/danger/call',
+    );
+    expect(
+      screen.getByText(/^Terme utilisé pour ce résultat\s: plus de 42 semaines$/),
     ).toBeVisible();
   });
 
@@ -755,9 +830,7 @@ describe('Result: the term it was worked out on', () => {
     await openResult({ items: [ADVIL] });
 
     const card = await screen.findByRole('article');
-    expect(
-      screen.getByText(/la date du téléphone est avant un jour où l'application/),
-    ).toBeVisible();
+    expect(screen.getByText(/^La date du téléphone semble fausse/)).toBeVisible();
     expect(within(card).getByText(/^Terme inconnu\s: ce résultat tient compte/)).toBeVisible();
   });
 

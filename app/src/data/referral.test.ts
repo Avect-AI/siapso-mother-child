@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReferralContact } from '../domain/types.js';
 import { breakIndexedDB } from '../test/idb.js';
-import { openVaultOf, verifierOf } from '../test/verifier.js';
+import { openVaultOf, plantWithKeyOf, verifierOf } from '../test/verifier.js';
 import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import {
   fetchDeploymentReferral,
@@ -114,7 +114,7 @@ describe('contacts at rest', () => {
   });
 
   it('cannot read contacts its code does not open, and says so rather than none', async () => {
-    await openVaultOf('1357');
+    await plantWithKeyOf('1357');
     await saveContacts([AWA]);
     await openVaultOf('2468');
 

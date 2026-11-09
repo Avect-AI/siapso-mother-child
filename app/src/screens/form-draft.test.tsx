@@ -31,6 +31,11 @@ const RESTORED = 'Vos réponses sont revenues, mais elles ne sont pas encore enr
 const WARNING = "L'application va se verrouiller : touchez l'écran pour continuer.";
 const HIDDEN_SITUATIONS = 'Situations masquées : touchez pour les afficher';
 
+const PASSER_BY_WARNING =
+  "L'application va se verrouiller : ses réponses seront effacées. Touchez l'écran pour continuer.";
+const PASSER_BY_CLEARED =
+  'Pour sa confidentialité, les réponses de la femme de passage ont été effacées.';
+
 function radio(group: string | RegExp, name: string) {
   return within(screen.getByRole('group', { name: group })).getByRole('radio', { name });
 }
@@ -189,7 +194,8 @@ describe('answers not saved at the auto-lock', () => {
 
     fakeTimers();
     idle(AUTO_LOCK_MS - LOCK_WARNING_MS);
-    expect(screen.getByText(WARNING)).toBeVisible();
+    // The warning says her answers go with the lock.
+    expect(screen.getByText(PASSER_BY_WARNING)).toBeVisible();
     idle(LOCK_WARNING_MS);
     vi.useRealTimers();
     expect(
@@ -204,6 +210,45 @@ describe('answers not saved at the auto-lock', () => {
     expect(radio(/^Enceinte/, 'Oui')).not.toBeChecked();
     expect(screen.queryByRole('textbox', { name: 'Nombre de semaines' })).toBeNull();
     expect(screen.queryByText(RESTORED)).toBeNull();
+    // Said once, so the keeper knows why her answers are gone.
+    expect(await screen.findByText(PASSER_BY_CLEARED)).toBeVisible();
+  });
+
+  it('of a profile come back after the code given on the danger signs, once Back reaches her form', async () => {
+    const user = userEvent.setup();
+    await newProfile(user);
+    fakeTimers();
+    idle(AUTO_LOCK_MS);
+    vi.useRealTimers();
+    await screen.findByRole('heading', { level: 1, name: 'Entrez votre code' });
+
+    // On the code screen she goes to the danger signs, then who to call, and gives the code there.
+    await user.click(
+      within(screen.getByRole('banner')).getByRole('link', { name: 'Signes de danger' }),
+    );
+    await screen.findByRole('heading', { level: 1, name: 'Signes de danger' });
+    act(() => {
+      window.location.hash = '#/danger/call';
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Qui appeler' });
+    // The way to the code comes once who to call has read its contacts.
+    await user.click(await screen.findByRole('button', { name: 'Entrer le code' }));
+    await enterCode(user);
+    // Back where the code was asked for: who to call.
+    await screen.findByRole('heading', { level: 1, name: 'Qui appeler' });
+
+    // Back, Back: her form, its answers given back.
+    act(() => {
+      window.history.back();
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Signes de danger' });
+    act(() => {
+      window.history.back();
+    });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nouveau profil' })).toBeVisible();
+    expect(await screen.findByRole('textbox', { name: 'Surnom' })).toHaveValue('Mariama');
+    expect(screen.getByText(RESTORED)).toBeVisible();
   });
 
   it('are dropped when she leaves the form: coming back starts again', async () => {

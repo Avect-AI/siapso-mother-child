@@ -5,6 +5,7 @@ import { isStale } from '../domain/staleness.js';
 import { useT } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { Button } from '../ui/Button.js';
+import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { OfflineReadiness } from './OfflineReadiness.js';
 import { profileNoteText, useProfileNote } from './saved-note.js';
@@ -24,6 +25,7 @@ export function Home() {
   const { pack, packError, settingsUnavailable, online } = useApp();
   const [, navigate] = useLocation();
   const note = useProfileNote();
+  const said = useLiveRegionReady();
 
   return (
     <main className="screen home">
@@ -32,9 +34,10 @@ export function Home() {
           <h1 tabIndex={-1}>{t('home.title')}</h1>
           <p>{t('home.lead')}</p>
         </div>
+        {/* There empty first, then filled: a region filled as it appears is not read out. */}
         {note === null ? null : (
           <p className="home__saved" role="status">
-            {profileNoteText(note, t)}
+            {said ? profileNoteText(note, t) : ''}
           </p>
         )}
         {settingsUnavailable ? <Notice>{t('settings.unavailable')}</Notice> : null}

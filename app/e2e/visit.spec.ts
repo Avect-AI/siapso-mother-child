@@ -152,6 +152,55 @@ test('a depot keeper checks a passer-by without a profile, and nothing is kept',
   await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
 });
 
+test('"Femme suivante" serves the next passer-by; after a lock, Back never opens an empty profile', async ({
+  page,
+}) => {
+  // Live test round 2 (depot-keeper#4, depot-keeper#8, privacy-offline#4).
+  await page.clock.install();
+  await onboard(page, 'accompanied');
+  const serve = async (weeks: string) => {
+    await answerPregnant(page, weeks);
+    await page.getByRole('button', { name: 'Regarder ses produits' }).click();
+    await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+    await page.getByRole('searchbox').fill('Advil 400');
+    await page.locator('.candidate').first().click();
+    await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    await page.getByText('Aucun de ces signes', { exact: true }).click();
+    await page.getByRole('button', { name: 'Voir le résultat' }).click();
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Résultat, sans enregistrer' }),
+    ).toBeVisible();
+  };
+  await page.getByRole('button', { name: 'Regarder sans enregistrer' }).click();
+  await serve('24');
+
+  await page.getByRole('button', { name: 'Femme suivante' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Regarder sans enregistrer' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('group', { name: /^Enceinte/ }).getByRole('radio', { name: 'Oui' }),
+  ).not.toBeChecked();
+  await serve('30');
+
+  // Two minutes without a touch: she is let go; the code opens the list.
+  await page.clock.fastForward('02:01');
+  await unlock(page);
+  await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+  // Back to her screens: the list again, never "Nouveau profil".
+  await page.goBack();
+  await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Nouveau profil' })).toHaveCount(0);
+  expect(await pageTextOf(page)).not.toContain('Advil');
+  expect(await countIn(page, 'profiles')).toBe(0);
+});
+
+/** What the page says, as text. */
+function pageTextOf(page: Page): Promise<string> {
+  return page.evaluate(() => document.body.innerText);
+}
+
 test('a midwife finds a woman among many, with "Ajouter un profil" at the top', async ({
   page,
 }) => {

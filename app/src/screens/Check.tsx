@@ -18,6 +18,7 @@ import { useLiveRegionReady } from '../ui/live-region.js';
 import { Notice } from '../ui/Notice.js';
 import { flowEntry, searchPath } from './check-flow.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
+import { PostTermAdvice } from './PostTermAdvice.js';
 import { Typed } from './Typed.js';
 
 /** How long her profile may take to read before the screen says it is loading. */
@@ -182,16 +183,18 @@ export function Check() {
       const active = activeProfile(profiles, mode, profileId);
       // The last result kept for her: a phone date before it is a clock set back.
       const lastAt = active === undefined ? undefined : await latestHistoryAt(active.id);
-      return { profiles, active, lastAt };
+      return { active, lastAt };
     };
     // What is done with the profile is in the chain too: an error there says
     // the profiles could not be read, never leaves the screen empty.
     withTimeout(load(), storageTimeoutMs)
-      .then(({ profiles, active, lastAt }) => {
+      .then(({ active, lastAt }) => {
         if (!live) return;
         if (active === undefined) {
-          // Accompanied mode with profiles, none chosen: she is chosen in the list.
-          if (mode === 'accompanied' && profiles.length > 0) {
+          // Accompanied mode, none chosen: she is chosen in the list (a
+          // passer-by let go at a lock lands here by Back or after the code,
+          // and never on a new profile).
+          if (mode === 'accompanied') {
             navigate('/', { replace: true });
             return;
           }
@@ -261,10 +264,14 @@ export function Check() {
 
   // A day the app has already seen: the knowledge pack's date, her last result.
   const notBefore = profile === null ? undefined : latestDay(pack?.date, profile.lastAt);
-  if (
-    profile &&
-    profileTermStatus(profile.profile, profile.today, notBefore).status === 'outdated'
-  ) {
+  const termStatus =
+    profile === null ? null : profileTermStatus(profile.profile, profile.today, notBefore);
+  // Past 42 weeks and still pregnant: to be seen today; the check goes on.
+  const postTerm =
+    termStatus !== null &&
+    (termStatus.status === 'ok' || termStatus.status === 'possibly-past') &&
+    termStatus.term.postTerm === true;
+  if (profile && termStatus?.status === 'outdated') {
     return (
       <main className="screen check">
         <OutdatedTerm mode={mode} profile={profile.profile} passerBy={passerBy !== null} />
@@ -298,6 +305,7 @@ export function Check() {
       </div>
       {failed ? <Notice>{t('profile.loadFailed')}</Notice> : null}
       {packError === null ? null : <Notice>{t('home.packUnavailable')}</Notice>}
+      {postTerm ? <PostTermAdvice mode={mode} /> : null}
 
       {empty ? (
         <p id={emptyId} className="check__empty">

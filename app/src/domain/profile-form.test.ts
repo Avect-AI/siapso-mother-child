@@ -4,6 +4,7 @@ import { contextFromProfile } from './context.js';
 import { addDays } from './dates.js';
 import {
   afterBirth,
+  answerPastNine,
   conditionsShown,
   isConcealedCondition,
   emptyForm,
@@ -11,9 +12,12 @@ import {
   monthsAsWeeks,
   monthsLookLikeWeeks,
   monthsNearTerm,
+  monthsPastNine,
+  postTermForm,
   profileFromForm,
   PSEUDONYM_MAX,
   pseudonymKey,
+  pseudonymWarning,
   reenterTerm,
   termFromForm,
   typedWeeks,
@@ -169,10 +173,30 @@ describe('validateForm', () => {
     expect(validateForm(other({ weeksGivenOn: '2026-11-05' }), TODAY, 'woman')).toEqual({
       weeksGivenOn: 'profile.error.dateFuture',
     });
-    // 30 weeks on 1 August: past 42 weeks today.
+    // 26 weeks on 1 August: 39 weeks and over today, still within 42.
     expect(
-      validateForm(other({ weeks: '30', weeksGivenOn: '2026-08-01' }), TODAY, 'woman'),
+      validateForm(other({ weeks: '26', weeksGivenOn: '2026-08-01' }), TODAY, 'woman'),
+    ).toEqual({});
+    // 30 weeks on 1 August: 43 weeks today. Still pregnant, she is past term:
+    // accepted, read as more than 42 weeks (the screen says to go today).
+    const past = other({ weeks: '30', weeksGivenOn: '2026-08-01' });
+    expect(validateForm(past, TODAY, 'woman')).toEqual({});
+    expect(termFromForm(past, TODAY)).toEqual({ kind: 'post-term', givenOn: TODAY });
+    // 30 weeks in early July: 47 weeks today, no pregnancy lasts so long.
+    expect(
+      validateForm(other({ weeks: '30', weeksGivenOn: '2026-07-01' }), TODAY, 'woman'),
     ).toEqual({ weeks: 'profile.error.weeksMovedOn' });
+  });
+
+  it('says a date after the phone date is the phone clock when the profile was saved later', () => {
+    const other = common({ weeksDay: 'other', weeksGivenOn: '2026-11-01' });
+    // The phone says 26 October, the profile was saved on 1 November.
+    expect(validateForm(other, '2026-10-26', 'woman', [], '2026-11-01')).toEqual({
+      weeksGivenOn: 'profile.error.phoneDate',
+    });
+    expect(validateForm(other, '2026-10-26', 'woman')).toEqual({
+      weeksGivenOn: 'profile.error.dateFuture',
+    });
   });
 
   it('asks the day the weeks were known until it is answered, today or another day', () => {
@@ -193,8 +217,13 @@ describe('validateForm', () => {
     }
   });
 
-  it('says a month of 10 to 42 looks like weeks', () => {
-    for (const months of ['10', '24', '34', '42']) {
+  it('asks whether she is past 9 months for 10 to 12, and says 13 to 42 look like weeks', () => {
+    for (const months of ['10', '11', '12']) {
+      expect(validateForm(common({ termKind: 'months', months }), TODAY, 'woman'), months).toEqual({
+        months: 'profile.error.monthsPastNine',
+      });
+    }
+    for (const months of ['13', '24', '34', '42']) {
       expect(validateForm(common({ termKind: 'months', months }), TODAY, 'woman'), months).toEqual({
         months: 'profile.error.monthsLooksLikeWeeks',
       });
@@ -244,7 +273,7 @@ describe('validateForm', () => {
     });
   });
 
-  it('accepts a last period from today back to 42 weeks, and names the problem otherwise', () => {
+  it('accepts a last period from today back to 45 weeks, and names the problem otherwise', () => {
     const lmp = (lmpDate: string) =>
       validateForm(common({ termKind: 'lmp', lmpDate }), TODAY, 'woman');
     expect(lmp(TODAY)).toEqual({});
@@ -252,7 +281,13 @@ describe('validateForm', () => {
     expect(lmp('')).toEqual({ lmpDate: 'profile.error.date' });
     expect(lmp('2026-02-30')).toEqual({ lmpDate: 'profile.error.date' });
     expect(lmp('2026-11-05')).toEqual({ lmpDate: 'profile.error.dateFuture' });
-    expect(lmp(addDays(TODAY, -(42 * 7 + 1)))).toEqual({ lmpDate: 'profile.error.lmpTooOld' });
+    // Past 42 weeks and still pregnant: accepted, read as more than 42 weeks.
+    const past = common({ termKind: 'lmp', lmpDate: addDays(TODAY, -(42 * 7 + 1)) });
+    expect(validateForm(past, TODAY, 'woman')).toEqual({});
+    expect(termFromForm(past, TODAY)).toEqual({ kind: 'post-term', givenOn: TODAY });
+    expect(lmp(addDays(TODAY, -(44 * 7 + 6)))).toEqual({});
+    // 45 weeks or more: no pregnancy lasts so long; never "Je ne sais pas".
+    expect(lmp(addDays(TODAY, -45 * 7))).toEqual({ lmpDate: 'profile.error.lmpTooOld' });
   });
 
   it('needs no term field for an unknown term, and none at all when not pregnant', () => {
@@ -346,6 +381,48 @@ describe('validateForm', () => {
   });
 });
 
+describe('pseudonyms that mislead or mix up (live test round 2)', () => {
+  it('refuses a pseudonym that says a safety word or a dose: it heads a result', () => {
+    for (const pseudonym of [
+      'Sans danger',
+      'Ibuprofène 400 mg 3 fois par jour',
+      '500 mg',
+      'Safe',
+      'Awa 2 comprimés',
+      'Vérifié',
+    ]) {
+      expect(validateForm(common({ pseudonym }), TODAY, 'woman'), pseudonym).toEqual({
+        pseudonym: 'profile.error.pseudonymWording',
+      });
+    }
+    for (const pseudonym of ['Awa 2', 'Femme 12', 'Maman de Binta', 'Sur la route']) {
+      expect(validateForm(common({ pseudonym }), TODAY, 'woman'), pseudonym).toEqual({});
+    }
+  });
+
+  it('warns, never refuses, a pseudonym one letter from another, and one that looks like a full name', () => {
+    for (const pseudonym of ['Awa.', 'Aw a', 'Awa 2', 'Ada', 'awa!']) {
+      expect(pseudonymWarning(pseudonym, ['Awa', 'Bineta']), pseudonym).toEqual({
+        key: 'profile.warning.near',
+        vars: { name: 'Awa' },
+      });
+      expect(validateForm(common({ pseudonym }), TODAY, 'woman', ['Awa']), pseudonym).toEqual({});
+    }
+    // A numbered series the app suggests is not a mix-up.
+    expect(pseudonymWarning('Femme 2', ['Femme 1'])).toBeNull();
+    expect(pseudonymWarning('Bineta', ['Awa'])).toBeNull();
+    for (const pseudonym of ['Awa Diop', 'Awa Diop Ndiaye fille de Moussa', 'Fatou Bintou-Sow']) {
+      expect(pseudonymWarning(pseudonym, []), pseudonym).toEqual({
+        key: 'profile.warning.realName',
+        vars: {},
+      });
+    }
+    for (const pseudonym of ['Awa', 'Maman de Binta', 'Femme 3', 'awa diop']) {
+      expect(pseudonymWarning(pseudonym, []), pseudonym).toBeNull();
+    }
+  });
+});
+
 describe('pseudonymKey', () => {
   it('compares pseudonyms without case, accents or extra spaces', () => {
     expect(pseudonymKey('  Àwa   Diop ')).toBe(pseudonymKey('awa diop'));
@@ -354,13 +431,34 @@ describe('pseudonymKey', () => {
 });
 
 describe('a month that looks like weeks', () => {
-  it('is a whole number from 10 to 42 typed as months', () => {
+  it('is a whole number from 13 to 42 typed as months: 10 to 12 may be a term past 9 months', () => {
     expect(monthsLookLikeWeeks(common({ termKind: 'months', months: '24' }))).toBe(true);
     expect(monthsLookLikeWeeks(common({ termKind: 'months', months: ' 34 ' }))).toBe(true);
-    for (const months of ['9', '1', '', '43', 'ab']) {
+    expect(monthsLookLikeWeeks(common({ termKind: 'months', months: '13' }))).toBe(true);
+    for (const months of ['9', '1', '', '10', '11', '12', '43', 'ab']) {
       expect(monthsLookLikeWeeks(common({ termKind: 'months', months })), months).toBe(false);
     }
     expect(monthsLookLikeWeeks(common({ termKind: 'weeks', months: '24' }))).toBe(false);
+  });
+
+  it('asks about 10 to 12: "Oui, plus de 9 mois" reads past term, "Non" opens the weeks empty', () => {
+    for (const months of ['10', '11', '12']) {
+      expect(monthsPastNine(common({ termKind: 'months', months })), months).toBe(true);
+    }
+    for (const months of ['9', '13', '']) {
+      expect(monthsPastNine(common({ termKind: 'months', months })), months).toBe(false);
+    }
+    const ten = common({ termKind: 'months', months: '10', weeks: '' });
+
+    const past = answerPastNine(ten, true, true);
+    expect(past).toMatchObject({ termKind: 'post-term', months: '', keptTerm: null });
+    expect(validateForm(past, TODAY, 'accompanied')).toEqual({});
+    expect(termFromForm(past, TODAY)).toEqual({ kind: 'post-term', givenOn: TODAY });
+
+    // Weeks, typed by hand: never "10 weeks" from one tap.
+    const weeks = answerPastNine(ten, false, true);
+    expect(weeks).toMatchObject({ termKind: 'weeks', weeks: '', weeksDay: null, months: '' });
+    expect(answerPastNine(ten, false, false)).toMatchObject({ weeksDay: 'today' });
   });
 
   it('moves to "En semaines" with the number typed, given today', () => {
@@ -836,6 +934,46 @@ describe('updating an outdated profile', () => {
       lmpDate: '',
     });
     expect(validateForm(form, TODAY, 'woman')).toEqual({ months: 'profile.error.months' });
+  });
+
+  it('"still pregnant" past 42 weeks: read as more than 42 weeks from today', () => {
+    const form = postTermForm(formFromProfile(outdated, TODAY, 'woman'));
+    expect(form).toMatchObject({
+      pregnant: 'yes',
+      termKind: 'post-term',
+      months: '',
+      keptTerm: null,
+    });
+    expect(validateForm(form, TODAY, 'woman')).toEqual({});
+    const profile = profileFromForm(form, {
+      base: outdated,
+      id: 'x',
+      nowIso: NOW,
+      todayIso: TODAY,
+    });
+    expect(profile.term).toEqual({ kind: 'post-term', givenOn: TODAY });
+    // The rules read 42 weeks and over, never an unknown term.
+    expect(contextFromProfile(profile, { items: [], signs: [] }, TODAY).pregnancy).toEqual({
+      weeksMin: 42,
+      weeksMax: 42,
+      precision: 'estimated',
+    });
+  });
+
+  it('reopens a term past 42 weeks as it was given, and asks again once a week has gone', () => {
+    const post = stored({ pregnant: true, term: { kind: 'post-term', givenOn: '2026-11-01' } });
+    const form = formFromProfile(post, TODAY, 'woman');
+    expect(form).toMatchObject({
+      termKind: 'post-term',
+      keptTerm: { kind: 'post-term', givenOn: '2026-11-01' },
+    });
+    expect(validateForm(form, TODAY, 'woman')).toEqual({});
+    expect(termFromForm(form, TODAY)).toEqual({ kind: 'post-term', givenOn: '2026-11-01' });
+    expect(validateForm(form, '2026-11-09', 'woman')).toEqual({
+      termKind: 'profile.error.postTermOutdated',
+    });
+    // "Still pregnant" again on a term past 42 weeks: the term is given anew.
+    expect(reenterTerm(form)).toMatchObject({ termKind: null, keptTerm: null });
   });
 });
 

@@ -2,11 +2,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fromBase64Url, toBase64Url } from '../domain/code.js';
 import type { HistoryEntry, Profile } from '../domain/types.js';
-import { openVaultOf, verifierOf } from '../test/verifier.js';
+import { openVaultOf, plantWithKeyOf, verifierOf } from '../test/verifier.js';
 import { codeOpened, NoCodeError } from './code-guard.js';
 import { closeAppDb, openAppDb, storeVerifier } from './db.js';
 import { listHistory, recordHistory } from './history.js';
-import { deleteProfile, getProfile, listProfiles, saveProfile } from './profiles.js';
+import {
+  deleteProfile,
+  getProfile,
+  listProfiles,
+  ProfileGoneError,
+  saveProfile,
+} from './profiles.js';
 import { closeVault, LockedError } from './vault.js';
 
 // Profile data is written only while a code is on the phone (code-guard.ts),
@@ -49,6 +55,48 @@ describe('profiles', () => {
     closeAppDb();
 
     expect(await getProfile('a')).toEqual(saved);
+  });
+
+  it('refuses to write back a profile deleted meanwhile, in the same transaction', async () => {
+    const saved = profile('a', '2026-11-04T08:00:00.000Z', { conditions: ['hiv-cotrimoxazole'] });
+    await saveProfile(saved);
+    await saveProfile({ ...saved, pseudonym: 'Awa' }, { existing: true });
+    expect((await getProfile('a'))?.pseudonym).toBe('Awa');
+
+    await deleteProfile('a');
+
+    await expect(saveProfile(saved, { existing: true })).rejects.toBeInstanceOf(ProfileGoneError);
+    expect(await listProfiles()).toEqual([]);
+    expect(await (await openAppDb()).count('profiles')).toBe(0);
+    // A new profile has no record yet: written.
+    await saveProfile(profile('b', '2026-11-04T08:00:00.000Z'));
+    expect((await listProfiles()).map((p) => p.id)).toEqual(['b']);
+  });
+
+  it('never writes a record sealed under a code changed while it was being encrypted', async () => {
+    const saved = profile('a', '2026-11-04T08:00:00.000Z');
+    // The encryption takes a while (a slow phone); the code changes meanwhile.
+    const encrypt = crypto.subtle.encrypt.bind(crypto.subtle);
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const slow = vi.spyOn(crypto.subtle, 'encrypt').mockImplementation(async (...args) => {
+      await held;
+      return encrypt(...args);
+    });
+    const writing = saveProfile(saved);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    // The code changed: its verifier stored and its key opened, as the session does.
+    slow.mockRestore();
+    await storeVerifier(await verifierOf('7392'));
+    await openVaultOf('7392');
+    codeOpened(await verifierOf('7392'));
+    release();
+
+    await expect(writing).rejects.toBeInstanceOf(NoCodeError);
+    expect(await (await openAppDb()).count('profiles')).toBe(0);
+    codeOpened(null);
   });
 
   it('lists the profiles from the oldest, then by id', async () => {
@@ -174,7 +222,7 @@ describe('profiles at rest', () => {
   it('leaves out a profile its code does not open: another code, or a byte changed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await saveProfile(aminata());
-    await openVaultOf('1357');
+    await plantWithKeyOf('1357');
     await saveProfile(profile('b', '2026-11-05T08:00:00.000Z'));
     await openVaultOf('2468');
     await saveProfile(profile('c', '2026-11-06T08:00:00.000Z'));

@@ -26,6 +26,14 @@ function noteOf(state: unknown): ProfileNote | null {
   return null;
 }
 
+/**
+ * A sentence that ends on a pseudonym ending with its own stop ("Awa.") keeps
+ * one stop: "Profil enregistré : Awa.", never "Awa..".
+ */
+function oneStop(text: string): string {
+  return text.replace(/([.!?…])\.$/u, '$1');
+}
+
 /** What the profile screen just did, in words. */
 export function profileNoteText(
   note: ProfileNote,
@@ -33,9 +41,9 @@ export function profileNoteText(
 ): string {
   switch (note.kind) {
     case 'saved':
-      return t('home.profileSaved', { name: note.name });
+      return oneStop(t('home.profileSaved', { name: note.name }));
     case 'deleted':
-      return t('profiles.deleted', { name: note.name });
+      return oneStop(t('profiles.deleted', { name: note.name }));
     case 'deletedMine':
       return t('profile.deletedMine');
   }

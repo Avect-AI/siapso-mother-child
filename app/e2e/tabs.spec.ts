@@ -80,6 +80,152 @@ test('"Quitter" in one tab hides her profile in the other at once', async ({ pag
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });
 
+test('her profile deleted in one tab leaves the other, which can never write it back', async ({
+  page,
+}) => {
+  // Live test round 2 (privacy-offline#0).
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Aminata');
+
+  const other = await secondTab(page);
+  await other.getByRole('link', { name: 'Mon profil' }).click();
+  await other.getByRole('button', { name: 'Supprimer ce profil' }).click();
+  await other.getByRole('button', { name: 'Supprimer le profil' }).click();
+  await expect(other.getByText('Votre profil est supprimé.')).toBeVisible();
+  expect(await storedProfiles(other)).toBe(0);
+
+  // The first tab leaves her form at once: nothing of her stays on screen.
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await expect(page.getByText('Aminata')).toHaveCount(0);
+  await expect(page.getByText('VIH, avec cotrimoxazole')).toHaveCount(0);
+  expect(await storedProfiles(page)).toBe(0);
+  // The id of the profile is never in the storage the tabs share.
+  const marks = await page.evaluate(() => localStorage.getItem('siapso-session-epoch') ?? '');
+  expect(marks).not.toMatch(/erase|quick|exit|lock|profile|-/);
+});
+
+test('a frozen tab that missed a deletion takes the quick exit when it comes back, then the code opens the start', async ({
+  page,
+}) => {
+  // Fix round 1 of PR #61: the token stores no meaning, a missed event is a quick exit.
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  // A tab that hears nothing until it comes back: no channel, no storage event.
+  const frozen = await page.context().newPage();
+  await frozen.addInitScript(() => {
+    Reflect.deleteProperty(window, 'BroadcastChannel');
+    window.addEventListener(
+      'storage',
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
+  });
+  await frozen.goto('/');
+  await unlock(frozen);
+  await frozen.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(frozen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Aminata');
+
+  // The other tab heard only the new tokens of the frozen tab's start and
+  // unlock (it has no channel to say them): it took the quick exit, a moment
+  // after each (it waits for a message first). It then deletes her profile.
+  await page.bringToFront();
+  await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await page.waitForTimeout(1_000);
+  await expect(page.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ouvrir' }).click();
+  await unlock(page);
+  await page.getByRole('link', { name: 'Mon profil' }).click();
+  await page.getByRole('button', { name: 'Supprimer ce profil' }).click();
+  await page.getByRole('button', { name: 'Supprimer le profil' }).click();
+  await expect(page.getByText('Votre profil est supprimé.')).toBeVisible();
+  const token = await page.evaluate(() => localStorage.getItem('siapso-session-epoch'));
+  expect(token).toMatch(/^[0-9a-f]{32}$/);
+
+  // The frozen tab comes back: it cannot tell what happened, so the quick exit.
+  await frozen.bringToFront();
+  await frozen.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(frozen.getByRole('heading', { level: 1, name: 'Carnet' })).toBeVisible();
+  await expect(frozen.getByText('Aminata')).toHaveCount(0);
+  await expect(frozen.getByText('VIH, avec cotrimoxazole')).toHaveCount(0);
+  await frozen.getByRole('button', { name: 'Ouvrir' }).click();
+  await unlock(frozen);
+  await expect(frozen.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+  await frozen.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(frozen.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Moi');
+});
+
+test('in accompanied mode the form of a woman deleted in another tab is left, her HIV situation with it', async ({
+  page,
+}) => {
+  await onboard(page, 'accompanied');
+  await page.getByRole('button', { name: 'Ajouter un profil' }).click();
+  await page.getByRole('textbox', { name: 'Surnom' }).fill('Ndeye');
+  await answer(page, /^Enceinte/, 'Oui').click();
+  await answer(page, 'Terme de la grossesse', 'Je ne sais pas').click();
+  await answer(page, /^Allaite/, 'Non').click();
+  await page.getByText('VIH, avec cotrimoxazole').click();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('link', { name: 'Modifier le profil de Ndeye' }).click();
+  await expect(page.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Ndeye');
+
+  const other = await page.context().newPage();
+  await other.goto('/');
+  await unlock(other);
+  await other.getByRole('link', { name: 'Modifier le profil de Ndeye' }).click();
+  await other.getByRole('button', { name: 'Supprimer ce profil' }).click();
+  await other.getByRole('button', { name: 'Supprimer le profil' }).click();
+  await expect(other.getByText(/^Profil supprimé/)).toBeVisible();
+
+  // The first tab is back on the list, where she is no more; nothing wrote her back.
+  await expect(page.getByRole('heading', { level: 1, name: 'Profils' })).toBeVisible();
+  await expect(page.getByText('Ndeye')).toHaveCount(0);
+  await expect(page.getByText('VIH, avec cotrimoxazole')).toHaveCount(0);
+  expect(await storedProfiles(page)).toBe(0);
+});
+
+test('a code changed in one tab locks the other; the new code opens her profile, the old one nothing', async ({
+  page,
+}) => {
+  // Live test round 2 (privacy-offline#1).
+  await onboard(page, 'woman');
+  await fillHerProfile(page);
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await expect(page.getByText(/^Profil enregistré/)).toBeVisible();
+  const other = await secondTab(page);
+
+  await page.getByRole('link', { name: 'Réglages' }).click();
+  await page.getByRole('link', { name: 'Changer le code' }).click();
+  await page.getByLabel('Code actuel', { exact: true }).fill(CODE);
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByLabel('Nouveau code', { exact: true }).fill('7392');
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByLabel('Le même code', { exact: true }).fill('7392');
+  await page.getByRole('button', { name: 'Enregistrer le code' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Le code est changé' })).toBeVisible({
+    timeout: 20_000,
+  });
+
+  // The other tab asks for the code; the old one opens nothing.
+  await expect(other.getByRole('heading', { level: 1, name: 'Entrez votre code' })).toBeVisible();
+  await other.getByLabel('Code', { exact: true }).fill(CODE);
+  await other.getByRole('button', { name: 'Ouvrir' }).click();
+  await expect(other.getByLabel('Code', { exact: true })).toHaveAccessibleDescription(
+    /^Ce n'est pas le bon code/,
+    { timeout: 15_000 },
+  );
+  await unlock(other, '7392');
+  await other.getByRole('link', { name: 'Mon profil' }).click();
+  await expect(other.getByRole('textbox', { name: 'Surnom' })).toHaveValue('Aminata');
+});
+
 test('an erase in one tab sends the other to the welcome', async ({ page }) => {
   await onboard(page, 'woman');
   await fillHerProfile(page);
@@ -126,6 +272,14 @@ async function deafTab(page: Page): Promise<Page> {
     };
     Storage.prototype.getItem = refuse;
     Storage.prototype.setItem = refuse;
+    // Frozen: not even the storage event of another tab reaches it.
+    window.addEventListener(
+      'storage',
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      true,
+    );
   });
   return deaf;
 }

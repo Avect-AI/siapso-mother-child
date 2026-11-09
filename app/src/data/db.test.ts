@@ -4,16 +4,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { verifierOf } from '../test/verifier.js';
 import {
   closeAppDb,
+  eraseProfilesAndCode,
   getStoredLockout,
   getStoredPack,
   getStoredSettings,
   getStoredVerifier,
   openAppDb,
+  readTabMarks,
   restorePreviousPack,
   storeLockout,
   storePack,
   storeSettings,
   storeVerifier,
+  writeTabMark,
 } from './db.js';
 
 const pack = (version: string) => ({ version }) as unknown as Pack;
@@ -293,5 +296,18 @@ describe('code and lockout', () => {
 
     expect(await getStoredVerifier()).toBeUndefined();
     expect(await getStoredLockout()).toBeUndefined();
+  });
+});
+
+describe('the copy of the tabs epoch', () => {
+  it('is one token, replaced at each write, and goes at the erase with the code', async () => {
+    await writeTabMark('a'.repeat(32));
+    await writeTabMark('b'.repeat(32));
+    expect(await readTabMarks()).toBe('b'.repeat(32));
+
+    await storeVerifier(await verifierOf('2468'));
+    await eraseProfilesAndCode();
+
+    expect(await readTabMarks()).toBeUndefined();
   });
 });

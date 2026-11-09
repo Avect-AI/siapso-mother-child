@@ -1415,10 +1415,11 @@ a {
  * keypad, a wrong code said included.
  */
 @media (max-height: 45rem) {
+  /* Offline, "Hors ligne" in the band takes a few pixels: the steps give them back. */
   .code-setup,
   .unlock {
     gap: var(--space-4);
-    padding-top: var(--space-3);
+    padding-top: var(--space-2);
   }
 
   .code-setup h1,
@@ -1427,7 +1428,7 @@ a {
   }
 
   .code-form {
-    gap: var(--space-4);
+    gap: var(--space-3);
   }
 
   .code-input {
@@ -2249,6 +2250,37 @@ html:has(.sticky-action:not(.sticky-action--off)) {
 .signs__all,
 .signs__continue {
   width: 100%;
+}
+
+/* Past 42 weeks and still pregnant: the advice, then who to call. */
+.post-term {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+/* "Aucun" tapped while signs are ticked: the question, then its two answers. */
+.signs__confirm,
+.inline-question {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.signs__confirm p,
+.inline-question p {
+  font-weight: var(--font-weight-strong);
+}
+
+.signs__confirm-actions,
+.inline-question__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
 }
 
 /* Read by a screen reader, not shown: a live region that only speaks. */

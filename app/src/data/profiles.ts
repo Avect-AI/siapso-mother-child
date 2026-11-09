@@ -8,7 +8,7 @@ import { isSealed, UnsealError } from '../domain/crypto.js';
 import type { Profile } from '../domain/types.js';
 import { requireCode } from './code-guard.js';
 import { openAppDb, type SealedProfile } from './db.js';
-import { openRecord, profileScope, sealRecord, vaultKey } from './vault.js';
+import { openRecord, profileScope, sealRecord, vaultFingerprint, vaultKey } from './vault.js';
 
 function byCreation(a: Profile, b: Profile): number {
   if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;
@@ -59,15 +59,41 @@ export async function getProfile(id: string): Promise<Profile | undefined> {
 }
 
 /**
+ * A profile saved again after it was deleted (in another tab, or from a form
+ * left open): it is not written back.
+ */
+export class ProfileGoneError extends Error {
+  constructor() {
+    super('This profile was deleted from this phone: it is not written back');
+    this.name = 'ProfileGoneError';
+  }
+}
+
+/**
  * Stores `profile` sealed, replacing the one with the same id; NoCodeError
  * while no code is on the phone, LockedError while the code is not open here.
+ * `existing`: the profile was read from storage (an edit), so it is written
+ * only while its record is still there, checked in the same transaction
+ * (ProfileGoneError otherwise, nothing written): a profile deleted meanwhile
+ * never comes back. A new profile has no record until its first save.
  */
-export async function saveProfile(profile: Profile): Promise<void> {
+export async function saveProfile(
+  profile: Profile,
+  { existing = false }: { existing?: boolean } = {},
+): Promise<void> {
   // Sealed before the transaction: a transaction cannot wait for WebCrypto.
-  const sealed = await sealRecord(profile, profileScope(profile.id));
+  // Written only while the code it was sealed under is the one stored.
+  const { sealed, fingerprint } = await sealRecord(profile, profileScope(profile.id));
   const tx = (await openAppDb()).transaction(['profiles', 'settings'], 'readwrite');
-  await requireCode(tx);
-  await tx.objectStore('profiles').put({ id: profile.id, sealed });
+  await requireCode(tx, fingerprint);
+  const profiles = tx.objectStore('profiles');
+  if (existing && (await profiles.getKey(profile.id)) === undefined) {
+    // Abandoned on purpose: its end is not an error to report.
+    tx.done.catch(() => undefined);
+    tx.abort();
+    throw new ProfileGoneError();
+  }
+  await profiles.put({ id: profile.id, sealed });
   await tx.done;
 }
 
@@ -79,9 +105,10 @@ export async function saveProfile(profile: Profile): Promise<void> {
  * here (LockedError).
  */
 export async function deleteProfile(id: string): Promise<void> {
-  vaultKey();
+  // Only with the code whose key is open here.
+  const fingerprint = vaultFingerprint();
   const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
-  await requireCode(tx);
+  await requireCode(tx, fingerprint);
   const history = tx.objectStore('history');
   const entries = await history.index('profileId').getAllKeys(id);
   await Promise.all([

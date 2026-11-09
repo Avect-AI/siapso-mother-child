@@ -37,6 +37,7 @@ import { useApp, withTimeout } from '../state/app-state.js';
 import { readCheckProfile } from '../state/check-profile.js';
 import { useCheck } from '../state/check-state.js';
 import { inSession } from '../state/entry-state.js';
+import { useSession } from '../state/session.js';
 import { Button } from '../ui/Button.js';
 import { Concealed } from '../ui/Concealed.js';
 import { DangerBanner } from '../ui/DangerBanner.js';
@@ -44,8 +45,10 @@ import { LevelIcon } from '../ui/LevelIcon.js';
 import { Notice } from '../ui/Notice.js';
 import { ResultCard } from '../ui/ResultCard.js';
 import { backToCheck, flowState } from './check-flow.js';
+import { QUICK_PATH } from './edit-route.js';
 import { OutdatedTerm } from './OutdatedTerm.js';
 import { Typed } from './Typed.js';
+import { PostTermAdvice } from './PostTermAdvice.js';
 import { CALL_PATH } from './Referral.js';
 
 type Loaded =
@@ -96,6 +99,7 @@ function ProfileLines({
     const baby = babyLine(profile, today);
     lines.push(t(baby.key, baby.vars));
   }
+  const postTerm = read?.term.postTerm === true;
   if (lines.length === 0 && term.status !== 'clock') return null;
   return (
     <div className="result__profile">
@@ -105,6 +109,8 @@ function ProfileLines({
           {t(mode === 'accompanied' ? 'result.termClockAccompanied' : 'result.termClockWoman')}
         </Notice>
       ) : null}
+      {/* Past 42 weeks and still pregnant: to be seen today, whatever the products. */}
+      {postTerm ? <PostTermAdvice mode={mode} /> : null}
       {lines.map((line) => (
         <p key={line} className="meta">
           {line}
@@ -535,7 +541,8 @@ export function Result() {
   const [entry] = useState(flowState);
   const [loaded, setLoaded] = useState<Loaded>({ status: 'loading' });
   const mode: Mode = settings.mode ?? 'woman';
-  const { profileId, items, signs, signsGiven, quick } = check;
+  const { profileId, items, signs, signsGiven, quick, forgetQuick } = check;
+  const { warnBeforeLock } = useSession();
   // A passer-by looked up without saving (accompanied mode only): her result
   // is shown, never kept.
   const passerBy = mode === 'accompanied' && quick !== null && quick.id === profileId;
@@ -626,6 +633,17 @@ export function Result() {
       return 'failed';
     }
   }, [evaluated, pack, mode, lang, t, check.writtenOf, check.saidOf]);
+
+  // A danger on screen is warned about before the auto-lock, as answers not
+  // saved are: someone without the code would lose the instruction.
+  const danger = view !== null && view !== 'failed' && view.danger;
+  useEffect(() => {
+    if (!danger) return;
+    warnBeforeLock(true);
+    return () => {
+      warnBeforeLock(false);
+    };
+  }, [danger, warnBeforeLock]);
 
   // Each check once in the history of this visit (not on every opening of the
   // screen), on the phone only; a failure to keep it never hides the result.
@@ -794,6 +812,19 @@ export function Result() {
           {t('result.backToList')}
         </Button>
       )}
+      {/* A passer-by served: she is let go, and the questions open for the next one. */}
+      {passerBy && ready !== null ? (
+        <Button
+          variant="secondary"
+          className="result__next"
+          onClick={() => {
+            forgetQuick();
+            navigate(QUICK_PATH, { replace: true });
+          }}
+        >
+          {t('result.nextPasserBy')}
+        </Button>
+      ) : null}
     </main>
   );
 }

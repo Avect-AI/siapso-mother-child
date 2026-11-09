@@ -1,45 +1,64 @@
 // SPDX-License-Identifier: MIT
 // The tabs of the app on one phone tell each other when the session exits,
 // locks or is erased, so that "Quitter" in one tab hides every tab and an
-// erase sends every tab back to the welcome; and when a code was made or a
-// wrong code counted, so that a tab on the welcome moves to the code screen
-// and a code screen says the right count.
+// erase sends every tab back to the welcome; when a profile was deleted, so
+// that no other tab keeps it on screen or writes it back; and when a code was
+// made or a wrong code counted, so that a tab on the welcome moves to the
+// code screen and a code screen says the right count.
 //
-// Several ways, because a tab may miss a message: a BroadcastChannel reaches
-// the other tabs at once; an epoch (one random mark per kind of event, never
-// anything about a profile) is kept in local storage, whose change also
-// reaches the other tabs (the storage event), and a copy in IndexedDB; every
-// tab reads both again when it gets the focus, shows again or comes back from
-// the back-forward cache, so a tab that was frozen or cached when the message
-// went out still applies it before anyone reads it. Only the strongest event
-// missed is applied (an erase covers an exit, an exit covers a lock), and an
-// event is applied once, whichever way it came.
+// What happened, and the id of a deleted profile, travel only on the
+// BroadcastChannel, in memory: a tab that hears it does exactly that.
+//
+// For a tab that may miss the message (frozen, kept in the back-forward
+// cache, or a browser with no channel), one random epoch token is kept in
+// local storage, whose change also reaches the other tabs (the storage
+// event), and a copy in IndexedDB. The token says nothing: it changes at every
+// event and also at every start and unlock of a tab (refresh), so neither its
+// value nor its change tells what was done. A tab that finds a token it did
+// not hear about (on the storage event, or when it gets the focus, shows
+// again or comes back from the back-forward cache) knows only that something
+// happened, and takes the safest way (onMissed): the session exits as with
+// "Quitter" (locked, memory forgotten, the neutral screen) and reads the
+// stored code again. A tab that hears the channel waits a moment before it
+// reads a token, so the channel's message, which may come after the storage
+// event, tells it first.
 //
 // Nothing here is trusted alone: the session re-reads the stored code before
-// it follows an erase or a new code (session.tsx), so a forged mark or
-// message cannot fake them.
+// it follows an erase or a new code (session.tsx), and a screen reads its
+// profile again before it leaves for a deletion, so a forged token or message
+// cannot fake them; a forged token only locks.
 
-export type TabEvent = 'lock' | 'quick-exit' | 'erase';
+export type TabEvent = 'lock' | 'quick-exit' | 'erase' | 'profile-deleted';
 
 export const SESSION_CHANNEL = 'siapso-session';
 export const EPOCH_KEY = 'siapso-session-epoch';
+/**
+ * How long a tab that hears the channel waits before it reads a token it
+ * found changed: the channel's message tells it first when it comes.
+ */
+export const CHECK_DELAY_MS = 250;
 
-/** Strongest first. */
-const EVENTS: readonly TabEvent[] = ['erase', 'quick-exit', 'lock'];
+const EVENTS: readonly TabEvent[] = ['erase', 'quick-exit', 'lock', 'profile-deleted'];
 /** Messages that only ask to read the stored code and wrong codes again. */
 const RECHECKS = ['lockout', 'code'] as const;
+/** A new token, with no event: a tab started or unlocked. */
+const REFRESH = 'refresh';
+const TOKEN = /^[0-9a-f]{32}$/;
 
-export type Marks = Partial<Record<TabEvent, string>>;
-
-/** The copy of the epoch in IndexedDB (data/db.ts): read and added to. */
+/** The copy of the epoch token in IndexedDB (data/db.ts): read and written. */
 export interface MarkStore {
   read: () => Promise<unknown>;
-  add: (event: TabEvent, mark: string) => Promise<void>;
+  write: (token: string) => Promise<void>;
 }
 
 export interface TabLink {
-  /** Tells the other tabs, now and when they come back. */
-  announce: (event: TabEvent) => void;
+  /**
+   * Tells the other tabs, now (on the channel, with the id of a deleted
+   * profile) and when they come back (a new token).
+   */
+  announce: (event: TabEvent, id?: string) => void;
+  /** A new token with no event (a start, an unlock), so a token's change says nothing. */
+  refresh: () => void;
   /** Tells the other tabs that the wrong codes changed. */
   announceLockout: () => void;
   /** Tells the other tabs that a code was made. */
@@ -47,87 +66,93 @@ export interface TabLink {
   close: () => void;
 }
 
-function isTabEvent(value: unknown): value is TabEvent {
-  return EVENTS.includes(value as TabEvent);
+/** A new random token: 16 random bytes, in hex. */
+function newToken(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
 }
 
-/** The marks in `value`; none when it holds none. */
-function marksOf(value: unknown): Marks {
-  const marks: Marks = {};
-  if (typeof value !== 'object' || value === null) return marks;
-  for (const event of EVENTS) {
-    const mark = (value as Record<string, unknown>)[event];
-    if (typeof mark === 'string') marks[event] = mark;
-  }
-  return marks;
+/** The token in `value`; null when it holds none (an older version's marks included). */
+function tokenOf(value: unknown): string | null {
+  return typeof value === 'string' && TOKEN.test(value) ? value : null;
 }
 
-/** The marks in local storage; none when it cannot be read. */
-function localMarks(): Marks {
+/** The token in local storage; null when there is none or it cannot be read. */
+function localToken(): string | null {
   try {
-    return marksOf(JSON.parse(localStorage.getItem(EPOCH_KEY) ?? '{}'));
+    return tokenOf(localStorage.getItem(EPOCH_KEY));
   } catch {
-    return {};
+    return null;
   }
-}
-
-/** The strongest event whose mark changed since `seen`; null when none (a mark gone is no event). */
-function missedEvent(seen: Marks, now: Marks): { event: TabEvent; mark: string } | null {
-  for (const event of EVENTS) {
-    const mark = now[event];
-    if (mark !== undefined && mark !== seen[event]) return { event, mark };
-  }
-  return null;
 }
 
 /**
  * Joins the other tabs of the app: `onEvent` runs when another tab exits,
- * locks or erases (at once, or when this tab comes back if it missed it);
- * `onRecheck` when the stored code or the wrong codes may have changed
- * (another tab made a code or counted a try, or this tab comes back).
+ * locks, erases or deletes a profile, told on the channel (with the id of a
+ * profile deleted); `onMissed` when this tab finds that something happened it
+ * did not hear about; `onRecheck` when the stored code or the wrong codes may
+ * have changed (another tab made a code or counted a try, or this tab comes
+ * back).
  */
 export function joinTabs({
   onEvent,
+  onMissed,
   onRecheck,
   marks: store,
 }: {
-  onEvent: (event: TabEvent) => void;
+  onEvent: (event: TabEvent, id?: string) => void;
+  onMissed: () => void;
   onRecheck: () => void;
-  /** The copy of the epoch in IndexedDB; none in a test that leaves it out. */
+  /** The copy of the token in IndexedDB; none in a test that leaves it out. */
   marks?: MarkStore;
 }): TabLink {
-  let seenLocal = localMarks();
-  let seenStored: Marks | null = null;
-  /** The marks of the events applied here or announced from here: never applied twice. */
+  /** The tokens of the events and refreshes heard here or written from here. */
   const known = new Set<string>();
+  const startLocal = localToken();
+  if (startLocal !== null) known.add(startLocal);
+  /** The copy in IndexedDB as first read: what was there before this tab is no event. */
+  let storedRead = false;
   let open = true;
-  // Very old browsers have no BroadcastChannel: the epoch alone.
+  let pending: ReturnType<typeof setTimeout> | undefined;
+  // Very old browsers have no BroadcastChannel: the token alone.
   const channel =
     typeof BroadcastChannel === 'function' ? new BroadcastChannel(SESSION_CHANNEL) : null;
 
-  const apply = (missed: { event: TabEvent; mark: string } | null) => {
-    if (missed === null || known.has(missed.mark) || !open) return;
-    known.add(missed.mark);
-    onEvent(missed.event);
+  /** A token found: missed when this tab never heard of it. */
+  const found = (token: string | null) => {
+    if (token === null || known.has(token) || !open) return;
+    known.add(token);
+    onMissed();
   };
   const readStored = () => {
     void store?.read().then(
       (value) => {
-        const now = marksOf(value);
-        const missed = seenStored === null ? null : missedEvent(seenStored, now);
-        seenStored = now;
-        apply(missed);
+        const token = tokenOf(value);
+        if (!storedRead) {
+          storedRead = true;
+          if (token !== null) known.add(token);
+          return;
+        }
+        found(token);
       },
       () => {
         // IndexedDB unreadable: the other ways remain.
       },
     );
   };
-  const checkLocal = () => {
-    const now = localMarks();
-    const missed = missedEvent(seenLocal, now);
-    seenLocal = now;
-    apply(missed);
+  const check = () => {
+    found(localToken());
+    readStored();
+  };
+  /** With a channel, its message comes first; without one, the token is all there is. */
+  const checkSoon = () => {
+    if (channel === null) {
+      check();
+      return;
+    }
+    clearTimeout(pending);
+    pending = setTimeout(check, CHECK_DELAY_MS);
   };
 
   const onMessage = (message: MessageEvent<unknown>) => {
@@ -137,21 +162,21 @@ export function joinTabs({
       return;
     }
     if (typeof data !== 'object' || data === null) return;
-    const { event, mark } = data as Record<string, unknown>;
-    if (!isTabEvent(event) || typeof mark !== 'string') return;
-    seenLocal = localMarks();
-    apply({ event, mark });
+    const { event, mark, id } = data as Record<string, unknown>;
+    if (typeof mark !== 'string' || !open) return;
+    known.add(mark);
+    if (event === REFRESH || !EVENTS.includes(event as TabEvent)) return;
+    onEvent(event as TabEvent, typeof id === 'string' ? id : undefined);
   };
   const comeBack = () => {
-    checkLocal();
-    readStored();
+    checkSoon();
     onRecheck();
   };
   const onVisibility = () => {
     if (document.visibilityState === 'visible') comeBack();
   };
   const onStorage = (event: StorageEvent) => {
-    if (event.key === EPOCH_KEY) checkLocal();
+    if (event.key === EPOCH_KEY) checkSoon();
   };
 
   channel?.addEventListener('message', onMessage);
@@ -161,21 +186,27 @@ export function joinTabs({
   document.addEventListener('visibilitychange', onVisibility);
   readStored();
 
+  /** A new token, written everywhere, and said on the channel with what it stands for. */
+  const write = (message: Record<string, unknown>) => {
+    const token = newToken();
+    known.add(token);
+    try {
+      localStorage.setItem(EPOCH_KEY, token);
+    } catch {
+      // No local storage (a private mode, a full phone): the other ways.
+    }
+    store?.write(token).catch(() => {
+      // IndexedDB refused: the other ways.
+    });
+    channel?.postMessage({ ...message, mark: token });
+  };
+
   return {
-    announce(event) {
-      const mark = crypto.randomUUID();
-      known.add(mark);
-      try {
-        localStorage.setItem(EPOCH_KEY, JSON.stringify({ ...localMarks(), [event]: mark }));
-      } catch {
-        // No local storage (a private mode, a full phone): the other ways.
-      }
-      seenLocal = localMarks();
-      if (seenStored !== null) seenStored = { ...seenStored, [event]: mark };
-      store?.add(event, mark).catch(() => {
-        // IndexedDB refused: the other ways.
-      });
-      channel?.postMessage({ event, mark });
+    announce(event, id) {
+      write(id === undefined ? { event } : { event, id });
+    },
+    refresh() {
+      write({ event: REFRESH });
     },
     announceLockout() {
       channel?.postMessage('lockout');
@@ -185,6 +216,7 @@ export function joinTabs({
     },
     close() {
       open = false;
+      clearTimeout(pending);
       channel?.removeEventListener('message', onMessage);
       channel?.close();
       window.removeEventListener('focus', comeBack);

@@ -167,4 +167,20 @@ describe('Settings', () => {
     expect(screen.queryByRole('button', { name: 'Changer de mode' })).toBeNull();
     expect(await getStoredSettings()).toMatchObject({ lang: 'fr', mode: 'woman' });
   });
+
+  it('gives the focus to its heading when a lock starts it again, the focus lost with the old one', async () => {
+    const user = userEvent.setup();
+    const session = probeSession();
+    await renderApp({ settings: woman, hash: '#/settings', children: session.element });
+    const mode = await screen.findByRole('group', { name: "Qui utilise l'application ?" });
+    await user.click(within(mode).getByRole('radio', { name: "J'accompagne des femmes" }));
+
+    act(() => {
+      session.current().lock();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: 'Réglages' })).toHaveFocus();
+    });
+  });
 });

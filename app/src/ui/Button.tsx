@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'quiet';
 
@@ -7,6 +7,8 @@ export type ButtonProps = {
   /** Required on purpose: no default, so a screen never gets an extra primary by accident. */
   variant: ButtonVariant;
   children: ReactNode;
+  /** For a screen that gives this button the focus. */
+  ref?: Ref<HTMLButtonElement>;
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 /**

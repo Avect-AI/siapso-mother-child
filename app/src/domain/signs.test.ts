@@ -52,10 +52,10 @@ describe('groupsForProfile', () => {
   });
 
   it('asks about every group when the baby may be born: a possibly past term', () => {
-    // An unknown term given 40 days ago, 42 weeks given today.
+    // An unknown term given 40 days ago, 42 weeks given yesterday.
     for (const term of [
       { kind: 'unknown', givenOn: '2026-09-25' },
-      { kind: 'weeks', weeks: 42, givenOn: TODAY },
+      { kind: 'weeks', weeks: 42, givenOn: '2026-11-03' },
     ] as const) {
       expect(groupsForProfile(profile({ pregnant: true, term }), TODAY), term.kind).toEqual(
         SIGN_GROUPS,

@@ -45,7 +45,6 @@ import {
 import { navigate } from 'wouter/use-hash-location';
 import { CodeExistsError, codeFingerprint, codeOpened, NoCodeError } from '../data/code-guard.js';
 import {
-  addTabMark,
   claimCodeTry,
   closeAppDb,
   eraseProfilesAndCode,
@@ -54,6 +53,7 @@ import {
   getStoredVerifier,
   readTabMarks,
   storeLockout,
+  writeTabMark,
 } from '../data/db.js';
 import { forgetVisit } from '../data/history.js';
 import { sealStoredData, storeNewCode, type SealOptions } from '../data/migration.js';
@@ -106,6 +106,32 @@ export type UnlockResult =
  */
 export type CodeMade = 'made' | 'exists' | 'unsaved' | 'cancelled';
 
+/**
+ * The current code checked before a change. 'ok': it is the code stored, and
+ * its key is held for the change. 'wrong': it is not (counted as a wrong
+ * code). 'locked': a wait after wrong codes is running, nothing was tried.
+ * 'cancelled': the session locked meanwhile or no code is open here.
+ */
+export type CodeCheck = 'ok' | 'wrong' | 'locked' | 'cancelled';
+
+/**
+ * 'changed': the new code is stored and opens every record, the old one no
+ * more. 'failed': the phone did not keep the change: the old code still opens
+ * everything. 'cancelled': no current code was checked just before (or the
+ * session locked since): nothing changed.
+ */
+export type CodeChange = 'changed' | 'failed' | 'cancelled';
+
+/**
+ * A profile deleted in another tab: its id when the message said it, null
+ * when a tab only found that something happened (it missed the message);
+ * `count` tells one deletion from the next.
+ */
+export interface DeletedProfile {
+  id: string | null;
+  count: number;
+}
+
 /** A screen the session locked, held in memory (never in the address) until the code is given. */
 export interface HeldScreen {
   path: string;
@@ -145,8 +171,27 @@ export interface Session {
    * once storage shows that code stored (see CodeMade).
    */
   createCode: (code: string) => Promise<CodeMade>;
+  /**
+   * Checks the current code before a change, as its own try (counted, as at
+   * the code screen): on 'ok' its key is held, in memory, for changeCode.
+   */
+  confirmCode: (current: string) => Promise<CodeCheck>;
+  /**
+   * Changes the code once the current one was checked (confirmCode): every
+   * data key is wrapped again for the `next` code and its verifier stored, in
+   * one transaction (CodeChange). The other tabs lock and ask for the new code.
+   */
+  changeCode: (next: string) => Promise<CodeChange>;
   /** Locks this tab and every other tab of the app. */
   lock: () => void;
+  /**
+   * Tells the other tabs that this profile was deleted (its id on the channel
+   * only, never stored): they forget its list and its answers not saved, and
+   * leave its screens.
+   */
+  announceProfileDeleted: (id: string) => void;
+  /** The last profile deleted in another tab, null when none was. */
+  deletedProfile: DeletedProfile | null;
   /**
    * Locks at once, here and in every other tab, forgets the check in progress
    * and the danger signs ticked, and puts the neutral screen on the history
@@ -181,10 +226,20 @@ export interface Session {
   /** Drops the answers kept, unless they are those of the screen `key` (the one shown). */
   dropDraft: (key: string) => void;
   /**
-   * The auto-lock comes in LOCK_WARNING_MS while a form has answers not saved:
-   * the screen says so, and a touch (or `touch`) puts it off.
+   * The auto-lock comes in LOCK_WARNING_MS while a form has answers not saved,
+   * or a danger result is on screen (warnBeforeLock): the screen says so, and
+   * a touch (or `touch`) puts it off.
    */
   lockSoon: boolean;
+  /**
+   * A screen that must not go without a word warns before the auto-lock too
+   * (a danger result: someone without the code would lose the instruction).
+   */
+  warnBeforeLock: (on: boolean) => void;
+  /** A lock let a passer-by go, with her answers: the next screen says so once. */
+  passerByLetGo: boolean;
+  /** The screen said it: not said again. */
+  passerByNoted: () => void;
 }
 
 export interface SessionOptions {
@@ -229,7 +284,7 @@ export function SessionProvider({
   startUnlocked = false,
 }: SessionOptions & { children: ReactNode }) {
   const { settings, setSettings, storageTimeoutMs } = useApp();
-  const { reset, forgetOthers, forgetQuick, quick, profileId: checkProfileId } = useCheck();
+  const { reset, forget, forgetOthers, forgetQuick, quick, profileId: checkProfileId } = useCheck();
   // Whether the check on screen is a passer-by's, read by the lock.
   const passerBy = useRef(false);
   useEffect(() => {
@@ -242,7 +297,21 @@ export function SessionProvider({
   const [codeRefused, setCodeRefused] = useState(false);
   const [epoch, setEpoch] = useState(epochToken);
   const [lockSoon, setLockSoon] = useState(false);
+  const [deletedProfile, setDeletedProfile] = useState<DeletedProfile | null>(null);
+  const [passerByLetGo, setPasserByLetGo] = useState(false);
+  /** A danger result on screen: warned about before the auto-lock. */
+  const attention = useRef(false);
   const verifier = useRef<CodeVerifier | null>(null);
+  /**
+   * The current code just checked before a change (confirmCode): the key it
+   * gives and the code it opened, in memory only, forgotten at every lock and
+   * once the change is tried.
+   */
+  const confirmed = useRef<{
+    fingerprint: string;
+    wrappingKey: CryptoKey;
+    closings: number;
+  } | null>(null);
   const failures = useRef<LockoutState>(NO_LOCKOUT);
   const key = useRef<CryptoKey | null>(null);
   const held = useRef<HeldScreen | null>(null);
@@ -256,6 +325,8 @@ export function SessionProvider({
   /** Counts the locks, exits, erases and other codes: an unlock under way when one comes opens nothing. */
   const closings = useRef(0);
   const tabs = useRef<TabLink | null>(null);
+  /** The page's fresh token is written once, when the tabs are first joined. */
+  const started = useRef(false);
 
   useEffect(() => {
     let live = true;
@@ -324,12 +395,16 @@ export function SessionProvider({
   /** Opens the session with the code of `opened`: this tab writes with that code only. */
   const open = useCallback((material: CryptoKey, opened: CodeVerifier) => {
     key.current = material;
-    openVault(material);
+    // The key and the code it comes from, together: a record sealed with it is
+    // written only while that code is stored (data/vault.ts).
+    openVault(material, codeFingerprint(opened));
     codeOpened(opened);
     holdNothing.current = false;
     setExited(false);
     setCodeRefused(false);
     setStatus('unlocked');
+    // A fresh token at every unlock: its change says nothing (tab-sync.ts).
+    tabs.current?.refresh();
   }, []);
 
   /** A new epoch: what a profile left on an entry and the danger signs ticked are no longer read. */
@@ -345,6 +420,9 @@ export function SessionProvider({
    * screen stays with the screen held.
    */
   const forgetAtLock = useCallback(() => {
+    // Her answers (typed, or used for a check) go: the next screen says so once.
+    const typed = draft.current?.key === PASSER_BY_DRAFT && draft.current.unsaved;
+    if (passerBy.current || typed) setPasserByLetGo(true);
     if (passerBy.current) holdNothing.current = true;
     if (draft.current?.key === PASSER_BY_DRAFT) draft.current = null;
     forgetOthers();
@@ -358,6 +436,7 @@ export function SessionProvider({
   const lockHere = useCallback(() => {
     closings.current += 1;
     key.current = null;
+    confirmed.current = null;
     closeVault();
     setLockSoon(false);
     renewEpoch();
@@ -546,6 +625,8 @@ export function SessionProvider({
     newVisit();
     held.current = null;
     draft.current = null;
+    // "Quitter" or the erase: nothing of the visit is said afterwards.
+    setPasserByLetGo(false);
   }, [reset]);
 
   /** The quick exit in this tab: locked, memory forgotten, the neutral screen on the entry. */
@@ -566,6 +647,7 @@ export function SessionProvider({
   const forgetAll = useCallback(() => {
     closings.current += 1;
     key.current = null;
+    confirmed.current = null;
     closeVault();
     setLockSoon(false);
     verifier.current = null;
@@ -688,13 +770,35 @@ export function SessionProvider({
     await setSettings({ mode: null, onboarded: false });
   }, [forgetAll, setSettings, storageTimeoutMs]);
 
+  /**
+   * A profile deleted in another tab: its list goes, and the answers typed for
+   * it and not saved (for any saved profile when the id is not known); the
+   * screens that show it leave once they find it gone (state/profile-gone.ts).
+   */
+  const followDeletion = useCallback(
+    (id: string | undefined) => {
+      if (id !== undefined) forget(id);
+      const kept = draft.current?.key;
+      const ofSaved =
+        kept !== undefined &&
+        kept.startsWith('profile:') &&
+        kept !== 'profile:new' &&
+        (id === undefined || kept === `profile:${id}` || kept === 'profile:mine');
+      if (ofSaved) draft.current = null;
+      setDeletedProfile((before) => ({ id: id ?? null, count: (before?.count ?? 0) + 1 }));
+    },
+    [forget],
+  );
+
   /** What another tab did, done here too (never told again); an erase only once storage shows it. */
   const followTab = useCallback(
-    (event: TabEvent) => {
+    (event: TabEvent, id?: string) => {
       if (event === 'erase') {
         void syncCode();
       } else if (event === 'quick-exit') {
         exitHere();
+      } else if (event === 'profile-deleted') {
+        followDeletion(id);
       } else {
         lockHere();
         held.current = null;
@@ -702,7 +806,113 @@ export function SessionProvider({
         holdNothing.current = true;
       }
     },
-    [exitHere, lockHere, syncCode],
+    [exitHere, followDeletion, lockHere, syncCode],
+  );
+
+  /**
+   * Something happened in another tab that this one did not hear (it was
+   * frozen, cached, or has no channel): it cannot tell what, so it takes the
+   * safest way. The quick exit (locked, memory forgotten, the neutral screen),
+   * the stored code read again (an erase sends it to the welcome, another code
+   * is asked), and its profiles read again once the code opens them.
+   */
+  const followMissed = useCallback(() => {
+    exitHere();
+    void syncCode();
+    followDeletion(undefined);
+  }, [exitHere, followDeletion, syncCode]);
+
+  const announceProfileDeleted = useCallback((id: string) => {
+    tabs.current?.announce('profile-deleted', id);
+  }, []);
+
+  /**
+   * Checks the current code before a change (CodeCheck), as its own try:
+   * claimed (counted) before it is worked out, as at the code screen. On 'ok'
+   * its key is held in memory for changeCode, until a lock or the change.
+   */
+  const confirmCode = useCallback(
+    (current: string): Promise<CodeCheck> => {
+      confirmed.current = null;
+      const since = closings.current;
+      return aloneAmongTabs(async (): Promise<CodeCheck> => {
+        // Shown behind the code only (App.tsx): a code is open here.
+        const stored = verifier.current;
+        if (stored === null) return 'cancelled';
+        const claimed = await claim();
+        failures.current = claimed.after;
+        if (!claimed.allowed) {
+          setLockout(claimed.before);
+          return 'locked';
+        }
+        const opened = await openCode(current, stored);
+        if (opened === null || opened.wrappingKey === null) {
+          // Counted already, in storage, by the claim.
+          setLockout(claimed.after);
+          return 'wrong';
+        }
+        keepLockout(NO_LOCKOUT);
+        if (closings.current !== since) return 'cancelled';
+        confirmed.current = {
+          fingerprint: codeFingerprint(stored),
+          wrappingKey: opened.wrappingKey,
+          closings: closings.current,
+        };
+        return 'ok';
+      });
+    },
+    [claim, keepLockout],
+  );
+
+  /**
+   * Changes the code (CodeChange), once the current one was checked
+   * (confirmCode): the records' data keys are wrapped for the new key and its
+   * verifier stored, in one transaction (data/migration.ts); the old key is
+   * forgotten. When the write fails, what storage holds decides: the old
+   * verifier still stored means nothing changed.
+   */
+  const changeCode = useCallback(
+    (next: string): Promise<CodeChange> => {
+      const held = confirmed.current;
+      confirmed.current = null;
+      const since = closings.current;
+      return aloneAmongTabs(async (): Promise<CodeChange> => {
+        const stored = verifier.current;
+        if (
+          held === null ||
+          stored === null ||
+          held.closings !== since ||
+          held.fingerprint !== codeFingerprint(stored)
+        ) {
+          return 'cancelled';
+        }
+        const keys = await createCodeKeys(next);
+        if (closings.current !== since) return 'cancelled';
+        try {
+          await sealData({
+            current: { fingerprint: held.fingerprint, wrappingKey: held.wrappingKey },
+            next: keys,
+          });
+        } catch (failure) {
+          // The write may have committed anyway: storage decides.
+          const now = await readVerifierAgain();
+          if (now === null || codeFingerprint(now) !== codeFingerprint(keys.verifier)) {
+            console.warn('Code not changed on this device', failure);
+            return 'failed';
+          }
+        }
+        verifier.current = keys.verifier;
+        // The other tabs hold the old code: they lock and ask for the new one.
+        tabs.current?.announceCode();
+        if (closings.current !== since) {
+          codeOpened(keys.verifier);
+          return 'changed';
+        }
+        open(keys.wrappingKey, keys.verifier);
+        return 'changed';
+      });
+    },
+    [open, readVerifierAgain, sealData],
   );
 
   /** The stored code and wrong codes may have changed: read both again. */
@@ -714,15 +924,21 @@ export function SessionProvider({
   useEffect(() => {
     const link = joinTabs({
       onEvent: followTab,
+      onMissed: followMissed,
       onRecheck: recheck,
-      marks: { read: readTabMarks, add: addTabMark },
+      marks: { read: readTabMarks, write: writeTabMark },
     });
     tabs.current = link;
+    // A fresh token once at the start of the page: its presence says nothing.
+    if (!started.current) {
+      started.current = true;
+      link.refresh();
+    }
     return () => {
       link.close();
       if (tabs.current === link) tabs.current = null;
     };
-  }, [followTab, recheck]);
+  }, [followTab, followMissed, recheck]);
   const touch = useCallback(() => {
     restartIdle.current();
   }, []);
@@ -758,6 +974,15 @@ export function SessionProvider({
     if (draft.current?.key !== key) draft.current = null;
   }, []);
 
+  const warnBeforeLock = useCallback((on: boolean) => {
+    attention.current = on;
+    if (!on && draft.current?.unsaved !== true) setLockSoon(false);
+  }, []);
+
+  const passerByNoted = useCallback(() => {
+    setPasserByLetGo(false);
+  }, []);
+
   // Two minutes without interaction, or more than two minutes hidden: while
   // open, the session locks (in this tab only); while locked, a new epoch
   // starts, so the danger signs ticked without the code are forgotten. The
@@ -772,7 +997,7 @@ export function SessionProvider({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let warning: ReturnType<typeof setTimeout> | undefined;
     const warn = () => {
-      if (draft.current?.unsaved === true) setLockSoon(true);
+      if (draft.current?.unsaved === true || attention.current) setLockSoon(true);
     };
     const restart = () => {
       last = Date.now();
@@ -829,7 +1054,11 @@ export function SessionProvider({
       epoch,
       unlock,
       createCode,
+      confirmCode,
+      changeCode,
       lock,
+      announceProfileDeleted,
+      deletedProfile,
       quickExit,
       forgetCode,
       touch,
@@ -840,6 +1069,9 @@ export function SessionProvider({
       draftFor,
       dropDraft,
       lockSoon,
+      warnBeforeLock,
+      passerByLetGo,
+      passerByNoted,
     }),
     [
       status,
@@ -851,7 +1083,11 @@ export function SessionProvider({
       epoch,
       unlock,
       createCode,
+      confirmCode,
+      changeCode,
       lock,
+      announceProfileDeleted,
+      deletedProfile,
       quickExit,
       forgetCode,
       touch,
@@ -862,6 +1098,9 @@ export function SessionProvider({
       draftFor,
       dropDraft,
       lockSoon,
+      warnBeforeLock,
+      passerByLetGo,
+      passerByNoted,
     ],
   );
 

@@ -113,10 +113,11 @@ async function staleIds(entry: HistoryEntry): Promise<string[]> {
  * not open here.
  */
 export async function recordHistory(entry: HistoryEntry): Promise<boolean> {
-  const sealed = await sealRecord(entry, historyScope(entry.profileId, entry.id));
+  // Written only while the code it was sealed under is the one stored.
+  const { sealed, fingerprint } = await sealRecord(entry, historyScope(entry.profileId, entry.id));
   const stale = await staleIds(entry);
   const tx = (await openAppDb()).transaction(['profiles', 'history', 'settings'], 'readwrite');
-  await requireCode(tx);
+  await requireCode(tx, fingerprint);
   const history = tx.objectStore('history');
   if ((await tx.objectStore('profiles').getKey(entry.profileId)) === undefined) {
     await tx.done;

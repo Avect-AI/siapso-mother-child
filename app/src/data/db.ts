@@ -21,8 +21,8 @@ export type PackSlot = 'current' | 'previous';
 
 type SettingsKey = 'settings' | 'code' | 'lockout' | 'tabs';
 
-/** The copy of the tabs' epoch (state/tab-sync.ts): one random mark per kind of event. */
-type TabMarks = Partial<Record<'lock' | 'quick-exit' | 'erase', string>>;
+/** The copy of the tabs' epoch (state/tab-sync.ts): one random token, which names nothing. */
+type TabMarks = string;
 
 /**
  * A validated pack and its fingerprint: the version, date and clinical
@@ -323,13 +323,9 @@ export async function readTabMarks(): Promise<unknown> {
   return (await openAppDb()).get('settings', 'tabs');
 }
 
-/** Adds one mark to the copy of the tabs' epoch, in one transaction. */
-export async function addTabMark(event: keyof TabMarks, mark: string): Promise<void> {
-  const tx = (await openAppDb()).transaction('settings', 'readwrite');
-  const stored: unknown = await tx.store.get('tabs');
-  const marks = typeof stored === 'object' && stored !== null ? (stored as TabMarks) : {};
-  await tx.store.put({ ...marks, [event]: mark }, 'tabs');
-  await tx.done;
+/** Writes the copy of the tabs' epoch: one random token, which names nothing. */
+export async function writeTabMark(token: string): Promise<void> {
+  await (await openAppDb()).put('settings', token, 'tabs');
 }
 
 /**
@@ -350,8 +346,8 @@ export async function claimCodeTry(known: LockoutState, nowMs: number): Promise<
 
 /**
  * The code is forgotten: the profiles, their history, the contacts saved on
- * the phone, the verifier and the wrong codes are erased, in one
- * transaction. The settings (language) and the knowledge pack stay.
+ * the phone, the verifier, the wrong codes and the tabs' marks are erased, in
+ * one transaction. The settings (language) and the knowledge pack stay.
  */
 export async function eraseProfilesAndCode(): Promise<void> {
   const tx = (await openAppDb()).transaction(
@@ -364,6 +360,7 @@ export async function eraseProfilesAndCode(): Promise<void> {
     tx.objectStore('contacts').clear(),
     tx.objectStore('settings').delete('code'),
     tx.objectStore('settings').delete('lockout'),
+    tx.objectStore('settings').delete('tabs'),
   ]);
   await tx.done;
 }

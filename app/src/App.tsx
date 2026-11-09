@@ -7,6 +7,7 @@ import { APP_NAME } from './config.js';
 import type { Mode } from './domain/types.js';
 import { I18nProvider, useT } from './i18n/index.js';
 import { About } from './screens/About.js';
+import { CHANGE_CODE_PATH, ChangeCode } from './screens/ChangeCode.js';
 import { Check } from './screens/Check.js';
 import { CodeSetup } from './screens/CodeSetup.js';
 import { Confirm } from './screens/Confirm.js';
@@ -29,7 +30,9 @@ import { Unlock } from './screens/Unlock.js';
 import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
+import { useCheck } from './state/check-state.js';
 import { intoThisEpoch } from './state/entry-state.js';
+import { useLeaveWhenDeleted } from './state/profile-gone.js';
 import { useSession, type SessionStatus } from './state/session.js';
 import { Header } from './ui/Header.js';
 import { LockWarning } from './ui/LockWarning.js';
@@ -60,6 +63,7 @@ type Screen =
   | 'forgot'
   | 'neutral'
   | 'settings'
+  | 'changeCode'
   | 'status'
   | 'about'
   | 'licences'
@@ -186,6 +190,8 @@ function screenFor(
     return session.exited ? 'neutral' : 'unlock';
   }
   if (location === UNLOCK_PATH) return 'unlocked';
+  // A new code, behind the current one.
+  if (location === CHANGE_CODE_PATH) return 'changeCode';
   // Open, and no mode was kept (a welcome cut short): who uses the app, first.
   if (settings.mode === null) return 'mode';
   // A passer-by checked without a profile: accompanied mode only.
@@ -196,6 +202,20 @@ function screenFor(
   if (location !== '/') return null;
   return settings.mode === 'accompanied' ? 'profiles' : 'home';
 }
+
+/** The screens that open without the code and say what the app is for: "Quitter" hides them. */
+const OPEN_WITHOUT_CODE: readonly Screen[] = [
+  'danger',
+  'call',
+  'settings',
+  'about',
+  'status',
+  'licences',
+  'voice',
+];
+
+/** Screens on the way that keep the answers of a form not saved: the code's, and the danger path. */
+const KEEPS_DRAFT: readonly string[] = ['unlocked', 'loading', 'danger', 'call'];
 
 /** The route in the address now (the hash), as wouter reads it. */
 function addressNow(): string {
@@ -232,13 +252,30 @@ function AfterUnlock() {
   useEffect(() => {
     if (done.current) return;
     done.current = true;
-    const held = takeHeldScreen();
     const state: unknown = window.history.state;
     const back = typeof state === 'object' && state !== null && 'back' in state && state.back;
-    if (back === true) window.history.back();
-    else if (held) navigate(held.path, { replace: true, state: intoThisEpoch(held.state) });
+    // Back to the screen that asked for the code (who to call): the screen
+    // the session locked on stays held, for Back to reach it with its answers.
+    if (back === true) {
+      window.history.back();
+      return;
+    }
+    const held = takeHeldScreen();
+    if (held) navigate(held.path, { replace: true, state: intoThisEpoch(held.state) });
     else navigate('/', { replace: true });
   }, [navigate, takeHeldScreen]);
+  return null;
+}
+
+/**
+ * The screens of a check (the list, the search, the confirmation, the signs,
+ * the result) leave when her profile is deleted in another tab; a passer-by
+ * has no profile to delete.
+ */
+function LeaveDeletedCheck() {
+  const { profileId, quick } = useCheck();
+  const passerBy = quick !== null && quick.id === profileId;
+  useLeaveWhenDeleted(passerBy ? null : profileId);
   return null;
 }
 
@@ -293,9 +330,11 @@ function Screens() {
 
   // Answers kept for a form (state/draft.ts) stay while its screen shows, and
   // across a lock until the code brings it back; another screen drops them.
+  // The danger signs and who to call keep them too: a look there in an
+  // emergency (before the code included) never costs her the form.
   const { unlocked, dropDraft } = session;
   useEffect(() => {
-    if (unlocked && key !== null && key !== 'unlocked' && key !== 'loading') dropDraft(key);
+    if (unlocked && key !== null && !KEEPS_DRAFT.includes(key)) dropDraft(key);
   }, [unlocked, key, dropDraft]);
 
   // A new screen takes the focus to its heading, so a screen reader starts
@@ -341,12 +380,14 @@ function Screens() {
   // After a quick exit, Back lands on entries of screens with profile data:
   // each is replaced by the neutral one as it is reached.
   if (screen === 'neutral' && location !== '/') return <Redirect to="/" replace />;
-  // The quick exit, once the code is given; before it too on the danger signs
-  // and who to call, where signs may be ticked without the code.
+  // The quick exit, once the code is given; before it too on every screen that
+  // opens without the code and says what the app is for (the danger signs and
+  // who to call, where signs may be ticked, the settings, the about screen,
+  // the knowledge base, the licences, the voice). Not on the code screen,
+  // which says nothing of it.
   const exitShown =
     settings.onboarded &&
-    (session.unlocked ||
-      (session.status === 'locked' && (screen === 'danger' || screen === 'call')));
+    (session.unlocked || (session.status === 'locked' && OPEN_WITHOUT_CODE.includes(screen)));
   return (
     <>
       {/* On every screen: the danger signs are one tap away even during the
@@ -374,6 +415,7 @@ function Screens() {
       {/* A lock starts a new epoch: a language or a mode chosen and not applied
           is forgotten with it, never left for whoever gives the code next. */}
       {screen === 'settings' ? <Settings key={session.epoch} /> : null}
+      {screen === 'changeCode' ? <ChangeCode /> : null}
       {screen === 'status' ? <Status /> : null}
       {screen === 'about' ? <About /> : null}
       {screen === 'licences' ? (
@@ -403,9 +445,11 @@ function Screens() {
       ) : null}
       {screen === 'signs' ? <SignsNow /> : null}
       {screen === 'result' ? <Result /> : null}
+      {check !== null && screen === check.screen ? <LeaveDeletedCheck /> : null}
       <LockWarning
         open={session.unlocked && session.lockSoon}
-        message={t('autoLock.soon')}
+        // A passer-by's answers go with the lock: said so.
+        message={t(screen === 'quick' ? 'autoLock.soonPasserBy' : 'autoLock.soon')}
         action={t('autoLock.stay')}
         onStay={session.touch}
       />
