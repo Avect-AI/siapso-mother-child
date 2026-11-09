@@ -1,0 +1,1529 @@
+[
+  {
+    "id": "rx01",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Astou Niang",
+    "age": 27,
+    "weeks": 36,
+    "date": "06/09/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Nivaquine 100 mg",
+        "inBase": true,
+        "product": "chloroquine-generic",
+        "strengthMg": 100,
+        "posology": "2 cp par semaine",
+        "inline": true
+      },
+      {
+        "written": "Métronidazole 250 mg",
+        "inBase": true,
+        "product": "metronidazole-generic",
+        "strengthMg": 250,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Advil 400 mg",
+        "inBase": true,
+        "product": "advil-400-mg-63646874",
+        "strengthMg": 400,
+        "posology": "1 cp x 3/j après le repas",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx02",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Maimouna Diop",
+    "age": 41,
+    "weeks": 26,
+    "date": "06/07/2026",
+    "prescriber": "Mme Ndèye Gueye, sage-femme",
+    "items": [
+      {
+        "written": "Dépakine 500 mg",
+        "inBase": true,
+        "product": "depakine-500-mg-60184188",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Calcium 500 mg",
+        "inBase": false,
+        "posology": "1 cp/j au repas",
+        "inline": false
+      },
+      {
+        "written": "Clamoxyl 1 g",
+        "inBase": true,
+        "product": "clamoxyl-1-g-64539416",
+        "strengthMg": 1000,
+        "posology": "1 cp matin et soir x 7 jours",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Flagyl 500 mg cp",
+        "inBase": true,
+        "product": "flagyl-500-mg-61659061",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j pendant 7 jours",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Smecta sachet",
+        "inBase": false,
+        "posology": "1 sachet x 3/j",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx03",
+    "set": "dev",
+    "template": "post",
+    "handwriting": true,
+    "patient": "Aminata Thiam",
+    "age": 38,
+    "weeks": 17,
+    "date": "01/04/2026",
+    "prescriber": "Mme Ndèye Gueye, sage-femme",
+    "items": [
+      {
+        "written": "SP (Sulfadoxine Pyriméthamine)",
+        "inBase": true,
+        "product": "sp",
+        "posology": "3 cp en une prise, TPI 2",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Efferalgan 1 g cp eff",
+        "inBase": true,
+        "product": "efferalgan-1000-mg-67058605",
+        "strengthMg": 1000,
+        "posology": "1 cp dans un verre d'eau x 3/j",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Fer + Acide folique cp",
+        "inBase": true,
+        "product": "fer-acide-folique",
+        "posology": "1 cp le matin QSP 3 mois",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Primpéran 10 mg",
+        "inBase": false,
+        "posology": "1 cp avant les repas",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx04",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Aminata Diallo",
+    "age": 39,
+    "weeks": 31,
+    "date": "06/05/2026",
+    "prescriber": "M. Cheikh Ndao, ICP",
+    "items": [
+      {
+        "written": "Fer + Acide folique cp",
+        "inBase": true,
+        "product": "fer-acide-folique",
+        "posology": "1 cp le matin QSP 3 mois",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": false
+      },
+      {
+        "written": "Kardégic 75 mg",
+        "inBase": true,
+        "product": "kardegic-75-mg-64755969",
+        "strengthMg": 75,
+        "posology": "1 sachet le midi",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Coartem 20/120 mg",
+        "inBase": true,
+        "product": "artemether-lumefantrine-generic",
+        "posology": "4 cp x 2/j pendant 3 jours",
+        "upd": 8,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx05",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Bineta Kane",
+    "age": 20,
+    "weeks": 13,
+    "date": "01/01/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Voltarène 50 mg",
+        "inBase": true,
+        "product": "voltarene-50-mg-62431527",
+        "strengthMg": 50,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Fer + Acide folique cp",
+        "inBase": true,
+        "product": "fer-acide-folique",
+        "posology": "1 cp/jour pendant 3 mois",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Oméprazole 20 mg",
+        "inBase": false,
+        "posology": "1 gél le matin à jeun",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx06",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Penda Gueye",
+    "age": 21,
+    "weeks": 35,
+    "date": "04/08/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Advil 400 mg",
+        "inBase": true,
+        "product": "advil-400-mg-63646874",
+        "strengthMg": 400,
+        "posology": "1 cp x 3/j après le repas",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": false
+      },
+      {
+        "written": "Doxycycline 100 mg",
+        "inBase": true,
+        "product": "doxycycline-generic",
+        "strengthMg": 100,
+        "posology": "1 cp/j pendant 10 jours",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Albendazole 400 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique au 2e trimestre",
+        "inline": true
+      },
+      {
+        "written": "Amoxicilline 500 mg gél",
+        "inBase": true,
+        "product": "amoxicilline-almus-pharma-500-mg-68695334",
+        "strengthMg": 500,
+        "posology": "2 gél x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx07",
+    "set": "dev",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Astou Mbaye",
+    "age": 36,
+    "weeks": 33,
+    "date": "14/01/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Moustiquaire imprégnée (MILDA)",
+        "inBase": false,
+        "posology": "dormir sous moustiquaire",
+        "inline": false
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Paracétamol 500 mg cp",
+        "inBase": true,
+        "product": "paracetamol-500-generic",
+        "strengthMg": 500,
+        "posology": "2 cp matin et soir",
+        "upd": 4,
+        "inline": false
+      },
+      {
+        "written": "Codoliprane cp",
+        "inBase": true,
+        "product": "codoliprane-500-mg-30-mg-60904643",
+        "posology": "1 cp x 3/j si douleur",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Gaviscon suspension",
+        "inBase": false,
+        "posology": "1 sachet après les repas",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx08",
+    "set": "dev",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Yacine Ndiaye",
+    "age": 24,
+    "weeks": 32,
+    "date": "22/04/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": false
+      },
+      {
+        "written": "Dépakine 500 mg",
+        "inBase": true,
+        "product": "depakine-500-mg-60184188",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Kardégic 75 mg",
+        "inBase": true,
+        "product": "kardegic-75-mg-64755969",
+        "strengthMg": 75,
+        "posology": "1 sachet le midi",
+        "upd": 1,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx09",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Coumba Ndao",
+    "age": 32,
+    "weeks": 32,
+    "date": "26/02/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Oméprazole 20 mg",
+        "inBase": false,
+        "posology": "1 gél le matin à jeun",
+        "inline": true
+      },
+      {
+        "written": "Bactrim Forte cp",
+        "inBase": true,
+        "product": "bactrim-forte-64121235",
+        "posology": "1 cp par jour (prophylaxie)",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Brufen 400",
+        "inBase": true,
+        "product": "ibuprofen-generic",
+        "strengthMg": 400,
+        "posology": "1 cp matin et soir pendant 5 jours",
+        "upd": 2,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx10",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Fatou Ba",
+    "age": 19,
+    "weeks": 15,
+    "date": "13/07/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Vogalène 7,5 mg",
+        "inBase": false,
+        "posology": "1 lyoc avant les repas",
+        "inline": false
+      },
+      {
+        "written": "Flagyl 500 mg cp",
+        "inBase": true,
+        "product": "flagyl-500-mg-61659061",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j pendant 7 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx11",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Fatou Kane",
+    "age": 27,
+    "weeks": 27,
+    "date": "03/07/2026",
+    "prescriber": "Dr Moussa Diop",
+    "items": [
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Primpéran 10 mg",
+        "inBase": false,
+        "posology": "1 cp avant les repas",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx12",
+    "set": "dev",
+    "template": "post",
+    "handwriting": true,
+    "patient": "Rokhaya Ndao",
+    "age": 33,
+    "weeks": 15,
+    "date": "16/07/2026",
+    "prescriber": "M. Cheikh Ndao, ICP",
+    "items": [
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": false
+      },
+      {
+        "written": "Acide folique 5 mg",
+        "inBase": true,
+        "product": "acide-folique-ccd-5-mg-69448600",
+        "strengthMg": 5,
+        "posology": "1 cp le soir",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx13",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Mariama Diop",
+    "age": 18,
+    "weeks": 32,
+    "date": "21/04/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Fluconazole 150 mg gél",
+        "inBase": true,
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Acide folique 5 mg",
+        "inBase": true,
+        "product": "acide-folique-ccd-5-mg-69448600",
+        "strengthMg": 5,
+        "posology": "1 cp le soir",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Doliprane 1000 mg cp",
+        "inBase": true,
+        "product": "doliprane-1000-mg-60234100",
+        "strengthMg": 1000,
+        "posology": "1 cp matin, midi et soir pendant 3 jours",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Amoxicilline 500 mg gél",
+        "inBase": true,
+        "product": "amoxicilline-almus-pharma-500-mg-68695334",
+        "strengthMg": 500,
+        "posology": "2 gél x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "inBase": true,
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx14",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Adja Kane",
+    "age": 34,
+    "weeks": 28,
+    "date": "15/06/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": true
+      },
+      {
+        "written": "Voltarène 50 mg",
+        "inBase": true,
+        "product": "voltarene-50-mg-62431527",
+        "strengthMg": 50,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx15",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Awa Niang",
+    "age": 38,
+    "weeks": 20,
+    "date": "03/04/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Aldomet 250 mg",
+        "inBase": false,
+        "posology": "1 cp x 3/j",
+        "inline": true
+      },
+      {
+        "written": "Moustiquaire imprégnée (MILDA)",
+        "inBase": false,
+        "posology": "dormir sous moustiquaire",
+        "inline": false
+      },
+      {
+        "written": "Coartem 20/120 mg",
+        "inBase": true,
+        "product": "artemether-lumefantrine-generic",
+        "posology": "4 cp x 2/j pendant 3 jours",
+        "upd": 8,
+        "inline": false
+      },
+      {
+        "written": "ASAQ (Artésunate + Amodiaquine)",
+        "inBase": true,
+        "product": "asaq",
+        "posology": "2 cp/j pendant 3 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Néo-Codion sirop",
+        "inBase": true,
+        "product": "neo-codion-syrup",
+        "posology": "1 c. à soupe x 3/j",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Fluconazole 150 mg gél",
+        "inBase": true,
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx16",
+    "set": "dev",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Mariama Sarr",
+    "age": 18,
+    "weeks": 20,
+    "date": "12/10/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Doliprane 500 mg",
+        "inBase": true,
+        "product": "doliprane-500-mg-63368332",
+        "strengthMg": 500,
+        "posology": "2 cp x 3/j pendant 5 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "ASAQ (Artésunate + Amodiaquine)",
+        "inBase": true,
+        "product": "asaq",
+        "posology": "2 cp/j pendant 3 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx17",
+    "set": "dev",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Ndèye Ba",
+    "age": 27,
+    "weeks": 14,
+    "date": "28/01/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Efferalgan 1 g cp eff",
+        "inBase": true,
+        "product": "efferalgan-1000-mg-67058605",
+        "strengthMg": 1000,
+        "posology": "1 cp dans un verre d'eau x 3/j",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Primpéran 10 mg",
+        "inBase": false,
+        "posology": "1 cp avant les repas",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx18",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Maimouna Ba",
+    "age": 18,
+    "weeks": 20,
+    "date": "19/01/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Bactrim Forte cp",
+        "inBase": true,
+        "product": "bactrim-forte-64121235",
+        "posology": "1 cp par jour (prophylaxie)",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Fluconazole 150 mg gél",
+        "inBase": true,
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Spéciafoldine 5 mg",
+        "inBase": true,
+        "product": "speciafoldine-5-mg-69630186",
+        "strengthMg": 5,
+        "posology": "1 cp/j pendant 1 mois",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "SP (Sulfadoxine Pyriméthamine)",
+        "inBase": true,
+        "product": "sp",
+        "posology": "3 cp en une prise, TPI 2",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Oméprazole 20 mg",
+        "inBase": false,
+        "posology": "1 gél le matin à jeun",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx19",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Bineta Sarr",
+    "age": 35,
+    "weeks": 12,
+    "date": "22/01/2026",
+    "prescriber": "Dr Moussa Diop",
+    "items": [
+      {
+        "written": "Efferalgan 1 g cp eff",
+        "inBase": true,
+        "product": "efferalgan-1000-mg-67058605",
+        "strengthMg": 1000,
+        "posology": "1 cp dans un verre d'eau x 3/j",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Laroscorbine 1 g",
+        "inBase": true,
+        "product": "laroscorbine-1-g-69435752",
+        "strengthMg": 1000,
+        "posology": "1 cp effervescent le matin x 10 jours",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Captopril 25 mg",
+        "inBase": true,
+        "product": "captopril-biogaran-25-mg-64801263",
+        "strengthMg": 25,
+        "posology": "1 cp x 2/j",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx20",
+    "set": "dev",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Awa Ndao",
+    "age": 17,
+    "weeks": 29,
+    "date": "19/02/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Fer acide folique (FAF)",
+        "inBase": true,
+        "product": "fer-acide-folique",
+        "posology": "1 cp par jour jusqu'à l'accouchement",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Adalate LP 20 mg",
+        "inBase": false,
+        "posology": "1 cp matin et soir",
+        "inline": false
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "inBase": true,
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Gaviscon suspension",
+        "inBase": false,
+        "posology": "1 sachet après les repas",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx21",
+    "set": "dev",
+    "template": "post",
+    "handwriting": true,
+    "patient": "Khady Thiam",
+    "age": 18,
+    "weeks": 33,
+    "date": "25/02/2026",
+    "prescriber": "Dr Moussa Diop",
+    "items": [
+      {
+        "written": "Bactrim Forte cp",
+        "inBase": true,
+        "product": "bactrim-forte-64121235",
+        "posology": "1 cp par jour (prophylaxie)",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Tardyféron B9",
+        "inBase": true,
+        "product": "tardyferon-b9-64875192",
+        "posology": "1 cp/jour QSP 1 mois",
+        "upd": 1,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx22",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Fatou Kane",
+    "age": 39,
+    "weeks": 31,
+    "date": "05/06/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Fluconazole 150 mg gél",
+        "inBase": true,
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Moustiquaire imprégnée (MILDA)",
+        "inBase": false,
+        "posology": "dormir sous moustiquaire",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx23",
+    "set": "dev",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Bineta Diallo",
+    "age": 38,
+    "weeks": 26,
+    "date": "16/04/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Augmentin 1 g",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 8 jours",
+        "inline": false
+      },
+      {
+        "written": "ASAQ (Artésunate + Amodiaquine)",
+        "inBase": true,
+        "product": "asaq",
+        "posology": "2 cp/j pendant 3 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Adalate LP 20 mg",
+        "inBase": false,
+        "posology": "1 cp matin et soir",
+        "inline": false
+      },
+      {
+        "written": "Moustiquaire imprégnée (MILDA)",
+        "inBase": false,
+        "posology": "dormir sous moustiquaire",
+        "inline": true
+      },
+      {
+        "written": "Céfixime 200 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx24",
+    "set": "dev",
+    "template": "post",
+    "handwriting": true,
+    "patient": "Aminata Ndao",
+    "age": 25,
+    "weeks": 12,
+    "date": "19/08/2026",
+    "prescriber": "Mme Aminata Sarr, sage-femme d'État",
+    "items": [
+      {
+        "written": "Aspégic 500",
+        "inBase": true,
+        "product": "aspegic-500-mg-61162942",
+        "strengthMg": 500,
+        "posology": "1 sachet x 3/j",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Doxycycline 100 mg",
+        "inBase": true,
+        "product": "doxycycline-generic",
+        "strengthMg": 100,
+        "posology": "1 cp/j pendant 10 jours",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "ASAQ (Artésunate + Amodiaquine)",
+        "inBase": true,
+        "product": "asaq",
+        "posology": "2 cp/j pendant 3 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx25",
+    "set": "heldout",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Penda Diop",
+    "age": 28,
+    "weeks": 31,
+    "date": "02/08/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Vitamine B complexe",
+        "inBase": false,
+        "posology": "1 cp/j",
+        "inline": true
+      },
+      {
+        "written": "Flagyl 500 mg cp",
+        "inBase": true,
+        "product": "flagyl-500-mg-61659061",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j pendant 7 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx26",
+    "set": "heldout",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Dieynaba Kane",
+    "age": 20,
+    "weeks": 32,
+    "date": "21/10/2026",
+    "prescriber": "M. Cheikh Ndao, ICP",
+    "items": [
+      {
+        "written": "Magné B6 cp",
+        "inBase": false,
+        "posology": "2 cp matin et soir",
+        "inline": false
+      },
+      {
+        "written": "Doliprane 1000 mg cp",
+        "inBase": true,
+        "product": "doliprane-1000-mg-60234100",
+        "strengthMg": 1000,
+        "posology": "1 cp x 3/jour si douleur",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Advil 400 mg",
+        "inBase": true,
+        "product": "advil-400-mg-63646874",
+        "strengthMg": 400,
+        "posology": "1 cp x 3/j après le repas",
+        "upd": 3,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx27",
+    "set": "heldout",
+    "template": "post",
+    "handwriting": true,
+    "patient": "Coumba Ba",
+    "age": 31,
+    "weeks": 28,
+    "date": "19/01/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Métronidazole 250 mg",
+        "inBase": true,
+        "product": "metronidazole-generic",
+        "strengthMg": 250,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      },
+      {
+        "written": "Smecta sachet",
+        "inBase": false,
+        "posology": "1 sachet x 3/j",
+        "inline": false
+      },
+      {
+        "written": "Doliprane 1000 mg cp",
+        "inBase": true,
+        "product": "doliprane-1000-mg-60234100",
+        "strengthMg": 1000,
+        "posology": "1 cp x 3/jour si douleur",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Quinine 300 mg cp",
+        "inBase": true,
+        "product": "quinine-generic",
+        "strengthMg": 300,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "Fluconazole 150 mg gél",
+        "inBase": true,
+        "product": "fluconazole-arrow-lab-150-mg-67860651",
+        "strengthMg": 150,
+        "posology": "1 gél en prise unique",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Primpéran 10 mg",
+        "inBase": false,
+        "posology": "1 cp avant les repas",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx28",
+    "set": "heldout",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Adja Gueye",
+    "age": 29,
+    "weeks": 24,
+    "date": "23/04/2026",
+    "prescriber": "Mme Aminata Sarr, sage-femme d'État",
+    "items": [
+      {
+        "written": "Duphaston 10 mg",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 10 jours",
+        "inline": false
+      },
+      {
+        "written": "Flagyl 500 mg cp",
+        "inBase": true,
+        "product": "flagyl-500-mg-61659061",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j pendant 7 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Vogalène 7,5 mg",
+        "inBase": false,
+        "posology": "1 lyoc avant les repas",
+        "inline": false
+      },
+      {
+        "written": "Cotrimoxazole 960 mg",
+        "inBase": true,
+        "product": "cotrimoxazole-generic",
+        "strengthMg": 960,
+        "posology": "1 cp/j",
+        "upd": 1,
+        "inline": false
+      },
+      {
+        "written": "Acide folique 5 mg",
+        "inBase": true,
+        "product": "acide-folique-ccd-5-mg-69448600",
+        "strengthMg": 5,
+        "posology": "1 cp le soir",
+        "upd": 1,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx29",
+    "set": "heldout",
+    "template": "post",
+    "handwriting": false,
+    "patient": "Ndèye Fall",
+    "age": 32,
+    "weeks": 12,
+    "date": "10/03/2026",
+    "prescriber": "Mme Ndèye Gueye, sage-femme",
+    "items": [
+      {
+        "written": "Dépakine 500 mg",
+        "inBase": true,
+        "product": "depakine-500-mg-60184188",
+        "strengthMg": 500,
+        "posology": "1 cp x 2/j",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Codoliprane cp",
+        "inBase": true,
+        "product": "codoliprane-500-mg-30-mg-60904643",
+        "posology": "1 cp x 3/j si douleur",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Augmentin 1 g",
+        "inBase": false,
+        "posology": "1 cp x 2/j pendant 8 jours",
+        "inline": false
+      },
+      {
+        "written": "Magné B6 cp",
+        "inBase": false,
+        "posology": "2 cp matin et soir",
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx30",
+    "set": "heldout",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Dieynaba Sarr",
+    "age": 40,
+    "weeks": 31,
+    "date": "01/08/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Nivaquine 100 mg",
+        "inBase": true,
+        "product": "chloroquine-generic",
+        "strengthMg": 100,
+        "posology": "2 cp par semaine",
+        "inline": false
+      },
+      {
+        "written": "Amoxicilline 500 mg gél",
+        "inBase": true,
+        "product": "amoxicilline-almus-pharma-500-mg-68695334",
+        "strengthMg": 500,
+        "posology": "2 gél x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx31",
+    "set": "heldout",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Penda Gueye",
+    "age": 24,
+    "weeks": 17,
+    "date": "19/09/2026",
+    "prescriber": "M. Cheikh Ndao, ICP",
+    "items": [
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "Doliprane 1000 mg cp",
+        "inBase": true,
+        "product": "doliprane-1000-mg-60234100",
+        "strengthMg": 1000,
+        "posology": "1 cp matin, midi et soir pendant 3 jours",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Aspégic 500",
+        "inBase": true,
+        "product": "aspegic-500-mg-61162942",
+        "strengthMg": 500,
+        "posology": "1 sachet x 3/j",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Quinine 300 mg cp",
+        "inBase": true,
+        "product": "quinine-generic",
+        "strengthMg": 300,
+        "posology": "2 cp x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "Fumafer 66 mg",
+        "inBase": true,
+        "product": "fumafer-66-mg-64404201",
+        "strengthMg": 66,
+        "posology": "1 cp x 2/j au milieu du repas",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx32",
+    "set": "heldout",
+    "template": "cabinet",
+    "handwriting": false,
+    "patient": "Awa Thiam",
+    "age": 25,
+    "weeks": 28,
+    "date": "11/04/2026",
+    "prescriber": "M. Cheikh Ndao, ICP",
+    "items": [
+      {
+        "written": "Spasfon Lyoc 80 mg",
+        "inBase": false,
+        "posology": "1 lyoc x 3/j si douleur",
+        "inline": false
+      },
+      {
+        "written": "Voltarène 50 mg",
+        "inBase": true,
+        "product": "voltarene-50-mg-62431527",
+        "strengthMg": 50,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Tramadol 50 mg gél",
+        "inBase": true,
+        "product": "tramadol-generic",
+        "strengthMg": 50,
+        "posology": "1 gél x 2/j si douleur forte",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx33",
+    "set": "heldout",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Adja Kane",
+    "age": 19,
+    "weeks": 35,
+    "date": "11/03/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "Amoxicilline 500 mg gél",
+        "inBase": true,
+        "product": "amoxicilline-almus-pharma-500-mg-68695334",
+        "strengthMg": 500,
+        "posology": "2 gél x 3/j pendant 7 jours",
+        "upd": 6,
+        "inline": false
+      },
+      {
+        "written": "Tégrétol 200 mg",
+        "inBase": true,
+        "product": "tegretol-200-mg-61009918",
+        "strengthMg": 200,
+        "posology": "1 cp matin et soir, ne pas arrêter",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "SP (Sulfadoxine Pyriméthamine)",
+        "inBase": true,
+        "product": "sp",
+        "posology": "3 cp en une prise, TPI 2",
+        "upd": 3,
+        "inline": true
+      },
+      {
+        "written": "Voltarène 50 mg",
+        "inBase": true,
+        "product": "voltarene-50-mg-62431527",
+        "strengthMg": 50,
+        "posology": "1 cp x 2/j pendant 5 jours",
+        "upd": 2,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx34",
+    "set": "heldout",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Astou Niang",
+    "age": 23,
+    "weeks": 27,
+    "date": "13/01/2026",
+    "prescriber": "Mme Ndèye Gueye, sage-femme",
+    "items": [
+      {
+        "written": "Aldomet 250 mg",
+        "inBase": false,
+        "posology": "1 cp x 3/j",
+        "inline": true
+      },
+      {
+        "written": "Laroscorbine 1 g",
+        "inBase": true,
+        "product": "laroscorbine-1-g-69435752",
+        "strengthMg": 1000,
+        "posology": "1 cp effervescent le matin x 10 jours",
+        "upd": 1,
+        "inline": true
+      },
+      {
+        "written": "Fumafer 66 mg",
+        "inBase": true,
+        "product": "fumafer-66-mg-64404201",
+        "strengthMg": 66,
+        "posology": "1 cp x 2/j au milieu du repas",
+        "upd": 2,
+        "inline": true
+      },
+      {
+        "written": "SP (Sulfadoxine Pyriméthamine)",
+        "inBase": true,
+        "product": "sp",
+        "posology": "3 cp en une prise, TPI 2",
+        "upd": 3,
+        "inline": false
+      }
+    ]
+  },
+  {
+    "id": "rx35",
+    "set": "heldout",
+    "template": "table",
+    "handwriting": false,
+    "patient": "Penda Niang",
+    "age": 31,
+    "weeks": 25,
+    "date": "09/03/2026",
+    "prescriber": "Dr Oumar Ba",
+    "items": [
+      {
+        "written": "ASAQ (Artésunate + Amodiaquine)",
+        "inBase": true,
+        "product": "asaq",
+        "posology": "2 cp/j pendant 3 jours",
+        "upd": 2,
+        "inline": false
+      },
+      {
+        "written": "Mébendazole 500 mg",
+        "inBase": false,
+        "posology": "1 cp en prise unique",
+        "inline": true
+      },
+      {
+        "written": "Aspégic 500",
+        "inBase": true,
+        "product": "aspegic-500-mg-61162942",
+        "strengthMg": 500,
+        "posology": "1 sachet x 3/j",
+        "upd": 3,
+        "inline": false
+      },
+      {
+        "written": "Brufen 400",
+        "inBase": true,
+        "product": "ibuprofen-generic",
+        "strengthMg": 400,
+        "posology": "1 cp matin et soir pendant 5 jours",
+        "upd": 2,
+        "inline": true
+      }
+    ]
+  },
+  {
+    "id": "rx36",
+    "set": "heldout",
+    "template": "cabinet",
+    "handwriting": true,
+    "patient": "Aminata Mbaye",
+    "age": 25,
+    "weeks": 35,
+    "date": "08/10/2026",
+    "prescriber": "Dr Ibrahima Fall",
+    "items": [
+      {
+        "written": "Vogalène 7,5 mg",
+        "inBase": false,
+        "posology": "1 lyoc avant les repas",
+        "inline": false
+      },
+      {
+        "written": "Ponstan 500 mg",
+        "inBase": true,
+        "product": "mefenamic-acid-generic",
+        "strengthMg": 500,
+        "posology": "1 cp x 3/j pendant les règles",
+        "upd": 3,
+        "inline": false
+      }
+    ]
+  }
+]

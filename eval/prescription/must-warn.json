@@ -1,0 +1,284 @@
+[
+  {
+    "lines": ["1. SP (Sulfadoxine", "Pyriméthamine)", "3 cp en une prise, TPI 2"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "A table cell wraps the name over two lines: read whole once the lines are joined, never pyrimethamine alone."
+  },
+  {
+    "lines": ["1. SP (Gsulfadofine Pyriméthamine) : 3 cp en une prise"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "Sulfadoxine misread as the OCR read it in the spike: read whole after the snap to the substance name."
+  },
+  {
+    "lines": ["2. SP (Sulfadox1ne Pyriméthamine)"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "A digit read inside the word: read whole."
+  },
+  {
+    "lines": ["1. Pyriméthamine 25 mg Sulfadox"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "Sulfadoxine cut short: the best the line gives is pyrimethamine alone, which must say the line also names sulfadoxine (the SP and cotrimoxazole rule reads sulfadoxine)."
+  },
+  {
+    "lines": ["3. Fer + Acide folique cp : 1 cp/jour pendant 3 mois"],
+    "names": ["folic-acid", "iron"],
+    "why": "The combination written whole: never iron alone or folic acid alone."
+  },
+  {
+    "lines": ["3. Fer +", "Acide folique cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "A line ending with a plus sign continues on the next one: read whole."
+  },
+  {
+    "lines": ["3. Fer + Acide fol1que cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "A digit read inside the word: read whole."
+  },
+  {
+    "lines": ["3. Fer + Ac. folique cp"],
+    "names": ["folic-acid", "iron"],
+    "why": "Folic acid abbreviated: the best the line gives is iron alone, which must say the line also names folic acid."
+  },
+  {
+    "lines": ["4. ASAQ (Artésunate +", "Amodiaquine)"],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "A table cell wraps the name over two lines: read whole, never amodiaquine alone."
+  },
+  {
+    "lines": ["4. Amodiaquine (Artésun"],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "Artesunate cut short: amodiaquine alone must say the line also names artesunate."
+  },
+  {
+    "lines": ["5. Artéméther + Luméfant"],
+    "names": ["artemether", "lumefantrine"],
+    "why": "Lumefantrine cut short: read whole or with the warning."
+  },
+  {
+    "lines": ["6. Triméthoprime Sulfamét"],
+    "names": ["sulfamethoxazole", "trimethoprim"],
+    "why": "Sulfamethoxazole cut short: trimethoprim alone must say the line also names sulfamethoxazole (the SP and cotrimoxazole rule reads it)."
+  },
+  {
+    "lines": ["7. Paracétamol 500 mg cp Amoxicilline 500 mg"],
+    "names": ["amoxicillin", "paracetamol"],
+    "why": "Two product lines read as one: the product read must say the line also names the other substance, and the line is offered as typed."
+  },
+  {
+    "lines": ["8. Paracétamol + Codéine 500/30"],
+    "names": ["codeine", "paracetamol"],
+    "why": "A combination with codeine written by its substances: read whole or with the warning, never paracetamol alone silently."
+  },
+  {
+    "lines": ["Dafalgan codé"],
+    "names": ["codeine", "paracetamol"],
+    "why": "Codeine shortened after a brand: never DAFALGAN alone, silently (review of PR 70)."
+  },
+  {
+    "lines": ["Efferalgan cod."],
+    "names": ["codeine", "paracetamol"],
+    "why": "Codeine shortened to three letters and a dot."
+  },
+  {
+    "lines": ["Efferalgan codé 500 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "Codeine shortened, with a strength."
+  },
+  {
+    "lines": ["Paracétamol + Cod"],
+    "names": ["codeine", "paracetamol"],
+    "why": "Codeine shortened after a plus sign: the start of a substance name of three letters names it."
+  },
+  {
+    "lines": ["Ibuprofène + codé"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "The ibuprofen and codeine combination, codeine shortened."
+  },
+  {
+    "lines": ["Paracétamol + Tram"],
+    "names": ["paracetamol", "tramadol"],
+    "why": "Tramadol shortened: the paracetamol and tramadol combination."
+  },
+  {
+    "lines": ["Amodiaquine + AS"],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "Artesunate written AS."
+  },
+  {
+    "lines": ["Amodiaquine 153 mg + Art."],
+    "names": ["amodiaquine", "artesunate"],
+    "why": "Artesunate shortened to Art."
+  },
+  {
+    "lines": ["Triméthoprime + Sulfa"],
+    "names": ["sulfamethoxazole", "trimethoprim"],
+    "why": "Sulfamethoxazole shortened to Sulfa."
+  },
+  {
+    "lines": ["Fer + AF"],
+    "names": ["folic-acid", "iron"],
+    "why": "Folic acid written AF."
+  },
+  {
+    "lines": ["Fer + B9"],
+    "names": ["folic-acid", "iron"],
+    "why": "Folic acid written B9."
+  },
+  {
+    "lines": ["Fer + vitamine B9"],
+    "names": ["folic-acid", "iron"],
+    "why": "Vitamin B9 is folic acid, never vitamin C for the word vitamine."
+  },
+  {
+    "lines": ["Amoxicilline + acide clavulanique"],
+    "names": ["amoxicillin", "clavulanic-acid"],
+    "why": "A part the base does not know after a plus sign: the line names more, never amoxicillin alone, silently."
+  },
+  {
+    "lines": ["Coliprane 500 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "CODOLIPRANE misread one slip from DOLIPRANE: never paracetamol alone, silently."
+  },
+  {
+    "lines": ["Efferalgan cod€ine"],
+    "names": ["codeine", "paracetamol"],
+    "why": "A euro sign read for the e of codeine: never EFFERALGAN alone, silently."
+  },
+  {
+    "lines": ["Codéine 30 mg"],
+    "names": ["codeine"],
+    "why": "Codeine alone: never ANTARENE CODEINE (with ibuprofen), silently."
+  },
+  {
+    "lines": ["Codéine phosphate 30 mg"],
+    "names": ["codeine"],
+    "why": "Codeine with its salt: codeine alone."
+  },
+  {
+    "lines": ["Ténofovir Lamivudine"],
+    "names": ["lamivudine", "tenofovir"],
+    "why": "Tenofovir and lamivudine: the base has them only with dolutegravir or efavirenz, which the product must say it adds."
+  },
+  {
+    "lines": ["Ténofovir + Lamivudine + Efav"],
+    "names": ["efavirenz", "lamivudine", "tenofovir"],
+    "why": "Efavirenz shortened: TLE, to check, never TLD silently.",
+    "preTick": false
+  },
+  {
+    "lines": ["Ténofovir + Lamivudine + Dolutégravir"],
+    "names": ["dolutegravir", "lamivudine", "tenofovir"],
+    "why": "TLD written by its substances: read whole."
+  },
+  {
+    "lines": ["Lamivudine + Zidovudine"],
+    "names": ["lamivudine", "zidovudine"],
+    "why": "An HIV combination written by its substances."
+  },
+  {
+    "lines": ["TDF/3TC/DTG"],
+    "names": ["dolutegravir", "lamivudine", "tenofovir"],
+    "why": "TLD written by its abbreviations: read whole, with the warning, or kept as typed."
+  },
+  {
+    "lines": ["Tramadol + Paracétamol 37,5/325"],
+    "names": ["paracetamol", "tramadol"],
+    "why": "The tramadol and paracetamol combination written by its substances."
+  },
+  {
+    "lines": ["Ibuprofène + Codéine 200/30"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "The ibuprofen and codeine combination written by its substances."
+  },
+  {
+    "lines": ["1. SP"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "SP alone on a numbered line: the combination, to check, never lost.",
+    "preTick": false
+  },
+  {
+    "lines": ["TPI : SP"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "SP after the label TPI: the combination, to check.",
+    "preTick": false
+  },
+  {
+    "lines": ["S.P"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "SP written with a dot: the combination, to check.",
+    "preTick": false
+  },
+  {
+    "lines": ["FAF"],
+    "names": ["folic-acid", "iron"],
+    "why": "FAF alone: iron and folic acid, to check.",
+    "preTick": false
+  },
+  {
+    "lines": ["SP (Sulfadoxine", "3 cp en une prise", "Pyriméthamine)"],
+    "names": ["pyrimethamine", "sulfadoxine"],
+    "why": "The posology cell beside the first line of a wrapped name: SP alone, never SP and MALOCIDE."
+  },
+  {
+    "lines": ["1. Antar codéine 400 mg"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "ANTARENE CODEINE garbled: never the codeine generic alone, which drops ibuprofen (review of PR 70, round 2).",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Anta codéine 400"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "Antarène cut to a first name: still read, and never codeine alone.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Klipai codéine 300"],
+    "names": ["codeine", "paracetamol"],
+    "why": "KLIPAL garbled: never codeine alone, which drops paracetamol and its daily maximum.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Ixpim tramadol 37,5"],
+    "names": ["paracetamol", "tramadol"],
+    "why": "IXPRIM garbled: never tramadol alone.",
+    "preTick": false
+  },
+  {
+    "lines": ["2. Antarene codeine 200"],
+    "names": ["codeine", "ibuprofen"],
+    "why": "ANTARENE CODEINE without accents: the brand, both substances, never codeine alone."
+  },
+  {
+    "lines": ["1. Dalfagan codéine"],
+    "names": ["codeine", "paracetamol"],
+    "why": "DAFALGAN CODEINE with two letters swapped, the resolver picking the codeine generic: never codeine alone (review of PR 70, round 3).",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Dafal 30 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "DAFALGAN CODEINE cut short after the substance: the brand the word resembles, never ANTARENE CODEINE.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Klip 30 mg"],
+    "names": ["codeine", "paracetamol"],
+    "why": "KLIPAL cut short after the substance: the brand the word resembles.",
+    "preTick": false
+  },
+  {
+    "lines": ["1. Codéine Arrow 30 mg"],
+    "names": ["codeine"],
+    "why": "A laboratory after the substance: the codeine generic, never a brand of another substance."
+  },
+  {
+    "lines": ["1. Codéine base 30 mg"],
+    "names": ["codeine"],
+    "why": "A salt after the substance: the codeine generic."
+  },
+  {
+    "lines": ["Adama Codéine 30 mg"],
+    "names": ["codeine"],
+    "why": "A first name before the substance: dropped, the codeine generic read."
+  }
+]

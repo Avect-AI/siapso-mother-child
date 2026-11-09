@@ -1,0 +1,18 @@
+{
+  "name": "@siapso/prescription-eval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Synthetic prescriptions and the evaluation of the prescription reading (SCRUM-57).",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "eval": "tsx run.ts",
+    "eval:fresh": "tsx run.ts --fresh"
+  },
+  "dependencies": {
+    "@siapso/engine": "workspace:*",
+    "@siapso/pack-tools": "workspace:*",
+    "@siapso/resolver": "workspace:*",
+    "tsx": "4.23.15"
+  }
+}

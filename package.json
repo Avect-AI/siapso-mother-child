@@ -19,6 +19,8 @@
     "knowledge:keygen": "siapso-pack keygen",
     "knowledge:import-bdpm": "siapso-pack import-bdpm",
     "eval:resolver": "pnpm --filter @siapso/pack-tools exec tsx src/eval-resolver.ts",
+    "eval:prescription": "pnpm --filter @siapso/prescription-eval eval",
+    "eval:prescription:fresh": "pnpm --filter @siapso/prescription-eval eval:fresh",
     "build": "pnpm knowledge:build && pnpm -r --filter \"!@siapso/app\" --if-present build && pnpm --filter @siapso/app build:demo",
     "release:build": "node tools/release/release-build.mjs",
     "open-data:sample": "node tools/open-data/bin/siapso-open-data.js sample --output open-data/test-data/events.sample.jsonl --label \"TEST DATA: synthetic events, not real people\"",
