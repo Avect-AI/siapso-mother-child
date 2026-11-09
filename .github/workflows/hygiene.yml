@@ -76,7 +76,9 @@ jobs:
           status=0
           for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
             email="$(git log -1 --format=%ae "$sha")"
-            if ! git log -1 --format=%B "$sha" | grep -Eiq "^Signed-off-by: .+ <${email}>$"; then
+            # A GitHub noreply address holds a "+": match the address literally.
+            pattern="$(printf '%s' "$email" | sed 's/[][\.*^$+?(){}|/]/\\&/g')"
+            if ! git log -1 --format=%B "$sha" | grep -Eiq "^Signed-off-by: .+ <${pattern}>$"; then
               echo "Commit $sha has no 'Signed-off-by' line matching its author <$email>. Use 'git commit -s'." >&2
               status=1
             fi
