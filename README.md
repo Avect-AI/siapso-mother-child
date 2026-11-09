@@ -26,15 +26,82 @@ Offline safety information on medicines and traditional remedies during pregnanc
 | `docs/`      | Guides, intended use, Digital Public Goods mapping                    | CC BY 4.0                |
 | `tools/`     | Hygiene checks and repository tooling                                 | MIT                      |
 
+## Run the app locally
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org) 24 or later (see `.nvmrc`) and [pnpm](https://pnpm.io/installation) 12 (the version in `packageManager` of `package.json`).
+- Git, with access to this repository while it is private.
+- A clone outside a synchronised folder (OneDrive, Dropbox, iCloud Drive): syncing `node_modules` slows the install and can lock files. On Windows, for example, clone into `C:\Users\<you>\dev\`.
+
+```sh
+git clone https://github.com/Avect-AI/siapso-mother-child.git
+cd siapso-mother-child
+```
+
+Every command below runs from the repository root, the same way in PowerShell, the Command Prompt or a Unix shell.
+
+### 1. Install
+
+```sh
+pnpm install
+pnpm knowledge:build
+```
+
+`pnpm knowledge:build` writes the knowledge pack (rules, products, plants) to `app/public/pack/`. Run it again after a change in `knowledge/` or `registry/`.
+
+### 2. Development server, to change the code
+
+```sh
+pnpm --filter @siapso/app dev --mode demo
+```
+
+Open the `Local` address it prints, `http://localhost:5173` (Vite takes the next free port, 5174 and so on, when 5173 is busy). The page reloads at each saved change. `--mode demo` reads `app/.env.demo`, which accepts the local unsigned knowledge pack (`docs/pack-signing.md`); without it, the server warns that the pack is not signed. Offline use and installation are tested on the test build below, not on this server.
+
+### 3. Test build, what the team tests
+
+```sh
+pnpm build
+pnpm --filter @siapso/app preview:demo
+```
+
+`pnpm build` makes the demo build in `app/dist-demo/` (about 20 seconds on a laptop). Its screens say "Version de test" and it is never published. The preview serves it at `http://localhost:4173`: after the first load it works offline (Home says "Prêt sans Internet"), and the browser menu can install it. Build again after every change or `git pull`.
+
+### 4. Open it on a phone
+
+On the same Wi-Fi network, expose the preview:
+
+```sh
+pnpm --filter @siapso/app preview:demo --host
+```
+
+Open on the phone the `Network` address it prints, such as `http://192.168.x.x:4173`. On Windows, allow Node.js on private networks if the firewall asks. Such an address is not a secure context: the screens work, but the phone gets no offline use, no installation and no voice input. For those, the phone opens the laptop's `localhost` through USB port forwarding, or a temporary HTTPS tunnel: see "Airplane mode on a real phone" in [docs/testing.md](docs/testing.md).
+
+### Voice input (optional)
+
+The French and Wolof voice packs are not in git. [docs/voice.md](docs/voice.md) explains how to convert them (`pnpm voice:convert`) and install them into `app/public/voice/` (`pnpm voice:install-local`) before `pnpm build`. The voice only works on `localhost` or over HTTPS.
+
+### Stop and troubleshoot
+
+- Stop a server with `Ctrl+C` in its terminal.
+- To run a second preview at the same time, give it another port: `pnpm --filter @siapso/app preview:demo --port 4174`.
+- `app/public/pack/manifest.json is missing`: run `pnpm knowledge:build`, then `pnpm build` again.
+- After a new build, a browser that opened the app before keeps its installed version until "Mettre à jour" is tapped on the band "Une nouvelle version est prête.". To start again from a fresh install, clear the site data (see the end of "Option 1" in [docs/testing.md](docs/testing.md)).
+
 ## Development
 
-Prerequisites: Node 24 (see `.nvmrc`) and pnpm 12.
+Before a pull request, run the checks of the CI:
 
-```
-pnpm install
+```sh
+pnpm lint
+pnpm format:check
+pnpm typecheck
 pnpm test
-pnpm --filter @siapso/app dev
+pnpm knowledge:check
+pnpm e2e
 ```
+
+`pnpm e2e` runs Playwright on a demo build; the first time, install its browser with `pnpm --filter @siapso/app exec playwright install chromium`. What each check covers: [docs/testing.md](docs/testing.md).
 
 ### Referral contacts of a deployment
 
