@@ -8,7 +8,12 @@ import {
 } from '@siapso/resolver';
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { candidateDisplayOf, localNameOf, type BrowseEntry } from '../domain/search-index.js';
+import {
+  candidateDisplayOf,
+  entriesNamedWith,
+  localNameOf,
+  type BrowseEntry,
+} from '../domain/search-index.js';
 import { useLang, useT, useTNodes } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
@@ -29,7 +34,7 @@ import {
   oneMoreStep,
   searchPath,
 } from './check-flow.js';
-import { BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
+import { BrowseEntryButton, BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
 import { VOICE_PATH } from './VoicePack.js';
 
 /** The pause after the last key before the candidates follow what is typed. */
@@ -221,6 +226,12 @@ export function Search({ kind }: { kind: EntryKind }) {
       search(index, query, { kinds: [OTHER[kind]], limit: 1 }).length > 0,
     [index, query, kind, candidates.length],
   );
+  // A carrier or generic word alone ("huile") names nothing: the entries that
+  // have it in their name are listed to choose from.
+  const withWord = useMemo(
+    () => (pack === null || candidates.length > 0 ? [] : entriesNamedWith(pack, kind, query, lang)),
+    [pack, kind, query, lang, candidates.length],
+  );
 
   /**
    * Opens the confirm screen of a candidate. `foundBy` is the query the
@@ -326,7 +337,11 @@ export function Search({ kind }: { kind: EntryKind }) {
       status = t('search.found');
     } else {
       // A name said that matches nothing: the voice panel says it, once.
-      if (voice.state.step !== 'heard-none') {
+      if (withWord.length > 0) {
+        status = t(kind === 'product' ? 'search.withWordProduct' : 'search.withWordPlant', {
+          word: query.trim(),
+        });
+      } else if (voice.state.step !== 'heard-none') {
         status = t(kind === 'product' ? 'search.noneFound' : 'search.noneFoundPlant');
       }
       if (inOtherList) {
@@ -337,7 +352,7 @@ export function Search({ kind }: { kind: EntryKind }) {
   }
   // "Not found" adds the text as it is: quiet while a candidate or the other
   // list is on offer, a plain secondary choice when nothing matches anywhere.
-  const notFoundQuiet = candidates.length > 0 || inOtherList;
+  const notFoundQuiet = candidates.length > 0 || inOtherList || withWord.length > 0;
   // A name the voice heard is added as it was heard only when no candidate
   // matches it (through "Ce nom ressemble à", as a typed name): with
   // candidates on offer she chooses one, or types the name first.
@@ -474,6 +489,23 @@ export function Search({ kind }: { kind: EntryKind }) {
                 onChoose={() => {
                   choose(candidate, query);
                 }}
+              />
+            ))}
+          </ul>
+        )}
+        {withWord.length === 0 ? null : (
+          <ul
+            className="candidates"
+            aria-label={t(
+              kind === 'product' ? 'search.withWordListProduct' : 'search.withWordListPlant',
+              { word: query.trim() },
+            )}
+          >
+            {withWord.map((entry) => (
+              <BrowseEntryButton
+                key={`${entry.id}:${entry.name}`}
+                entry={entry}
+                onChoose={chooseEntry}
               />
             ))}
           </ul>

@@ -13,9 +13,19 @@ import {
 import { beforeAll, describe, expect, it } from 'vitest';
 import { translate, type MessageKey, type Vars } from '../i18n/translate.js';
 import { knowledgePack } from '../test/knowledge-pack.js';
-import { cappedEvaluation, withPossibleMatches } from './possible-matches.js';
+import {
+  cappedEvaluation,
+  evaluateWithPossibleMatches,
+  withPossibleMatches,
+} from './possible-matches.js';
 import { formatDate } from './dates.js';
-import { buildResultView, shownFindings, type ResultView } from './result-view.js';
+import {
+  buildResultView,
+  cardGroups,
+  cardOrientationOf,
+  shownFindings,
+  type ResultView,
+} from './result-view.js';
 import type { Mode } from './types.js';
 
 let pack: Pack;
@@ -800,6 +810,92 @@ describe('buildResultView: merged findings', () => {
     ];
     expect(shownFindings(findings).map((f) => f.message)).toEqual(['a', 'b', 'c', 'e', 'f', 'g']);
   });
+
+  // Live test round 2 (safety-auditor#14): Artotec holds misoprostol and an
+  // NSAID, two rules of one level whose orientations differ: one card would
+  // hide one of them, so each gets its own card.
+  it('gives each orientation of one level its own card, for one product', () => {
+    const artotec: CheckedItem = { ref: { kind: 'product', id: 'artotec' } };
+    const view = buildResultView(
+      evaluate(pack, contextOf({ pregnancy: weeks(24), items: [artotec] })),
+      pack,
+      [artotec],
+      'woman',
+      'fr',
+      tOf('fr'),
+    );
+    const cards = view.findings.filter((f) => f.title.startsWith('Artotec'));
+    expect(cards.map((card) => card.level)).toEqual(['before-next-dose', 'before-next-dose']);
+    expect(cards.map((card) => card.orientation)).toEqual([
+      pack.messages.fr['misoprostol-pregnancy']?.orientation,
+      tOf('fr')('result.orientation.before-next-dose'),
+    ]);
+    // Each card says its own risk.
+    expect(cards[0]?.risks.map((r) => r.text)).toEqual([
+      pack.messages.fr['misoprostol-pregnancy']?.risk,
+    ]);
+    expect(cards[1]?.risks.map((r) => r.text)).toEqual([
+      pack.messages.fr['nsaid-pregnancy-from-20-weeks']?.risk,
+    ]);
+  });
+
+  it('keeps one card for findings of one level that say the same orientation, and for other levels', () => {
+    const orientationOf = (f: { message: string }) => (f.message === 'b' ? 'B' : undefined);
+    const findings: Evaluation['findings'] = [
+      { level: 'danger', check: 'C1', items: [0], message: 'a', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'b', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'c', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'd', capped: false, sources: [] },
+    ];
+    // "b" says its own orientation, "c" and "d" the level's: two cards of that level.
+    expect(cardGroups(findings, orientationOf).map((g) => g.map((f) => f.message))).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+    expect(cardGroups(findings).map((g) => g.map((f) => f.message))).toEqual([
+      ['a', 'b', 'c', 'd'],
+    ]);
+  });
+
+  it('keeps with its card a finding that leads or joins it whatever the others say', () => {
+    // "e" (a possible toxic amount, a danger still ahead) says `false`: it joins the card.
+    const orientationOf = (f: { message: string }) =>
+      f.message === 'e' ? false : f.message === 'b' ? 'B' : undefined;
+    const findings: Evaluation['findings'] = [
+      { level: 'next-contact', check: 'C1', items: [0], message: 'b', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'e', capped: false, sources: [] },
+      { level: 'next-contact', check: 'C1', items: [0], message: 'c', capped: false, sources: [] },
+    ];
+    expect(cardGroups(findings, orientationOf).map((g) => g.map((f) => f.message))).toEqual([
+      ['b', 'e'],
+      ['c'],
+    ]);
+  });
+
+  it('says what the result groups by: an own orientation, or nothing for a toxic amount still possible', () => {
+    const orientationOf = cardOrientationOf(pack, 'fr');
+    const plain: Finding = {
+      level: 'before-next-dose',
+      check: 'C1',
+      ruleId: 'misoprostol-pregnancy',
+      items: [0],
+      message: 'misoprostol-pregnancy',
+      capped: false,
+      sources: [],
+    };
+    expect(orientationOf(plain)).toBe(pack.messages.fr['misoprostol-pregnancy']?.orientation);
+    const danger = pack.rules.find((r) => r.level === 'danger' && r.kind === 'pregnancy');
+    if (danger === undefined) throw new Error('no danger rule');
+    // A danger rule held lower because its window is still ahead joins its card.
+    expect(
+      orientationOf({
+        ...plain,
+        ruleId: danger.id,
+        message: danger.message,
+        windowStart: 30,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('buildResultView: capped findings', () => {
@@ -1178,6 +1274,60 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
     expect(own?.possible).toBe(`Si ce n'est pas ce produit${NBSP}:`);
   });
 
+  // Live test round 2 (depot-keeper#0): the second box keeps its own link.
+  it('gives a name that looks like a product already listed its own card, at the same level', () => {
+    const miso: CheckedItem = { ref: { kind: 'product', id: 'misoprostol-generic' } };
+    for (const [lang, possible, resembles] of [
+      [
+        'fr',
+        `Ce nom ressemble à Misoprostol (générique) (Misoprostol), déjà dans la liste. Si c'est ce produit${NBSP}:`,
+        'ressemble à Misoprostol (générique), déjà dans la liste',
+      ],
+      [
+        'en',
+        'This name looks like Misoprostol (generic) (Misoprostol), already in the list. If it is this product:',
+        'looks like Misoprostol (generic), already in the list',
+      ],
+    ] as const) {
+      const context = contextOf({ pregnancy: weeks(10), items: [miso, typed('cytotec 200')] });
+      const net = withPossibleMatches(pack, context.items, { declined: () => true });
+      const evaluation = evaluateWithPossibleMatches(pack, context, net);
+      const view = buildResultView(evaluation, pack, net.items, 'woman', lang, tOf(lang), [], {
+        possible: net.possible,
+      });
+      const listed = view.findings.find((f) => f.typed?.includes('cytotec 200') && f.resembles);
+      const own = view.findings.find((f) => f.title.startsWith('Misoprostol'));
+      expect(listed, lang).toMatchObject({ title: 'cytotec 200', possible, resembles });
+      expect(listed?.level, lang).toBe(own?.level);
+      expect(listed?.level, lang).not.toBe('unknown');
+    }
+  });
+
+  it('gives each name that looks like the same remedy its own card', () => {
+    const context = contextOf({
+      pregnancy: weeks(38),
+      conditions: ['uterine-scar'],
+      items: [typed('ricin'), typed('huile ricin')],
+    });
+    const net = withPossibleMatches(pack, context.items);
+    const view = buildResultView(
+      evaluateWithPossibleMatches(pack, context, net),
+      pack,
+      net.items,
+      'woman',
+      'fr',
+      tOf('fr'),
+      [],
+      { possible: net.possible },
+    );
+    for (const text of ['ricin', 'huile ricin']) {
+      expect(
+        view.findings.find((f) => f.title === text && f.level === 'danger')?.possible,
+        text,
+      ).toBe(`Ce nom ressemble à Huile de ricin (Ricinus communis). Si c'est ce remède${NBSP}:`);
+    }
+  });
+
   it('says nothing of the kind on the grey card of a name that looks like nothing', () => {
     const view = netViewOf('comprimés du marché', { pregnancy: weeks(30) }, 'woman', 'fr');
     expect(view.findings).toHaveLength(1);
@@ -1209,7 +1359,7 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
   });
 
   it('gives a card held below danger an instruction that branches on intake: go now if already taken', () => {
-    // "cytotek" is a near spelling of Cytotec: strong, so its danger (misoprostol
+    // "misopristol" is a near spelling of misoprostol: strong, so its danger (misoprostol
     // with a scar at 36 weeks) is held at "before the next dose"
     // (possible-matches.ts, committee question N-3). Held down, the card must not
     // lower the urgency when the product may already have been taken.
@@ -1235,7 +1385,7 @@ describe('buildResultView: a name typed as unrecognised that looks like a known 
         'If she has already taken some, she must go to the health post now and show this product. If not, show it to the midwife or the nurse before she takes any, to find out whether it is this product.',
       ],
     ] as const) {
-      const net = withPossibleMatches(pack, [typed('cytotek')]);
+      const net = withPossibleMatches(pack, [typed('misopristol')]);
       expect([...net.possible.values()].map((p) => p.strength)).toEqual(['strong']);
       const context = contextOf({
         pregnancy: weeks(36),

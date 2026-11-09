@@ -45,6 +45,91 @@ describe('the resolver on the repository pack', () => {
     }
   });
 
+  // Live test round 2 (midwife#5, safety-auditor#14, woman-literate#9): the
+  // brands on the boxes of the substances the rules read, and a cough syrup.
+  it('finds the brands of the live test round 2, each holding its substances', () => {
+    const brands: Record<string, { id: RegExp; substances: string[] }> = {
+      triflucan: { id: /^triflucan-/, substances: ['fluconazole'] },
+      diflucan: { id: /^fluconazole-generic$/, substances: ['fluconazole'] },
+      imeth: { id: /^methotrexate-generic$/, substances: ['methotrexate'] },
+      ledertrexate: { id: /^methotrexate-generic$/, substances: ['methotrexate'] },
+      aspro: { id: /^aspro-/, substances: ['aspirin'] },
+      artotec: { id: /^artotec$/, substances: ['diclofenac', 'misoprostol'] },
+      granudoxy: { id: /^granudoxy-/, substances: ['doxycycline'] },
+      toplexil: { id: /^toplexil-/, substances: ['oxomemazine'] },
+    };
+    for (const [query, { id, substances }] of Object.entries(brands)) {
+      const [best] = search(index, query);
+      expect(best?.id, query).toMatch(id);
+      expect(best?.score, query).toBe(1);
+      const product = pack.products.find((p) => p.id === best?.id);
+      expect(product?.components.map((c) => c.substance).sort(), query).toEqual(substances);
+    }
+  });
+
+  // Review of SCRUM-51: a short word or a first name close to a name only
+  // once read as it sounds proposes nothing; real spellings still do.
+  it('proposes no lookalike that only the folding of a short word makes', () => {
+    for (const [query, id] of [
+      ['raisin', 'castor-oil'],
+      ['huile de raisin', 'castor-oil'],
+      ['résine', 'castor-oil'],
+      ['Coura', 'curacne-10-mg-62318935'],
+      ['coura', 'curacne-10-mg-62318935'],
+    ] as const) {
+      const found = search(index, query, { limit: 10 }).map((c) => c.id);
+      expect(found, query).not.toContain(id);
+    }
+    expect(first('rissin')).toBe('castor-oil');
+    expect(first('risin')).toBe('castor-oil');
+    expect(first('ngeur')).toBe('guiera');
+    expect(first('cotrim')).toMatch(/^cotrimoxazole-/);
+  });
+
+  // Review of SCRUM-51 (prescription reading, SCRUM-57): a word of how a
+  // medicine is taken names nothing, whatever the folding ("price" misread for
+  // "prise" reached MONOCRIXO L.P. through "UNE PRISE QUOTIDIENNE").
+  it('names no product with a word of a posology or of the description of a form', () => {
+    for (const query of [
+      'prise',
+      'price',
+      'une prise par jour',
+      '1 cp en prise unique',
+      '1 ap en price unique',
+      'quotidienne',
+      'unique',
+      'jour',
+      'matin',
+      'soir',
+      'sans sucre',
+    ]) {
+      const found = search(index, query, { limit: 10 });
+      expect(
+        found.filter((c) => ['word', 'prefix', 'fuzzy-word'].includes(c.match)),
+        query,
+      ).toEqual([]);
+      expect(
+        found.map((c) => c.id),
+        query,
+      ).not.toContain('monocrixo-l-p-100-mg-67000580');
+    }
+  });
+
+  it('reads amoxicillin misread or misspelt as amoxicillin, as before the folding', () => {
+    const amoxicillin = (id: string | undefined) =>
+      pack.products.find((p) => p.id === id)?.components.map((c) => c.substance);
+    for (const query of ['amoxiciine', 'amoxicilline', 'amoxiciline']) {
+      const [best] = search(index, query);
+      expect(amoxicillin(best?.id), query).toEqual(['amoxicillin']);
+    }
+    // One l misread as an i: as close as before the folding, its INN a near match.
+    const found = search(index, 'amoxiciine', { limit: 10 });
+    expect(found[0]?.score).toBeGreaterThanOrEqual(0.75);
+    expect(found.some((c) => c.match === 'near' && amoxicillin(c.id)?.[0] === 'amoxicillin')).toBe(
+      true,
+    );
+  });
+
   it('finds the plants by their names in the standard Wolof orthography', () => {
     const wolof: Record<string, string> = {
       dakhar: 'tamarind',

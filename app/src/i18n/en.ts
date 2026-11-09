@@ -338,6 +338,12 @@ export const en: Dictionary = {
     found: 'Choose the one that matches.',
     noneFound: 'No product matches this name.',
     noneFoundPlant: 'No remedy matches this name.',
+    withWordProduct:
+      'No product has just the name “{word}”. These products have this word in their name:',
+    withWordPlant:
+      'No remedy has just the name “{word}”. These remedies have this word in their name:',
+    withWordListProduct: 'Products with “{word}” in their name',
+    withWordListPlant: 'Remedies with “{word}” in their name',
     otherName: 'Other name: {name}',
     otherNameLang: 'Other name: {name} ({lang})',
     localName: 'Local name: {name} ({lang})',
@@ -414,6 +420,8 @@ export const en: Dictionary = {
     takesPlace: '{name}, strength not known, becomes {product} in the list.',
     missing: 'This product is not on this phone. Search again.',
     missingSubstances: '{substances}: not in this product. Compare with the name on the box.',
+    missingBrandSubstances:
+      '{brand}: {substances}, not in this product. Compare with the name on the box.',
   },
   result: {
     title: 'Result',
@@ -487,9 +495,13 @@ export const en: Dictionary = {
     quoted: '“{text}”',
     possibleProduct: 'This name looks like {name}. If it is this product:',
     possiblePlant: 'This name looks like {name}. If it is this remedy:',
+    possibleProductListed:
+      'This name looks like {name}, already in the list. If it is this product:',
+    possiblePlantListed: 'This name looks like {name}, already in the list. If it is this remedy:',
     possibleNotProduct: 'If it is not this product:',
     possibleNotPlant: 'If it is not this remedy:',
     resembles: 'looks like {name}',
+    resemblesListed: 'looks like {name}, already in the list',
     term: {
       estimated: 'Estimated term: this result takes every possible week into account.',
       unknown: 'Unknown term: this result takes the whole pregnancy into account.',

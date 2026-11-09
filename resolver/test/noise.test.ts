@@ -114,8 +114,8 @@ describe('stop-words', () => {
   });
 
   it('are removed from a normalised text, accented or not, whatever the case', () => {
-    expect(withoutStopWords(normalize('Comprimé blanc'))).toBe('blanc');
-    expect(withoutStopWords(normalize('COMPRIME BLANC'))).toBe('blanc');
+    expect(withoutStopWords(normalize('Comprimé blanc'))).toBe(normalize('blanc'));
+    expect(withoutStopWords(normalize('COMPRIME BLANC'))).toBe(normalize('blanc'));
     expect(withoutStopWords(normalize('creme eclaircissante'))).toBe(normalize('eclaircissante'));
     expect(withoutStopWords(normalize('gelules sirop suppositoires'))).toBe('');
     expect(withoutStopWords(normalize('doliprane'))).toBe(normalize('doliprane'));

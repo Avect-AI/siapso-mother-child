@@ -247,17 +247,38 @@ function keyOf(finding: Finding): string {
  * engine order, each group in engine order too. Findings are sorted by level,
  * danger first, so a group's first finding is its highest (ties keep the
  * engine's order). Two pregnancy findings for one ibuprofen on a range of
- * weeks are one group. The evaluation is not changed.
+ * weeks are one group. A card says one orientation for each level, so with
+ * `orientationOf` (a message's own orientation, undefined for the level's
+ * default), a finding whose level the group already has with another
+ * orientation starts a card of its own: misoprostol and the NSAID of Artotec
+ * keep their two orientations. A finding for which it says `false` (a possible
+ * toxic amount, a danger still ahead: cardOrientationOf) joins its card
+ * whatever the others say, where orientationFinding chooses who to show and
+ * when. The evaluation is not changed.
  */
-export function cardGroups(findings: readonly Finding[]): Finding[][] {
-  const groups = new Map<string, Finding[]>();
+export function cardGroups(
+  findings: readonly Finding[],
+  orientationOf?: (finding: Finding) => string | undefined | false,
+): Finding[][] {
+  const groups = new Map<string, Finding[][]>();
   for (const finding of findings) {
     const key = keyOf(finding);
-    const group = groups.get(key);
-    if (group) group.push(finding);
-    else groups.set(key, [finding]);
+    const cards = groups.get(key) ?? [];
+    const fits = (card: readonly Finding[]) =>
+      orientationOf === undefined ||
+      orientationOf(finding) === false ||
+      card.every(
+        (other) =>
+          other.level !== finding.level ||
+          orientationOf(other) === false ||
+          orientationOf(other) === orientationOf(finding),
+      );
+    const card = cards.find(fits);
+    if (card) card.push(finding);
+    else cards.push([finding]);
+    groups.set(key, cards);
   }
-  return [...groups.values()];
+  return [...groups.values()].flat();
 }
 
 /** The finding each card is led by: the first, and highest, of its group. */
@@ -350,11 +371,13 @@ function namesOf(scope: Scope, finding: Finding): Named[] {
 function possibleOf(scope: Scope, finding: Finding): { text: string; latin?: string } | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
-  if (item !== undefined && item.ref.kind !== 'unrecognised') {
+  if (index !== undefined && item !== undefined && item.ref.kind !== 'unrecognised') {
     const shown = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true);
     const name = shown.detail === undefined ? shown.name : `${shown.name} (${shown.detail})`;
-    const key = item.ref.kind === 'plant' ? 'result.possiblePlant' : 'result.possibleProduct';
-    const text = scope.t(key, { name });
+    // A product or remedy already in the list: "Ce nom ressemble à ..., déjà dans la liste."
+    const listed = scope.possible?.get(index)?.listed === true ? 'Listed' : '';
+    const kind = item.ref.kind === 'plant' ? 'Plant' : 'Product';
+    const text = scope.t(`result.possible${kind}${listed}`, { name });
     return shown.detailLang === 'la' && shown.detail !== undefined
       ? { text, latin: shown.detail }
       : { text };
@@ -373,9 +396,12 @@ function possibleOf(scope: Scope, finding: Finding): { text: string; latin?: str
 function resemblesOf(scope: Scope, finding: Finding): string | undefined {
   const index = finding.items.find((i) => scope.possible?.has(i) === true);
   const item = index === undefined ? undefined : scope.items[index];
-  if (item === undefined || item.ref.kind === 'unrecognised') return undefined;
+  if (index === undefined || item === undefined || item.ref.kind === 'unrecognised') {
+    return undefined;
+  }
   const name = displayOf(scope.pack, item.ref, scope.lang, item.strengthUnknown === true).name;
-  return scope.t('result.resembles', { name });
+  const listed = scope.possible?.get(index)?.listed === true;
+  return scope.t(listed ? 'result.resemblesListed' : 'result.resembles', { name });
 }
 
 /** Whether the voice heard the name of an item. */
@@ -453,7 +479,7 @@ function heldDanger(scope: Scope, finding: Finding): 'product' | 'plant' | undef
 }
 
 /** The level the pack's rule of a finding declares, when the finding is a rule's. */
-function declaredLevel(scope: Scope, finding: Finding): Level | undefined {
+function declaredLevel(scope: Pick<Scope, 'pack'>, finding: Finding): Level | undefined {
   return finding.ruleId === undefined
     ? undefined
     : scope.pack.rules.find((r) => r.id === finding.ruleId)?.level;
@@ -463,7 +489,7 @@ function declaredLevel(scope: Scope, finding: Finding): Level | undefined {
  * A danger rule the engine held at a lower level because its window is still
  * ahead (reached only through the term look-ahead): its "go now" waits.
  */
-function dangerAhead(scope: Scope, finding: Finding): boolean {
+function dangerAhead(scope: Pick<Scope, 'pack'>, finding: Finding): boolean {
   return (
     finding.windowStart !== undefined &&
     finding.level !== 'danger' &&
@@ -476,7 +502,7 @@ function dangerAhead(scope: Scope, finding: Finding): boolean {
  * the highest strength of a box of unknown strength, held at before the next
  * dose (committee question R-2), which still says today and who to call.
  */
-function possibleOverdose(scope: Scope, finding: Finding): boolean {
+function possibleOverdose(scope: Pick<Scope, 'pack'>, finding: Finding): boolean {
   return (
     finding.check === 'C7' &&
     finding.level !== 'danger' &&
@@ -495,6 +521,25 @@ function orientationFinding(scope: Scope, group: readonly Finding[]): Finding | 
   const level = group[0]?.level;
   const same = group.filter((f) => f.level === level);
   return same.find((f) => possibleOverdose(scope, f)) ?? same.find((f) => !dangerAhead(scope, f));
+}
+
+/**
+ * What the result groups the findings of one item set and check by
+ * (cardGroups): a finding's own orientation in the language (undefined for
+ * the level's default), so two findings of one level that say different
+ * things get a card each (Artotec: misoprostol and an NSAID); `false` for a
+ * possible toxic amount or a danger still ahead, which stay with their card,
+ * where orientationFinding chooses who to show and when.
+ */
+export function cardOrientationOf(
+  pack: Pack,
+  lang: Lang,
+): (finding: Finding) => string | undefined | false {
+  const scope = { pack };
+  return (finding) =>
+    possibleOverdose(scope, finding) || dangerAhead(scope, finding)
+      ? false
+      : pack.messages[lang][finding.message]?.orientation;
 }
 
 /** The words that say now in an orientation (whole words, any case). */
@@ -874,7 +919,8 @@ export function buildResultView(
   };
   const levelLabel = resultLevelLabel(t, evaluation, mode);
   const danger = evaluation.level === 'danger';
-  const groups = cardGroups(evaluation.findings);
+  // A message's own orientation, so that one card never hides another of its level.
+  const groups = cardGroups(evaluation.findings, cardOrientationOf(pack, lang));
   const cards = groups.map((group) => findingView(scope, group));
   const instruction = danger ? dangerInstruction(scope, cards, groups) : null;
   const headline = instruction?.text ?? levelLabel;

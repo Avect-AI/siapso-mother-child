@@ -1269,6 +1269,7 @@
     type: inn,
     expect:
       [
+        { kind: product, id: fluconazole-generic },
         { kind: product, id: beagyne-150-mg-66332081 },
         { kind: product, id: fluconazole-arrow-10-mg-ml-62861105 },
         { kind: product, id: fluconazole-arrow-lab-100-mg-68551946 },
@@ -1285,6 +1286,7 @@
     type: inn,
     expect:
       [
+        { kind: product, id: methotrexate-generic },
         { kind: product, id: methotrexate-accord-10-mg-60390455 },
         { kind: product, id: methotrexate-accord-2-5-mg-65854190 },
         { kind: product, id: metotab-10-mg-62537295 },
@@ -1354,3 +1356,109 @@
 - { query: racine, type: noise, expect: none }
 - { query: sirop toux, type: noise, expect: none }
 - { query: sirop contre la toux, type: noise, expect: none }
+# Live test round 2 (SCRUM-51): names written as they sound, by hand or by the
+# Wolof voice, which writes French names phonetically.
+- { query: sitotek, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: sitoteck, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: 'sitotèk', type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: sitotec, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: cytoteck, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: cytotec 200, type: brand, expect: { kind: product, id: misoprostol-generic } }
+- { query: cyto tec 200, type: voice-like, expect: { kind: product, id: misoprostol-generic } }
+- { query: misoprostole, type: misspelling, expect: { kind: product, id: misoprostol-generic } }
+- { query: kodeyin, type: voice-like, expect: { kind: product, id: codeine-generic } }
+- {
+    query: kotrimoksasol,
+    type: voice-like,
+    expect:
+      [
+        { kind: product, id: cotrimoxazole-generic },
+        { kind: product, id: cotrimoxazole-teva-800-mg-160-mg-67891013 },
+      ],
+  }
+- { query: ibufen, type: misspelling, expect: { kind: product, id: ibuprofen-generic } }
+- { query: huile de rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: huille de rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: uile de risin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: rissin, type: misspelling, expect: { kind: plant, id: castor-oil } }
+- { query: ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: huile ricin, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: huile de castor, type: local-fr, expect: { kind: plant, id: castor-oil } }
+- { query: 'méfénamique', type: inn, expect: { kind: product, id: mefenamic-acid-generic } }
+# A brand of ibuprofen with codeine: the products holding both (depot-keeper#1).
+- {
+    query: 'Advil codéine',
+    type: brand,
+    expect:
+      [
+        { kind: product, id: antarene-codeine-200-mg-30-mg-63755329 },
+        { kind: product, id: antarene-codeine-400-mg-60-mg-63881961 },
+      ],
+  }
+# A carrier or generic word alone names no remedy: the search lists the
+# remedies that have it in their name instead (app), the resolver none.
+- { query: feuille, type: noise, expect: none }
+- { query: tisane, type: noise, expect: none }
+# Brands on the boxes of substances the rules read, and a cough syrup
+# (midwife#5, safety-auditor#14, woman-literate#9).
+- {
+    query: triflucan,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: triflucan-10-mg-ml-63868864 },
+        { kind: product, id: triflucan-100-mg-61173013 },
+        { kind: product, id: triflucan-200-mg-65826650 },
+        { kind: product, id: triflucan-40-mg-ml-60877534 },
+        { kind: product, id: triflucan-50-mg-64080646 },
+      ],
+  }
+- { query: triflucan 200, type: brand, expect: { kind: product, id: triflucan-200-mg-65826650 } }
+- { query: diflucan, type: brand, expect: { kind: product, id: fluconazole-generic } }
+- { query: imeth, type: brand, expect: { kind: product, id: methotrexate-generic } }
+- { query: ledertrexate, type: brand, expect: { kind: product, id: methotrexate-generic } }
+- { query: aspro, type: brand, expect: { kind: product, id: aspro-500-effervescent-68985138 } }
+- { query: artotec, type: brand, expect: { kind: product, id: artotec } }
+- { query: granudoxy, type: brand, expect: { kind: product, id: granudoxy-100-mg-67939611 } }
+- {
+    query: toplexil,
+    type: brand,
+    expect:
+      [
+        { kind: product, id: toplexil-0-33-mg-ml-62982231 },
+        { kind: product, id: toplexil-0-33-mg-ml-sans-sucre-68672780 },
+      ],
+  }
+- {
+    query: toplexil sirop,
+    type: brand,
+    expect: { kind: product, id: toplexil-0-33-mg-ml-62982231 },
+  }
+# A short word or a first name close to a name only once read as it sounds
+# (review of SCRUM-51): raisin and résine are not ricin, Coura is not CURACNE.
+- { query: raisin, type: noise, expect: none }
+- { query: huile de raisin, type: noise, expect: none }
+- { query: 'résine', type: noise, expect: none }
+- { query: Coura, type: noise, expect: none }
+# Prescription reading (SCRUM-57, review of SCRUM-51): a word of how a medicine
+# is taken names nothing, and one l misread as an i is still amoxicillin.
+- { query: prise, type: noise, expect: none }
+- { query: price, type: noise, expect: none }
+- { query: une prise par jour, type: noise, expect: none }
+- { query: 1 cp en prise unique, type: noise, expect: none }
+- {
+    query: amoxiciine,
+    type: misspelling,
+    expect:
+      [
+        { kind: product, id: amoxicilline-almus-1-g-60151544 },
+        { kind: product, id: amoxicilline-almus-pharma-500-mg-68695334 },
+        { kind: product, id: amoxicilline-arrow-125-mg-5-ml-61771313 },
+        { kind: product, id: amoxicilline-arrow-250-mg-5-ml-66773446 },
+        { kind: product, id: clamoxyl-1-g-64539416 },
+        { kind: product, id: clamoxyl-125-mg-5-ml-61155773 },
+        { kind: product, id: clamoxyl-250-mg-5-ml-67140810 },
+        { kind: product, id: clamoxyl-500-mg-5-ml-62607530 },
+        { kind: product, id: clamoxyl-500-mg-67707794 },
+      ],
+  }

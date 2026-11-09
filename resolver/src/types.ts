@@ -32,7 +32,7 @@ export interface IndexEntry {
 /**
  * How a candidate's best name matched the query: the whole name (`exact`), a
  * whole word of it (`word`), its start (`prefix`), a spelling of the whole
- * name within one edit when it has 6 letters or more (`near`: "cytotek"), a
+ * name within one edit when it has 6 letters or more (`near`: "misopristol"), a
  * spelling close to the whole name (`fuzzy`) or to one of its words
  * (`fuzzy-word`), the substances
  * of a query made only of substance names (`substances`), or the name inside
@@ -60,13 +60,16 @@ export interface Candidate {
   /**
    * For a `word` match, why the word alone may name none of the products:
    * `shared` when the names of several families have it (a laboratory,
-   * "biogaran"; "gastro" of "gastro-résistant"), `inner` when it leads no name
-   * of the product, coming after its brand word (a qualifier, "chrono" of
-   * "DEPAKINE CHRONO", "emulgel" of "VOLTARENE EMULGEL"; a word of a
-   * description, "cutanée"). A word after only substance names or a short
+   * "biogaran"), `inner` when it leads no name of the product, coming after
+   * its brand word (a qualifier, "chrono" of "DEPAKINE CHRONO", "emulgel" of
+   * "VOLTARENE EMULGEL"). A word of how a medicine is taken or of the
+   * description of a form ("prise", "cutanée") is never matched alone at all
+   * (descriptionWordsOf). A word after only substance names or a short
    * prefix is the brand ("acnetrait" of "ISOTRETINOINE ACNETRAIT", "codion" of
-   * "Néo-Codion", "profenid" of "BI PROFENID LP"), and the first word of a name
-   * in brackets leads it ("oseille" of "Bissap (oseille de Guinée)"). A caller
+   * "Néo-Codion", "profenid" of "BI PROFENID LP"), each word of a substance
+   * name of several words names it ("méfénamique" of "Acide méfénamique"), and
+   * the first word of a name in brackets leads it ("oseille" of "Bissap
+   * (oseille de Guinée)"). A caller
    * weighs such a match as a weak resemblance; the score and the order are
    * not changed.
    */
@@ -75,6 +78,19 @@ export interface Candidate {
   queryLength: number;
   /** The other product ids of the family, strength ascending then id, for the confirm screen. */
   variants: string[];
+}
+
+/**
+ * A brand or a substance a query names (queryMentions), with the substances
+ * it stands for: "Advil codéine" names the brand ADVIL (ibuprofen) and the
+ * substance codeine.
+ */
+export interface Mention {
+  /** As the pack writes it: a brand ("ADVIL") or a substance name ("Codéine"). */
+  name: string;
+  kind: 'brand' | 'substance';
+  /** The substance ids it names, or that every product of the brand holds, sorted. */
+  substances: string[];
 }
 
 export interface ResolverIndex {

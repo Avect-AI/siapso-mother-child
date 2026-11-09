@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import type { Pack, Rule } from '@siapso/engine';
-import { normalize, search } from '@siapso/resolver';
+import { normalize, plainText, search } from '@siapso/resolver';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { knowledgePack } from '../test/knowledge-pack.js';
 import {
@@ -10,8 +10,10 @@ import {
   candidateDisplayOf,
   candidateOf,
   displayOf,
+  entriesNamedWith,
   filterBrowseEntries,
   localNameOf,
+  missingBrandSubstancesOf,
   missingSubstancesOf,
   needsUnitsPerDay,
   productFamilyOf,
@@ -567,6 +569,27 @@ describe('missingSubstancesOf', () => {
   });
 });
 
+describe('missingBrandSubstancesOf', () => {
+  it('names each brand of the query whose substances the product lacks, with them', () => {
+    expect(missingBrandSubstancesOf(pack, 'codeine-generic', 'Advil codéine', 'fr')).toEqual([
+      { brand: 'ADVIL', substances: ['Ibuprofène'] },
+    ]);
+    expect(missingBrandSubstancesOf(pack, 'codeine-generic', 'Advil codéine', 'en')).toEqual([
+      { brand: 'ADVIL', substances: ['Ibuprofen'] },
+    ]);
+  });
+
+  it('names none when the product holds them, nor for a substance named, nor a product gone', () => {
+    const antarene = 'antarene-codeine-200-mg-30-mg-63755329';
+    expect(missingBrandSubstancesOf(pack, antarene, 'Advil codéine', 'fr')).toEqual([]);
+    // The codeine an ADVIL lacks is named, not implied: missingSubstancesOf says it.
+    expect(missingBrandSubstancesOf(pack, 'advil-200-mg-68634000', 'Advil codéine', 'fr')).toEqual(
+      [],
+    );
+    expect(missingBrandSubstancesOf(pack, 'gone', 'Advil codéine', 'fr')).toEqual([]);
+  });
+});
+
 describe('browseEntriesOf', () => {
   it('lists every remedy once, by its name in the language, in alphabetical order', () => {
     const entries = browseEntriesOf(pack, 'plant', 'fr');
@@ -631,10 +654,38 @@ describe('filterBrowseEntries', () => {
   it('keeps the entries whose name, box name or local name holds the text, accents aside', () => {
     const entries = browseEntriesOf(pack, 'product', 'fr');
     expect(filterBrowseEntries(entries, 'cyto').map((entry) => entry.name)).toEqual(['Cytotec']);
+    // As written while she types it ("c", "cy"), or as it sounds ("sito").
+    for (const text of ['c', 'cy', 'cyt', 'sito']) {
+      expect(
+        filterBrowseEntries(entries, text).map((entry) => entry.name),
+        text,
+      ).toContain('Cytotec');
+    }
     expect(filterBrowseEntries(entries, '  ').length).toBe(entries.length);
     const plants = browseEntriesOf(pack, 'plant', 'fr');
     expect(filterBrowseEntries(plants, 'NEBEDAY').map((entry) => entry.id)).toEqual(['moringa']);
     expect(filterBrowseEntries(plants, 'zzqxw')).toEqual([]);
+  });
+});
+
+describe('entriesNamedWith', () => {
+  const ids = (query: string, kind: 'product' | 'plant' = 'plant') =>
+    entriesNamedWith(pack, kind, query, 'fr').map((entry) => entry.id);
+
+  it('lists the remedies with a carrier word of the query in one of their names', () => {
+    expect(ids('huile')).toEqual(['castor-oil']);
+    expect(ids('Huiles')).toEqual(['castor-oil']);
+    expect(ids('feuille')).toEqual(['bitter-leaf']);
+    expect(ids('feuilles')).toEqual(['bitter-leaf']);
+    expect(ids('une feuille')).toEqual([]);
+  });
+
+  it('lists nothing for a query that names something, a form word or a word in no name', () => {
+    expect(ids('huile de ricin')).toEqual([]);
+    expect(ids('sirop')).toEqual([]);
+    expect(ids('comprimé', 'product')).toEqual([]);
+    expect(ids('tisane')).toEqual([]);
+    expect(ids('')).toEqual([]);
   });
 });
 
@@ -646,10 +697,23 @@ describe('browseGroupsOf', () => {
     expect(letters).toEqual([...letters].sort());
     for (const group of groups) {
       for (const entry of group.entries) {
-        expect(normalize(entry.name).charAt(0).toUpperCase()).toBe(group.letter);
+        expect(plainText(entry.name).charAt(0).toUpperCase()).toBe(group.letter);
       }
     }
     expect(groups.flatMap((group) => group.entries)).toHaveLength(pack.plants.length);
+  });
+
+  it('files a name under the letter it is written with, not the sound the search reads', () => {
+    const groups = browseGroupsOf(browseEntriesOf(pack, 'plant', 'fr'));
+    const letterOf = (name: string) =>
+      groups.find((group) => group.entries.some((entry) => entry.name === name))?.letter;
+    expect(letterOf('Huile de ricin')).toBe('H');
+    expect(letterOf('Kinkéliba')).toBe('K');
+    const products = browseGroupsOf(browseEntriesOf(pack, 'product', 'fr'));
+    const codoliprane = products.find((group) =>
+      group.entries.some((entry) => entry.name.startsWith('CODOLIPRANE')),
+    );
+    expect(codoliprane?.letter).toBe('C');
   });
 
   it('puts a name that starts with a digit or a sign under #', () => {

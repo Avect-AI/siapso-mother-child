@@ -198,7 +198,8 @@ describe('scoring order: whole word above prefix', () => {
   });
 
   it('matches a prefix of a word of a multi-word name', () => {
-    expect(search(index, 'nouv')[0]).toMatchObject({ id: 'nouveau-ne', score: 0.9 });
+    // "nouve" is read "nuve": 4 letters, the shortest prefix of one word of a longer name.
+    expect(search(index, 'nouve')[0]).toMatchObject({ id: 'nouveau-ne', score: 0.9 });
   });
 
   it('matches a two-letter query only as a whole name or a two-letter word, at 0.6', () => {

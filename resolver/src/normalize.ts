@@ -1,38 +1,81 @@
 // SPDX-License-Identifier: MIT
 /**
- * Spelling variants applied to each word, in this order:
+ * Spelling variants applied to each word, in this order, so that a name
+ * written as it sounds is read as the name it writes ("sitotek" is Cytotec,
+ * "huile de rissin" is castor oil, "kodeyin" is codeine):
  * - `ph` becomes `f` (phenytoine, fenitoine);
- * - `qu` becomes `k` (quinquéliba, kinkéliba; nivaquine, nivakine);
- * - `y` becomes `i` (nebeday, nebedai);
- * - a doubled consonant becomes single (doliprann, dolipran); vowels and
- *   digits are kept as they are;
+ * - `ck` and `qu` become `k` (cytoteck; quinquéliba, kinkéliba);
+ * - `c` before `e`, `i` or `y` becomes `s` (ricin, risin; Cytotec, sitotek),
+ *   any other `c` becomes `k` (codéine, kodéine; a final `c`, cytotek), except
+ *   in `ch`, a sound of its own (chloroquine);
+ * - a silent `h` is dropped: at the start of a word (huile, uile) and after a
+ *   consonant other than `c`, `s`, `p` and `k` (thé, té): `ch`, `sh`, `ph`
+ *   and `kh` are sounds of their own (`kh` writes a Wolof sound, dakhar);
+ * - `y` becomes `i` (nebeday, nebedai; kodeyin, kodeiin);
+ * - `ou` becomes `u`, the Wolof spelling of the sound (Nourofen, Nurofen);
+ * - a doubled letter becomes single, vowels included (doliprann, dolipran;
+ *   rissin, risin; nebedaay, kodeiin, kodein); digits are kept as they are;
  * - a trailing `e` is dropped in words of more than 4 letters (ibuprofene,
- *   ibuprofen), so that a missing or added final `e` does not matter.
- * `kh` is NOT mapped to `x`: it would change the meaning of Wolof names.
+ *   ibuprofen), so that a missing or added final `e` does not matter, and a
+ *   final `-que` reads as the final `-c` or `-k` (méfénamique, mefenamik).
+ * `kh` is NOT mapped to `x`: it would change the meaning of Wolof names. A
+ * word of one letter is kept as it is ("vitamine C").
  */
 function simplifyWord(word: string): string {
+  // A letter alone is a name ("vitamine C", "vitamine K"), not a sound.
+  if (word.length < 2) return word;
+  const spelled = word
+    .replaceAll('ph', 'f')
+    .replaceAll('ck', 'k')
+    .replaceAll('qu', 'k')
+    .replace(/c(?=[eiy])/g, 's')
+    .replace(/c(?!h)/g, 'k')
+    .replace(/^h/, '')
+    .replace(/([bdfgjlmnqrtvwxz])h/g, '$1')
+    .replaceAll('y', 'i')
+    .replaceAll('ou', 'u')
+    .replace(/([a-z])\1+/g, '$1');
+  return spelled.length > 4 && spelled.endsWith('e') ? spelled.slice(0, -1) : spelled;
+}
+
+/**
+ * Lowercase, strip accents, turn apostrophes, hyphens and any other character
+ * that is not a letter or a digit into spaces, collapse spaces and trim. The
+ * text as written, every spelling kept: the order of names and their first
+ * letter are read on it ("Cytotec" under C, "comprimé" before "gélule").
+ */
+export function plainText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+/**
+ * The plain text (plainText) with the spelling variants applied to each word,
+ * so that a name is read as it sounds. Used on both sides of a match.
+ */
+export function normalize(text: string): string {
+  const plain = plainText(text);
+  if (plain === '') return '';
+  return plain.split(' ').map(simplifyWord).join(' ');
+}
+
+/**
+ * A word with the spelling variants that change no sound only: `ph`, `qu`,
+ * `y`, a doubled consonant, a trailing `e` (as normalize read words before
+ * the live test round 2). A short word close to a name only once read as it
+ * sounds ("raisin", "risin" for "ricin") is not that name (lightCleaned).
+ */
+function lightWord(word: string): string {
   const spelled = word
     .replaceAll('ph', 'f')
     .replaceAll('qu', 'k')
     .replaceAll('y', 'i')
     .replace(/([b-df-hj-np-tv-z])\1+/g, '$1');
   return spelled.length > 4 && spelled.endsWith('e') ? spelled.slice(0, -1) : spelled;
-}
-
-/**
- * Lowercase, strip accents, turn apostrophes, hyphens and any other character
- * that is not a letter or a digit into spaces, collapse spaces and trim, then
- * apply the spelling variants to each word. Used on both sides of a match.
- */
-export function normalize(text: string): string {
-  const plain = text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-  if (plain === '') return '';
-  return plain.split(' ').map(simplifyWord).join(' ');
 }
 
 /**
@@ -347,14 +390,103 @@ export function isSaltWord(word: string): boolean {
   return SALT_SET.has(word);
 }
 
-/** The words kept, without the linking words left at either end. */
-function trimmed(words: readonly string[], kept: readonly boolean[]): string {
-  const left = words.filter((_, index) => kept[index]);
+/**
+ * Words of how a medicine is taken, and of the description of a form, that a
+ * product name may hold ("(UNE PRISE QUOTIDIENNE)", "SANS SUCRE", "L.P."):
+ * they name no product alone, whatever the folding (review of SCRUM-51:
+ * "prise", and "price" misread for it, reached MONOCRIXO L.P.). They stay in
+ * the name as a whole; the index adds to them the words of the description of
+ * every product name (descriptionWords). Compared after normalize.
+ */
+export const POSOLOGY_WORDS: readonly string[] = [
+  'prise',
+  'prises',
+  'quotidien',
+  'quotidienne',
+  'quotidiens',
+  'quotidiennes',
+  'unique',
+  'uniques',
+  'jour',
+  'jours',
+  'journalier',
+  'journalière',
+  'journaliers',
+  'journalières',
+  'matin',
+  'matins',
+  'midi',
+  'soir',
+  'soirs',
+  'nuit',
+  'nuits',
+  'fois',
+  'par',
+  'semaine',
+  'semaines',
+  'heure',
+  'heures',
+  'sans',
+  'sucre',
+  'sucres',
+  'libération',
+  'prolongée',
+  'prolongé',
+  'modifiée',
+  'modifié',
+  'immédiate',
+  'retard',
+  'lm',
+  'daily',
+  'day',
+  'days',
+  'once',
+  'twice',
+  'morning',
+  'evening',
+  'night',
+  'sugar',
+  'free',
+  'release',
+  'prolonged',
+  'extended',
+  'modified',
+];
+
+const POSOLOGY_SET: ReadonlySet<string> = new Set(POSOLOGY_WORDS.map(normalize));
+
+/** Whether a normalised word is a word of how a medicine is taken (POSOLOGY_WORDS). */
+export function isPosologyWord(word: string): boolean {
+  return POSOLOGY_SET.has(word);
+}
+
+/** The indexes of the words kept, without the linking words left at either end. */
+function trimmed(words: readonly string[], kept: readonly boolean[]): number[] {
+  const left = words.flatMap((_, index) => (kept[index] === true ? [index] : []));
   let start = 0;
   let end = left.length;
-  while (start < end && EDGE_LINKS.has(left[start] ?? '')) start += 1;
-  while (end > start && EDGE_LINKS.has(left[end - 1] ?? '')) end -= 1;
-  return left.slice(start, end).join(' ');
+  while (start < end && EDGE_LINKS.has(words[left[start] ?? -1] ?? '')) start += 1;
+  while (end > start && EDGE_LINKS.has(words[left[end - 1] ?? -1] ?? '')) end -= 1;
+  return left.slice(start, end);
+}
+
+/** The indexes of the normalised words withoutStopWords keeps. */
+function keptIndexes(words: readonly string[], keep: ReadonlySet<string>): number[] {
+  const salt = (word: string) => SALT_SET.has(word) && !keep.has(word);
+  const kept = words.map((word) => !STOP_SET.has(word) && !salt(word));
+  words.forEach((word, index) => {
+    if (!salt(word)) return;
+    for (const near of [index - 1, index + 1]) {
+      if (SALT_LINKS.has(words[near] ?? '')) kept[near] = false;
+    }
+  });
+  const indexes = trimmed(words, kept);
+  if (indexes.length > 0 || !words.some(salt)) return indexes;
+  // Only salt words (and stop-words) were there: the salt words are the name.
+  return trimmed(
+    words,
+    words.map((word) => !STOP_SET.has(word)),
+  );
 }
 
 /**
@@ -368,21 +500,28 @@ function trimmed(words: readonly string[], kept: readonly boolean[]): string {
 export function withoutStopWords(normalized: string, keep: ReadonlySet<string> = NO_WORDS): string {
   if (normalized === '') return '';
   const words = normalized.split(' ');
-  const salt = (word: string) => SALT_SET.has(word) && !keep.has(word);
-  const kept = words.map((word) => !STOP_SET.has(word) && !salt(word));
-  words.forEach((word, index) => {
-    if (!salt(word)) return;
-    for (const near of [index - 1, index + 1]) {
-      if (SALT_LINKS.has(words[near] ?? '')) kept[near] = false;
-    }
-  });
-  const text = trimmed(words, kept);
-  if (text !== '' || !words.some(salt)) return text;
-  // Only salt words (and stop-words) were there: the salt words are the name.
-  return trimmed(
-    words,
-    words.map((word) => !STOP_SET.has(word)),
-  );
+  return keptIndexes(words, keep)
+    .map((index) => words[index])
+    .join(' ');
+}
+
+/**
+ * The words of a text that matching keeps (withoutStopWords, without age
+ * words), each with the spelling variants that change no sound only
+ * (lightWord): "huile de raisin" is "raisin" and "Huile de ricin" "ricin",
+ * where normalize reads "raisin" and "risin", one letter apart. It tells a
+ * short word close to a name as written from one close to it only as it
+ * sounds.
+ */
+export function lightCleaned(text: string, keep: ReadonlySet<string> = NO_WORDS): string {
+  const plain = plainText(text);
+  if (plain === '') return '';
+  const words = plain.split(' ');
+  const folded = words.map(simplifyWord);
+  return keptIndexes(folded, keep)
+    .filter((index) => !AGE_GROUP_OF.has(folded[index] ?? ''))
+    .map((index) => lightWord(words[index] ?? ''))
+    .join(' ');
 }
 
 /**
