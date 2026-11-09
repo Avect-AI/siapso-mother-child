@@ -59,10 +59,22 @@ The first measure decoded up to 448 tokens: the same 55.6 %, 69.5 % and 30.0 % i
 ## Commands
 
 - `pnpm voice:convert`: build the packs into `speech/convert/out/` (`speech/convert/README.md`).
-- `pnpm voice:install-local`: copy them, with the ONNX Runtime files and the licence texts, to `app/public/voice/` for local preview and phone tests (`docs/testing.md`).
+- `pnpm voice:install-local`: copy them, with the ONNX Runtime files and the licence texts, to `app/public/voice/` for local preview and phone tests (`docs/testing.md`); how to serve them: "Serving the packs" below.
 - `pnpm eval:speech`: word error rate of the packs on FLEURS and on consented volunteer recordings, with Transformers.js in Node; protocol, consent forms and committed results in `eval/speech/`. Baseline of 2026-11-04 (100 sentences per language): Wolof pack 54.1 % on `wo_sn`, French pack 30.3 % on `fr_fr`. Name accuracy is pending recordings.
 - Conversion tool versions (hashed lock `speech/convert/requirements.txt`, moved to patched versions on 2026-11-05, alerts in `docs/dependencies.md`): torch 2.10.0 (CPU build), onnx 1.22.0, onnxruntime 1.23.2, transformers 4.57.6, optimum 2.1.0, optimum-onnx 0.1.0, filelock 4.2.1 (Python 3.11 and 3.12; 4.1.0 on 3.10). After the move, the French pack was converted again and the 20-sentence FLEURS check gave the same 30.0 % (534 words) as before.
 - `pnpm voice:bench`: the timing bench below (`BENCH_PORT`, default 4180; `BENCH_OUT` writes the JSON report).
+
+## Serving the packs
+
+The packs are never in git, and a build holds them only when they were installed before it. To offer the voice from a test server (a laptop preview for the team) or from a host:
+
+1. Have the converted packs in `speech/convert/out/<pack id>/`: run `pnpm voice:convert`, or copy the output of an earlier conversion of the same source revision. A copied pack is checked first: every file against the size and sha256 its `voice-pack.json` lists (`sha256sum` in the pack folder).
+2. Run `pnpm voice:install-local` (all packs, or the pack ids). It writes `app/public/voice/<pack id>/`: the pack, the ONNX Runtime files under `runtime/<version>/`, `licenses/` and `NOTICE.md`, all recorded in `voice-pack.json`. Sizes served: 137,164,324 bytes for `whisper-base-fr-q8`, 325,620,637 bytes for `whisper-small-wolof-q8`.
+3. Put each pack folder at `voice/<pack id>/` of the folder the app is served from:
+   - before a build: Vite copies `app/public/` into the build, so `pnpm build` (or `pnpm --filter @siapso/app build:demo`) carries `voice/` in `app/dist/` (`app/dist-demo/`). The service worker never precaches it and `pnpm budget:app` does not count it. Remove `app/public/voice/` before a build that must not carry the packs.
+   - into a build that is already served: copy each `app/public/voice/<pack id>/` to `<build folder>/voice/<pack id>/`. `vite preview` serves new files without a restart. Copy into a folder beside the build, then rename it to `voice/`, so nobody downloads a pack half copied.
+4. Check the answers of the server for every file of `voice-pack.json`, for example `curl -sI http://localhost:4173/voice/whisper-base-fr-q8/voice-pack.json`: status 200 and the size the manifest lists; `voice-pack.json` and the other JSON files as `application/json`, the runtime `.mjs` as `text/javascript`, the `.wasm` as `application/wasm`. `vite preview` sends the `.onnx` files with no content type, which the installer accepts (it stores bytes). A host should answer 404 for a file it does not have: a host that answers the app page for every address makes the voice screen say that the voice is not available (for `voice-pack.json`) or that the files received are damaged (for any other file).
+5. Open the app on the laptop at `http://localhost:<port>`, or on a phone through USB port forwarding or a temporary HTTPS tunnel (`docs/testing.md`, "Airplane mode on a real phone", with the port of the preview). The voice needs a secure context (`https://` or `localhost`) for the microphone, the Cache API and the service worker: a phone that opens the laptop by its network address (`http://192.168.x.x:<port>`) shows no microphone button at all (`voiceSupported` in `app/src/voice/voice-context.tsx`), so it can neither install nor use the voice.
 
 ## Timings
 
