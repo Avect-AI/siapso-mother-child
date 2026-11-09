@@ -6,7 +6,7 @@ This page maps SIAPSO Mother-Child to the indicators of the [Digital Public Good
 
 Source of the indicator list: the official standard page (nine indicators; indicator 9 has three parts, 9a, 9b and 9c), read on 2026-11-05. The requirement wording below is taken from the standard text in the Digital Public Goods Alliance repository (https://github.com/DPGAlliance/DPG-Standard), whose `standard.md` header says version 1.1.4 while its README says 1.1.6 (4 September 2024): check the current version at submission time.
 
-Overall status: **not ready to apply.** The repository is private, the clinical content is not validated, and several statements need an authorised person from AVECT AI SARL.
+Overall status: **not ready to apply.** The repository is public since 2026-11-10, but the clinical content is not validated, and several statements need an authorised person from AVECT AI SARL.
 
 | #   | Indicator (official name)         | Status  |
 | --- | --------------------------------- | ------- |
@@ -178,12 +178,11 @@ Requirement: if the project enables interaction between users or contributors, p
 
 Evidence: `CODE_OF_CONDUCT.md`. The app has no interaction between users.
 
-Pending: a named enforcement contact in the Code of Conduct: `<to be completed by the team>`.
+Enforcement: reports go privately to the maintainers through GitHub's private vulnerability reporting, as the Code of Conduct says.
 
 ## Summary of what blocks an application
 
-1. The repository is private.
-2. Clinical validation by a pharmacist and a midwife is pending; nobody is named yet.
-3. The WAXAL Wolof share-alike question and the ALFFA data licence are open.
-4. The privacy and compliance statements need an authorised signatory.
-5. Maintainers, contact addresses and reporting channels are placeholders that the team must fill.
+1. Clinical validation by a pharmacist and a midwife is pending; nobody is named yet.
+2. The WAXAL Wolof share-alike question and the ALFFA data licence are open.
+3. The privacy and compliance statements need an authorised signatory.
+4. The clinical lead and the reviewers are not appointed yet.

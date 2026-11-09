@@ -43,4 +43,4 @@ The software and the content are provided "as is", without warranty of any kind,
 
 ## Reporting an error
 
-If you think a rule is wrong or dangerous, tell the maintainers right away. A rule reported as harmful is withdrawn within 24 hours (see [GOVERNANCE.md](GOVERNANCE.md)). Contact: `<to be completed by the team>`.
+If you think a rule is wrong or dangerous, tell the maintainers right away. A rule reported as harmful is withdrawn within 24 hours (see [GOVERNANCE.md](GOVERNANCE.md)). Report it in a public issue of this repository, or privately as [SECURITY.md](SECURITY.md) explains.

@@ -101,7 +101,7 @@ export function About() {
       <section className="about__section" aria-labelledby="about-code">
         <h2 id="about-code">{t('about.repositoryTitle')}</h2>
         <p className="about__address">{REPOSITORY_URL}</p>
-        <p>{t('about.repositoryPrivate')}</p>
+        <p>{t('about.repositoryPublic')}</p>
       </section>
       <a className="button button--secondary about__status" href="#/status">
         {t('nav.status')}

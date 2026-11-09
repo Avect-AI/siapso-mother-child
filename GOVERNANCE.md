@@ -6,13 +6,12 @@ SIAPSO Mother-Child handles health information for pregnant and breastfeeding wo
 
 ## Maintainers
 
-AVECT AI SARL holds the repository. The maintainers are named by the team:
+AVECT AI SARL holds the repository. The maintainers act through the organisation's GitHub account; contact them through GitHub (issues, or private reporting for anything sensitive):
 
-| Name                            | Role                      | Contact                         |
-| ------------------------------- | ------------------------- | ------------------------------- |
-| `<to be completed by the team>` | Lead maintainer           | `<to be completed by the team>` |
-| `<to be completed by the team>` | Maintainer, code          | `<to be completed by the team>` |
-| `<to be completed by the team>` | Clinical lead (see below) | `<to be completed by the team>` |
+| Who                        | Role                      | Contact                                                |
+| -------------------------- | ------------------------- | ------------------------------------------------------ |
+| AVECT AI SARL (`@2sml001`) | Lead maintainer and code  | GitHub issues; private reporting for sensitive reports |
+| To be appointed            | Clinical lead (see below) | Named here once they have agreed in writing            |
 
 Maintainers review and merge pull requests, publish releases and answer security and safety reports.
 
@@ -30,7 +29,7 @@ Maintainers review and merge pull requests, publish releases and answer security
 - Their names and the date are recorded in the rule file (`review.reviewers`, `review.reviewed-on`). Anonymous or single-person validation does not exist.
 - **Today no rule is validated.** The knowledge pack declares `clinically-validated: false`, and every rule is a draft. Nothing is presented as validated before the double review is done.
 - A change to a validated rule (source, level, wording) puts it back to draft until it is reviewed again.
-- The reviewers are named by the team: `<to be completed by the team>`. No reviewer, partner or institution is named in this repository until they have agreed in writing.
+- The reviewers are not appointed yet. No reviewer, partner or institution is named in this repository until they have agreed in writing.
 
 ## Rule withdrawal within 24 hours
 
@@ -41,7 +40,7 @@ If a rule, a message or a registry entry is reported as wrong or harmful:
 3. The cause is examined, the rule is corrected and goes through the clinical double review again before it returns.
 4. The withdrawal and its reason are recorded in the change log.
 
-Reports go to: `<to be completed by the team>`. A public reporting channel will be set up before the repository is published; until then see [SECURITY.md](SECURITY.md).
+Reports go to a public issue of this repository, or privately through GitHub's private vulnerability reporting (the Security tab, then "Report a vulnerability") when the report holds personal data: see [SECURITY.md](SECURITY.md).
 
 ## Public change log
 

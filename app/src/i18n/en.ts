@@ -705,7 +705,7 @@ export const en: Dictionary = {
       'Transformers.js (Apache-2.0 licence), ONNX Runtime Web and the Whisper models (MIT): only for the voice, once installed.',
     licencesLink: 'Read the third-party licences',
     repositoryTitle: 'Source code',
-    repositoryPrivate: 'The repository is private during development.',
+    repositoryPublic: 'The source code is public: anyone can read it and check the rules.',
   },
   voice: {
     mic: 'Say the name',

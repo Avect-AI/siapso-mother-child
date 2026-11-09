@@ -26,8 +26,8 @@ Installable offline web app that flags risky medicines and traditional remedies 
 3. Commits follow [Conventional Commits](https://www.conventionalcommits.org): `type(scope): imperative summary`, at most 72 characters, no final period. Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `build`, `ci`, `chore`, `revert`.
 4. Every commit is signed off (`git commit -s`, Developer Certificate of Origin) and ends with a `Refs: SCRUM-<n>` footer.
 5. The pull request title is a Conventional Commits subject; the description fills `.github/pull_request_template.md`.
-6. Merge with squash as soon as the whole CI is green (team decision of 2026-11-03), using `sh tools/github/merge-pr.sh <number>`, then move the Jira ticket to Done. The GitHub Free plan offers neither auto-merge nor branch protection on a private repository: the script waits for CI and refuses to merge if any check is not green. Never push directly to `main`, and never rewrite pushed history.
-7. The repository stays **private** during development and is made public at the end, after an audit.
+6. Merge with squash as soon as the whole CI is green (team decision of 2026-11-03), using `sh tools/github/merge-pr.sh <number>`, then move the Jira ticket to Done. The script waits for CI, refuses to merge if any check is not green, and gives the squash commit the GitHub noreply address of the merging account. Never push directly to `main`, and never rewrite pushed history.
+7. The repository is **public** since 2026-11-10. A ruleset protects `main`: pull request, squash only, the four required checks with the branch up to date, linear history, no force push, no deletion. Commits use a GitHub noreply address (`git config user.email`), never a personal one.
 
 ## Commands
 

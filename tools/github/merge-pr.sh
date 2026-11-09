@@ -135,5 +135,9 @@ fi
 # The base may have moved while the checks ran.
 refuse_if_behind
 
-gh pr merge "$PR" --squash --delete-branch
-echo "Pull request $PR squash-merged."
+# The squash commit carries the merging account's GitHub noreply address,
+# never the address of the account (which a web merge would use unless
+# "Keep my email addresses private" is on).
+noreply="$(gh api user --jq '"\(.id)+\(.login)@users.noreply.github.com"')"
+gh pr merge "$PR" --squash --delete-branch --author-email "$noreply"
+echo "Pull request $PR squash-merged as $noreply."
