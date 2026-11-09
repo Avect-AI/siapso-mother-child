@@ -23,6 +23,7 @@ import { Search } from './screens/Search.js';
 import { Settings } from './screens/Settings.js';
 import { Status } from './screens/Status.js';
 import { Unlock } from './screens/Unlock.js';
+import { PRESCRIPTION_PATH, Prescription } from './screens/Prescription.js';
 import { VOICE_PATH, VoicePack } from './screens/VoicePack.js';
 import { Welcome } from './screens/Welcome.js';
 import { useApp } from './state/app-state.js';
@@ -45,6 +46,7 @@ type CheckRoute =
   | { screen: 'check' }
   | { screen: 'search'; kind: EntryKind }
   | { screen: 'confirm'; kind: EntryKind }
+  | { screen: 'prescription' }
   | { screen: 'signs' }
   | { screen: 'result' };
 
@@ -106,6 +108,7 @@ function checkRoute(location: string): CheckRoute | null {
   if (location === '/check') return { screen: 'check' };
   if (location === '/signs') return { screen: 'signs' };
   if (location === '/result') return { screen: 'result' };
+  if (location === PRESCRIPTION_PATH) return { screen: 'prescription' };
   const search = /^\/search\/(product|plant)$/.exec(location);
   if (search?.[1]) return { screen: 'search', kind: search[1] as EntryKind };
   const confirm = /^\/confirm\/(product|plant)$/.exec(location);
@@ -407,6 +410,7 @@ function Screens() {
       {screen === 'search' && check?.screen === 'search' ? (
         <Search key={key} kind={check.kind} />
       ) : null}
+      {screen === 'prescription' ? <Prescription key={key} /> : null}
       {screen === 'confirm' && check?.screen === 'confirm' ? (
         <Confirm key={key} kind={check.kind} />
       ) : null}

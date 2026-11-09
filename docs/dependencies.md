@@ -65,3 +65,15 @@ Mitigation (tested by `speech/train/test_finetune.py`):
 - The tooling runs on a training machine only, never in the app or on a phone.
 
 Revisit on 2026-11-19, and before the first training run: check the advisories of alerts 49 and 50 for a fixed version and move to it through `lock.py` once it is 14 days old; if Dependabot closes them on the version range alone, note it here and keep the mitigation. Before training, run `lock.py check --dir speech/train` and `test_finetune.py` with the lock installed on the training machine. The lock was installed and tested on Windows x86_64 with Python 3.12 only (CPU build of torch, without the Linux-only CUDA pins); the Linux CUDA install has not been tried, for lack of a GPU machine.
+
+## Prescription reading (`@siapso/ocr`)
+
+Added on 2026-11-06 for SCRUM-57 (`docs/ocr.md`), each version at least 14 days old (`minimumReleaseAge`):
+
+| Package           | Version                         | Published  | Why                                                                                                                                                                               |
+| ----------------- | ------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onnxruntime-web` | `1.31.0-dev.20260914-8d85527a0` | 2026-09-14 | The build Transformers.js 4.3.1 pins for the voice, now also a direct dependency of `@siapso/ocr` at the same version (`ocr/test/versions.test.ts`): one ONNX Runtime in the app. |
+| `pdfjs-dist`      | `6.4.299`                       | 2026-10-03 | PDF prescriptions: its `build/pdf.min.mjs` and `build/pdf.worker.min.mjs` go into the reading pack; 6.5.438 (2026-11-01) was younger than 14 days.                                |
+| `@napi-rs/canvas` | `1.0.13`                        | 2026-10-21 | Optional dependency of `pdfjs-dist` for rendering in Node, installed with its platform binary from optional dependencies (no install script); used by no test and never shipped.  |
+
+No open alert for them on 2026-11-06. When `@huggingface/transformers` moves to another ONNX Runtime, move `onnxruntime-web` in `ocr/package.json` and `ORT_WEB_VERSION` in `ocr/src/ocr-pack.ts` with it (the version test fails until then); a new pdf.js changes `PDFJS_VERSION` and the pack path `pdf/<version>/`, so an installed pack reads as to install again.

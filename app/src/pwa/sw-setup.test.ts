@@ -117,6 +117,26 @@ describe('setUpServiceWorker', () => {
     expect(api.cleanupOutdatedCaches).toHaveBeenCalledOnce();
   });
 
+  it('precaches the reading worker script with the app shell, voice or no voice, isolated like it', async () => {
+    // The prescription reading worker must start offline once its pack is
+    // installed, whether a voice is installed or not: only the speech worker
+    // waits for a voice.
+    const OCR_WORKER = 'assets/ocr-worker-Cd2_e-3.js';
+    const { api, scope, store } = setUp(['index.html', 'assets/app.js', WORKER, OCR_WORKER]);
+    expect(api.precacheAndRoute).toHaveBeenCalledWith(['index.html', 'assets/app.js', OCR_WORKER]);
+    expect(api.addPlugins).toHaveBeenCalledWith([crossOriginIsolation]);
+    expect(api.voiceRoute?.match(new URL(OCR_WORKER, BASE))).toBe(false);
+    await scope.fire('install');
+    expect(store.cache).not.toHaveBeenCalled();
+    // The precache answers through the plugin: the worker script carries COOP and COEP.
+    const answer = await crossOriginIsolation.handlerWillRespond({
+      response: new Response('worker', { headers: { 'content-type': 'text/javascript' } }),
+    });
+    for (const [name, value] of Object.entries(CROSS_ORIGIN_ISOLATION_HEADERS)) {
+      expect(answer.headers.get(name)).toBe(value);
+    }
+  });
+
   it('answers every navigation with the app page, but a voice pack or deployment file', () => {
     const { api } = setUp();
     expect(api.navigation?.url).toBe('index.html');
@@ -282,6 +302,12 @@ describe('navigation fallback', () => {
     );
     expect(denied('/')).toBe(false);
     expect(denied('/index.html')).toBe(false);
+  });
+
+  it('never answers an /ocr/ request with the app page: a reading pack file not served stays missing', () => {
+    expect(denied('/ocr/ppocrv5-mobile-latin/ocr-pack.json')).toBe(true);
+    expect(denied('/siapso/ocr/ppocrv5-mobile-latin/models/det.onnx')).toBe(true);
+    expect(denied('/#/prescription')).toBe(false);
   });
 
   it('never answers a /config/ request with the app page: a missing file stays missing', () => {

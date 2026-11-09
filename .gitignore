@@ -59,6 +59,10 @@ app/public/config/referral.json
 # Voice pack: converted model files, never committed (speech/convert/README.md)
 app/public/voice/
 speech/convert/out/
+
+# Prescription reading pack: models, ONNX Runtime and pdf.js files, never
+# committed (pnpm ocr:install-local, docs/ocr.md)
+app/public/ocr/
 speech/convert/.venv/
 
 # Test and build output

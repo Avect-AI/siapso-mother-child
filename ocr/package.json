@@ -1,0 +1,22 @@
+{
+  "name": "@siapso/ocr",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p bench",
+    "bench": "vite build --config bench/vite.config.ts && playwright test --config bench/playwright.config.ts"
+  },
+  "dependencies": {
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0",
+    "pdfjs-dist": "6.4.299"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "vite": "8.3.4",
+    "yaml": "2.9.1"
+  }
+}
