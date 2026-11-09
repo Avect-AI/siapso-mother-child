@@ -141,6 +141,8 @@ export function RadioGroup<T extends string>({
 export interface CheckboxOption {
   id: string;
   label: string;
+  /** Lines under the label, smaller (a product's substances, the strength said). */
+  details?: readonly string[];
   checked: boolean;
   onChange: (checked: boolean) => void;
 }
@@ -183,7 +185,18 @@ function box(
           option.onChange(event.target.checked);
         }}
       />
-      <span>{option.label}</span>
+      {option.details === undefined || option.details.length === 0 ? (
+        <span>{option.label}</span>
+      ) : (
+        <span className="option__text">
+          <span>{option.label}</span>
+          {option.details.map((detail) => (
+            <span key={detail} className="option__detail">
+              {detail}
+            </span>
+          ))}
+        </span>
+      )}
     </label>
   );
 }

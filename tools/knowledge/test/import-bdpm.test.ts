@@ -7,6 +7,8 @@ import { check, resolveConfig } from 'prettier';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import {
+  ADDED_BRANDS,
+  ADDED_SUBSTANCES,
   brandOf,
   decodeBdpm,
   importBdpm,
@@ -300,6 +302,36 @@ describe('selectProducts', () => {
     expect(seven).toHaveLength(7);
   });
 
+  it('keeps every product of an added brand outside the caps, and changes nothing else', async () => {
+    const without = await selected({ maxEntries: 6 });
+    expect(byCis(without, '99000013')).toBeUndefined();
+    const added = await selected({ maxEntries: 6, addedBrands: ['TESTSUPPO'] });
+    // In the sorted order of the import (TESTSUPPO after TESTDOL), one per denomination.
+    expect(added.map((p) => cisOf(p))).toEqual([...without.map((p) => cisOf(p)), '99000013']);
+  });
+
+  it('brings in a substance only through its added brands', async () => {
+    const none = await selected({ addedSubstances: ['iron'] });
+    expect(none.some((p) => p.components.some((c) => c.substance === 'iron'))).toBe(false);
+    const brand = await selected({
+      addedSubstances: ['iron'],
+      addedBrands: ['TESTFER'],
+      maxEntries: 1,
+    });
+    expect(brand.filter((p) => p.brands[0] === 'TESTFER').map((p) => cisOf(p))).toEqual([
+      '99000015',
+      '99000009',
+    ]);
+  });
+
+  it('adds by default the brands looked for in the live test round 2', () => {
+    for (const brand of ['TRIFLUCAN', 'ASPRO', 'GRANUDOXY', 'TOPLEXIL']) {
+      expect(ADDED_BRANDS).toContain(brand);
+      expect(PRIORITY_BRANDS).not.toContain(brand);
+    }
+    expect(ADDED_SUBSTANCES).toEqual(['oxomemazine']);
+  });
+
   it('gives the same result whatever the order of the lines', async () => {
     const { cis, compo } = await fixture();
     const specs = parseSpecialities(cis);
@@ -421,14 +453,21 @@ describe('registry/products/bdpm.yaml (the committed import)', () => {
     expect(names).toContain('DOLIPRANE 500 mg, comprimé');
     const plain = (text: string): string =>
       text.normalize('NFD').replace(/\p{M}/gu, '').toUpperCase();
-    for (const brand of PRIORITY_BRANDS.filter((b) => !NOT_MARKETED.includes(b))) {
-      const found = names.some((name) => {
-        const upper = plain(name);
-        return upper.startsWith(brand) && /^($|[ ,])/.test(upper.slice(brand.length));
-      });
-      expect(found, brand).toBe(true);
+    const ofBrand = (name: string, brand: string) => {
+      const upper = plain(name);
+      return upper.startsWith(brand) && /^($|[ ,])/.test(upper.slice(brand.length));
+    };
+    for (const brand of [...PRIORITY_BRANDS, ...ADDED_BRANDS].filter(
+      (b) => !NOT_MARKETED.includes(b),
+    )) {
+      expect(
+        names.some((name) => ofBrand(name, brand)),
+        brand,
+      ).toBe(true);
     }
-    expect(products.length).toBeLessThanOrEqual(MAX_ENTRIES);
+    // The added brands are kept outside the cap.
+    const capped = names.filter((name) => !ADDED_BRANDS.some((brand) => ofBrand(name, brand)));
+    expect(capped.length).toBeLessThanOrEqual(MAX_ENTRIES);
   });
 
   it('holds what the live test round of 2026-11-05 looked for', async () => {

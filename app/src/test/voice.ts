@@ -61,12 +61,27 @@ export interface FakeSpeechOptions {
   startError?: Error;
   /** What the model hears (default "nebeday"), unless the test holds the transcription. */
   transcript?: string;
+  /** What the model hears at each transcription in turn, then `transcript`. */
+  transcripts?: string[];
   /** The transcription waits for finishTranscription or failTranscription. */
   holdTranscription?: boolean;
   /** What loading the model throws. */
   loadError?: Error;
   /** The speech package cannot be loaded (its chunk is gone after an update elsewhere). */
   packageFails?: boolean;
+  /** What the microphone recorded (default: one second of a tone as loud as speech). */
+  samples?: Float32Array;
+}
+
+/**
+ * A recording of a word: a third of a second of silence, then a 440 Hz tone
+ * of this amplitude, at 16 kHz (one second in all by default).
+ */
+export function toneSamples(amplitude: number, seconds = 1): Float32Array {
+  const silence = Math.round(16000 / 3);
+  return Float32Array.from({ length: Math.round(seconds * 16000) }, (_, at) =>
+    at < silence ? 0 : amplitude * Math.sin((2 * Math.PI * 440 * at) / 16000),
+  );
 }
 
 export function fakeSpeech(options: FakeSpeechOptions = {}) {
@@ -81,6 +96,7 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
   for (const [url, bytes] of Object.entries(options.stored ?? {})) stored.set(url, bytes);
 
   let pending: Deferred<{ text: string; ms: number }> | undefined;
+  let transcriptions = 0;
   const client = {
     load: vi.fn(() =>
       options.loadError === undefined ? Promise.resolve() : Promise.reject(options.loadError),
@@ -90,7 +106,9 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
         pending = deferred();
         return pending.promise;
       }
-      return Promise.resolve({ text: options.transcript ?? 'nebeday', ms: 1200 });
+      const text = options.transcripts?.[transcriptions] ?? options.transcript ?? 'nebeday';
+      transcriptions += 1;
+      return Promise.resolve({ text, ms: 1200 });
     }),
     cancel: vi.fn(() => {
       pending?.reject(voicePackError('transcribe', 'The speech request was cancelled.'));
@@ -152,7 +170,7 @@ export function fakeSpeech(options: FakeSpeechOptions = {}) {
         start: vi.fn(() =>
           options.startError === undefined ? Promise.resolve() : Promise.reject(options.startError),
         ),
-        stop: vi.fn(() => Promise.resolve(new Float32Array(16000))),
+        stop: vi.fn(() => Promise.resolve(options.samples ?? toneSamples(0.2))),
         cancel: vi.fn(),
         level: () => 0,
         onAutoStop: () => recorderOptions.onAutoStop?.(),

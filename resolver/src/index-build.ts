@@ -3,8 +3,12 @@ import {
   ageMarkersOf,
   formWords,
   isFormWord,
+  isPosologyWord,
   isSaltWord,
+  lightCleaned,
   normalize,
+  plainText,
+  POSOLOGY_WORDS,
   splitAgeWords,
   withoutStopWords,
 } from './normalize.js';
@@ -20,7 +24,10 @@ export interface CompiledWord {
 
 /** What the ranking reads of a product, shared by all its names. */
 export interface EntryInfo {
-  /** Its French name, normalised: the plainest name of a family sorts first. */
+  /**
+   * Its French name as written (plainText, no spelling variant): the plainest
+   * name of a family sorts first ("comprimé" before "gélule").
+   */
   sortName: string;
   /** The form words of its French name ("comprim", "efervescent"). */
   forms: ReadonlySet<string>;
@@ -41,7 +48,7 @@ export function infoOf(entry: IndexEntry): EntryInfo {
     const strength =
       (entry.strengths ?? []).length === 0 ? parseStrength(entry.display.fr).strengthMg : undefined;
     info = {
-      sortName: normalize(entry.display.fr),
+      sortName: plainText(entry.display.fr),
       forms: new Set(formWords(entry.display.fr)),
       ...(strength === undefined ? {} : { nameStrength: strength }),
     };
@@ -92,12 +99,74 @@ export interface CompiledName {
    * of "DEPAKINE CHRONO") does not lead it.
    */
   leading: ReadonlySet<string>;
+  /**
+   * The name as matched with the spelling variants that change no sound only
+   * (lightCleaned): a short query close to the name only once read as it
+   * sounds is not this name ("raisin" and "ricin").
+   */
+  light: string;
+  /**
+   * The words that name nothing alone in the index (descriptionWordsOf): none
+   * of them is a word of `words`, matched alone.
+   */
+  described: ReadonlySet<string>;
+}
+
+/** What scoring reads of a name (scoreName): the name as matched, or as lightly spelt. */
+export type Scorable = Pick<
+  CompiledName,
+  'norm' | 'tri' | 'compact' | 'compactTri' | 'words' | 'containable' | 'spoken'
+>;
+
+const lightNames = new WeakMap<CompiledName, Scorable>();
+
+/** The name spelt as written (CompiledName.light), to be scored as names are; made once. */
+export function lightNameOf(name: CompiledName): Scorable {
+  let light = lightNames.get(name);
+  if (light === undefined) {
+    const norm = name.light;
+    const compact = norm.replaceAll(' ', '');
+    const parts = norm.split(' ');
+    light = {
+      norm,
+      tri: trigrams(norm),
+      compact,
+      compactTri: trigrams(compact),
+      words:
+        parts.length > 1
+          ? parts
+              .filter((part) => part.length >= MIN_ABBREVIATION_LENGTH)
+              .filter((part) => !name.described.has(normalize(part)))
+              .map((part) => ({ norm: part, tri: trigrams(part) }))
+          : [],
+      // A name inside a longer text is not read for a short query.
+      containable: false,
+    };
+    lightNames.set(name, light);
+  }
+  return light;
 }
 
 /** A word this short before a brand is a prefix joined to it ("Néo-Codion", "BI PROFENID"). */
 const PREFIX_LENGTH = 3;
 
-/** The words that lead a name (CompiledName.leading); `cleaned` cleans a text as names are. */
+/**
+ * A product name as the BDPM writes it, "name strength, description of the
+ * form": the part before its first comma, and the description after it
+ * ("gélule à libération prolongée (UNE PRISE QUOTIDIENNE)"), empty without one.
+ */
+function headAndDescription(text: string): { head: string; description: string } {
+  const at = text.indexOf(', ');
+  return at < 0
+    ? { head: text, description: '' }
+    : { head: text.slice(0, at), description: text.slice(at + 2) };
+}
+
+/**
+ * The words that lead a name (CompiledName.leading), read before the
+ * description of its form; `cleaned` cleans a text as names are. A word of how
+ * a medicine is taken never leads ("SANS SUCRE").
+ */
 function leadingWordsOf(
   text: string,
   cleaned: (text: string) => string,
@@ -105,10 +174,10 @@ function leadingWordsOf(
   substanceWords: number,
 ): Set<string> {
   const leading = new Set<string>();
-  for (const part of text.split(/[()]/)) {
+  for (const part of headAndDescription(text).head.split(/[()]/)) {
     const words = cleaned(part)
       .split(' ')
-      .filter((word) => word !== '');
+      .filter((word) => word !== '' && !isPosologyWord(word));
     const [first] = words;
     if (first === undefined) continue;
     leading.add(first);
@@ -116,14 +185,40 @@ function leadingWordsOf(
     while (at < words.length) {
       let length = Math.min(substanceWords, words.length - at);
       while (length > 0 && !substances.has(words.slice(at, at + length).join(' '))) length -= 1;
-      if (length > 0) at += length;
-      else if ((words[at] ?? '').length <= PREFIX_LENGTH) at += 1;
+      if (length > 0) {
+        // Each word of a substance name of several words names it ("méfénamique"
+        // of "Acide méfénamique": people say the second word alone).
+        for (const word of words.slice(at + 1, at + length)) leading.add(word);
+        at += length;
+      } else if ((words[at] ?? '').length <= PREFIX_LENGTH) at += 1;
       else break;
     }
     const brand = words[at];
     if (brand !== undefined) leading.add(brand);
   }
   return leading;
+}
+
+/**
+ * The words that name nothing alone (normalised, as matched): the words of
+ * how a medicine is taken (POSOLOGY_WORDS) and the words of the description
+ * of the form of every product name (after its first comma: "gélule à
+ * libération prolongée (UNE PRISE QUOTIDIENNE)", "mousse pour application
+ * cutanée"), but a word that leads a name of its own.
+ */
+function descriptionWordsOf(
+  names: readonly CompiledName[],
+  cleaned: (text: string) => string,
+): Set<string> {
+  const leads = new Set(names.flatMap((name) => [...name.leading]));
+  const words = new Set(POSOLOGY_WORDS.map(normalize));
+  for (const name of names) {
+    if (name.entry.kind !== 'product') continue;
+    for (const word of cleaned(headAndDescription(name.text).description).split(' ')) {
+      if (word !== '' && !leads.has(word)) words.add(word);
+    }
+  }
+  return words;
 }
 
 /** A name needs a word of this many letters or more to be found inside a longer text. */
@@ -149,10 +244,55 @@ export interface CompiledIndex {
   families: Map<string, IndexEntry[]>;
   /** Every substance name (normalised, as matched) and the substance it names; the first wins. */
   substances: Map<string, string>;
+  /** Each substance name (normalised, as matched) as the pack writes it ("Codéine"). */
+  substanceTexts: Map<string, string>;
   /** The number of words of the longest substance name. */
   substanceWords: number;
+  /**
+   * Every brand of a product (normalised as matched, its age words aside), as
+   * the pack first writes it ("ADVIL"), with the substances every product of
+   * that brand holds (sorted): a brand named in a query implies them.
+   */
+  brands: Map<string, BrandOf>;
+  /** The number of words of the longest brand. */
+  brandWords: number;
   /** The words (normalised, as matched) found in the names of two families or more. */
   sharedWords: ReadonlySet<string>;
+}
+
+/** A brand of the index and the substances it implies. */
+export interface BrandOf {
+  name: string;
+  substances: string[];
+}
+
+/**
+ * The brands of the products and the substances each implies: those that
+ * every product of the brand holds ("ADVIL": ibuprofen), none for a brand
+ * whose products share no substance.
+ */
+function brandsOf(
+  entries: readonly IndexEntry[],
+  cleaned: (text: string) => string,
+): Map<string, BrandOf> {
+  const brands = new Map<string, BrandOf>();
+  for (const entry of entries) {
+    if (entry.kind !== 'product' || entry.substances === undefined) continue;
+    const held = entry.substances;
+    for (const name of entry.names) {
+      if (name.lang !== 'brand') continue;
+      const key = cleaned(name.text);
+      if (key === '') continue;
+      const known = brands.get(key);
+      brands.set(
+        key,
+        known === undefined
+          ? { name: name.text, substances: [...held].sort() }
+          : { ...known, substances: known.substances.filter((id) => held.includes(id)) },
+      );
+    }
+  }
+  return brands;
 }
 
 /** The words of the names that two families or more have in their names. */
@@ -247,6 +387,7 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
     agesById.set(entry.id, ages);
   }
   const substances = new Map<string, string>();
+  const substanceTexts = new Map<string, string>();
   let substanceWords = 0;
   for (const entry of entries) {
     for (const name of entry.names) {
@@ -266,7 +407,10 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         for (const part of substanceNameParts(name.text)) {
           const key = splitAgeWords(clean(part)).text;
           if (key === '') continue;
-          if (!substances.has(key)) substances.set(key, name.substance);
+          if (!substances.has(key)) {
+            substances.set(key, name.substance);
+            substanceTexts.set(key, part);
+          }
           substanceWords = Math.max(substanceWords, key.split(' ').length);
         }
       }
@@ -292,6 +436,9 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
         containable: containable(norm),
         // Once every substance name is known (below).
         leading: new Set<string>(),
+        light: lightCleaned(name.text, keepSalts),
+        // Once every name is known (below).
+        described: new Set<string>(),
       });
     }
   }
@@ -299,6 +446,17 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
   for (const name of names) {
     name.leading = leadingWordsOf(name.text, cleanedPart, substances, substanceWords);
   }
+  // A word of how a medicine is taken or of the description of a form names
+  // nothing alone: no word of a name is matched alone through it (a whole
+  // name still holds it, "fervex sans sucre").
+  const described = descriptionWordsOf(names, cleanedPart);
+  for (const name of names) {
+    name.described = described;
+    if (name.words.some((word) => described.has(word.norm))) {
+      name.words = name.words.filter((word) => !described.has(word.norm));
+    }
+  }
+  const brands = brandsOf(entries, cleanedPart);
   const index: ResolverIndex = Object.freeze({ size: entries.length });
   compiled.set(index, {
     size: entries.length,
@@ -306,7 +464,10 @@ export function buildIndex(entries: IndexEntry[]): ResolverIndex {
     keepSalts,
     families: buildFamilies(entries),
     substances,
+    substanceTexts,
     substanceWords,
+    brands,
+    brandWords: Math.max(0, ...[...brands.keys()].map((key) => key.split(' ').length)),
     sharedWords: sharedWordsOf(names),
   });
   return index;

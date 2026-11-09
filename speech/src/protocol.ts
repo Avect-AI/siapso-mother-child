@@ -17,6 +17,8 @@ export type WorkerRequest =
       samples: Float32Array;
       /** Whisper decoder prompt (token ids) of the language to transcribe. */
       prompt: number[];
+      /** Words given to the decoder as said before the speech (TranscribeOptions.context). */
+      context?: string;
     };
 
 /** Why the worker failed: the pack is not installed, the model did not start, a transcription failed, storage. */

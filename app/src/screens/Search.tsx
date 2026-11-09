@@ -5,10 +5,17 @@ import {
   type Candidate,
   type EntryKind,
   type ResolverIndex,
+  type SentenceProduct,
 } from '@siapso/resolver';
 import { useEffect, useId, useMemo, useRef, useState, type SubmitEvent } from 'react';
 import { useLocation } from 'wouter';
-import { candidateDisplayOf, localNameOf, type BrowseEntry } from '../domain/search-index.js';
+import {
+  candidateDisplayOf,
+  entriesNamedWith,
+  localNameOf,
+  type BrowseEntry,
+} from '../domain/search-index.js';
+import { sentenceReadingOf } from '../domain/sentence-reading.js';
 import { useLang, useT, useTNodes } from '../i18n/index.js';
 import { useApp } from '../state/app-state.js';
 import { useCheck } from '../state/check-state.js';
@@ -29,7 +36,8 @@ import {
   oneMoreStep,
   searchPath,
 } from './check-flow.js';
-import { BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
+import { SentenceProducts } from './SearchSentence.js';
+import { BrowseEntryButton, BrowseList, MicButton, VoicePanel } from './SearchVoice.js';
 import { VOICE_PATH } from './VoicePack.js';
 
 /** The pause after the last key before the candidates follow what is typed. */
@@ -185,8 +193,14 @@ export function Search({ kind }: { kind: EntryKind }) {
       setLookalikes(null);
       setBrowsing(false);
     },
+    // The products a sentence names count as candidates: what was heard is not "nothing".
     countCandidates: (heard) =>
-      index === null ? 0 : search(index, heard, { kinds: [kind] }).length,
+      index === null
+        ? 0
+        : Math.max(
+            search(index, heard, { kinds: [kind] }).length,
+            sentenceReadingOf(index, heard, kind, 'voice')?.length ?? 0,
+          ),
     onNeedPack: toVoiceScreen,
   });
 
@@ -221,6 +235,24 @@ export function Search({ kind }: { kind: EntryKind }) {
       search(index, query, { kinds: [OTHER[kind]], limit: 1 }).length > 0,
     [index, query, kind, candidates.length],
   );
+  // A sentence that names products, heard or typed, offers them to tick in
+  // place of the candidates of the whole text (SCRUM-61).
+  const reading = useMemo(
+    () =>
+      index === null || query.trim() === ''
+        ? null
+        : sentenceReadingOf(index, query, kind, fromVoice ? 'voice' : 'typed'),
+    [index, query, kind, fromVoice],
+  );
+  // A carrier or generic word alone ("huile") names nothing: the entries that
+  // have it in their name are listed to choose from.
+  const withWord = useMemo(
+    () =>
+      pack === null || candidates.length > 0 || reading !== null
+        ? []
+        : entriesNamedWith(pack, kind, query, lang),
+    [pack, kind, query, lang, candidates.length, reading],
+  );
 
   /**
    * Opens the confirm screen of a candidate. `foundBy` is the query the
@@ -240,6 +272,40 @@ export function Search({ kind }: { kind: EntryKind }) {
         stepsToCheck: oneMoreStep(entry.stepsToCheck),
         // The name was said, not written: "Vous avez dit".
         heard: fromVoice ? true : undefined,
+      }),
+    });
+  };
+
+  /**
+   * Opens the confirm screen of the first product ticked in a sentence; the
+   * others follow it, each on its confirm screen (FlowState.queue).
+   */
+  const chooseSentence = (ticked: readonly SentenceProduct[]) => {
+    const [first, ...rest] = ticked;
+    if (leaving || first === undefined) return;
+    setLeaving(true);
+    keepOnEntry({ query: text, heard: fromVoice });
+    navigate(confirmPath(first.candidate.kind), {
+      state: flowEntry({
+        id: first.candidate.id,
+        query: first.text,
+        matched: first.candidate.matched,
+        stepsToCheck: oneMoreStep(entry.stepsToCheck),
+        heard: fromVoice ? true : undefined,
+        // The words the voice heard for a name to confirm go with it (review of #68).
+        heardAs: first.heardAs,
+        ...(rest.length === 0
+          ? {}
+          : {
+              queue: rest.map((product) => ({
+                kind: product.candidate.kind,
+                id: product.candidate.id,
+                query: product.text,
+                matched: product.candidate.matched,
+                ...(product.heardAs === undefined ? {} : { heardAs: product.heardAs }),
+              })),
+              queueTotal: ticked.length,
+            }),
       }),
     });
   };
@@ -316,8 +382,15 @@ export function Search({ kind }: { kind: EntryKind }) {
   let heard = '';
   let status = '';
   const best = candidates[0];
+  const firstFound = reading?.[0];
   if (index !== null && pack !== null && query.trim() !== '') {
-    if (best) {
+    if (reading !== null && firstFound !== undefined) {
+      const name = candidateDisplayOf(pack, firstFound.candidate, firstFound.text, lang).name;
+      heard =
+        reading.length === 1
+          ? t('search.sentenceFoundOne', { name })
+          : t('search.sentenceFoundMany', { count: reading.length, name });
+    } else if (best) {
       const name = candidateDisplayOf(pack, best, query, lang).name;
       heard =
         candidates.length === 1
@@ -326,7 +399,11 @@ export function Search({ kind }: { kind: EntryKind }) {
       status = t('search.found');
     } else {
       // A name said that matches nothing: the voice panel says it, once.
-      if (voice.state.step !== 'heard-none') {
+      if (withWord.length > 0) {
+        status = t(kind === 'product' ? 'search.withWordProduct' : 'search.withWordPlant', {
+          word: query.trim(),
+        });
+      } else if (voice.state.step !== 'heard-none') {
         status = t(kind === 'product' ? 'search.noneFound' : 'search.noneFoundPlant');
       }
       if (inOtherList) {
@@ -337,13 +414,18 @@ export function Search({ kind }: { kind: EntryKind }) {
   }
   // "Not found" adds the text as it is: quiet while a candidate or the other
   // list is on offer, a plain secondary choice when nothing matches anywhere.
-  const notFoundQuiet = candidates.length > 0 || inOtherList;
+  const notFoundQuiet =
+    candidates.length > 0 || inOtherList || withWord.length > 0 || reading !== null;
   // A name the voice heard is added as it was heard only when no candidate
   // matches it (through "Ce nom ressemble à", as a typed name): with
-  // candidates on offer she chooses one, or types the name first.
+  // candidates on offer, or products found in the sentence, she chooses one,
+  // or types the name first.
   const heardByVoice =
     fromVoice || voice.state.step === 'heard' || voice.state.step === 'heard-none';
-  const notFoundOffered = typed !== '' && !(heardByVoice && candidates.length > 0);
+  const notFoundOffered =
+    typed !== '' && !(heardByVoice && (candidates.length > 0 || reading !== null));
+  // The products of a sentence take the place of the candidates of its whole text.
+  const shownCandidates = reading === null ? candidates : [];
   // The question names what the lookalikes are: medicines, remedies, or both.
   const lookalikeKinds = new Set((lookalikes ?? []).map((candidate) => candidate.kind));
   const lookalikeLists =
@@ -464,9 +546,17 @@ export function Search({ kind }: { kind: EntryKind }) {
           {heard === '' ? null : <span className="sr-only">{`${heard} `}</span>}
           {status}
         </p>
-        {candidates.length === 0 ? null : (
+        {reading === null ? null : (
+          <SentenceProducts
+            key={`${String(fromVoice)}:${query}`}
+            products={reading}
+            heard={fromVoice}
+            onAdd={chooseSentence}
+          />
+        )}
+        {shownCandidates.length === 0 ? null : (
           <ul className="candidates" aria-label={t('search.candidatesLabel')}>
-            {candidates.map((candidate) => (
+            {shownCandidates.map((candidate) => (
               <CandidateButton
                 key={candidate.id}
                 candidate={candidate}
@@ -478,7 +568,24 @@ export function Search({ kind }: { kind: EntryKind }) {
             ))}
           </ul>
         )}
-        {inOtherList ? (
+        {withWord.length === 0 ? null : (
+          <ul
+            className="candidates"
+            aria-label={t(
+              kind === 'product' ? 'search.withWordListProduct' : 'search.withWordListPlant',
+              { word: query.trim() },
+            )}
+          >
+            {withWord.map((entry) => (
+              <BrowseEntryButton
+                key={`${entry.id}:${entry.name}`}
+                entry={entry}
+                onChoose={chooseEntry}
+              />
+            ))}
+          </ul>
+        )}
+        {inOtherList && reading === null ? (
           <Button variant="secondary" className="search__other" onClick={lookInOtherList}>
             {t(kind === 'product' ? 'search.searchPlants' : 'search.searchProducts')}
           </Button>

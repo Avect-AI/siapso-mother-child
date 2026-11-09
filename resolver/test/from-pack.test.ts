@@ -159,10 +159,10 @@ describe('entriesFromPack', () => {
       plants: [],
     });
     expect(named.map((e) => [e.priority, e.family])).toEqual([
-      [3, 'brand:neo codion'],
-      [1, 'brand:neo codion'],
+      [3, 'brand:neo kodion'],
+      [1, 'brand:neo kodion'],
     ]);
-    expect(byKey('combo', 3)?.family).toBe('brand:combo');
+    expect(byKey('combo', 3)?.family).toBe('brand:kombo');
   });
 
   it('records the sorted substance ids of a product', () => {

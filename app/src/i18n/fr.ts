@@ -403,6 +403,14 @@ export const fr = {
     found: 'Choisissez celui qui correspond.',
     noneFound: 'Aucun produit ne correspond à ce nom.',
     noneFoundPlant: 'Aucun remède ne correspond à ce nom.',
+    // A carrier or generic word alone ("huile", "feuille"): it names nothing,
+    // but the entries that have it in their name are listed to choose from.
+    withWordProduct:
+      "Aucun produit ne s'appelle seulement « {word} ». Ces produits ont ce mot dans leur nom :",
+    withWordPlant:
+      "Aucun remède ne s'appelle seulement « {word} ». Ces remèdes ont ce mot dans leur nom :",
+    withWordListProduct: 'Produits avec « {word} » dans leur nom',
+    withWordListPlant: 'Remèdes avec « {word} » dans leur nom',
     // A French or English name is another name, never a local one (local-name.ts).
     otherName: 'Autre nom : {name}',
     otherNameLang: 'Autre nom : {name} ({lang})',
@@ -436,6 +444,32 @@ export const fr = {
       "Le nom sera ajouté tel qu'il est écrit. S'il ressemble beaucoup à l'un d'eux, le résultat en tiendra compte aussi.",
     kindProduct: 'Médicament',
     kindPlant: 'Remède',
+    // A sentence that names products (SCRUM-61): each one found, to tick, then
+    // each one ticked confirmed in turn on its confirm screen.
+    sentenceTitle: 'Produits trouvés dans la phrase :',
+    sentenceHint:
+      'Chaque produit coché sera ensuite à confirmer. Décochez ceux qui ne conviennent pas.',
+    sentenceAdd: 'Ajouter les produits cochés',
+    sentenceNone: 'Cochez au moins un produit, ou écrivez le nom.',
+    sentenceStrengthSaid: 'Dosage dit : {strength}',
+    sentenceStrengthTyped: 'Dosage écrit : {strength}',
+    // A name of the base that is also a common word ("goro", an in-law): offered unticked.
+    sentenceCommonWord: "« {word} » a aussi un autre sens : cochez-le si c'est bien ce produit.",
+    // A name read from words the voice split ("King Kyliba" for kinkéliba):
+    // offered unticked. Never "vérifiez": the app flags, it does not verify.
+    sentenceCheckHeard: "À confirmer : j'ai entendu « {words} »",
+    // A product said with a negation, by another person or as a past use
+    // (review of #68): offered unticked with the words that say so.
+    sentenceCheckClause: 'À confirmer : « {words} »',
+    // A name that is also a food ("ail", "gingembre"): offered unticked.
+    sentenceFood: '« {word} » est aussi un aliment : cochez-le si vous le prenez comme remède.',
+    // A longer name the words heard may be ("quinine qu'il y va": kinkéliba).
+    sentenceMaybe: 'Ou peut-être : {name}',
+    // The spelling a word was read with ("ibiprofen" for "ibiporofen").
+    sentenceReadAs: 'Lu comme « {spelling} »',
+    // Read by a screen reader: the list itself shows the names.
+    sentenceFoundOne: 'Un produit trouvé dans la phrase : {name}.',
+    sentenceFoundMany: '{count} produits trouvés dans la phrase, le premier : {name}.',
   },
   // The language of a local name, after the name.
   nameLang: {
@@ -478,6 +512,12 @@ export const fr = {
     yesProduct: "Oui, c'est ce produit",
     yesPlant: "Oui, c'est ce remède",
     no: 'Non, chercher encore',
+    // The products ticked in a sentence (SCRUM-61), confirmed one after the other.
+    queuePosition: 'Produit {position} sur {total} trouvés dans la phrase',
+    // The words the voice heard for a name to confirm (review of #68).
+    heardAs: "J'ai entendu : « {words} »",
+    noNext: 'Non, passer au suivant',
+    noBackToList: 'Non, revenir à la liste',
     // The product chosen is already in the check: never listed twice. Names the listed product.
     alreadyNamed: '{name} est déjà dans la liste.',
     changeUnits: 'Changer les unités par jour',
@@ -495,6 +535,10 @@ export const fr = {
     // The name typed names a substance the product chosen does not have ("efferalgan codéine").
     missingSubstances:
       "{substances} : ce produit n'en contient pas. Comparez avec le nom sur la boîte.",
+    // The name typed names a brand whose substance the product chosen does not have
+    // ("Advil codéine" for a codeine-only product): the brand, then the substances.
+    missingBrandSubstances:
+      '{brand} : {substances}, pas dans ce produit. Comparez avec le nom sur la boîte.',
   },
   result: {
     title: 'Résultat',
@@ -604,10 +648,14 @@ export const fr = {
     // A name typed as not recognised that looks like a product or remedy of the base.
     possibleProduct: "Ce nom ressemble à {name}. Si c'est ce produit :",
     possiblePlant: "Ce nom ressemble à {name}. Si c'est ce remède :",
+    // The same, for a product or remedy already in the list (a second box, another spelling).
+    possibleProductListed: "Ce nom ressemble à {name}, déjà dans la liste. Si c'est ce produit :",
+    possiblePlantListed: "Ce nom ressemble à {name}, déjà dans la liste. Si c'est ce remède :",
     // The grey card of the name typed, read after its possible match.
     possibleNotProduct: "Si ce n'est pas ce produit :",
     possibleNotPlant: "Si ce n'est pas ce remède :",
     resembles: 'ressemble à {name}',
+    resemblesListed: 'ressemble à {name}, déjà dans la liste',
     term: {
       estimated: 'Terme estimé : ce résultat tient compte de toutes les semaines possibles.',
       unknown: 'Terme inconnu : ce résultat tient compte de toute la grossesse.',

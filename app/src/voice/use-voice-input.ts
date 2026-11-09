@@ -7,7 +7,12 @@
 // confirmed. Nothing is ever added to the check from here.
 import type { Recorder, SpeechClient } from '@siapso/speech';
 import { useEffect, useReducer, useRef } from 'react';
-import { MAX_RECORDING_SECONDS, type VoiceLang } from '../config/voice.js';
+import {
+  MAX_RECORDING_SECONDS,
+  VOICE_NAME_CLUSTERS,
+  voiceContextFor,
+  type VoiceLang,
+} from '../config/voice.js';
 import {
   IDLE,
   cleanTranscript,
@@ -16,6 +21,7 @@ import {
   voiceFlow,
   type VoiceState,
 } from '../domain/voice-flow.js';
+import { isPromptEcho, voiceGate } from '../domain/voice-guard.js';
 import { useVoice } from './voice-context.js';
 import { installedPackOf } from './voice-service.js';
 
@@ -112,9 +118,31 @@ export function useVoiceInput(options: VoiceInputOptions): VoiceInput {
       fail(mine, error, 'record');
       return;
     }
+    // Review of #68: a recording with no speech is not transcribed (the names
+    // given to the decoder would come back on their own), and a faint one, or
+    // a steady sound, is transcribed without them.
+    const gate = voiceGate(samples);
+    if (gate === 'silent') {
+      endUse();
+      dispatch({ type: 'heard', text: '', candidates: 0 });
+      return;
+    }
     try {
-      const { text } = await client.transcribe(samples, language === undefined ? {} : { language });
+      const context = gate === 'speech' ? voiceContextFor(language) : undefined;
+      const plain = language === undefined ? {} : { language };
+      let { text } = await client.transcribe(samples, {
+        ...plain,
+        ...(context === undefined ? {} : { context }),
+      });
       if (mine !== attempt.current) return;
+      // The names given, repeated in their order: maybe an echo. Round 3 of
+      // the review of #68: the same audio is heard once more without them,
+      // and that is kept; nothing is heard only if it is empty or an echo too.
+      if (context !== undefined && isPromptEcho(text, context, VOICE_NAME_CLUSTERS)) {
+        ({ text } = await client.transcribe(samples, plain));
+        if (mine !== attempt.current) return;
+        if (isPromptEcho(text, context, VOICE_NAME_CLUSTERS)) text = '';
+      }
       const heard = cleanTranscript(text, latest.current.maxLength);
       const candidates = heard === '' ? 0 : latest.current.countCandidates(heard);
       endUse();

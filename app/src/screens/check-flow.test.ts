@@ -56,6 +56,52 @@ describe('flowState', () => {
     expect(flowState()).toEqual({ query: 'x' });
   });
 
+  // SCRUM-61: the products ticked in a sentence are confirmed one after the other.
+  it('reads the products still to confirm after this one, how many were ticked, and one added', () => {
+    const next = { kind: 'plant', id: 'moringa', query: 'nebeday', matched: 'nebeday' };
+    window.history.replaceState(
+      inSession({ id: 'p', queue: [next], queueTotal: 2, queueAdded: true }),
+      '',
+    );
+    expect(flowState()).toEqual({ id: 'p', queue: [next], queueTotal: 2, queueAdded: true });
+  });
+
+  // Review of #68: the words the voice heard for a name to confirm go with it.
+  it('reads the words heard for the product, and for each one still to confirm', () => {
+    const next = {
+      kind: 'plant',
+      id: 'kinkeliba',
+      query: 'King Kyliba',
+      matched: 'Kinkéliba',
+      heardAs: 'King Kyliba',
+    };
+    window.history.replaceState(
+      inSession({ id: 'p', heardAs: "quinine qu'il y va", queue: [next], queueTotal: 2 }),
+      '',
+    );
+    expect(flowState()).toEqual({
+      id: 'p',
+      heardAs: "quinine qu'il y va",
+      queue: [next],
+      queueTotal: 2,
+    });
+    window.history.replaceState(inSession({ id: 'p', heardAs: 3 }), '');
+    expect(flowState()).toEqual({ id: 'p' });
+  });
+
+  it('ignores a queue that is not a list of products to confirm', () => {
+    for (const queue of [
+      'moringa',
+      [{ kind: 'unrecognised', id: 'x', query: '', matched: '' }],
+      [{ kind: 'plant', id: '', query: '', matched: '' }],
+      [{ kind: 'plant', id: 'moringa', query: 3, matched: '' }],
+      [{ kind: 'plant', id: 'moringa', query: '', matched: '', heardAs: 3 }],
+    ]) {
+      window.history.replaceState(inSession({ id: 'p', queue, queueTotal: 0 }), '');
+      expect(flowState(), JSON.stringify(queue)).toEqual({ id: 'p' });
+    }
+  });
+
   it('never puts the product in the address', () => {
     expect(confirmPath('product')).toBe('/confirm/product');
   });

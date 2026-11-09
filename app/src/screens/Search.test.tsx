@@ -86,6 +86,48 @@ describe('Search', () => {
     );
   });
 
+  // Live test round 2 (woman-literate#6): "huile" alone names no remedy, but
+  // the remedies that have the word in their name are listed to choose from.
+  it('lists the remedies with a carrier word in their name, for that word alone', async () => {
+    const { user, field } = await openSearch('Ajouter un remède');
+    await user.type(field, 'huile');
+
+    const list = await screen.findByRole('list', {
+      name: `Remèdes avec «${NBSP}huile${NBSP}» dans leur nom`,
+    });
+    const entries = within(list).getAllByRole('button');
+    expect(entries.map((entry) => entry.textContent)).toEqual([
+      expect.stringMatching(/^Huile de ricin/),
+    ]);
+    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
+      // The matcher reads the no-break spaces as spaces.
+      "Aucun remède ne s'appelle seulement « huile ». Ces remèdes ont ce mot dans leur nom :",
+    );
+    await user.click(entries[0] as HTMLElement);
+    expect(
+      await screen.findByRole('heading', { level: 1, name: `Est-ce bien ce remède${NBSP}?` }),
+    ).toBeVisible();
+    expect(sessionState()).toMatchObject({ id: 'castor-oil' });
+  });
+
+  it('lists Feuille amère for "feuilles", and nothing for a form word', async () => {
+    const { user, field } = await openSearch('Ajouter un remède');
+    await user.type(field, 'feuilles');
+    const list = await screen.findByRole('list', {
+      name: `Remèdes avec «${NBSP}feuilles${NBSP}» dans leur nom`,
+    });
+    expect(within(list).getAllByRole('button')[0]).toHaveTextContent(/^Feuille amère/);
+
+    await user.clear(field);
+    await user.type(field, 'sirop');
+    await waitFor(() => {
+      expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent(
+        'Aucun remède ne correspond à ce nom.',
+      );
+    });
+    expect(screen.queryByRole('list', { name: /dans leur nom/ })).toBeNull();
+  });
+
   it('calls a French name another name, never a local name', async () => {
     const { user, field } = await openSearch('Ajouter un remède');
     await user.type(field, 'argile');

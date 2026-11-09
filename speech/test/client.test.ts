@@ -230,6 +230,20 @@ describe('createSpeechClient', () => {
     expect(await transcription).toEqual({ text: 'nebeday', ms: 1234 });
   });
 
+  // SCRUM-61: the names of the base given to the decoder as words said before.
+  it('sends the context given, and none otherwise', async () => {
+    const client = createSpeechClient(INFO);
+    await loaded(client);
+    void client.transcribe(new Float32Array(4), { language: 'fr', context: 'Doliprane, Coartem.' });
+    await tick();
+    expect(worker().last()).toMatchObject({ type: 'transcribe', context: 'Doliprane, Coartem.' });
+    worker().reply({ type: 'result', id: worker().last().id, text: 'x', ms: 1 });
+    await tick();
+    void client.transcribe(new Float32Array(4), { language: 'fr' });
+    await tick();
+    expect(worker().last()).not.toHaveProperty('context');
+  });
+
   it('loads first when transcribe is called before load', async () => {
     const client = createSpeechClient(INFO);
     const transcription = client.transcribe(new Float32Array(4));

@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+// When the search screen reads the products named inside a sentence
+// (SCRUM-61, team feedback of 2026-11-05: "si l'utilisatrice dit une phrase
+// contenant le nom du médicament, il n'y a pas de suggestion"). The resolver
+// finds them (productsInSentence); this says when the screen offers them, as
+// a list to tick, in place of the candidates of the whole text. Nothing is
+// added from here: each product ticked is confirmed on its confirm screen.
+import {
+  plainText,
+  productsInSentence,
+  search,
+  type EntryKind,
+  type ResolverIndex,
+  type SentenceProduct,
+} from '@siapso/resolver';
+
+/** A typed text is read as a sentence from this many words. */
+export const SENTENCE_TYPED_WORDS = 3;
+
+/**
+ * The products a sentence names, when the search offers them instead of the
+ * candidates of the whole text, or null: what the voice heard, when the whole
+ * text has no candidate in the list searched, the sentence names several
+ * products, or a name is to confirm (read from words the voice split, heard
+ * right before another clause, or said with a negation, by another person or
+ * as a past use); a typed text the same way from 3 words
+ * (a name of one or two words stays the search's). Null when the sentence
+ * names no product clearly.
+ */
+export function sentenceReadingOf(
+  index: ResolverIndex,
+  text: string,
+  kind: EntryKind,
+  source: 'voice' | 'typed',
+): SentenceProduct[] | null {
+  const words = plainText(text).split(' ').filter(Boolean).length;
+  if (words === 0 || (source === 'typed' && words < SENTENCE_TYPED_WORDS)) return null;
+  // What the voice heard may split a name it does not know: also read joined, offered unticked.
+  const products = productsInSentence(index, text, { heard: source === 'voice' });
+  if (products.length === 0) return null;
+  // Several products, or one to confirm ("quinine qu'il y va", "je n'ai pas
+  // pris de coartem"): never the candidates of the whole text, which would
+  // offer it as the answer.
+  if (
+    products.length > 1 ||
+    products.some((product) => product.heardAs !== undefined || product.clause !== undefined)
+  ) {
+    return products;
+  }
+  return search(index, text, { kinds: [kind] }).length === 0 ? products : null;
+}

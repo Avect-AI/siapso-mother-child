@@ -33,16 +33,58 @@ export interface FlowState {
    * is labelled "Vous avez dit".
    */
   heard?: boolean;
+  /**
+   * On the confirm entry, the words the voice heard for a name to confirm
+   * ("King Kyliba", "quinine qu'il y va"): shown with it (review of #68).
+   */
+  heardAs?: string;
+  /**
+   * On the confirm entry of a product ticked in a sentence (SCRUM-61), the
+   * products ticked after it, each confirmed in turn on its confirm screen.
+   */
+  queue?: QueuedProduct[];
+  /** With `queue`: how many products were ticked in the sentence. */
+  queueTotal?: number;
+  /** With `queue`: a product ticked before this one was added to the check. */
+  queueAdded?: boolean;
+}
+
+/** A product ticked in a sentence, still to confirm: as a candidate opens its confirm screen. */
+export interface QueuedProduct {
+  kind: EntryKind;
+  id: string;
+  /** The words of the sentence that name it (a strength said with it is preselected). */
+  query: string;
+  /** The name it was found by. */
+  matched: string;
+  /** The words the voice heard for it, when it is a name to confirm. */
+  heardAs?: string;
+}
+
+function isQueuedProduct(value: unknown): value is QueuedProduct {
+  if (typeof value !== 'object' || value === null) return false;
+  const { kind, id, query, matched, heardAs } = value as Partial<
+    Record<keyof QueuedProduct, unknown>
+  >;
+  return (
+    (kind === 'product' || kind === 'plant') &&
+    typeof id === 'string' &&
+    id !== '' &&
+    typeof query === 'string' &&
+    typeof matched === 'string' &&
+    (heardAs === undefined || typeof heardAs === 'string')
+  );
 }
 
 /**
  * The flow state of the current history entry, when left in this visit and
  * epoch: each field kept only when it has its type (a positive whole number
- * of steps, strings), anything else on the entry ignored; empty when there is
- * none.
+ * of steps, strings, a list of products to confirm), anything else on the
+ * entry ignored; empty when there is none.
  */
 export function flowState(): FlowState {
-  const { stepsToCheck, query, matched, id, heard } = sessionState();
+  const { stepsToCheck, query, matched, id, heard, heardAs, queue, queueTotal, queueAdded } =
+    sessionState();
   const flow: FlowState = {};
   if (typeof stepsToCheck === 'number' && Number.isInteger(stepsToCheck) && stepsToCheck > 0) {
     flow.stepsToCheck = stepsToCheck;
@@ -51,6 +93,24 @@ export function flowState(): FlowState {
   if (typeof matched === 'string') flow.matched = matched;
   if (typeof id === 'string' && id !== '') flow.id = id;
   if (heard === true) flow.heard = true;
+  if (typeof heardAs === 'string') flow.heardAs = heardAs;
+  if (
+    Array.isArray(queue) &&
+    queue.every(isQueuedProduct) &&
+    typeof queueTotal === 'number' &&
+    Number.isInteger(queueTotal) &&
+    queueTotal > queue.length
+  ) {
+    flow.queue = queue.map(({ kind, id: queued, query: words, matched: name, heardAs: heard }) => ({
+      kind,
+      id: queued,
+      query: words,
+      matched: name,
+      ...(heard === undefined ? {} : { heardAs: heard }),
+    }));
+    flow.queueTotal = queueTotal;
+    if (queueAdded === true) flow.queueAdded = true;
+  }
   return flow;
 }
 

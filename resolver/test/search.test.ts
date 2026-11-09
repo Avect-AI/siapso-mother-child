@@ -112,7 +112,7 @@ describe('search scoring', () => {
   });
 
   it('finds a misspelling with an edit through trigrams and distance', () => {
-    const [first] = search(index, 'baktrim');
+    const [first] = search(index, 'baktrin');
     expect(first?.id).toBe('bactrim');
     expect(first?.score).toBeGreaterThan(0.6);
     expect(first?.score).toBeLessThan(1);
@@ -231,5 +231,54 @@ describe('search options', () => {
         'variants',
       ].sort(),
     );
+  });
+});
+
+describe('how a candidate matched, at an equal score', () => {
+  // SCRUM-61: "efaralgan" is the brand EFFERALGAN within one edit (near), at
+  // the same score as a close word of its French name (fuzzy-word): the
+  // clearer way it matched is the one said.
+  it('says the clearer kind of match of its names', () => {
+    const index = buildIndex([
+      entry({
+        id: 'efferalgan-1000',
+        priority: 3,
+        names: [
+          { text: 'EFFERALGAN 1000 mg, comprimé effervescent', lang: 'fr' },
+          { text: 'EFFERALGAN', lang: 'brand' },
+        ],
+      }),
+    ]);
+    const [first] = search(index, 'efaralgan');
+    expect(first?.id).toBe('efferalgan-1000');
+    expect(first?.match).toBe('near');
+  });
+});
+
+describe('how a product matched, through its two entries', () => {
+  // A brand product is indexed twice under one id: its names (priority 3) and
+  // its INN names (priority 1). "amoxiceline" is the INN within one edit
+  // (near) and a close word of the brand's name at the same score: the
+  // product says near, and keeps its rank.
+  it('says the clearer kind of match of either entry', () => {
+    const shared = { id: 'amoxicilline-almus', family: 'brand:amoxisilin almus' };
+    const index = buildIndex([
+      entry({
+        ...shared,
+        priority: 3,
+        names: [
+          { text: 'AMOXICILLINE ALMUS 1 g, comprimé', lang: 'fr' },
+          { text: 'AMOXICILLINE ALMUS', lang: 'brand' },
+        ],
+      }),
+      entry({
+        ...shared,
+        priority: 1,
+        names: [{ text: 'amoxicilline', lang: 'inn', substance: 'amoxicillin' }],
+      }),
+    ]);
+    const [first] = search(index, 'amoxiceline');
+    expect(first?.match).toBe('near');
+    expect(first?.matchedLang).toBe('fr');
   });
 });

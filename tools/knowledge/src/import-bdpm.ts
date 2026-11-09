@@ -18,9 +18,10 @@
 // substance then denomination, one product per denomination; the brands most
 // used in Senegal (PRIORITY_BRANDS) are always kept, and the other products
 // fill the rest, at most 3 per brand, 15 per substance and MAX_ENTRIES in
-// total (taken rank by rank across substances, see selectProducts). The other
-// names people use for a brand (LOCAL_NAMES) become local names of its
-// products.
+// total (taken rank by rank across substances, see selectProducts). The
+// brands added once the selection was settled (ADDED_BRANDS) are kept in
+// addition, outside the caps. The other names people use for a brand
+// (LOCAL_NAMES) become local names of its products.
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -188,6 +189,7 @@ export const SUBSTANCE_LABELS: Readonly<Record<string, string>> = {
   'MINOCYCLINE (CHLORHYDRATE DE)': 'minocycline',
   MISOPROSTOL: 'misoprostol',
   NAPROXENE: 'naproxen',
+  OXOMEMAZINE: 'oxomemazine',
   'NAPROXENE SODIQUE': 'naproxen',
   PARACETAMOL: 'paracetamol',
   ETORICOXIB: 'etoricoxib',
@@ -331,9 +333,31 @@ export interface SelectOptions {
   maxPerBrand?: number;
   /** Brands always kept, whatever the caps (PRIORITY_BRANDS by default). */
   priorityBrands?: readonly string[];
+  /** Brands kept in addition to the selection, outside its caps (ADDED_BRANDS by default). */
+  addedBrands?: readonly string[];
+  /** Substances brought in only through the added brands (ADDED_SUBSTANCES by default). */
+  addedSubstances?: readonly string[];
   /** Other names of a brand, given to its products (LOCAL_NAMES by default). */
   localNames?: Readonly<Record<string, readonly BrandLocalName[]>>;
 }
+
+/**
+ * Brands added once the selection was settled (live test round 2,
+ * 2026-11-05: brands on the boxes of substances the rules read, fluconazole,
+ * aspirin and doxycycline, and a common cough syrup): every marketed product
+ * of these brands that passes the filters is kept in addition to the
+ * selection, outside its caps, so that adding a brand leaves every other
+ * product as it was (as priority brands, they would take the places of other
+ * products in the caps). Matched as PRIORITY_BRANDS are.
+ */
+export const ADDED_BRANDS: readonly string[] = ['TRIFLUCAN', 'ASPRO', 'GRANUDOXY', 'TOPLEXIL'];
+
+/**
+ * Substances brought into the registry only through an added brand: their
+ * other products are left out, so they take no place in the selection
+ * (oxomemazine, for the cough syrup TOPLEXIL).
+ */
+export const ADDED_SUBSTANCES: readonly string[] = ['oxomemazine'];
 
 /**
  * Brands most used in Senegal (decision of the project, 2026-11-04): every
@@ -449,7 +473,10 @@ function compare(a: string, b: string): number {
  * per denomination. Every product of a priority brand is kept; the others
  * fill the rest, at most `maxPerBrand` per brand, `maxPerSubstance` per first
  * substance (priority products included) and `maxEntries` in total, the
- * total cap taking them rank by rank across substances.
+ * total cap taking them rank by rank across substances. The products of an
+ * added brand (`addedBrands`) are kept in addition, outside every cap, and
+ * the other products of a substance only they bring (`addedSubstances`) are
+ * left out: the selection of the other products does not change.
  */
 export function selectProducts(
   specialities: readonly BdpmSpeciality[],
@@ -498,11 +525,31 @@ export function selectProducts(
     });
   }
   candidates.sort((a, b) => compare(a.key, b.key) || compare(a.sort, b.sort));
+  const ordered = candidates.map((candidate, position) => ({ ...candidate, position }));
+  // The products of an added brand are kept apart, outside the caps, one per
+  // denomination; the other products of a substance only they bring are left out.
+  const addedBrands = options.addedBrands ?? ADDED_BRANDS;
+  const addedSubstances = new Set(options.addedSubstances ?? ADDED_SUBSTANCES);
+  const isAdded = (candidate: (typeof ordered)[number]) =>
+    isPriority(candidate.product.names.fr, addedBrands);
+  const addedNames = new Set<string>();
+  const added = ordered.filter((candidate) => {
+    if (!isAdded(candidate)) return false;
+    const denomination = normalise(candidate.product.names.fr);
+    if (addedNames.has(denomination)) return false;
+    addedNames.add(denomination);
+    return true;
+  });
+  const pool = ordered.filter(
+    (candidate) =>
+      !isAdded(candidate) &&
+      !candidate.product.components.some((c) => addedSubstances.has(c.substance)),
+  );
   // One product per denomination (the lowest CIS code); outside the priority
   // brands, at most maxPerBrand per brand.
   const denominations = new Set<string>();
   const perBrand = new Map<string, number>();
-  const distinct = candidates.flatMap((candidate, position) => {
+  const distinct = pool.flatMap((candidate) => {
     const { product } = candidate;
     const denomination = normalise(product.names.fr);
     if (denominations.has(denomination)) return [];
@@ -512,7 +559,7 @@ export function selectProducts(
     if (!priority && count >= maxPerBrand) return [];
     denominations.add(denomination);
     perBrand.set(brand, count + 1);
-    return [{ ...candidate, position, priority }];
+    return [{ ...candidate, priority }];
   });
   // Rank within the first substance, priority products first: they are always
   // kept and fill the share of their substance before the other products,
@@ -533,12 +580,13 @@ export function selectProducts(
   // rank (the first product of every substance, then the second...), so that
   // substances late in the alphabet are not left out. The result keeps the
   // sorted order.
-  return ranked
+  const selection = ranked
     .sort(
       (a, b) =>
         Number(b.priority) - Number(a.priority) || a.rank - b.rank || a.position - b.position,
     )
-    .slice(0, maxEntries)
+    .slice(0, maxEntries);
+  return [...selection, ...added]
     .sort((a, b) => a.position - b.position)
     .map((entry) => entry.product);
 }

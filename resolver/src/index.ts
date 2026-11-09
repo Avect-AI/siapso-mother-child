@@ -3,15 +3,34 @@ export { damerauLevenshtein } from './distance.js';
 export { entriesFromPack, productFamily } from './from-pack.js';
 export type { PackNames } from './from-pack.js';
 export { buildIndex } from './index-build.js';
+export { matchStrength } from './match-strength.js';
+export type { MatchStrength } from './match-strength.js';
 export {
   AGE_WORDS,
   formWords,
   normalize,
+  plainText,
   SALT_WORDS,
   splitAgeWords,
   STOP_WORDS,
   withoutStopWords,
 } from './normalize.js';
+export { phoneticKey, productsInSentence, respellingsOf } from './sentence.js';
+export type { SentenceOptions, SentenceProduct } from './sentence.js';
+export type { ClauseReason } from './sentence-clause.js';
+export {
+  AMBIGUOUS_NAME_WORDS,
+  CLAUSE_JOIN_WORDS,
+  CLAUSE_RESET_WORDS,
+  FILLER_WORDS,
+  FOOD_NAME_WORDS,
+  JOINING_WORDS,
+  LINKING_WORDS,
+  NEGATION_WORDS,
+  PAST_WORDS,
+  PERSON_WORDS,
+  WEAK_ALONE_WORDS,
+} from './sentence-words.js';
 export { parseStrength } from './strength.js';
 export type { ParsedQuery } from './strength.js';
 export {
@@ -19,6 +38,7 @@ export {
   DEFAULT_MIN_SCORE,
   DEFAULT_RELATIVE_CUTOFF,
   namedSubstances,
+  queryMentions,
   search,
 } from './search.js';
 export { trigrams } from './trigrams.js';
@@ -27,6 +47,7 @@ export type {
   EntryKind,
   IndexEntry,
   MatchKind,
+  Mention,
   NameLang,
   ResolverIndex,
   SearchOptions,

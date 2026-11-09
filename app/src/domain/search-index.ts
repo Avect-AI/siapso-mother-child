@@ -13,6 +13,9 @@ import {
   namedSubstances,
   normalize,
   parseStrength,
+  plainText,
+  queryMentions,
+  STOP_WORDS,
   withoutStopWords,
   type Candidate,
   type ResolverIndex,
@@ -65,13 +68,13 @@ function compareText(a: string, b: string): number {
 }
 
 /**
- * Strength ascending, then French name (normalised: the plainest form first),
+ * Strength ascending, then French name (as written: the plainest form first),
  * then id: the order of the resolver's variants, the same for every brand.
  */
 function byStrengthThenName(a: Product, b: Product): number {
   return (
     firstStrength(a) - firstStrength(b) ||
-    compareText(normalize(a.names.fr), normalize(b.names.fr)) ||
+    compareText(plainText(a.names.fr), plainText(b.names.fr)) ||
     compareText(a.id, b.id)
   );
 }
@@ -193,7 +196,7 @@ export function unitsHeld(name: string): string {
  * grouped ("1000"), held to its unit by a no-break space ("500 mg" never
  * splits across two lines).
  */
-function milligrams(mg: number, lang: Lang): string {
+export function milligrams(mg: number, lang: Lang): string {
   const number = new Intl.NumberFormat(lang, { useGrouping: false, maximumFractionDigits: 3 });
   return `${number.format(mg)}\u00a0mg`;
 }
@@ -307,6 +310,45 @@ export function missingSubstancesOf(
   return namedSubstances(indexedOf(pack).index, query)
     .filter((id) => !held.has(id))
     .map((id) => pack.substances.find((s) => s.id === id)?.names[lang] ?? id);
+}
+
+/** A brand typed in the query and the substances it implies that the product lacks. */
+export interface MissingBrandSubstances {
+  /** As the pack writes it ("ADVIL"). */
+  brand: string;
+  /** In the language. */
+  substances: string[];
+}
+
+/**
+ * For each brand the query names, the substances every product of that brand
+ * holds and the product lacks, in the language ("Advil codéine" for a
+ * codeine-only product: ADVIL, ibuprofène), for the confirm screen to say so.
+ * A substance the query names itself is left to missingSubstancesOf. Empty
+ * when it lacks none, or is not in the pack.
+ */
+export function missingBrandSubstancesOf(
+  pack: Pack,
+  productId: string,
+  query: string,
+  lang: Lang,
+): MissingBrandSubstances[] {
+  const product = productOf(pack, productId);
+  if (product === undefined) return [];
+  const held = new Set(product.components.map((c) => c.substance));
+  const mentions = queryMentions(indexedOf(pack).index, query);
+  const named = new Set(
+    mentions.flatMap((mention) => (mention.kind === 'substance' ? mention.substances : [])),
+  );
+  return mentions.flatMap((mention) => {
+    if (mention.kind !== 'brand') return [];
+    const lacking = mention.substances.filter((id) => !held.has(id) && !named.has(id));
+    if (lacking.length === 0) return [];
+    const substances = lacking.map(
+      (id) => pack.substances.find((s) => s.id === id)?.names[lang] ?? id,
+    );
+    return [{ brand: mention.name, substances }];
+  });
 }
 
 /** What the confirm screen needs of a candidate: who it is and the other products of its family. */
@@ -468,17 +510,72 @@ export function browseEntriesOf(pack: Pack, kind: 'product' | 'plant', lang: Lan
   return entries.sort((a, b) => collator.compare(a.name, b.name) || compareText(a.id, b.id));
 }
 
+/** The stop-words as the resolver compares them (normalised). */
+const STOP_KEYS: ReadonlySet<string> = new Set(STOP_WORDS.map(normalize));
+
+/** A word as compared with the words of names: its singular, normalised ("feuilles", "feuil"). */
+function wordKey(word: string): string {
+  return normalize(word.length > 3 && word.endsWith('s') ? word.slice(0, -1) : word);
+}
+
+/**
+ * The carrier and generic words of a query made only of stop-words ("huile",
+ * "feuilles"), each as wordKey reads it; none when the query names anything
+ * else, or holds only form words ("sirop").
+ */
+function carrierWordsOf(query: string): string[] {
+  const plain = plainText(parseStrength(query).text);
+  if (plain === '' || withoutStopWords(normalize(plain)) !== '') return [];
+  return plain
+    .split(' ')
+    .filter((word) => STOP_KEYS.has(normalize(word)) && formWords(word).length === 0)
+    .map(wordKey);
+}
+
+/**
+ * The remedies, or medicine families, that have in one of their names a
+ * carrier or generic word the query is made of ("huile": Huile de ricin;
+ * "feuille": Feuille amère), in the order of the whole list, for the search
+ * to list them when the name typed names nothing (live test round 2). The
+ * resolver, and so the safety net of the result, still reads such a word as
+ * naming nothing. Empty for any other query.
+ */
+export function entriesNamedWith(
+  pack: Pack,
+  kind: 'product' | 'plant',
+  query: string,
+  lang: Lang,
+): BrowseEntry[] {
+  const words = new Set(carrierWordsOf(query));
+  if (words.size === 0) return [];
+  const namesOf = (entry: BrowseEntry): string[] => {
+    const plant = kind === 'plant' ? pack.plants.find((p) => p.id === entry.id) : undefined;
+    const own = plant === undefined ? [entry.name] : [plant.names.fr, plant.names.en];
+    return [...own, ...entry.local.flatMap((local) => local.names)];
+  };
+  return browseEntriesOf(pack, kind, lang).filter((entry) =>
+    namesOf(entry).some((name) =>
+      plainText(name)
+        .split(' ')
+        .some((word) => words.has(wordKey(word))),
+    ),
+  );
+}
+
 /**
  * The entries whose name, the generic a box name opens, or a local name holds
- * `text`, as the resolver reads names (case and accents aside), in their
- * order; every entry for a text with nothing to look for.
+ * `text`, as written (case and accents aside) or as the resolver reads names
+ * as they sound, in their order; every entry for a text with nothing to look
+ * for. As written, the start of a name she is typing holds ("c", "cy" of
+ * Cytotec, which reads "sitotek"); as it sounds, a phonetic spelling ("sito").
  */
 export function filterBrowseEntries(entries: readonly BrowseEntry[], text: string): BrowseEntry[] {
+  const plain = plainText(text);
   const wanted = normalize(text);
   if (wanted === '') return [...entries];
   return entries.filter((entry) =>
-    [entry.name, entry.brandOf ?? '', ...entry.local.flatMap((local) => local.names)].some((name) =>
-      normalize(name).includes(wanted),
+    [entry.name, entry.brandOf ?? '', ...entry.local.flatMap((local) => local.names)].some(
+      (name) => plainText(name).includes(plain) || normalize(name).includes(wanted),
     ),
   );
 }
@@ -493,7 +590,7 @@ export function browseGroupsOf(
 ): { letter: string; entries: BrowseEntry[] }[] {
   const groups: { letter: string; entries: BrowseEntry[] }[] = [];
   for (const entry of entries) {
-    const first = normalize(entry.name).charAt(0).toUpperCase();
+    const first = plainText(entry.name).charAt(0).toUpperCase();
     const letter = /^[A-Z]$/.test(first) ? first : '#';
     const group = groups.find((candidate) => candidate.letter === letter);
     if (group === undefined) groups.push({ letter, entries: [entry] });

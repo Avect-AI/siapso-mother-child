@@ -1,0 +1,1238 @@
+// SPDX-License-Identifier: MIT
+// The words of a sentence that name no product (SCRUM-61). A voice transcript
+// or a typed sentence says more than the name: "j'ai pris du doliprane ce
+// matin", "dama naan nebeday bi". These lists are compared after normalize
+// (accents, case, doubled letters and the other spelling variants do not
+// matter), so each word is listed once as it is usually written. Sources: the
+// French function words, the Wolof function words and fillers of the phrases
+// in registry/plants and in eval/speech/sentences.yaml, and the Wolof of the
+// FLEURS transcripts in eval/speech/results/. No word here is a whole name of
+// the registry (a test of tools/knowledge checks it on the real pack).
+
+/** French articles, pronouns, prepositions, conjunctions and their elided forms. */
+const FRENCH_GRAMMAR: readonly string[] = [
+  'le',
+  'la',
+  'les',
+  'l',
+  'un',
+  'une',
+  'des',
+  'du',
+  'de',
+  'd',
+  'au',
+  'aux',
+  'ce',
+  'cet',
+  'cette',
+  'ces',
+  'mon',
+  'ma',
+  'mes',
+  'ton',
+  'ta',
+  'tes',
+  'son',
+  'sa',
+  'ses',
+  'notre',
+  'nos',
+  'votre',
+  'vos',
+  'leur',
+  'leurs',
+  'quel',
+  'quelle',
+  'quels',
+  'quelles',
+  'quelque',
+  'quelques',
+  'chaque',
+  'autre',
+  'autres',
+  'même',
+  'tout',
+  'tous',
+  'toute',
+  'toutes',
+  'aucun',
+  'aucune',
+  'plusieurs',
+  'peu',
+  'beaucoup',
+  'assez',
+  'je',
+  'j',
+  'tu',
+  'il',
+  'elle',
+  'on',
+  'nous',
+  'vous',
+  'ils',
+  'elles',
+  'me',
+  'm',
+  'te',
+  't',
+  'se',
+  's',
+  'moi',
+  'toi',
+  'lui',
+  'eux',
+  'y',
+  'en',
+  'ça',
+  'cela',
+  'ceci',
+  'celui',
+  'celle',
+  'ceux',
+  'qui',
+  'que',
+  'qu',
+  'quoi',
+  'dont',
+  'où',
+  'ou',
+  'à',
+  'a',
+  'dans',
+  'pour',
+  'par',
+  'sans',
+  'sur',
+  'sous',
+  'chez',
+  'contre',
+  'entre',
+  'depuis',
+  'pendant',
+  'avant',
+  'après',
+  'vers',
+  'comme',
+  'selon',
+  'jusqu',
+  'jusque',
+  'mais',
+  'donc',
+  'ni',
+  'car',
+  'puis',
+  'alors',
+  'si',
+  'quand',
+  'parce',
+  'lorsque',
+  'c',
+  'n',
+  'ne',
+  'pas',
+  'point',
+];
+
+/** French verbs said around a product: to take, to drink, to buy, to be, to have. */
+const FRENCH_VERBS: readonly string[] = [
+  'ai',
+  'as',
+  'avons',
+  'avez',
+  'ont',
+  'avais',
+  'avait',
+  'avaient',
+  'aurai',
+  'eu',
+  'avoir',
+  'suis',
+  'es',
+  'est',
+  'sommes',
+  'êtes',
+  'sont',
+  'étais',
+  'était',
+  'été',
+  'être',
+  'prends',
+  'prend',
+  'prenons',
+  'prenez',
+  'prennent',
+  'pris',
+  'prise',
+  'prises',
+  'prendre',
+  'prenais',
+  'prenait',
+  'bu',
+  'bois',
+  'boit',
+  'boire',
+  'buvais',
+  'buvait',
+  'avalé',
+  'avale',
+  'avaler',
+  'utilisé',
+  'utilise',
+  'utiliser',
+  'mis',
+  'mets',
+  'met',
+  'mettre',
+  'donné',
+  'donnée',
+  'donne',
+  'donner',
+  'acheté',
+  'achetée',
+  'achète',
+  'acheter',
+  'conseillé',
+  'conseille',
+  'prescrit',
+  'prescrite',
+  'mangé',
+  'mange',
+  'manger',
+  'fait',
+  'faire',
+  'fais',
+  'veux',
+  'veut',
+  'voudrais',
+  'aimerais',
+  'sais',
+  'sait',
+  'savoir',
+  'dit',
+  'dis',
+  'dire',
+  'vais',
+  'va',
+  'vas',
+  'aller',
+  'allé',
+  'allée',
+  'vient',
+  'viens',
+  'venu',
+  'venue',
+  'peux',
+  'peut',
+  'pu',
+  'dois',
+  'doit',
+  'faut',
+  'essayé',
+  'appliqué',
+  'applique',
+  'appliquer',
+  'frotté',
+  'passé',
+  'continue',
+  'commencé',
+  'reste',
+  'trouvé',
+  'trouve',
+  'appelle',
+  'appelé',
+];
+
+/** French adverbs of time and degree, answers and fillers of speech. */
+const FRENCH_FILLERS: readonly string[] = [
+  'très',
+  'trop',
+  'bien',
+  'déjà',
+  'encore',
+  'aussi',
+  'seulement',
+  'juste',
+  'hier',
+  'aujourd',
+  'hui',
+  'demain',
+  'matin',
+  'soir',
+  'nuit',
+  'midi',
+  'maintenant',
+  'toujours',
+  'jamais',
+  'souvent',
+  'parfois',
+  'ici',
+  'là',
+  'jour',
+  'jours',
+  'fois',
+  'semaine',
+  'semaines',
+  'mois',
+  'an',
+  'ans',
+  'heure',
+  'heures',
+  'euh',
+  'heu',
+  'hum',
+  'bon',
+  'ben',
+  'bah',
+  'voilà',
+  'oui',
+  'non',
+  'ok',
+  'okay',
+  'accord',
+  'hein',
+  'enfin',
+  'genre',
+  'bref',
+  'merci',
+  'bonjour',
+  'bonsoir',
+];
+
+/**
+ * French nouns said around a product that name none: where it was bought, who
+ * gave it, what it is for, who takes it. "médicament" and "comprimé" are here
+ * when they are not part of a name ("le comprimé de doliprane").
+ */
+const FRENCH_CONTEXT: readonly string[] = [
+  'médicament',
+  'médicaments',
+  'comprimé',
+  'comprimés',
+  'cachet',
+  'cachets',
+  'gélule',
+  'gélules',
+  'pilule',
+  'pilules',
+  'boîte',
+  'boîtes',
+  'plaquette',
+  'dose',
+  'doses',
+  'ordonnance',
+  'pharmacie',
+  'pharmacien',
+  'pharmacienne',
+  'docteur',
+  'médecin',
+  'sage',
+  'femme',
+  'femmes',
+  'infirmier',
+  'infirmière',
+  'poste',
+  'santé',
+  'hôpital',
+  'dispensaire',
+  'marché',
+  'boutique',
+  'mal',
+  'douleur',
+  'douleurs',
+  'fièvre',
+  'tête',
+  'ventre',
+  'dos',
+  'toux',
+  'rhume',
+  'palu',
+  'paludisme',
+  'grossesse',
+  'enceinte',
+  'bébé',
+  'mère',
+  'maman',
+  'mari',
+  'fille',
+  'fils',
+  'soeur',
+  'frère',
+  'amie',
+  'ami',
+  'voisine',
+  'tante',
+  'nouveau',
+  'nouvelle',
+];
+
+/** Wolof pronouns, verb markers and the focus forms they make ("dama", "dafa", "dinaa"). */
+const WOLOF_GRAMMAR: readonly string[] = [
+  'dama',
+  'damay',
+  'dafa',
+  'dafay',
+  'dañu',
+  'dañuy',
+  'danga',
+  'dangay',
+  'dangeen',
+  'dana',
+  'dinaa',
+  'dina',
+  'dinga',
+  'dinañu',
+  'dingeen',
+  'maa',
+  'moo',
+  'mooy',
+  'yaa',
+  'yaay',
+  'ñoo',
+  'ñooy',
+  'nga',
+  'ngay',
+  'ngeen',
+  'naa',
+  'na',
+  'nañu',
+  'nañuy',
+  'laa',
+  'lay',
+  'lañu',
+  'ma',
+  'mu',
+  'ko',
+  'ka',
+  'ñu',
+  'nu',
+  'yow',
+  'man',
+  'moom',
+  'nun',
+  'yeen',
+  'ñoom',
+  'sama',
+  'samay',
+  'sa',
+  'sunu',
+  'seen',
+  'ay',
+  'ab',
+  'am',
+  'amna',
+  'maangi',
+  'mangi',
+  'mungi',
+  'ngi',
+  'nanga',
+  'bi',
+  'yi',
+  'ba',
+  'ya',
+  'bu',
+  'yu',
+  'gi',
+  'gu',
+  'ga',
+  'li',
+  'lu',
+  'mi',
+  'si',
+  'su',
+  'ji',
+  'ju',
+  'wi',
+  'wu',
+  'ki',
+  'ku',
+  'bii',
+  'yii',
+  'lii',
+  'loolu',
+  'boobu',
+  'yooyu',
+  'bale',
+  'yale',
+  'kii',
+  'ci',
+  'ca',
+  'ndax',
+  'waaye',
+  'walla',
+  'te',
+  'mba',
+  'ngir',
+  'boo',
+  'soo',
+  'ni',
+  'nii',
+  'noonu',
+];
+
+/** Wolof verbs said around a product: to drink, to take, to give, to eat, to buy. */
+const WOLOF_VERBS: readonly string[] = [
+  'naan',
+  'naanu',
+  'jël',
+  'jox',
+  'joxe',
+  'lekk',
+  'def',
+  'jënd',
+  'wax',
+  'seet',
+  'faj',
+  'dem',
+  'demoon',
+  'ñëw',
+  'bëgg',
+  'mën',
+  'xam',
+  'nekk',
+  'indi',
+  'yobbu',
+  'sol',
+  'diw',
+  'jëfandikoo',
+  'tàmbali',
+  'tëdd',
+  'nelaw',
+  'may',
+];
+
+/** Wolof nouns said around a product that name none, answers, numbers and fillers. */
+const WOLOF_CONTEXT: readonly string[] = [
+  'garab',
+  'doktoor',
+  'lopitaan',
+  'biir',
+  'bopp',
+  'liir',
+  'xale',
+  'doom',
+  'jigéen',
+  'góor',
+  'ëmb',
+  'nampal',
+  'feebar',
+  'metit',
+  'metti',
+  'sibiru',
+  'yaram',
+  'tey',
+  'démb',
+  'suba',
+  'ngoon',
+  'guddi',
+  'bëccëg',
+  'fan',
+  'bis',
+  'weer',
+  'léegi',
+  'waaw',
+  'déedéet',
+  'ahakay',
+  'kon',
+  'rekk',
+  'itam',
+  'yépp',
+  'lépp',
+  'yeneen',
+  'beneen',
+  'benn',
+  'ñaar',
+  'ñett',
+  'ñeent',
+  'juróom',
+  'fukk',
+  'salaam',
+  'jërëjëf',
+];
+
+/** The French and Wolof verbs said around a product: a clause that holds one says something of its own. */
+export const VERB_WORDS: readonly string[] = [...FRENCH_VERBS, ...WOLOF_VERBS];
+
+/** The Wolof verbs said around a product: "du" before one of them is a negation ("du naan"). */
+export const WOLOF_VERB_WORDS: readonly string[] = WOLOF_VERBS;
+
+/**
+ * The words of a sentence that never name a product: they are not read alone
+ * and a name is never read across them (except the linking and joining words
+ * inside a name, `LINKING_WORDS` and `JOINING_WORDS`).
+ */
+export const FILLER_WORDS: readonly string[] = [
+  ...FRENCH_GRAMMAR,
+  ...FRENCH_VERBS,
+  ...FRENCH_FILLERS,
+  ...FRENCH_CONTEXT,
+  ...WOLOF_GRAMMAR,
+  ...WOLOF_VERBS,
+  ...WOLOF_CONTEXT,
+];
+
+/**
+ * Filler words that may stand inside a name of several words ("huile de
+ * ricin", "noix de cola", "pharmacie centrale des armées"): a name is read
+ * across them.
+ */
+export const LINKING_WORDS: readonly string[] = ['de', 'd', 'du', 'des'];
+
+/**
+ * Words that join two names, in French, English and Wolof ("doliprane ak
+ * nivaquine", "advil et coartem"): two names joined by one are two products,
+ * unless the words said are a whole name of the base ("fer et acide folique").
+ */
+export const JOINING_WORDS: readonly string[] = ['et', 'ak', 'ag', 'avec', 'and', 'with', 'plus'];
+
+/**
+ * Words of a name that are common words when said alone in a sentence: the
+ * start of a name of several words ("noix" of "Noix de cola": "noix de
+ * cajou"), a taste ("amer": the bitter leaf is "Feuille amère"), an English
+ * word of a name. They are read only inside the whole name.
+ */
+export const WEAK_ALONE_WORDS: readonly string[] = [
+  'noix',
+  'amer',
+  'amère',
+  'amers',
+  'amères',
+  'castor',
+  'african',
+  'skin',
+  'clay',
+  'bitter',
+];
+
+/**
+ * Names of the base that are also common words: "goro", a Wolof name of the
+ * cola nut, is also an in-law; "nem" (neem written as said) is also a spring
+ * roll. Found in a sentence, such a name is offered unticked.
+ */
+export const AMBIGUOUS_NAME_WORDS: readonly string[] = ['goro', 'nem'];
+
+/**
+ * Names of remedies of the base that are also foods or spices (review of
+ * #68): said in a sentence, they may be eaten as food only ("je mets de l'ail
+ * dans le poisson"), so such a name is offered unticked, saying it is also a
+ * food. Only the names of the base are listed: "citron", "mangue", "oignon",
+ * "miel", "piment" and "lait" name no remedy of it and are never found.
+ */
+export const FOOD_NAME_WORDS: readonly string[] = [
+  'ail',
+  'gingembre',
+  'jinjeer',
+  'jinjer',
+  'tamarin',
+  'dakhar',
+  'daxar',
+  'bissap',
+  'bisaab',
+  'néré',
+];
+
+/**
+ * French words that start another clause: right after a name the voice heard
+ * ("quinine qu'il y va", where "kinkéliba" was said), the sentence is not the
+ * one it seems, and the name is offered to confirm.
+ */
+export const CLAUSE_START_WORDS: readonly string[] = [
+  'qu',
+  'que',
+  'qui',
+  'il',
+  'ils',
+  'elle',
+  'elles',
+  'je',
+  'j',
+  'tu',
+  'on',
+];
+
+// Review of #68: the words that say a product is maybe not taken by the
+// speaker now. Found in the clause of a name (sentence-clause.ts), the product
+// is offered unticked with that clause, never dropped: she may still take it.
+
+/**
+ * Words of a negation, French and Wolof ("pas de cytotec", "duma naan",
+ * "amul"): the whole clause is negated. Wolof "du" is also French "du": it is
+ * read as a negation only before a Wolof pronoun or verb (WOLOF_DU_NEXT).
+ */
+export const NEGATION_WORDS: readonly string[] = [
+  'pas',
+  'jamais',
+  'rien',
+  'aucun',
+  'aucune',
+  'duma',
+  'dumay',
+  'dunu',
+  'dunuy',
+  'duñu',
+  'duñuy',
+  'dula',
+  'dul',
+  'duko',
+  'dungeen',
+  'bul',
+  'buleen',
+  'amul',
+  'amuma',
+  'amuñu',
+  'bañ',
+  'bañna',
+];
+
+/** Wolof pronouns that make "du" a negation ("du ma naan", "du ko jël"). */
+export const WOLOF_DU_NEXT: readonly string[] = ['ma', 'ko', 'nu', 'ñu', 'mu', 'la', 'nga', 'leen'];
+
+/**
+ * Words that negate the name right after them only, articles aside ("sans
+ * paracétamol", "ni advil ni aspirine"): "sans ordonnance" negates nothing.
+ */
+export const NEXT_NAME_NEGATION_WORDS: readonly string[] = ['sans', 'ni'];
+
+/** The French negation particle: a negation unless "que" follows it ("je ne prends que du fer"). */
+export const NEGATION_PARTICLES: readonly string[] = ['ne', 'n'];
+
+/** The endings of a Wolof verb said in the negative ("naanuma", "jëlul", "joxuñu"). */
+export const WOLOF_NEGATIVE_ENDINGS: readonly string[] = ['uma', 'ul', 'uñu', 'uloo', 'uleen'];
+
+/**
+ * Words of a past use or a use stopped: "avant", "arrêté", the French
+ * imperfect of the verbs of taking, Wolof "bàyyi" (to stop), "daan" (used
+ * to) and "woon" (had). "ne ... plus" is read with NEGATION_PARTICLES.
+ */
+export const PAST_WORDS: readonly string[] = [
+  'avant',
+  'autrefois',
+  'auparavant',
+  'arrêté',
+  'arrêtée',
+  'arrêtés',
+  'arrêter',
+  'arrête',
+  'arrêtais',
+  'arrêtait',
+  'stoppé',
+  'fini',
+  'finie',
+  'finis',
+  'terminé',
+  'terminée',
+  'ancien',
+  'ancienne',
+  'prenais',
+  'prenait',
+  'buvais',
+  'buvait',
+  'utilisais',
+  'utilisait',
+  'avalais',
+  'mettais',
+  'mangeais',
+  'bàyyi',
+  'bàyyee',
+  'daan',
+  'woon',
+];
+
+// Round 2 of the review of #68.
+
+/**
+ * A past said by a time: "l'an dernier", "le mois dernier", "la dernière
+ * fois", "ma dernière grossesse" (a word of LAST_WORDS next to one of
+ * PAST_TIME_WORDS), "il y a trois mois", "il y a longtemps" ("il y a" and a
+ * word of AGO_TIME_WORDS within three words: days and hours are a use now),
+ * "ma première grossesse" (PREVIOUS_WORDS next to "grossesse"), "quand
+ * j'étais enceinte", and Wolof "at bu weesu", "weer bu weesu" (gone by),
+ * "daaw" (last year). "hier" and "démb" (yesterday) say a use now.
+ */
+export const LAST_WORDS: readonly string[] = ['dernier', 'dernière', 'derniers', 'dernières'];
+export const PAST_TIME_WORDS: readonly string[] = [
+  'an',
+  'ans',
+  'année',
+  'années',
+  'mois',
+  'semaine',
+  'semaines',
+  'fois',
+  'grossesse',
+  'grossesses',
+];
+export const AGO_TIME_WORDS: readonly string[] = [
+  'an',
+  'ans',
+  'année',
+  'années',
+  'mois',
+  'semaine',
+  'semaines',
+  'longtemps',
+];
+export const PREVIOUS_WORDS: readonly string[] = [
+  'premier',
+  'première',
+  'autre',
+  'précédent',
+  'précédente',
+];
+export const PAST_STATE_WORDS: readonly string[] = ['étais', 'était'];
+export const PAST_WOLOF_WORDS: readonly string[] = ['weesu', 'daaw'];
+
+/**
+ * Third-person pronouns: in a clause after a person was named ("c'est pour ma
+ * mère, elle prend ...", "sama doom dafa feebar, dafay naan ..."), the
+ * product is that person's. "il" before "y" or "faut" names nobody.
+ */
+export const THIRD_PERSON_WORDS: readonly string[] = [
+  'il',
+  'elle',
+  'ils',
+  'elles',
+  'lui',
+  'leur',
+  'dafa',
+  'dafay',
+  'mu',
+  'muy',
+  'moo',
+  'mooy',
+];
+export const IMPERSONAL_AFTER_IL: readonly string[] = ['y', 'faut', 'fallait', 'faudra'];
+
+/**
+ * Verbs of telling and advising: with the speaker as object ("m'a parlé de",
+ * "m'a conseillé", "m'a dit de prendre", "wax na ma", "digal na ma"), someone
+ * told her of the product, which says nothing of her taking it; unless a
+ * health worker (HEALTH_WORKER_WORDS) said it, which is a prescription.
+ */
+export const TELLING_WORDS: readonly string[] = [
+  'parlé',
+  'parle',
+  'parler',
+  'conseillé',
+  'conseillée',
+  'conseille',
+  'conseiller',
+  'recommandé',
+  'recommandée',
+  'recommande',
+  'dit',
+  'disait',
+  'suggéré',
+  'proposé',
+  'wax',
+  'digal',
+];
+/** The speaker as the object of a verb: French me, m', Wolof ma. */
+export const SPEAKER_OBJECT_WORDS: readonly string[] = ['me', 'm', 'ma'];
+export const HEALTH_WORKER_WORDS: readonly string[] = [
+  'médecin',
+  'docteur',
+  'doktoor',
+  'sage',
+  'infirmier',
+  'infirmière',
+  'pharmacien',
+  'pharmacienne',
+  'hôpital',
+  'dispensaire',
+  'lopitaan',
+  'santé',
+  'ordonnance',
+];
+
+// Round 3 of the review of #68.
+
+/**
+ * Words that start a clause of a reason, a time, a condition or a purpose
+ * ("parce que je n'ai pas dormi", "car", "quand", "si", "comme", "pour",
+ * Wolof "ndax"): what it says does not reach the product of the clause
+ * before, nor the other way; but "pour" and another person ("pour mon fils")
+ * still says the product before is that person's.
+ */
+export const CLAUSE_REASON_WORDS: readonly string[] = [
+  'parce',
+  'car',
+  'pour',
+  'quand',
+  'lorsque',
+  'si',
+  'comme',
+  'ndax',
+];
+
+/** The verbs of taking, having or getting a product: a negation of one says it is not taken. */
+export const TAKING_VERB_WORDS: readonly string[] = [
+  'prends',
+  'prend',
+  'prenons',
+  'prenez',
+  'prennent',
+  'pris',
+  'prise',
+  'prendre',
+  'prenais',
+  'prenait',
+  'prenne',
+  'bois',
+  'boit',
+  'boire',
+  'bu',
+  'buvais',
+  'buvait',
+  'avale',
+  'avalé',
+  'avaler',
+  'utilise',
+  'utilisé',
+  'utiliser',
+  'mets',
+  'met',
+  'mis',
+  'mettre',
+  'mange',
+  'mangé',
+  'manger',
+  'achète',
+  'acheté',
+  'acheter',
+  'donne',
+  'donné',
+  'donner',
+  'veux',
+  'veut',
+  'supporte',
+  'naan',
+  'naanu',
+  'jël',
+  'lekk',
+  'jox',
+  'jënd',
+];
+
+/**
+ * Verbs whose negation says nothing of taking: "le coartem ne marche pas",
+ * "je ne sais pas", "xamuma" (I do not know). With the verbs that stop a use
+ * (STOP_VERB_WORDS), negated: "je n'arrête pas", "je n'ai pas fini".
+ */
+export const OTHER_VERB_WORDS: readonly string[] = [
+  'marche',
+  'marchent',
+  'fonctionne',
+  'sais',
+  'sait',
+  'savais',
+  'souviens',
+  'rappelle',
+  'comprends',
+  'arrive',
+  'dors',
+  'dormi',
+  'dormir',
+  'xam',
+  'baax',
+  'neex',
+  'dox',
+  'gis',
+];
+
+/** Verbs that stop a use: negated, the use goes on ("je n'arrête pas de prendre", "je n'ai pas fini"). */
+export const STOP_VERB_WORDS: readonly string[] = [
+  'arrête',
+  'arrêté',
+  'arrêtée',
+  'arrêter',
+  'arrêtais',
+  'arrêtait',
+  'fini',
+  'finie',
+  'finis',
+  'finit',
+  'terminé',
+  'terminée',
+  'termine',
+  'stoppé',
+];
+
+/** Auxiliaries: "je n'ai pas pris" negates "pris", "je n'ai pas de fer" negates "ai". */
+export const AUXILIARY_WORDS: readonly string[] = [
+  'ai',
+  'as',
+  'a',
+  'avons',
+  'avez',
+  'ont',
+  'avais',
+  'avait',
+  'suis',
+  'es',
+  'est',
+  'sommes',
+  'sont',
+  'étais',
+  'était',
+];
+
+/** Pronouns between "ne" and its verb ("je ne me souviens pas", "je n'en prends pas"). */
+export const OBJECT_PRONOUN_WORDS: readonly string[] = [
+  'me',
+  'm',
+  'te',
+  't',
+  'se',
+  's',
+  'le',
+  'la',
+  'l',
+  'les',
+  'lui',
+  'leur',
+  'en',
+  'y',
+  'nous',
+  'vous',
+];
+
+/**
+ * Words of a use going on: with them, a time said is when it began, not a
+ * past use ("je prends du coartem depuis la semaine dernière", "j'ai commencé
+ * le coartem il y a deux mois").
+ */
+export const ONGOING_WORDS: readonly string[] = [
+  'depuis',
+  'commencé',
+  'commencée',
+  'commence',
+  'commencer',
+  'débuté',
+];
+
+/**
+ * Words of a refusal or a ban: the product is not taken, like a negation
+ * ("le médecin a interdit le cytotec", "je refuse le cytotec", "il faut
+ * éviter", Wolof "tere" to forbid, "bañ" to refuse).
+ */
+export const REFUSAL_WORDS: readonly string[] = [
+  'interdit',
+  'interdite',
+  'interdire',
+  'interdis',
+  'défendu',
+  'défendue',
+  'défend',
+  'déconseillé',
+  'déconseillée',
+  'déconseille',
+  'refuse',
+  'refusé',
+  'refuser',
+  'éviter',
+  'évite',
+  'évité',
+  'tere',
+  'bañ',
+];
+
+/** Articles before a person ("au bébé", "aux enfants"): another person, as after "mon". */
+export const PERSON_ARTICLE_WORDS: readonly string[] = ['au', 'aux'];
+
+/** French and Wolof possessives: "mon mari", "sama jëkkër". */
+export const POSSESSIVE_WORDS: readonly string[] = [
+  'mon',
+  'ma',
+  'mes',
+  'ton',
+  'ta',
+  'tes',
+  'son',
+  'sa',
+  'ses',
+  'notre',
+  'nos',
+  'votre',
+  'vos',
+  'leur',
+  'leurs',
+  'sama',
+  'samay',
+  'sunu',
+  'seen',
+];
+
+/** Words that may stand between a possessive and a person ("ma petite soeur"). */
+export const PERSON_ADJECTIVES: readonly string[] = [
+  'petit',
+  'petite',
+  'grand',
+  'grande',
+  'jeune',
+  'belle',
+  'beau',
+  'vieux',
+  'vieille',
+];
+
+/** The other people a product may be for: after a possessive, "mon mari", "sama doom". */
+export const PERSON_WORDS: readonly string[] = [
+  'mari',
+  'époux',
+  'épouse',
+  'femme',
+  'enfant',
+  'enfants',
+  'fils',
+  'fille',
+  'filles',
+  'bébé',
+  'soeur',
+  'soeurs',
+  'frère',
+  'frères',
+  'mère',
+  'maman',
+  'père',
+  'papa',
+  'tante',
+  'oncle',
+  'cousin',
+  'cousine',
+  'neveu',
+  'nièce',
+  'voisin',
+  'voisine',
+  'ami',
+  'amie',
+  'copine',
+  'copain',
+  'coépouse',
+  'jëkkër',
+  'jabar',
+  'doom',
+  'doomu',
+  'yaay',
+  'ndey',
+  'baay',
+  'rakk',
+  'mag',
+  'mbokk',
+  'xarit',
+  'dëkkandoo',
+  'bajjen',
+  'nijaay',
+];
+
+/** People said with an article that are another person all the same ("la voisine"). */
+export const OTHER_PERSON_WORDS: readonly string[] = ['voisin', 'voisine'];
+
+/**
+ * The speaker named in a clause about another person: the product is given
+ * to her or taken with her ("ma mère m'a donné", "sama yaay dafa ma jox",
+ * "ma soeur et moi"). French "ma" is a possessive before a person.
+ */
+export const SPEAKER_WORDS: readonly string[] = ['me', 'm', 'moi', 'nous', 'man', 'ma'];
+
+/** Words that start a clause and stop what the clause before said: "mais", "maintenant", "sauf". */
+export const CLAUSE_RESET_WORDS: readonly string[] = [
+  'mais',
+  'waaye',
+  'sauf',
+  'seulement',
+  'uniquement',
+  'excepté',
+  'maintenant',
+  'désormais',
+  'actuellement',
+  'aujourd',
+  'léegi',
+  'tey',
+];
+
+/** Words that start a clause going on from the one before: "et", "ak", "puis". */
+export const CLAUSE_JOIN_WORDS: readonly string[] = ['et', 'ak', 'ag', 'puis', 'ensuite', 'te'];
+
+/**
+ * Words of a subject: a clause that holds one (or a verb) says something of
+ * its own and does not go on from the one before ("et moi du doliprane").
+ */
+export const SUBJECT_WORDS: readonly string[] = [
+  'je',
+  'j',
+  'tu',
+  'il',
+  'elle',
+  'on',
+  'nous',
+  'vous',
+  'ils',
+  'elles',
+  'moi',
+  'man',
+  'maa',
+  'dama',
+  'damay',
+  'dafa',
+  'dafay',
+  'dañu',
+  'dañuy',
+  'danga',
+  'dangay',
+  'dinaa',
+  'dina',
+  'naa',
+  'laa',
+  'laay',
+  'lay',
+  'nga',
+  'ngay',
+  'mu',
+  'muy',
+  'ñu',
+  'ñuy',
+  'nañu',
+  'lañu',
+];
+
+/** Number words a strength is said with, after the name ("doliprane mille", "un gramme"). */
+export const NUMBER_WORDS: readonly string[] = [
+  'un',
+  'une',
+  'deux',
+  'trois',
+  'quatre',
+  'cinq',
+  'six',
+  'sept',
+  'huit',
+  'neuf',
+  'dix',
+  'onze',
+  'douze',
+  'quinze',
+  'vingt',
+  'vingts',
+  'trente',
+  'quarante',
+  'cinquante',
+  'soixante',
+  'cent',
+  'cents',
+  'mille',
+];
+
+/** The units of a strength ("1000 mg", "un gramme", "0,5 g"). */
+export const UNIT_WORDS: readonly string[] = [
+  'mg',
+  'g',
+  'mcg',
+  'µg',
+  'gramme',
+  'grammes',
+  'milligramme',
+  'milligrammes',
+  'microgramme',
+  'microgrammes',
+];

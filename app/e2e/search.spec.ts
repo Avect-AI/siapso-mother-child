@@ -106,6 +106,35 @@ test('a woman adds ibuprofen and kinkeliba by keyboard, confirming each, and see
   await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
 });
 
+// SCRUM-61: a sentence typed (or heard) names products the whole text does
+// not: each is offered ticked, then each ticked is confirmed in turn.
+test('a sentence names two products: each ticked, then each confirmed in turn', async ({
+  page,
+}) => {
+  await startWithProfile(page);
+  await page.getByRole('button', { name: 'Ajouter un médicament' }).click();
+  await page.getByRole('searchbox').fill("j'ai pris nivakin et coartem hier");
+  const found = page.getByRole('group', { name: /^Produits trouvés dans la phrase\s:$/ });
+  await expect(found.getByRole('checkbox', { checked: true })).toHaveCount(2);
+  await expectNoSeriousViolation(page);
+
+  await page.getByRole('button', { name: 'Ajouter les produits cochés' }).click();
+  await expect(page.getByText('Produit 1 sur 2 trouvés dans la phrase')).toBeVisible();
+  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+  await expect(page.getByText('Produit 2 sur 2 trouvés dans la phrase')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
+  await expectNoSeriousViolation(page);
+  await page.getByRole('button', { name: "Oui, c'est ce produit" }).click();
+
+  const items = page.getByRole('list', { name: 'Produits ajoutés' }).getByRole('listitem');
+  await expect(items).toHaveCount(2);
+  await expect(items.nth(0)).toContainText('Chloroquine');
+  await expect(items.nth(1)).toContainText(/luméfantrine/i);
+  // Back from the check goes home: the confirm screens took each other's place.
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Regarder un produit' })).toBeVisible();
+});
+
 test('the strength on the box is asked for a brand, and units for a daily maximum', async ({
   page,
 }) => {

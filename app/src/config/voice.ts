@@ -26,6 +26,50 @@ export const VOICE_PACK_OPTIONS: readonly VoicePackOption[] = [
 /** A recording ends by itself after this many seconds (MAX_RECORDING_MS of @siapso/speech). */
 export const MAX_RECORDING_SECONDS = 8;
 
+/**
+ * The names of the base given to the French decoder as said before the speech
+ * (Whisper's previous text, SCRUM-61): the most common names of the sentence
+ * evaluation and the common brands of the registry, 84 tokens. Measured on
+ * 2026-11-06 (docs/voice.md) on synthetic voices and affirmative sentences
+ * only (the 80 clips are 22 sentences said by three Windows voices, and 14
+ * more): far more names written right, none ticked wrongly, the FLEURS word
+ * error rate unchanged, 6 to 13 % more time. "quinine" was taken out after
+ * the review of #68: with it, "kinkéliba" was heard as "quinine qu'il y va" 3
+ * times in 7; without it, never, and 70 products of 88 are ticked instead of
+ * 67 (43 with no names). On for French by decision of 2026-11-06; to measure
+ * again with real voices (SCRUM-32).
+ */
+export const VOICE_NAMES_PROMPT_ON = true;
+
+export const VOICE_NAMES_PROMPT =
+  'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.';
+
+/**
+ * Names of the prompt said together in a clinic (round 2 of the review of
+ * #68): a run of the prompt that is, whole names only, some names of one of
+ * these is not read as the decoder writing the prompt again. The antenatal
+ * trio (fer, acide folique, SP, in any order or two of them), paracetamol
+ * with its brands, and the antimalarials said together (Nivaquine then
+ * Coartem; SP, also called Fansidar).
+ */
+export const VOICE_NAME_CLUSTERS: readonly (readonly string[])[] = [
+  ['fer', 'acide folique', 'SP'],
+  ['paracétamol', 'Doliprane', 'Efferalgan', 'Dafalgan'],
+  ['Nivaquine', 'Coartem'],
+  ['SP', 'Fansidar'],
+];
+
+/**
+ * The words the decoder is given for a language, or undefined: the names, for
+ * French only (the Wolof model was trained with no prompt), when `on`.
+ */
+export function voiceContextFor(
+  language: string | undefined,
+  on: boolean = VOICE_NAMES_PROMPT_ON,
+): string | undefined {
+  return on && language === 'fr' ? VOICE_NAMES_PROMPT : undefined;
+}
+
 /** A size in whole megabytes (10^6 bytes), as a phone shows it; at least 1 for any data. */
 export function megabytes(bytes: number): number {
   if (bytes <= 0) return 0;

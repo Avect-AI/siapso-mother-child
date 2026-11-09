@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: MIT
 import { MAX_RECORDING_MS, VOICE_PACKS } from '@siapso/speech';
 import { describe, expect, it } from 'vitest';
-import { MAX_RECORDING_SECONDS, VOICE_PACK_OPTIONS, megabytes } from './voice.js';
+import {
+  MAX_RECORDING_SECONDS,
+  VOICE_NAMES_PROMPT,
+  VOICE_NAMES_PROMPT_ON,
+  VOICE_PACK_OPTIONS,
+  megabytes,
+  voiceContextFor,
+} from './voice.js';
 
 describe('voice packs offered', () => {
   it('are the packs of @siapso/speech, Wolof first, each with its served size (docs/voice.md)', () => {
@@ -20,5 +27,35 @@ describe('voice packs offered', () => {
 
   it('record for at most 8 seconds, as the recorder does', () => {
     expect(MAX_RECORDING_SECONDS * 1000).toBe(MAX_RECORDING_MS);
+  });
+});
+
+// SCRUM-61: the names of the base given to the French decoder (docs/voice.md):
+// measured on synthetic voices, affirmative sentences (80 clips: 22 sentences
+// by 3 Windows voices, and 14 more), 70 of 88 products ticked instead of 43,
+// none ticked wrongly.
+describe('the names given to the decoder', () => {
+  it('are on for the French voice, and never given to the Wolof one', () => {
+    expect(VOICE_NAMES_PROMPT_ON).toBe(true);
+    expect(voiceContextFor('fr')).toBe(VOICE_NAMES_PROMPT);
+    // The Wolof model was trained with no prompt at all.
+    expect(voiceContextFor('wo')).toBeUndefined();
+    expect(voiceContextFor(undefined)).toBeUndefined();
+  });
+
+  it('are given to no voice when turned off', () => {
+    expect(voiceContextFor('fr', false)).toBeUndefined();
+    expect(voiceContextFor('wo', false)).toBeUndefined();
+  });
+
+  // Review of #68: variant A without "quinine" (84 tokens), measured so:
+  // "kinkéliba" was never heard as "quinine qu'il y va" any more. Round 2:
+  // two orders keeping names said together apart were measured and not
+  // adopted (65 and 64 products ticked of 88 instead of 70; docs/voice.md).
+  it('keep to the prompt measured (variant A without quinine, 84 tokens)', () => {
+    expect(VOICE_NAMES_PROMPT).toBe(
+      'Doliprane, paracétamol, Efferalgan, Dafalgan, Nivaquine, Coartem, Advil, ibuprofène, Cytotec, amoxicilline, Bactrim, codéine, fer, acide folique, SP, Fansidar, kinkéliba, moringa, bissap, huile de ricin.',
+    );
+    expect(VOICE_NAMES_PROMPT).not.toMatch(/quinine/i);
   });
 });

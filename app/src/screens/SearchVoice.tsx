@@ -214,6 +214,49 @@ export function VoicePanel({
  * confirm screen, as a candidate does: nothing is added from here. The
  * heading takes the focus, so a screen reader starts with what the list is.
  */
+/** One remedy or medicine family of a list to choose from: its name, local names and detail. */
+export function BrowseEntryButton({
+  entry,
+  onChoose,
+}: {
+  entry: BrowseEntry;
+  onChoose: (entry: BrowseEntry) => void;
+}) {
+  const t = useT();
+  const tNodes = useTNodes();
+  const lang = useLang();
+  return (
+    <li>
+      <button
+        type="button"
+        className="candidate"
+        onClick={() => {
+          onChoose(entry);
+        }}
+      >
+        <span className="candidate__text">
+          <span className="candidate__name">{entry.name}</span>
+          {entry.brandOf === undefined ? null : (
+            <span className="candidate__local">{t('voice.brandOf', { name: entry.brandOf })}</span>
+          )}
+          {entry.local.map((local) => (
+            <span className="candidate__local" key={local.lang}>
+              {tNodes(localNameKey(local, lang), {
+                name: <span lang={local.lang}>{local.names.join(', ')}</span>,
+                lang: t(`nameLang.${local.lang}`),
+              })}
+            </span>
+          ))}
+          {entry.detail === undefined ? null : (
+            <span className="candidate__detail">{entry.detail}</span>
+          )}
+        </span>
+        <Chevron />
+      </button>
+    </li>
+  );
+}
+
 export function BrowseList({
   kind,
   onChoose,
@@ -222,7 +265,6 @@ export function BrowseList({
   onChoose: (entry: BrowseEntry) => void;
 }) {
   const t = useT();
-  const tNodes = useTNodes();
   const lang = useLang();
   const { pack } = useApp();
   const id = useId();
@@ -297,36 +339,11 @@ export function BrowseList({
           </h3>
           <ul className="candidates" aria-labelledby={letterId(group.letter)}>
             {group.entries.map((entry) => (
-              <li key={`${entry.id}:${entry.name}`}>
-                <button
-                  type="button"
-                  className="candidate"
-                  onClick={() => {
-                    onChoose(entry);
-                  }}
-                >
-                  <span className="candidate__text">
-                    <span className="candidate__name">{entry.name}</span>
-                    {entry.brandOf === undefined ? null : (
-                      <span className="candidate__local">
-                        {t('voice.brandOf', { name: entry.brandOf })}
-                      </span>
-                    )}
-                    {entry.local.map((local) => (
-                      <span className="candidate__local" key={local.lang}>
-                        {tNodes(localNameKey(local, lang), {
-                          name: <span lang={local.lang}>{local.names.join(', ')}</span>,
-                          lang: t(`nameLang.${local.lang}`),
-                        })}
-                      </span>
-                    ))}
-                    {entry.detail === undefined ? null : (
-                      <span className="candidate__detail">{entry.detail}</span>
-                    )}
-                  </span>
-                  <Chevron />
-                </button>
-              </li>
+              <BrowseEntryButton
+                key={`${entry.id}:${entry.name}`}
+                entry={entry}
+                onChoose={onChoose}
+              />
             ))}
           </ul>
         </div>
