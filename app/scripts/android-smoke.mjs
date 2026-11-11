@@ -13,7 +13,10 @@ import { _android as android } from '@playwright/test';
 const [apk, out = 'android-smoke'] = process.argv.slice(2);
 if (apk === undefined) throw new Error('usage: android-smoke.mjs <app.apk> [output folder]');
 const PACKAGE = 'com.avectai.siapso';
-const WELCOME = "Qui utilise l'application ?";
+// The app speaks the language of the phone: French or English.
+const WELCOME = /Qui utilise l'application \?|Who is using the app\?/;
+const DANGER_SIGNS = /Signes de danger|Danger signs/;
+const GO_NOW = /Allez au poste de santé maintenant|Go to the health post now/;
 
 await mkdir(out, { recursive: true });
 const report = { checks: {}, facts: {} };
@@ -77,11 +80,8 @@ try {
   check('the prescription reading pack is in the app', report.facts.firstLaunch.prescriptionPack);
 
   // The danger signs are reachable from every screen, before any profile.
-  await page.getByText('Signes de danger').first().click();
-  await page
-    .getByText(/Allez au poste de santé maintenant/)
-    .first()
-    .waitFor({ timeout: 30_000 });
+  await page.getByText(DANGER_SIGNS).first().click();
+  await page.getByText(GO_NOW).first().waitFor({ timeout: 30_000 });
   check('the danger signs open offline', true);
   await device.screenshot({ path: path.join(out, '2-danger-signs.png') });
 
