@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: MIT
+# The Android app (docs/android.md): builds a test APK of the demo build, with
+# the knowledge pack and the prescription reading pack inside, then installs it
+# on an emulator in airplane mode and checks that it opens offline.
+name: Android
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'engine/**'
+      - 'resolver/**'
+      - 'speech/**'
+      - 'ocr/**'
+      - 'knowledge/**'
+      - 'registry/**'
+      - 'tools/knowledge/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Android APK
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - run: pnpm install --frozen-lockfile
+      - name: Prescription reading pack (pinned models, checked by SHA-256)
+        run: pnpm ocr:install-local --download
+      - name: Demo build with the knowledge pack
+        run: pnpm build
+      - name: Copy the build into the Android project
+        run: pnpm --filter @siapso/app android:sync
+      - name: Build the test APK
+        working-directory: app/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Name the APK
+        run: |
+          mkdir -p apk
+          cp app/android/app/build/outputs/apk/debug/app-debug.apk "apk/carnet-test-$(git rev-parse --short HEAD).apk"
+          ls -l apk
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carnet-android-test-apk
+          path: apk/
+          retention-days: 30
+
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Smoke test on an emulator in airplane mode (2 GB of RAM)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          ram-size: 2048M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          script: node app/scripts/android-smoke.mjs app/android/app/build/outputs/apk/debug/app-debug.apk android-smoke
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: android-smoke-test
+          path: android-smoke/
+          retention-days: 14

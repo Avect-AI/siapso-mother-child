@@ -9,6 +9,8 @@ playwright-report/
 test-results/
 .vite/
 app/public/pack/
+# Android project: Gradle files and the web build that cap sync copies in.
+app/android/
 docs/superpowers/
 LICENSES/
 

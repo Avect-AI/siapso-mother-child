@@ -120,3 +120,18 @@ path = [
 precedence = "override"
 SPDX-FileCopyrightText = "2026 AVECT AI SARL"
 SPDX-License-Identifier = "MIT"
+
+# The Android app: the Capacitor template (MIT, "Copyright (c) 2017-present
+# Drifty Co."), changed for this app (docs/android.md).
+[[annotations]]
+path = "app/android/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["2026 AVECT AI SARL", "2017-present Drifty Co."]
+SPDX-License-Identifier = "MIT"
+
+# The Gradle wrapper, as the Capacitor template ships it (Apache 2.0).
+[[annotations]]
+path = ["app/android/gradlew", "app/android/gradlew.bat", "app/android/gradle/wrapper/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2015-2021 the original authors (Gradle)"
+SPDX-License-Identifier = "Apache-2.0"
