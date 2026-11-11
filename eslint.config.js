@@ -19,6 +19,8 @@ export default tseslint.config(
       'app/public/voice/**',
       // Prescription reading pack (git-ignored, pnpm ocr:install-local).
       'app/public/ocr/**',
+      // Android project: the web build copied by cap sync, and Gradle outputs.
+      'app/android/**',
       'speech/convert/.venv/**',
       'speech/convert/out/**',
       '**/playwright-report',

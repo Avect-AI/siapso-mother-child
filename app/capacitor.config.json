@@ -1,0 +1,9 @@
+{
+  "appId": "com.avectai.siapso",
+  "appName": "Carnet",
+  "webDir": "dist-demo",
+  "android": {
+    "allowMixedContent": false,
+    "resolveServiceWorkerRequests": true
+  }
+}

@@ -11,9 +11,13 @@
     "preview:demo": "vite preview --mode demo --outDir dist-demo --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "icons": "node scripts/render-icons.mjs"
+    "icons": "node scripts/render-icons.mjs",
+    "icons:android": "node scripts/render-android-icons.mjs",
+    "android:sync": "cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
     "@noble/ed25519": "3.2.0",
     "@noble/hashes": "2.4.0",
     "@siapso/engine": "workspace:*",
@@ -28,6 +32,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@capacitor/cli": "8.5.3",
     "@playwright/test": "1.64.1",
     "@siapso/pack-tools": "workspace:*",
     "@testing-library/jest-dom": "7.0.1",
