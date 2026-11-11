@@ -49,7 +49,26 @@ try {
   let page = await start();
   await page.getByText(WELCOME).waitFor({ timeout: 60_000 });
   check('the welcome opens offline at the first launch', true);
+  await page.waitForTimeout(2_000);
   await device.screenshot({ path: path.join(out, '1-welcome.png') });
+
+  // What the page says about its service worker: a reload registers it again.
+  const lines = [];
+  page.on('console', (message) => lines.push(`${message.type()}: ${message.text()}`));
+  await page.reload();
+  await page.getByText(WELCOME).waitFor({ timeout: 60_000 });
+  await page.waitForTimeout(5_000);
+  report.facts.console = lines.slice(0, 20);
+  report.facts.register = await page.evaluate(async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      return `registered for ${registration.scope}`;
+    } catch (error) {
+      return `refused: ${String(error)}`;
+    }
+  });
+  console.log(`service worker registration: ${report.facts.register}`);
+  for (const line of report.facts.console) console.log(`console ${line}`);
 
   const facts = () =>
     page.evaluate(async () => {
@@ -76,6 +95,7 @@ try {
 
   report.facts.firstLaunch = await facts();
   check('a secure context (WebCrypto, storage)', report.facts.firstLaunch.secureContext);
+  check('the app knows the phone is offline', !report.facts.firstLaunch.online);
   check('the knowledge pack is in the app', report.facts.firstLaunch.knowledgePack);
   check('the prescription reading pack is in the app', report.facts.firstLaunch.prescriptionPack);
 

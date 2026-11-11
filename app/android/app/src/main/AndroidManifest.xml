@@ -42,6 +42,8 @@
 
     <!-- Only to download an update of the knowledge base or a voice, when asked. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- To tell the app when the phone is offline (the "Hors ligne" badge). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- The camera button of "Lire une ordonnance". -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Voice input: the speech model runs on the phone, nothing is sent. -->
