@@ -23,6 +23,14 @@ The service worker of the web app runs in the APK too: Capacitor sends its reque
 
 Privacy: the app declares `android:allowBackup="false"` and data extraction rules that exclude everything, so no backup or device transfer copies its data off the phone. Permissions: the camera (the camera button of "Lire une ordonnance"), the microphone (voice input, on the phone) and the Internet (only to download an update or a voice when asked).
 
+## Known limits
+
+Measured by the smoke test on the Android 15 emulator (WebView 124), 2026-11-11:
+
+- **One thread for the speech model.** Android WebView does not make a page cross-origin isolated, even with the headers of the service worker (`crossOriginIsolated` stays false), so the speech model would run on one thread in the APK, slower than in Chrome. It does not affect this APK, which holds no voice pack.
+- **The first launch prepares for a few seconds.** The service worker installs from the APK's own files at the first launch; until it is active (a few seconds), Home may still ask to keep the Internet on. In the APK every file is already on the phone, so that message could say ready at once: to review with the screens.
+- **The network.** A WebView does not follow the network by itself: `MainActivity` tells it, so `navigator.onLine` and the "Hors ligne" badge match the phone.
+
 ## Get the test APK
 
 Every pull request that changes the app runs the workflow **Android** (`.github/workflows/android.yml`); it also runs on demand from the Actions tab ("Run workflow"). It builds the APK, then installs it on an Android 15 emulator with 2 GB of RAM in airplane mode and checks that the app opens offline at its first launch, with its knowledge pack, its prescription reading pack and the danger signs (`app/scripts/android-smoke.mjs`). The APK is the artifact `carnet-android-test-apk` of the run (30 days); the screenshots and the report of the check are the artifact `android-smoke-test`.
